@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 def _utcnow() -> datetime:
@@ -52,5 +52,20 @@ class Endpoint:
     status: EndpointStatus = EndpointStatus.REGISTERED
     reg_ip: str = ""
     host_tags: list[str] = field(default_factory=list)
+    config_version: int = 0  # profile version this endpoint has applied
     last_seen: datetime = field(default_factory=_utcnow)
     created_at: datetime = field(default_factory=_utcnow)
+
+
+@dataclass(slots=True)
+class Profile:
+    """A configuration profile pushed to every endpoint in a vdom.
+
+    `version` increases on each update; endpoints compare it against their own
+    `config_version` to decide whether to fetch `body`.
+    """
+
+    vdom: str
+    version: int = 0
+    body: dict[str, Any] = field(default_factory=dict)
+    updated_at: datetime = field(default_factory=_utcnow)

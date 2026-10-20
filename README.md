@@ -16,14 +16,20 @@ register, send posture/telemetry, and be managed by a free server.
 - `EmsService` core (no web deps): register / refresh / update_client_id,
   host-tag ingestion, endpoint listing — fully unit-tested.
 - Storage: `InMemoryStore` (default) and `PostgresStore` (psycopg 3), both held to
-  one contract test suite. 18 tests pass; the Postgres contract tests run when
-  `OPENEMS_TEST_DSN` points at a database (otherwise skipped).
+  one contract test suite. The Postgres contract tests run when `OPENEMS_TEST_DSN`
+  points at a database (otherwise skipped).
+- Queue: `InMemoryQueue` (default) and `RedisQueue` (redis-py), same contract-test
+  pattern (`OPENEMS_TEST_REDIS`). Used for config/profile push notifications.
+- **Config/profile push:** an admin publishes a per-vdom profile; the service bumps
+  a version and enqueues a `config_update` per endpoint in that vdom; the endpoint
+  drains its queue, fetches the config, and acks the applied version.
+- **31 tests pass**, 9 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
-  - `POST /fct/api/public/v1/register/`
-  - `POST /fct/api/public/v1/refresh/`
-  - `POST /fct/api/public/v1/update_client_id/`
-  - `GET  /api/v1/endpoints/index` · `GET /api/v1/endpoints/count`
-  - `GET  /api/v1/report/fct/host_tags?devid=...`
+  - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
+    `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
+    `POST /fct/api/public/v1/config/ack/`
+  - management: `GET /api/v1/endpoints/index|count`,
+    `GET /api/v1/report/fct/host_tags?devid=...`, `POST /api/v1/profiles/{vdom}`
 
 ## Not done yet (needs real traffic capture)
 The **exact payloads** of the endpoint channel (serialization, keepalive cadence,
@@ -50,9 +56,10 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
-2. ~~PostgreSQL store~~ ✓ (done) · Redis queue next.
-3. Config/profile push to endpoints.
+2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓
+3. Persist profiles (currently in-memory) and policy assignment rules.
 4. SAML SP (`/fct_saml/*`) and the web console.
+5. Keepalive cadence + avatar chunking once lab traffic is captured.
 
 ## License
 MIT (see `LICENSE`). Contributions welcome.

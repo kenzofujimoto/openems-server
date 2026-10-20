@@ -20,7 +20,12 @@ except ImportError as exc:  # pragma: no cover - only hit without FastAPI
     ) from exc
 
 from .models import RegisterRequest
-from .service import EmsService, RegistrationError, UnknownEndpointError
+from .service import (
+    EmsService,
+    RegistrationError,
+    UnknownEndpointError,
+    UnknownProfileError,
+)
 
 
 def create_app(service: EmsService | None = None) -> "FastAPI":
@@ -48,6 +53,7 @@ def create_app(service: EmsService | None = None) -> "FastAPI":
             "client_id": endpoint.client_id,
             "emsserial": svc.ems_serial,
             "status": endpoint.status.value,
+            "config_version": svc.current_config_version(endpoint.vdom),
         }
 
     @app.post("/fct/api/public/v1/refresh/")
@@ -89,6 +95,39 @@ def create_app(service: EmsService | None = None) -> "FastAPI":
             return {"devid": devid, "host_tags": svc.host_tags_by_devid(devid)}
         except UnknownEndpointError as err:
             raise HTTPException(status_code=404, detail="unknown devid") from err
+
+    # --- config / profile push -----------------------------------------
+
+    @app.post("/api/v1/profiles/{vdom}")
+    async def set_profile(vdom: str, payload: dict[str, Any]) -> dict[str, Any]:
+        profile = svc.set_profile(vdom, payload)
+        return {"vdom": profile.vdom, "version": profile.version}
+
+    @app.get("/fct/api/public/v1/config/")
+    async def get_config(vdom: str = "Default") -> dict[str, Any]:
+        try:
+            profile = svc.get_profile(vdom)
+        except UnknownProfileError as err:
+            raise HTTPException(status_code=404, detail="no profile for vdom") from err
+        return {"vdom": profile.vdom, "version": profile.version, "body": profile.body}
+
+    @app.post("/fct/api/public/v1/messages/pull/")
+    async def pull_messages(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            messages = svc.pull_messages(str(payload.get("client_id", "")))
+        except UnknownEndpointError as err:
+            raise HTTPException(status_code=404, detail="unknown client_id") from err
+        return {"messages": messages}
+
+    @app.post("/fct/api/public/v1/config/ack/")
+    async def ack_config(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            endpoint = svc.ack_config(
+                str(payload.get("client_id", "")), int(payload.get("version", 0))
+            )
+        except UnknownEndpointError as err:
+            raise HTTPException(status_code=404, detail="unknown client_id") from err
+        return {"client_id": endpoint.client_id, "config_version": endpoint.config_version}
 
     return app
 

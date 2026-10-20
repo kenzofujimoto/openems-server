@@ -11,7 +11,10 @@ from __future__ import annotations
 import secrets
 from datetime import timezone, datetime
 
-from .models import Endpoint, EndpointStatus, RegisterRequest
+from typing import Any
+
+from .models import Endpoint, EndpointStatus, Profile, RegisterRequest
+from .queue import InMemoryQueue, Queue
 from .stores import InMemoryStore, Store
 
 
@@ -21,6 +24,10 @@ class RegistrationError(Exception):
 
 class UnknownEndpointError(Exception):
     """Raised when an operation targets an endpoint that is not registered."""
+
+
+class UnknownProfileError(Exception):
+    """Raised when a vdom has no profile."""
 
 
 class EmsService:
@@ -34,11 +41,14 @@ class EmsService:
         self,
         store: Store | None = None,
         *,
+        queue: Queue | None = None,
         ems_serial: str = "OPENEMS0000000000",
         require_invitation: bool = False,
         valid_invitations: set[str] | None = None,
     ) -> None:
         self._store: Store = store or InMemoryStore()
+        self._queue: Queue = queue or InMemoryQueue()
+        self._profiles: dict[str, Profile] = {}
         self._ems_serial = ems_serial
         self._require_invitation = require_invitation
         self._valid_invitations = valid_invitations or set()
@@ -107,6 +117,55 @@ class EmsService:
         if endpoint is None:
             raise UnknownEndpointError(devid)
         return endpoint.host_tags
+
+    # --- config / profile push ------------------------------------------
+
+    def set_profile(self, vdom: str, body: dict[str, Any]) -> Profile:
+        """Publish a new profile for a vdom and notify its endpoints.
+
+        Bumps the version and enqueues a `config_update` message for every
+        registered endpoint in that vdom; endpoints pull it and then fetch the
+        profile via get_profile().
+        """
+        previous = self._profiles.get(vdom)
+        profile = Profile(
+            vdom=vdom,
+            version=(previous.version + 1) if previous else 1,
+            body=dict(body),
+        )
+        self._profiles[vdom] = profile
+        for endpoint in self._store.all():
+            if endpoint.vdom == vdom:
+                self._queue.push(
+                    endpoint.client_id,
+                    {"type": "config_update", "vdom": vdom, "version": profile.version},
+                )
+        return profile
+
+    def get_profile(self, vdom: str) -> Profile:
+        profile = self._profiles.get(vdom)
+        if profile is None:
+            raise UnknownProfileError(vdom)
+        return profile
+
+    def current_config_version(self, vdom: str) -> int:
+        profile = self._profiles.get(vdom)
+        return profile.version if profile else 0
+
+    def pull_messages(self, client_id: str) -> list[dict[str, Any]]:
+        """Drain pending push notifications for an endpoint (config updates, …)."""
+        if self._store.get_by_client_id(client_id) is None:
+            raise UnknownEndpointError(client_id)
+        return self._queue.pull(client_id)
+
+    def ack_config(self, client_id: str, version: int) -> Endpoint:
+        """Record that the endpoint has applied a given profile version."""
+        endpoint = self._store.get_by_client_id(client_id)
+        if endpoint is None:
+            raise UnknownEndpointError(client_id)
+        endpoint.config_version = version
+        self._store.upsert(endpoint)
+        return endpoint
 
     # --- helpers --------------------------------------------------------
 
