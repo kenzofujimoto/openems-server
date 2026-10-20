@@ -5,12 +5,12 @@ exposes (SPEC-INTEROP.md §4): SP metadata, an AuthnRequest (HTTP-Redirect
 binding) and parsing of a SAMLResponse at the ACS (HTTP-POST binding). SAML is a
 public standard, so this is an original implementation of that standard.
 
-SECURITY NOTE — signature verification is a pluggable hook and is NOT performed
-by default. A production SP MUST verify the IdP's XML signature on the Response/
-Assertion against the configured IdP certificate (e.g. with `signxml`/`xmlsec`)
-and validate conditions (NotOnOrAfter, Audience). `verify_signature` lets a
-caller inject that; `parse_saml_response(..., require_signature=True)` refuses
-unverified responses.
+SECURITY NOTE — XML-DSig signature verification is wired through a pluggable
+hook. `SamlSp(require_signature=True)` builds a signxml-based verifier from the
+registered IdP certificate (see app/saml_signatures.py) and refuses any response
+whose enveloped signature does not verify. It is OFF by default so the core can
+be tested without crypto; enable it in production, and additionally validate the
+assertion conditions (NotOnOrAfter, Audience) and replay protection.
 """
 
 from __future__ import annotations
@@ -246,8 +246,14 @@ class SamlSp:
         return url
 
     def consume(self, prefix: str, saml_response_b64: str) -> SamlAssertion:
-        # ensure the tenant exists before trusting a response for it
-        self._idp(prefix)
+        idp = self._idp(prefix)  # ensure the tenant exists before trusting a response
+        verifier: Optional[Callable[[bytes], bool]] = None
+        if self._require_signature and idp.certificate:
+            from .saml_signatures import certificate_to_pem, make_signxml_verifier
+
+            verifier = make_signxml_verifier(certificate_to_pem(idp.certificate))
         return parse_saml_response(
-            saml_response_b64, require_signature=self._require_signature
+            saml_response_b64,
+            verify_signature=verifier,
+            require_signature=self._require_signature,
         )

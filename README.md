@@ -25,10 +25,14 @@ register, send posture/telemetry, and be managed by a free server.
   drains its queue, fetches the config, and acks the applied version.
 - **SAML 2.0 SP** (`app/saml.py`, clean-room implementation of the OASIS standard):
   SP metadata, AuthnRequest (HTTP-Redirect), SAMLResponse parsing at the ACS
-  (HTTP-POST), multi-tenant IdP registry keyed by URL prefix. Signature
-  verification is a documented pluggable hook (NOT done by default — see the
-  SECURITY NOTE in the module before any production use).
-- **43 tests pass**, 9 skipped (Postgres + Redis without a live server).
+  (HTTP-POST), multi-tenant IdP registry keyed by URL prefix.
+- **SAML signature verification** (`app/saml_signatures.py`, signxml): with
+  `SamlSp(require_signature=True)` the ACS verifies the response's enveloped
+  XML-DSig against the registered IdP certificate and fails closed. Tested
+  end-to-end (valid → accept, tampered → reject, wrong cert → reject). Still
+  TODO for production: validate assertion conditions (NotOnOrAfter/Audience) and
+  replay protection.
+- **47 tests pass**, 9 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
@@ -63,8 +67,8 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
-2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP~~ ✓
-3. SAML signature verification (wire a real xmlsec/signxml verifier into the hook).
+2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP~~ ✓ · ~~SAML signature verification~~ ✓
+3. SAML assertion conditions (NotOnOrAfter/Audience) + replay protection.
 4. Persist profiles + policy assignment rules; web console.
 5. Keepalive cadence + avatar chunking once lab traffic is captured.
 

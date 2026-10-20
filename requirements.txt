@@ -4,6 +4,7 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.20   # SAML ACS form POST
 psycopg[binary]==3.3.6     # PostgresStore
 redis==7.2.1               # RedisQueue
+signxml==5.2.0             # SAML XML-DSig verification (pulls lxml + cryptography)
 
 # Dev / test
 pytest==9.0.2
