@@ -13,13 +13,15 @@ from __future__ import annotations
 from typing import Any
 
 try:
-    from fastapi import FastAPI, HTTPException, Request
+    from fastapi import FastAPI, Form, HTTPException, Request, Response
+    from fastapi.responses import RedirectResponse
 except ImportError as exc:  # pragma: no cover - only hit without FastAPI
     raise SystemExit(
         "FastAPI is required to run the HTTP server: pip install -r requirements.txt"
     ) from exc
 
 from .models import RegisterRequest
+from .saml import SamlError, SamlSp, UnknownIdpError
 from .service import (
     EmsService,
     RegistrationError,
@@ -28,8 +30,11 @@ from .service import (
 )
 
 
-def create_app(service: EmsService | None = None) -> "FastAPI":
+def create_app(
+    service: EmsService | None = None, saml_sp: SamlSp | None = None
+) -> "FastAPI":
     svc = service or EmsService()
+    saml = saml_sp or SamlSp("http://localhost:8013")
     app = FastAPI(title="openems-server", version="0.1.0")
 
     @app.post("/fct/api/public/v1/register/")
@@ -128,6 +133,48 @@ def create_app(service: EmsService | None = None) -> "FastAPI":
         except UnknownEndpointError as err:
             raise HTTPException(status_code=404, detail="unknown client_id") from err
         return {"client_id": endpoint.client_id, "config_version": endpoint.config_version}
+
+    # --- SAML SP (/fct_saml/*) ------------------------------------------
+
+    @app.get("/fct_saml/{prefix}/metadata")
+    async def saml_metadata(prefix: str) -> Response:
+        return Response(content=saml.metadata(prefix), media_type="application/xml")
+
+    @app.get("/fct_saml/login")
+    async def saml_login(prefix: str = "Default", RelayState: str | None = None):
+        try:
+            url = saml.login_redirect(prefix, relay_state=RelayState)
+        except UnknownIdpError as err:
+            raise HTTPException(status_code=404, detail="no IdP for prefix") from err
+        return RedirectResponse(url, status_code=302)
+
+    @app.post("/fct_saml/{prefix}/acs")
+    async def saml_acs(
+        prefix: str,
+        SAMLResponse: str = Form(...),
+        RelayState: str | None = Form(default=None),
+    ) -> dict[str, Any]:
+        try:
+            assertion = saml.consume(prefix, SAMLResponse)
+        except UnknownIdpError as err:
+            raise HTTPException(status_code=404, detail="no IdP for prefix") from err
+        except SamlError as err:
+            raise HTTPException(status_code=400, detail=str(err)) from err
+        return {
+            "name_id": assertion.name_id,
+            "attributes": assertion.attributes,
+            "relay_state": RelayState,
+        }
+
+    @app.post("/fct_saml/parse_remote_metadata")
+    async def saml_parse_remote_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+        prefix = str(payload.get("prefix", "Default"))
+        metadata_xml = str(payload.get("metadata", ""))
+        try:
+            idp = saml.register_idp_from_metadata(prefix, metadata_xml)
+        except SamlError as err:
+            raise HTTPException(status_code=400, detail=str(err)) from err
+        return {"prefix": prefix, "idp_entity_id": idp.entity_id, "sso_url": idp.sso_url}
 
     return app
 

@@ -23,13 +23,20 @@ register, send posture/telemetry, and be managed by a free server.
 - **Config/profile push:** an admin publishes a per-vdom profile; the service bumps
   a version and enqueues a `config_update` per endpoint in that vdom; the endpoint
   drains its queue, fetches the config, and acks the applied version.
-- **31 tests pass**, 9 skipped (Postgres + Redis without a live server).
+- **SAML 2.0 SP** (`app/saml.py`, clean-room implementation of the OASIS standard):
+  SP metadata, AuthnRequest (HTTP-Redirect), SAMLResponse parsing at the ACS
+  (HTTP-POST), multi-tenant IdP registry keyed by URL prefix. Signature
+  verification is a documented pluggable hook (NOT done by default — see the
+  SECURITY NOTE in the module before any production use).
+- **43 tests pass**, 9 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
     `POST /fct/api/public/v1/config/ack/`
   - management: `GET /api/v1/endpoints/index|count`,
     `GET /api/v1/report/fct/host_tags?devid=...`, `POST /api/v1/profiles/{vdom}`
+  - SAML: `GET /fct_saml/{prefix}/metadata`, `GET /fct_saml/login`,
+    `POST /fct_saml/{prefix}/acs`, `POST /fct_saml/parse_remote_metadata`
 
 ## Not done yet (needs real traffic capture)
 The **exact payloads** of the endpoint channel (serialization, keepalive cadence,
@@ -56,9 +63,9 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
-2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓
-3. Persist profiles (currently in-memory) and policy assignment rules.
-4. SAML SP (`/fct_saml/*`) and the web console.
+2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP~~ ✓
+3. SAML signature verification (wire a real xmlsec/signxml verifier into the hook).
+4. Persist profiles + policy assignment rules; web console.
 5. Keepalive cadence + avatar chunking once lab traffic is captured.
 
 ## License

@@ -100,3 +100,56 @@ def test_get_config_unknown_vdom_is_404(client: TestClient) -> None:
     assert client.get(
         "/fct/api/public/v1/config/", params={"vdom": "nope"}
     ).status_code == 404
+
+
+# --- SAML SP ---------------------------------------------------------------
+
+import base64  # noqa: E402
+
+_IDP_METADATA = (
+    '<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" '
+    'entityID="https://idp.example"><md:IDPSSODescriptor '
+    'protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">'
+    '<md:SingleSignOnService '
+    'Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" '
+    'Location="https://idp.example/sso"/></md:IDPSSODescriptor></md:EntityDescriptor>'
+)
+
+_SAML_RESPONSE = (
+    '<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
+    'xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">'
+    '<samlp:Status><samlp:StatusCode '
+    'Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>'
+    '<saml:Assertion><saml:Subject><saml:NameID>bob@example.com</saml:NameID>'
+    "</saml:Subject></saml:Assertion></samlp:Response>"
+)
+
+
+def test_saml_metadata_served_as_xml(client: TestClient) -> None:
+    resp = client.get("/fct_saml/acme/metadata")
+    assert resp.status_code == 200
+    assert "application/xml" in resp.headers["content-type"]
+    assert "SPSSODescriptor" in resp.text
+
+
+def test_saml_login_redirects_after_idp_registered(client: TestClient) -> None:
+    client.post(
+        "/fct_saml/parse_remote_metadata",
+        json={"prefix": "acme", "metadata": _IDP_METADATA},
+    )
+    resp = client.get(
+        "/fct_saml/login", params={"prefix": "acme"}, follow_redirects=False
+    )
+    assert resp.status_code == 302
+    assert resp.headers["location"].startswith("https://idp.example/sso?")
+
+
+def test_saml_acs_consumes_response(client: TestClient) -> None:
+    client.post(
+        "/fct_saml/parse_remote_metadata",
+        json={"prefix": "acme", "metadata": _IDP_METADATA},
+    )
+    b64 = base64.b64encode(_SAML_RESPONSE.encode()).decode()
+    resp = client.post("/fct_saml/acme/acs", data={"SAMLResponse": b64})
+    assert resp.status_code == 200
+    assert resp.json()["name_id"] == "bob@example.com"
