@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import secrets
 from datetime import timezone, datetime
-from typing import Protocol
 
 from .models import Endpoint, EndpointStatus, RegisterRequest
+from .stores import InMemoryStore, Store
 
 
 class RegistrationError(Exception):
@@ -21,34 +21,6 @@ class RegistrationError(Exception):
 
 class UnknownEndpointError(Exception):
     """Raised when an operation targets an endpoint that is not registered."""
-
-
-class Store(Protocol):
-    def upsert(self, endpoint: Endpoint) -> None: ...
-    def get_by_client_id(self, client_id: str) -> Endpoint | None: ...
-    def get_by_devid(self, devid: str) -> Endpoint | None: ...
-    def all(self) -> list[Endpoint]: ...
-
-
-class InMemoryStore:
-    """Non-persistent store. Replace with PostgreSQL for production."""
-
-    def __init__(self) -> None:
-        self._by_client: dict[str, Endpoint] = {}
-        self._by_devid: dict[str, Endpoint] = {}
-
-    def upsert(self, endpoint: Endpoint) -> None:
-        self._by_client[endpoint.client_id] = endpoint
-        self._by_devid[endpoint.devid] = endpoint
-
-    def get_by_client_id(self, client_id: str) -> Endpoint | None:
-        return self._by_client.get(client_id)
-
-    def get_by_devid(self, devid: str) -> Endpoint | None:
-        return self._by_devid.get(devid)
-
-    def all(self) -> list[Endpoint]:
-        return list(self._by_devid.values())
 
 
 class EmsService:

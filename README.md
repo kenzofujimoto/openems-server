@@ -15,6 +15,9 @@ register, send posture/telemetry, and be managed by a free server.
 ## What works today
 - `EmsService` core (no web deps): register / refresh / update_client_id,
   host-tag ingestion, endpoint listing — fully unit-tested.
+- Storage: `InMemoryStore` (default) and `PostgresStore` (psycopg 3), both held to
+  one contract test suite. 18 tests pass; the Postgres contract tests run when
+  `OPENEMS_TEST_DSN` points at a database (otherwise skipped).
 - FastAPI HTTP layer exposing:
   - `POST /fct/api/public/v1/register/`
   - `POST /fct/api/public/v1/refresh/`
@@ -38,12 +41,16 @@ uvicorn --factory app.api:build --port 8013
 
 ## Test
 ```bash
-python -m pytest -q          # core service tests, no network deps
+python -m pytest -q          # core + in-memory + FastAPI integration (18 pass)
+
+# also exercise the PostgreSQL store:
+docker run --rm -e POSTGRES_PASSWORD=pw -p 5432:5432 postgres:16
+OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pytest -q
 ```
 
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
-2. PostgreSQL store (replace `InMemoryStore`) + Redis queue.
+2. ~~PostgreSQL store~~ ✓ (done) · Redis queue next.
 3. Config/profile push to endpoints.
 4. SAML SP (`/fct_saml/*`) and the web console.
 
