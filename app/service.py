@@ -15,7 +15,7 @@ from typing import Any
 
 from .models import Endpoint, EndpointStatus, Profile, RegisterRequest
 from .queue import InMemoryQueue, Queue
-from .stores import InMemoryStore, Store
+from .stores import InMemoryProfileStore, InMemoryStore, ProfileStore, Store
 
 
 class RegistrationError(Exception):
@@ -42,13 +42,14 @@ class EmsService:
         store: Store | None = None,
         *,
         queue: Queue | None = None,
+        profile_store: ProfileStore | None = None,
         ems_serial: str = "OPENEMS0000000000",
         require_invitation: bool = False,
         valid_invitations: set[str] | None = None,
     ) -> None:
         self._store: Store = store or InMemoryStore()
         self._queue: Queue = queue or InMemoryQueue()
-        self._profiles: dict[str, Profile] = {}
+        self._profile_store: ProfileStore = profile_store or InMemoryProfileStore()
         self._ems_serial = ems_serial
         self._require_invitation = require_invitation
         self._valid_invitations = valid_invitations or set()
@@ -127,13 +128,13 @@ class EmsService:
         registered endpoint in that vdom; endpoints pull it and then fetch the
         profile via get_profile().
         """
-        previous = self._profiles.get(vdom)
+        previous = self._profile_store.get(vdom)
         profile = Profile(
             vdom=vdom,
             version=(previous.version + 1) if previous else 1,
             body=dict(body),
         )
-        self._profiles[vdom] = profile
+        self._profile_store.put(profile)
         for endpoint in self._store.all():
             if endpoint.vdom == vdom:
                 self._queue.push(
@@ -143,13 +144,13 @@ class EmsService:
         return profile
 
     def get_profile(self, vdom: str) -> Profile:
-        profile = self._profiles.get(vdom)
+        profile = self._profile_store.get(vdom)
         if profile is None:
             raise UnknownProfileError(vdom)
         return profile
 
     def current_config_version(self, vdom: str) -> int:
-        profile = self._profiles.get(vdom)
+        profile = self._profile_store.get(vdom)
         return profile.version if profile else 0
 
     def pull_messages(self, client_id: str) -> list[dict[str, Any]]:

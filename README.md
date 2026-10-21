@@ -22,7 +22,9 @@ register, send posture/telemetry, and be managed by a free server.
   pattern (`OPENEMS_TEST_REDIS`). Used for config/profile push notifications.
 - **Config/profile push:** an admin publishes a per-vdom profile; the service bumps
   a version and enqueues a `config_update` per endpoint in that vdom; the endpoint
-  drains its queue, fetches the config, and acks the applied version.
+  drains its queue, fetches the config, and acks the applied version. Profiles are
+  held by a `ProfileStore` — `InMemoryProfileStore` or `PostgresProfileStore`
+  (same contract test pattern as the endpoint store).
 - **SAML 2.0 SP** (`app/saml.py`, clean-room implementation of the OASIS standard):
   SP metadata, AuthnRequest (HTTP-Redirect), SAMLResponse parsing at the ACS
   (HTTP-POST), multi-tenant IdP registry keyed by URL prefix.
@@ -35,7 +37,7 @@ register, send posture/telemetry, and be managed by a free server.
   `AudienceRestriction`, and rejects a reused assertion ID via a `ReplayCache`
   (`app/replay.py`: `InMemoryReplayCache`, or `RedisReplayCache` using
   `SET NX EX`).
-- **56 tests pass**, 9 skipped (Postgres + Redis without a live server).
+- **60 tests pass**, 13 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
@@ -70,8 +72,8 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
-2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP~~ ✓ · ~~signature verification~~ ✓ · ~~assertion conditions + replay~~ ✓
-3. Persist profiles + policy assignment rules; web console.
+2. ~~Postgres store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP + signature + conditions/replay~~ ✓ · ~~persist profiles~~ ✓
+3. Policy assignment rules; web console.
 4. Keepalive cadence + avatar chunking once lab traffic is captured.
 5. SubjectConfirmationData (Recipient/InResponseTo) checks; AuthnRequest↔Response correlation.
 

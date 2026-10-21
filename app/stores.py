@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from .models import Endpoint, EndpointStatus
+from .models import Endpoint, EndpointStatus, Profile
 
 
 @runtime_checkable
@@ -153,4 +153,95 @@ class PostgresStore:
             host_tags=list(r[8]) if r[8] else [],
             last_seen=r[9],
             created_at=r[10],
+        )
+
+
+# =====================================================================
+# Profile storage (config/profile push, SPEC-INTEROP.md §2.4)
+# =====================================================================
+
+
+@runtime_checkable
+class ProfileStore(Protocol):
+    def get(self, vdom: str) -> Profile | None: ...
+    def put(self, profile: Profile) -> None: ...
+    def all(self) -> list[Profile]: ...
+
+
+class InMemoryProfileStore:
+    def __init__(self) -> None:
+        self._by_vdom: dict[str, Profile] = {}
+
+    def get(self, vdom: str) -> Profile | None:
+        return self._by_vdom.get(vdom)
+
+    def put(self, profile: Profile) -> None:
+        self._by_vdom[profile.vdom] = profile
+
+    def all(self) -> list[Profile]:
+        return list(self._by_vdom.values())
+
+
+PROFILE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS profiles (
+    vdom        TEXT PRIMARY KEY,
+    version     INTEGER NOT NULL DEFAULT 0,
+    body        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+
+class PostgresProfileStore:
+    """PostgreSQL-backed profile store (psycopg 3)."""
+
+    def __init__(self, dsn: str) -> None:
+        import psycopg
+        from psycopg.types.json import Jsonb
+
+        self._Jsonb = Jsonb
+        self._conn = psycopg.connect(dsn, autocommit=True)
+
+    def init_schema(self) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(PROFILE_SCHEMA)
+
+    def get(self, vdom: str) -> Profile | None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT vdom, version, body, updated_at FROM profiles WHERE vdom = %s",
+                (vdom,),
+            )
+            row = cur.fetchone()
+            return self._row(row) if row else None
+
+    def put(self, profile: Profile) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO profiles (vdom, version, body, updated_at)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (vdom) DO UPDATE SET
+                    version = EXCLUDED.version,
+                    body = EXCLUDED.body,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (profile.vdom, profile.version, self._Jsonb(profile.body), profile.updated_at),
+            )
+
+    def all(self) -> list[Profile]:
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT vdom, version, body, updated_at FROM profiles")
+            return [self._row(r) for r in cur.fetchall()]
+
+    def close(self) -> None:
+        self._conn.close()
+
+    @staticmethod
+    def _row(r: tuple[object, ...]) -> Profile:
+        return Profile(
+            vdom=r[0],
+            version=r[1],
+            body=dict(r[2]) if r[2] else {},
+            updated_at=r[3],
         )
