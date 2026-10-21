@@ -184,3 +184,19 @@ def test_assignment_rule_add_list_and_assigned_config(client: TestClient) -> Non
         "/fct/api/public/v1/config/assigned/", params={"client_id": cid}
     ).json()
     assert cfg["vdom"] == "Strict" and cfg["body"] == {"firewall": "on"}
+
+
+# --- management web console -------------------------------------------------
+
+def test_root_redirects_to_console(client: TestClient) -> None:
+    resp = client.get("/", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "/console/"
+
+
+def test_console_html_served(client: TestClient) -> None:
+    resp = client.get("/console/")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+    body = resp.text
+    assert "openems" in body and "Endpoints" in body

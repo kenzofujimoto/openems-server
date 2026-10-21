@@ -10,15 +10,19 @@ web dependency, so unit tests run without installing this layer.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 try:
     from fastapi import FastAPI, Form, HTTPException, Request, Response
     from fastapi.responses import RedirectResponse
+    from fastapi.staticfiles import StaticFiles
 except ImportError as exc:  # pragma: no cover - only hit without FastAPI
     raise SystemExit(
         "FastAPI is required to run the HTTP server: pip install -r requirements.txt"
     ) from exc
+
+_STATIC_DIR = Path(__file__).parent / "static"
 
 from .models import AssignmentRule, Condition, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
@@ -220,6 +224,15 @@ def create_app(
         except SamlError as err:
             raise HTTPException(status_code=400, detail=str(err)) from err
         return {"prefix": prefix, "idp_entity_id": idp.entity_id, "sso_url": idp.sso_url}
+
+    # --- management web console -----------------------------------------
+
+    @app.get("/")
+    async def root() -> RedirectResponse:
+        return RedirectResponse("/console/", status_code=302)
+
+    if _STATIC_DIR.is_dir():
+        app.mount("/console", StaticFiles(directory=_STATIC_DIR, html=True), name="console")
 
     return app
 

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>openems console</title>
+<style>
+  :root { --bg:#0f1419; --panel:#1a2029; --line:#2a333f; --fg:#e6edf3; --muted:#8b98a5; --accent:#e5484d; --ok:#3fb950; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header h1 { font-size:16px; margin:0; font-weight:600; letter-spacing:.3px; }
+  header .sub { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:7px 12px; font-size:13px; cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
+  main { padding:20px; max-width:1100px; margin:0 auto; display:grid; gap:20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .panel h2 { margin:0 0 12px; font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; }
+  .tag { display:inline-block; background:#223; border:1px solid var(--line); border-radius:4px; padding:1px 6px; margin:1px; font-size:11px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { background:var(--bg); border:1px solid var(--line); color:var(--fg); border-radius:6px; padding:7px 9px; font:13px/1.4 monospace; }
+  input { min-width:120px; } textarea { width:100%; min-height:60px; }
+  label { color:var(--muted); font-size:12px; display:block; margin-bottom:3px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .big { font-size:28px; font-weight:700; }
+  .toast { position:fixed; bottom:18px; right:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 14px; font-size:13px; opacity:0; transition:opacity .2s; }
+  .toast.show { opacity:1; }
+  .toast.err { border-color:var(--accent); }
+  @media (max-width:720px){ .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>openems</h1>
+  <span class="sub">clean-room endpoint management console</span>
+  <span class="spacer"></span>
+  <button class="ghost" onclick="refreshAll()">Refresh</button>
+</header>
+
+<main>
+  <div class="panel">
+    <h2>Endpoints</h2>
+    <div class="big" id="count">–</div>
+    <table>
+      <thead><tr><th>devid</th><th>hostname</th><th>os</th><th>status</th><th>host tags</th></tr></thead>
+      <tbody id="endpoints"></tbody>
+    </table>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Publish profile</h2>
+      <div class="row">
+        <div><label>vdom</label><input id="p-vdom" value="Default" /></div>
+      </div>
+      <label style="margin-top:10px">body (JSON)</label>
+      <textarea id="p-body">{ "firewall": "on" }</textarea>
+      <div class="row" style="margin-top:10px"><button onclick="publishProfile()">Publish</button></div>
+    </div>
+
+    <div class="panel">
+      <h2>Assignment rule</h2>
+      <div class="row">
+        <div><label>id</label><input id="r-id" value="win" /></div>
+        <div><label>target vdom</label><input id="r-vdom" value="Strict" /></div>
+        <div><label>priority</label><input id="r-prio" value="10" style="min-width:70px" /></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label>field</label><input id="r-field" value="os" /></div>
+        <div><label>op</label><input id="r-op" value="contains" /></div>
+        <div><label>value</label><input id="r-val" value="Windows" /></div>
+      </div>
+      <div class="row" style="margin-top:10px"><button onclick="addRule()">Add rule</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Rules</h2>
+    <table>
+      <thead><tr><th>priority</th><th>id</th><th>→ vdom</th><th>conditions</th><th>enabled</th></tr></thead>
+      <tbody id="rules"></tbody>
+    </table>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = ""; // same origin
+function toast(msg, isErr) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.className = "toast show" + (isErr ? " err" : "");
+  setTimeout(() => (t.className = "toast"), 2500);
+}
+async function api(path, opts) {
+  const res = await fetch(API + path, opts);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.status);
+  return res.status === 204 ? null : res.json();
+}
+function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c])); }
+
+async function loadEndpoints() {
+  const [list, count] = await Promise.all([
+    api("/api/v1/endpoints/index"), api("/api/v1/endpoints/count"),
+  ]);
+  document.getElementById("count").textContent = count.count;
+  document.getElementById("endpoints").innerHTML = list.map(e => `
+    <tr><td>${esc(e.devid)}</td><td>${esc(e.hostname||"")}</td><td>${esc(e.os||"")}</td>
+    <td>${esc(e.status)}</td><td>${(e.host_tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</td></tr>`
+  ).join("") || `<tr><td colspan="5" style="color:var(--muted)">no endpoints registered</td></tr>`;
+}
+async function loadRules() {
+  const rules = await api("/api/v1/assignment_rules");
+  document.getElementById("rules").innerHTML = rules.map(r => `
+    <tr><td>${r.priority}</td><td>${esc(r.id)}</td><td>${esc(r.target_vdom)}</td>
+    <td>${r.conditions.map(c=>`<span class="tag">${esc(c.field)} ${esc(c.op)} ${esc(JSON.stringify(c.value))}</span>`).join("")}</td>
+    <td>${r.enabled ? "yes" : "no"}</td></tr>`
+  ).join("") || `<tr><td colspan="5" style="color:var(--muted)">no rules</td></tr>`;
+}
+async function publishProfile() {
+  try {
+    const vdom = document.getElementById("p-vdom").value.trim();
+    const body = JSON.parse(document.getElementById("p-body").value);
+    const r = await api("/api/v1/profiles/" + encodeURIComponent(vdom), {
+      method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
+    toast(`profile ${vdom} v${r.version} published`);
+  } catch (e) { toast("profile: " + e.message, true); }
+}
+async function addRule() {
+  try {
+    const rule = {
+      id: document.getElementById("r-id").value.trim(),
+      target_vdom: document.getElementById("r-vdom").value.trim(),
+      priority: parseInt(document.getElementById("r-prio").value, 10) || 100,
+      conditions: [{
+        field: document.getElementById("r-field").value.trim(),
+        op: document.getElementById("r-op").value.trim(),
+        value: document.getElementById("r-val").value.trim(),
+      }],
+    };
+    await api("/api/v1/assignment_rules", {
+      method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(rule) });
+    toast(`rule ${rule.id} added`); await loadRules();
+  } catch (e) { toast("rule: " + e.message, true); }
+}
+async function refreshAll() {
+  try { await Promise.all([loadEndpoints(), loadRules()]); }
+  catch (e) { toast(e.message, true); }
+}
+refreshAll();
+setInterval(loadEndpoints, 5000);
+</script>
+</body>
+</html>
