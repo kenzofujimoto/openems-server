@@ -46,6 +46,7 @@
   <h1>openems</h1>
   <span class="sub">clean-room endpoint management console</span>
   <span class="spacer"></span>
+  <button class="ghost" id="logout-btn" style="display:none" onclick="logout()">Sign out</button>
   <button class="ghost" onclick="refreshAll()">Refresh</button>
 </header>
 
@@ -113,17 +114,52 @@
   </div>
 </div>
 
+<div class="modal-bg" id="login-bg">
+  <div class="modal" style="width:min(360px,92vw)">
+    <h2 style="margin:0 0 12px">Sign in</h2>
+    <label>username</label><input id="l-user" style="width:100%" autocomplete="username" />
+    <label style="margin-top:8px">password</label>
+    <input id="l-pass" type="password" style="width:100%" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()" />
+    <div class="row" style="margin-top:14px"><button onclick="doLogin()">Sign in</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const API = ""; // same origin
+let TOKEN = null;
+try { TOKEN = localStorage.getItem("openems_token"); } catch (e) {}
 function toast(msg, isErr) {
   const t = document.getElementById("toast");
   t.textContent = msg; t.className = "toast show" + (isErr ? " err" : "");
   setTimeout(() => (t.className = "toast"), 2500);
 }
-async function api(path, opts) {
+function showLogin() { document.getElementById("login-bg").classList.add("show"); }
+function setToken(tok) {
+  TOKEN = tok;
+  try { tok ? localStorage.setItem("openems_token", tok) : localStorage.removeItem("openems_token"); } catch (e) {}
+  document.getElementById("logout-btn").style.display = tok ? "" : "none";
+}
+async function doLogin() {
+  try {
+    const r = await fetch(API + "/api/v1/auth/login", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ username: document.getElementById("l-user").value,
+                             password: document.getElementById("l-pass").value }) });
+    if (!r.ok) { toast("invalid credentials", true); return; }
+    setToken((await r.json()).token);
+    document.getElementById("login-bg").classList.remove("show");
+    document.getElementById("l-pass").value = "";
+    refreshAll();
+  } catch (e) { toast(e.message, true); }
+}
+function logout() { setToken(null); showLogin(); }
+async function api(path, opts = {}) {
+  opts.headers = Object.assign({}, opts.headers, TOKEN ? { Authorization: "Bearer " + TOKEN } : {});
   const res = await fetch(API + path, opts);
+  if (res.status === 401) { setToken(null); showLogin(); throw new Error("authentication required"); }
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.status);
   return res.status === 204 ? null : res.json();
 }
@@ -224,8 +260,9 @@ async function refreshAll() {
   try { await Promise.all([loadEndpoints(), loadRules(), loadProfiles()]); }
   catch (e) { toast(e.message, true); }
 }
+if (TOKEN) document.getElementById("logout-btn").style.display = "";
 refreshAll();
-setInterval(loadEndpoints, 5000);
+setInterval(() => { if (!document.getElementById("login-bg").classList.contains("show")) loadEndpoints(); }, 5000);
 </script>
 </body>
 </html>

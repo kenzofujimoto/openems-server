@@ -16,12 +16,14 @@ from typing import Any
 
 try:
     from fastapi import FastAPI, Form, HTTPException, Request, Response
-    from fastapi.responses import RedirectResponse
+    from fastapi.responses import JSONResponse, RedirectResponse
     from fastapi.staticfiles import StaticFiles
 except ImportError as exc:  # pragma: no cover - only hit without FastAPI
     raise SystemExit(
         "FastAPI is required to run the HTTP server: pip install -r requirements.txt"
     ) from exc
+
+from .auth import AdminService
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -39,9 +41,16 @@ def create_app(
     service: EmsService | None = None,
     saml_sp: SamlSp | None = None,
     record_path: str | None = None,
+    admin_service: AdminService | None = None,
 ) -> "FastAPI":
     svc = service or EmsService()
     saml = saml_sp or SamlSp("http://localhost:8013")
+    admin = admin_service or AdminService()
+    # optional bootstrap admin from env, e.g. OPENEMS_ADMIN=admin:changeme
+    env_admin = os.environ.get("OPENEMS_ADMIN")
+    if env_admin and ":" in env_admin:
+        u, p = env_admin.split(":", 1)
+        admin.add_admin(u, p)
     app = FastAPI(title="openems-server", version="0.1.0")
 
     record_to = record_path or os.environ.get("OPENEMS_RECORD")
@@ -49,6 +58,28 @@ def create_app(
         from .recording import RecorderMiddleware
 
         app.add_middleware(RecorderMiddleware, out_path=record_to)
+
+    @app.middleware("http")
+    async def admin_guard(request: "Request", call_next):
+        path = request.url.path
+        # Until an admin is created the API runs open (setup mode); once any admin
+        # exists, every /api/v1/* call (except login) requires a valid token.
+        if admin.has_admins() and path.startswith("/api/v1/") and path != "/api/v1/auth/login":
+            header = request.headers.get("authorization", "")
+            token = header[7:] if header[:7].lower() == "bearer " else ""
+            if admin.verify_token(token) is None:
+                return JSONResponse(
+                    {"detail": "authentication required"}, status_code=401
+                )
+        return await call_next(request)
+
+    @app.post("/api/v1/auth/login")
+    async def login(payload: dict[str, Any]) -> dict[str, Any]:
+        username = str(payload.get("username", ""))
+        role = admin.authenticate(username, str(payload.get("password", "")))
+        if role is None:
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        return {"token": admin.issue_token(username, role), "role": role}
 
     @app.post("/fct/api/public/v1/register/")
     async def register(payload: dict[str, Any], request: Request) -> dict[str, Any]:

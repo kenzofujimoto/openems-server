@@ -50,7 +50,14 @@ register, send posture/telemetry, and be managed by a free server.
   format in cleartext — no TLS interception. `tools/analyze_capture.py` summarizes
   the capture (paths, JSON keys, sample bodies). See
   [`../LAB-CAPTURE.md`](../LAB-CAPTURE.md).
-- **80 tests pass**, 13 skipped (Postgres + Redis without a live server).
+- **Admin authentication** (`app/auth.py`): PBKDF2-SHA256 password hashing and
+  stateless HMAC-signed bearer tokens. A middleware gates every `/api/v1/*` route
+  (except `/api/v1/auth/login`) once any admin exists — until then it runs in open
+  *setup mode*. The endpoint channel (`/fct/api/*`) keeps its own device auth and
+  is never gated. The console has a sign-in overlay (token in `localStorage`,
+  attached to every call, 401 → re-login). Bootstrap an admin with
+  `OPENEMS_ADMIN=user:pass`.
+- **91 tests pass**, 13 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
@@ -88,7 +95,7 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
 2. ~~Postgres store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP + signature + conditions/replay~~ ✓ · ~~persist profiles~~ ✓ · ~~assignment rules~~ ✓
-3. ~~Web console~~ ✓ · ~~traffic recorder + capture tooling~~ ✓ · persist rules; policy audit log.
+3. ~~Web console~~ ✓ · ~~traffic recorder~~ ✓ · ~~admin auth~~ ✓ · persist rules + admins; audit log.
 4. Capture real lab traffic (see LAB-CAPTURE.md) → replace the `[a capturar]`
    payloads with precise Pydantic models; add keepalive/avatar routes.
 5. SubjectConfirmationData (Recipient/InResponseTo) checks; AuthnRequest↔Response correlation.
