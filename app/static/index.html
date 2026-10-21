@@ -30,6 +30,14 @@
   .toast { position:fixed; bottom:18px; right:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 14px; font-size:13px; opacity:0; transition:opacity .2s; }
   .toast.show { opacity:1; }
   .toast.err { border-color:var(--accent); }
+  tr.click { cursor:pointer; } tr.click:hover td { background:#1f2733; }
+  .btn-sm { padding:3px 8px; font-size:12px; border-radius:5px; }
+  .btn-sm.del { background:transparent; border:1px solid var(--accent); color:var(--accent); }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; }
+  .modal-bg.show { display:flex; }
+  .modal { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; width:min(560px,92vw); max-height:88vh; overflow:auto; }
+  .kv { display:grid; grid-template-columns:150px 1fr; gap:4px 12px; font-size:13px; }
+  .kv dt { color:var(--muted); } .kv dd { margin:0; font-family:monospace; word-break:break-all; }
   @media (max-width:720px){ .grid2 { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -81,11 +89,29 @@
   <div class="panel">
     <h2>Rules</h2>
     <table>
-      <thead><tr><th>priority</th><th>id</th><th>→ vdom</th><th>conditions</th><th>enabled</th></tr></thead>
+      <thead><tr><th>priority</th><th>id</th><th>→ vdom</th><th>conditions</th><th>enabled</th><th></th></tr></thead>
       <tbody id="rules"></tbody>
     </table>
   </div>
+
+  <div class="panel">
+    <h2>Published profiles</h2>
+    <table>
+      <thead><tr><th>vdom</th><th>version</th><th>body</th><th>updated</th></tr></thead>
+      <tbody id="profiles"></tbody>
+    </table>
+  </div>
 </main>
+
+<div class="modal-bg" id="modal-bg" onclick="closeDetail(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Endpoint detail</h2>
+      <button class="ghost" onclick="closeDetail()">Close</button>
+    </div>
+    <div id="detail" style="margin-top:12px"></div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -109,17 +135,64 @@ async function loadEndpoints() {
   ]);
   document.getElementById("count").textContent = count.count;
   document.getElementById("endpoints").innerHTML = list.map(e => `
-    <tr><td>${esc(e.devid)}</td><td>${esc(e.hostname||"")}</td><td>${esc(e.os||"")}</td>
+    <tr class="click" onclick="showDetail('${esc(e.devid)}')"><td>${esc(e.devid)}</td><td>${esc(e.hostname||"")}</td><td>${esc(e.os||"")}</td>
     <td>${esc(e.status)}</td><td>${(e.host_tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</td></tr>`
   ).join("") || `<tr><td colspan="5" style="color:var(--muted)">no endpoints registered</td></tr>`;
 }
+window._rules = [];
 async function loadRules() {
   const rules = await api("/api/v1/assignment_rules");
-  document.getElementById("rules").innerHTML = rules.map(r => `
+  window._rules = rules;
+  document.getElementById("rules").innerHTML = rules.map((r,i) => `
     <tr><td>${r.priority}</td><td>${esc(r.id)}</td><td>${esc(r.target_vdom)}</td>
     <td>${r.conditions.map(c=>`<span class="tag">${esc(c.field)} ${esc(c.op)} ${esc(JSON.stringify(c.value))}</span>`).join("")}</td>
-    <td>${r.enabled ? "yes" : "no"}</td></tr>`
-  ).join("") || `<tr><td colspan="5" style="color:var(--muted)">no rules</td></tr>`;
+    <td>${r.enabled ? "yes" : "no"}</td>
+    <td class="row"><button class="ghost btn-sm" onclick="editRule(${i})">Edit</button>
+    <button class="btn-sm del" onclick="deleteRule('${esc(r.id)}')">Delete</button></td></tr>`
+  ).join("") || `<tr><td colspan="6" style="color:var(--muted)">no rules</td></tr>`;
+}
+async function loadProfiles() {
+  const profiles = await api("/api/v1/profiles");
+  document.getElementById("profiles").innerHTML = profiles.map(p => `
+    <tr><td>${esc(p.vdom)}</td><td>v${p.version}</td>
+    <td><code>${esc(JSON.stringify(p.body))}</code></td>
+    <td style="color:var(--muted)">${esc((p.updated_at||"").replace("T"," ").slice(0,19))}</td></tr>`
+  ).join("") || `<tr><td colspan="4" style="color:var(--muted)">no profiles</td></tr>`;
+}
+async function showDetail(devid) {
+  try {
+    const e = await api("/api/v1/endpoints/detail?devid=" + encodeURIComponent(devid));
+    const assigned = e.effective_vdom !== e.vdom
+      ? `${esc(e.effective_vdom)} <span class="tag">by rule, was ${esc(e.vdom)}</span>` : esc(e.effective_vdom);
+    document.getElementById("detail").innerHTML = `<dl class="kv">
+      <dt>devid</dt><dd>${esc(e.devid)}</dd>
+      <dt>client_id</dt><dd>${esc(e.client_id)}</dd>
+      <dt>hostname</dt><dd>${esc(e.hostname||"–")}</dd>
+      <dt>os</dt><dd>${esc(e.os||"–")}</dd>
+      <dt>fctver</dt><dd>${esc(e.fctver||"–")}</dd>
+      <dt>status</dt><dd>${esc(e.status)}</dd>
+      <dt>effective vdom</dt><dd>${assigned}</dd>
+      <dt>config version</dt><dd>${e.config_version} / ${e.current_config_version} (applied/current)</dd>
+      <dt>host tags</dt><dd>${(e.host_tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("") || "–"}</dd>
+      <dt>last seen</dt><dd>${esc((e.last_seen||"").replace("T"," ").slice(0,19))}</dd></dl>`;
+    document.getElementById("modal-bg").classList.add("show");
+  } catch (e) { toast(e.message, true); }
+}
+function closeDetail(ev) { document.getElementById("modal-bg").classList.remove("show"); }
+function editRule(i) {
+  const r = window._rules[i]; const c = (r.conditions||[])[0] || {};
+  document.getElementById("r-id").value = r.id;
+  document.getElementById("r-vdom").value = r.target_vdom;
+  document.getElementById("r-prio").value = r.priority;
+  document.getElementById("r-field").value = c.field || "";
+  document.getElementById("r-op").value = c.op || "";
+  document.getElementById("r-val").value = c.value || "";
+  toast("rule loaded into form — edit and Add to save");
+}
+async function deleteRule(id) {
+  try { await api("/api/v1/assignment_rules/" + encodeURIComponent(id), { method:"DELETE" });
+    toast(`rule ${id} removed`); await loadRules(); }
+  catch (e) { toast(e.message, true); }
 }
 async function publishProfile() {
   try {
@@ -127,7 +200,7 @@ async function publishProfile() {
     const body = JSON.parse(document.getElementById("p-body").value);
     const r = await api("/api/v1/profiles/" + encodeURIComponent(vdom), {
       method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
-    toast(`profile ${vdom} v${r.version} published`);
+    toast(`profile ${vdom} v${r.version} published`); await loadProfiles();
   } catch (e) { toast("profile: " + e.message, true); }
 }
 async function addRule() {
@@ -148,7 +221,7 @@ async function addRule() {
   } catch (e) { toast("rule: " + e.message, true); }
 }
 async function refreshAll() {
-  try { await Promise.all([loadEndpoints(), loadRules()]); }
+  try { await Promise.all([loadEndpoints(), loadRules(), loadProfiles()]); }
   catch (e) { toast(e.message, true); }
 }
 refreshAll();

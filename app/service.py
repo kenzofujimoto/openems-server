@@ -112,6 +112,12 @@ class EmsService:
     def list_endpoints(self) -> list[Endpoint]:
         return self._store.all()
 
+    def get_endpoint(self, devid: str) -> Endpoint:
+        endpoint = self._store.get_by_devid(devid)
+        if endpoint is None:
+            raise UnknownEndpointError(devid)
+        return endpoint
+
     def count(self) -> int:
         return len(self._store.all())
 
@@ -151,6 +157,9 @@ class EmsService:
             raise UnknownProfileError(vdom)
         return profile
 
+    def list_profiles(self) -> list[Profile]:
+        return self._profile_store.all()
+
     def current_config_version(self, vdom: str) -> int:
         profile = self._profile_store.get(vdom)
         return profile.version if profile else 0
@@ -158,7 +167,15 @@ class EmsService:
     # --- group assignment rules -----------------------------------------
 
     def add_rule(self, rule: AssignmentRule) -> None:
+        """Add a rule, replacing any existing rule with the same id (upsert)."""
+        self._rules = [r for r in self._rules if r.id != rule.id]
         self._rules.append(rule)
+
+    def remove_rule(self, rule_id: str) -> bool:
+        """Remove the rule with this id; return True if one was removed."""
+        before = len(self._rules)
+        self._rules = [r for r in self._rules if r.id != rule_id]
+        return len(self._rules) < before
 
     def list_rules(self) -> list[AssignmentRule]:
         return list(self._rules)

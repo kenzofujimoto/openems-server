@@ -173,6 +173,42 @@ def create_app(
             for r in svc.list_rules()
         ]
 
+    @app.delete("/api/v1/assignment_rules/{rule_id}")
+    async def delete_rule(rule_id: str) -> dict[str, Any]:
+        if not svc.remove_rule(rule_id):
+            raise HTTPException(status_code=404, detail="unknown rule")
+        return {"removed": rule_id}
+
+    @app.get("/api/v1/endpoints/detail")
+    async def endpoint_detail(devid: str) -> dict[str, Any]:
+        try:
+            e = svc.get_endpoint(devid)
+        except UnknownEndpointError as err:
+            raise HTTPException(status_code=404, detail="unknown devid") from err
+        eff = svc.effective_vdom(e)
+        return {
+            "devid": e.devid,
+            "client_id": e.client_id,
+            "hostname": e.hostname,
+            "os": e.os,
+            "fctver": e.fctver,
+            "vdom": e.vdom,
+            "effective_vdom": eff,
+            "status": e.status.value,
+            "host_tags": e.host_tags,
+            "config_version": e.config_version,
+            "current_config_version": svc.current_config_version(eff),
+            "last_seen": e.last_seen.isoformat(),
+        }
+
+    @app.get("/api/v1/profiles")
+    async def list_profiles() -> list[dict[str, Any]]:
+        return [
+            {"vdom": p.vdom, "version": p.version, "body": p.body,
+             "updated_at": p.updated_at.isoformat()}
+            for p in svc.list_profiles()
+        ]
+
     @app.get("/fct/api/public/v1/config/assigned/")
     async def assigned_config(client_id: str) -> dict[str, Any]:
         try:

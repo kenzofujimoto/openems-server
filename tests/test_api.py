@@ -200,3 +200,36 @@ def test_console_html_served(client: TestClient) -> None:
     assert "text/html" in resp.headers["content-type"]
     body = resp.text
     assert "openems" in body and "Endpoints" in body
+
+
+# --- console: detail / delete rule / list profiles -------------------------
+
+def test_endpoint_detail(client: TestClient) -> None:
+    client.post("/fct/api/public/v1/register/", json={"devid": "DEV-1", "os": "Windows 11"})
+    client.post("/api/v1/assignment_rules", json={
+        "id": "win", "target_vdom": "Strict", "priority": 10,
+        "conditions": [{"field": "os", "op": "contains", "value": "Windows"}]})
+    d = client.get("/api/v1/endpoints/detail", params={"devid": "DEV-1"}).json()
+    assert d["devid"] == "DEV-1"
+    assert d["effective_vdom"] == "Strict"  # moved by the rule
+    assert "config_version" in d and "last_seen" in d
+
+
+def test_endpoint_detail_unknown_is_404(client: TestClient) -> None:
+    assert client.get(
+        "/api/v1/endpoints/detail", params={"devid": "ghost"}
+    ).status_code == 404
+
+
+def test_delete_rule(client: TestClient) -> None:
+    client.post("/api/v1/assignment_rules", json={"id": "r1", "target_vdom": "A"})
+    assert client.delete("/api/v1/assignment_rules/r1").status_code == 200
+    assert client.get("/api/v1/assignment_rules").json() == []
+    assert client.delete("/api/v1/assignment_rules/nope").status_code == 404
+
+
+def test_list_profiles(client: TestClient) -> None:
+    client.post("/api/v1/profiles/Default", json={"a": 1})
+    client.post("/api/v1/profiles/Strict", json={"b": 2})
+    vdoms = {p["vdom"] for p in client.get("/api/v1/profiles").json()}
+    assert vdoms == {"Default", "Strict"}
