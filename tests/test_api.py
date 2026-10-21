@@ -188,6 +188,27 @@ def test_assignment_rule_add_list_and_assigned_config(client: TestClient) -> Non
 
 # --- management web console -------------------------------------------------
 
+def test_report_host_tags(client: TestClient) -> None:
+    cid = client.post("/fct/api/public/v1/register/", json={"devid": "DEV-1"}).json()[
+        "client_id"
+    ]
+    r = client.post(
+        "/fct/api/public/v1/host_tags/",
+        json={"client_id": cid, "tags": ["os:win32", "vdom:Default"]},
+    )
+    assert r.status_code == 200
+    tags = client.get(
+        "/api/v1/report/fct/host_tags", params={"devid": "DEV-1"}
+    ).json()["host_tags"]
+    assert tags == ["os:win32", "vdom:Default"]
+
+
+def test_report_host_tags_unknown_client(client: TestClient) -> None:
+    assert client.post(
+        "/fct/api/public/v1/host_tags/", json={"client_id": "nope", "tags": []}
+    ).status_code == 404
+
+
 def test_build_factory_without_backends() -> None:
     # the uvicorn factory must produce a working in-memory app when no
     # OPENEMS_DATABASE_URL / OPENEMS_REDIS_URL are set

@@ -185,14 +185,30 @@ def enforce(cfg: AgentConfig, profile: dict | None, log: Callable[[str], None] =
     return {"sites": sites, "killed": killed}
 
 
-def run(cfg: AgentConfig) -> None:
+def compute_host_tags(cfg: AgentConfig, enforce_result: dict) -> list[str]:
+    """Posture tags reported back to the server (feeds the EMS host-tag view)."""
+    tags = [f"os:{sys.platform}", f"vdom:{cfg.vdom}"]
+    tags.append("app-control:clean" if not enforce_result.get("killed") else "app-control:enforced")
+    tags.append(f"web-filter:{len(enforce_result.get('sites', []))}-blocked")
+    return tags
+
+
+def report_host_tags(cfg: AgentConfig, client_id: str, tags: list[str]) -> None:
+    try:
+        _api(cfg.server + "/fct/api/public/v1/host_tags/", {"client_id": client_id, "tags": tags})
+    except Exception:
+        pass  # telemetry is best-effort
+
+
+def run(cfg: AgentConfig, log: Callable[[str], None] = print) -> None:
     client_id = register(cfg)
-    print(f"registered as client_id={client_id} (vdom={cfg.vdom})")
+    log(f"registered as client_id={client_id} (vdom={cfg.vdom})")
     while True:
         try:
-            enforce(cfg, fetch_profile(cfg, client_id))
+            result = enforce(cfg, fetch_profile(cfg, client_id), log=log)
+            report_host_tags(cfg, client_id, compute_host_tags(cfg, result))
         except Exception as e:  # keep the loop alive on transient errors
-            print(f"enforce error: {e}", file=sys.stderr)
+            log(f"loop error: {e}")
         time.sleep(cfg.interval)
 
 

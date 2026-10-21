@@ -132,6 +132,16 @@ def create_app(
             raise HTTPException(status_code=404, detail="unknown client_id") from err
         return {"client_id": endpoint.client_id}
 
+    @app.post("/fct/api/public/v1/host_tags/")
+    async def report_host_tags(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            endpoint = svc.ingest_host_tags(
+                str(payload.get("client_id", "")), list(payload.get("tags", []))
+            )
+        except UnknownEndpointError as err:
+            raise HTTPException(status_code=404, detail="unknown client_id") from err
+        return {"ok": True, "devid": endpoint.devid, "host_tags": endpoint.host_tags}
+
     @app.get("/api/v1/endpoints/index")
     async def endpoints_index() -> list[dict[str, Any]]:
         return [

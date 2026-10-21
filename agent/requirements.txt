@@ -1,0 +1,3 @@
+# The agent core (openems_agent.py) is stdlib-only and needs nothing here.
+# These are only for running it as a Windows service (service.py).
+pywin32==308 ; sys_platform == "win32"

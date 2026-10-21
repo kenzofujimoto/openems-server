@@ -76,3 +76,35 @@ def test_enforce_dry_run_reports_without_changes(tmp_path, monkeypatch) -> None:
     assert result["killed"] == ["ping.exe"]
     assert killed_calls == []  # dry-run killed nothing
     assert not (tmp_path / "hosts").exists()  # dry-run wrote nothing
+
+
+# --- telemetry / host tags ---------------------------------------------
+
+def test_compute_host_tags() -> None:
+    import sys
+
+    cfg = a.AgentConfig(server="x", devid="d", vdom="Strict")
+    tags = a.compute_host_tags(cfg, {"sites": ["x.test"], "killed": []})
+    assert f"os:{sys.platform}" in tags
+    assert "vdom:Strict" in tags
+    assert "app-control:clean" in tags
+    assert "web-filter:1-blocked" in tags
+    assert "app-control:enforced" in a.compute_host_tags(cfg, {"sites": [], "killed": ["app.exe"]})
+
+
+# --- service config loading --------------------------------------------
+
+def test_service_load_config(tmp_path) -> None:
+    import json
+
+    import service
+
+    cfg_file = tmp_path / "agent.json"
+    cfg_file.write_text(
+        json.dumps({"server": "http://x:8013/", "devid": "PC1",
+                    "vdom": "Strict", "interval": 30}),
+        encoding="utf-8",
+    )
+    cfg = service.load_config(str(cfg_file))
+    assert cfg.server == "http://x:8013"  # trailing slash trimmed
+    assert cfg.devid == "PC1" and cfg.vdom == "Strict" and cfg.interval == 30
