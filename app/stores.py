@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from .models import Endpoint, EndpointStatus, Profile
+from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, Profile
 
 
 @runtime_checkable
@@ -245,3 +245,175 @@ class PostgresProfileStore:
             body=dict(r[2]) if r[2] else {},
             updated_at=r[3],
         )
+
+
+# =====================================================================
+# Assignment-rule storage
+# =====================================================================
+
+
+@runtime_checkable
+class RuleStore(Protocol):
+    def add(self, rule: AssignmentRule) -> None: ...   # upsert by id
+    def remove(self, rule_id: str) -> bool: ...
+    def all(self) -> list[AssignmentRule]: ...
+
+
+def _conditions_to_json(rule: AssignmentRule) -> list[dict[str, object]]:
+    return [{"field": c.field, "op": c.op, "value": c.value} for c in rule.conditions]
+
+
+def _conditions_from_json(data: list[dict[str, object]]) -> list[Condition]:
+    return [Condition(field=c["field"], op=c["op"], value=c["value"]) for c in data]
+
+
+class InMemoryRuleStore:
+    def __init__(self) -> None:
+        self._rules: list[AssignmentRule] = []
+
+    def add(self, rule: AssignmentRule) -> None:
+        self._rules = [r for r in self._rules if r.id != rule.id]
+        self._rules.append(rule)
+
+    def remove(self, rule_id: str) -> bool:
+        before = len(self._rules)
+        self._rules = [r for r in self._rules if r.id != rule_id]
+        return len(self._rules) < before
+
+    def all(self) -> list[AssignmentRule]:
+        return list(self._rules)
+
+
+RULE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS assignment_rules (
+    id          TEXT PRIMARY KEY,
+    target_vdom TEXT NOT NULL,
+    priority    INTEGER NOT NULL DEFAULT 100,
+    enabled     BOOLEAN NOT NULL DEFAULT true,
+    conditions  JSONB NOT NULL DEFAULT '[]'::jsonb
+);
+"""
+
+
+class PostgresRuleStore:
+    def __init__(self, dsn: str) -> None:
+        import psycopg
+        from psycopg.types.json import Jsonb
+
+        self._Jsonb = Jsonb
+        self._conn = psycopg.connect(dsn, autocommit=True)
+
+    def init_schema(self) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(RULE_SCHEMA)
+
+    def add(self, rule: AssignmentRule) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO assignment_rules (id, target_vdom, priority, enabled, conditions)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    target_vdom = EXCLUDED.target_vdom,
+                    priority = EXCLUDED.priority,
+                    enabled = EXCLUDED.enabled,
+                    conditions = EXCLUDED.conditions
+                """,
+                (rule.id, rule.target_vdom, rule.priority, rule.enabled,
+                 self._Jsonb(_conditions_to_json(rule))),
+            )
+
+    def remove(self, rule_id: str) -> bool:
+        with self._conn.cursor() as cur:
+            cur.execute("DELETE FROM assignment_rules WHERE id = %s", (rule_id,))
+            return cur.rowcount > 0
+
+    def all(self) -> list[AssignmentRule]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, target_vdom, priority, enabled, conditions FROM assignment_rules"
+            )
+            return [
+                AssignmentRule(
+                    id=r[0], target_vdom=r[1], priority=r[2], enabled=r[3],
+                    conditions=_conditions_from_json(r[4] or []),
+                )
+                for r in cur.fetchall()
+            ]
+
+    def close(self) -> None:
+        self._conn.close()
+
+
+# =====================================================================
+# Admin storage (credentials for the management console)
+# =====================================================================
+
+
+@runtime_checkable
+class AdminStore(Protocol):
+    def get(self, username: str) -> tuple[str, str] | None: ...  # (password_hash, role)
+    def put(self, username: str, password_hash: str, role: str) -> None: ...
+    def has_any(self) -> bool: ...
+
+
+class InMemoryAdminStore:
+    def __init__(self) -> None:
+        self._admins: dict[str, tuple[str, str]] = {}
+
+    def get(self, username: str) -> tuple[str, str] | None:
+        return self._admins.get(username)
+
+    def put(self, username: str, password_hash: str, role: str) -> None:
+        self._admins[username] = (password_hash, role)
+
+    def has_any(self) -> bool:
+        return bool(self._admins)
+
+
+ADMIN_SCHEMA = """
+CREATE TABLE IF NOT EXISTS admins (
+    username      TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'admin'
+);
+"""
+
+
+class PostgresAdminStore:
+    def __init__(self, dsn: str) -> None:
+        import psycopg
+
+        self._conn = psycopg.connect(dsn, autocommit=True)
+
+    def init_schema(self) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(ADMIN_SCHEMA)
+
+    def get(self, username: str) -> tuple[str, str] | None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT password_hash, role FROM admins WHERE username = %s", (username,)
+            )
+            row = cur.fetchone()
+            return (row[0], row[1]) if row else None
+
+    def put(self, username: str, password_hash: str, role: str) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO admins (username, password_hash, role)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (username) DO UPDATE SET
+                    password_hash = EXCLUDED.password_hash, role = EXCLUDED.role
+                """,
+                (username, password_hash, role),
+            )
+
+    def has_any(self) -> bool:
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM admins LIMIT 1")
+            return cur.fetchone() is not None
+
+    def close(self) -> None:
+        self._conn.close()

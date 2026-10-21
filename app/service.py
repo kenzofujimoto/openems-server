@@ -16,7 +16,14 @@ from typing import Any
 from .models import AssignmentRule, Endpoint, EndpointStatus, Profile, RegisterRequest
 from .queue import InMemoryQueue, Queue
 from .rules import evaluate_rules
-from .stores import InMemoryProfileStore, InMemoryStore, ProfileStore, Store
+from .stores import (
+    InMemoryProfileStore,
+    InMemoryRuleStore,
+    InMemoryStore,
+    ProfileStore,
+    RuleStore,
+    Store,
+)
 
 
 class RegistrationError(Exception):
@@ -44,6 +51,7 @@ class EmsService:
         *,
         queue: Queue | None = None,
         profile_store: ProfileStore | None = None,
+        rule_store: RuleStore | None = None,
         ems_serial: str = "OPENEMS0000000000",
         require_invitation: bool = False,
         valid_invitations: set[str] | None = None,
@@ -51,7 +59,7 @@ class EmsService:
         self._store: Store = store or InMemoryStore()
         self._queue: Queue = queue or InMemoryQueue()
         self._profile_store: ProfileStore = profile_store or InMemoryProfileStore()
-        self._rules: list[AssignmentRule] = []
+        self._rule_store: RuleStore = rule_store or InMemoryRuleStore()
         self._ems_serial = ems_serial
         self._require_invitation = require_invitation
         self._valid_invitations = valid_invitations or set()
@@ -168,21 +176,18 @@ class EmsService:
 
     def add_rule(self, rule: AssignmentRule) -> None:
         """Add a rule, replacing any existing rule with the same id (upsert)."""
-        self._rules = [r for r in self._rules if r.id != rule.id]
-        self._rules.append(rule)
+        self._rule_store.add(rule)
 
     def remove_rule(self, rule_id: str) -> bool:
         """Remove the rule with this id; return True if one was removed."""
-        before = len(self._rules)
-        self._rules = [r for r in self._rules if r.id != rule_id]
-        return len(self._rules) < before
+        return self._rule_store.remove(rule_id)
 
     def list_rules(self) -> list[AssignmentRule]:
-        return list(self._rules)
+        return self._rule_store.all()
 
     def effective_vdom(self, endpoint: Endpoint) -> str:
         """The vdom assigned to an endpoint: first matching rule, else its own."""
-        return evaluate_rules(endpoint, self._rules) or endpoint.vdom
+        return evaluate_rules(endpoint, self._rule_store.all()) or endpoint.vdom
 
     def effective_profile(self, client_id: str) -> Profile | None:
         """Resolve the profile an endpoint should run, via its effective vdom."""

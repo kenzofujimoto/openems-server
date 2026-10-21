@@ -21,6 +21,26 @@ def test_inmemory_audit_newest_first_and_limit() -> None:
     assert [e.action for e in log.list(limit=3)] == ["act4", "act3", "act2"]
 
 
+def test_postgres_audit_roundtrip() -> None:
+    import os
+
+    dsn = os.environ.get("OPENEMS_TEST_DSN")
+    if not dsn:
+        pytest.skip("OPENEMS_TEST_DSN not set")
+    from app.audit import PostgresAuditLog
+
+    log = PostgresAuditLog(dsn)
+    log.init_schema()
+    with log._conn.cursor() as cur:  # noqa: SLF001
+        cur.execute("TRUNCATE audit_log")
+    log.record(AuditEntry(actor="kenzo", action="rule.add", target="r1",
+                          metadata={"priority": 10}))
+    log.record(AuditEntry(actor="kenzo", action="profile.publish", target="Default"))
+    entries = log.list(limit=10)
+    assert entries[0].action == "profile.publish"  # newest first
+    assert entries[1].metadata == {"priority": 10}
+
+
 def test_actions_recorded_in_setup_mode() -> None:
     client = TestClient(create_app(EmsService()))  # no admin -> setup mode
     client.post("/api/v1/profiles/Default", json={"x": 1})

@@ -17,6 +17,8 @@ import secrets
 import time
 from typing import Optional
 
+from .stores import AdminStore, InMemoryAdminStore
+
 
 def hash_password(password: str, *, salt: bytes | None = None, iterations: int = 200_000) -> str:
     salt = salt or secrets.token_bytes(16)
@@ -48,22 +50,24 @@ def _b64url_decode(s: str) -> bytes:
 class AdminService:
     """In-memory admin registry + stateless token issuing/verification."""
 
-    def __init__(self, secret: bytes | str | None = None) -> None:
+    def __init__(
+        self, secret: bytes | str | None = None, *, store: AdminStore | None = None
+    ) -> None:
         if isinstance(secret, str):
             secret = secret.encode("utf-8")
         self._secret: bytes = secret or secrets.token_bytes(32)
-        self._admins: dict[str, tuple[str, str]] = {}  # username -> (hash, role)
+        self._store: AdminStore = store or InMemoryAdminStore()
 
     def add_admin(self, username: str, password: str, role: str = "admin") -> None:
-        self._admins[username] = (hash_password(password), role)
+        self._store.put(username, hash_password(password), role)
 
     def has_admins(self) -> bool:
         """Whether any admin exists. Until one does, the API runs open (setup mode)."""
-        return bool(self._admins)
+        return self._store.has_any()
 
     def authenticate(self, username: str, password: str) -> Optional[str]:
         """Return the admin's role on success, else None."""
-        record = self._admins.get(username)
+        record = self._store.get(username)
         if record is None:
             return None
         pw_hash, role = record

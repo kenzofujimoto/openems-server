@@ -61,7 +61,10 @@ register, send posture/telemetry, and be managed by a free server.
   rule.add, rule.remove) is recorded with the acting admin (from the verified
   token), timestamp, target and metadata — `InMemoryAuditLog` or
   `PostgresAuditLog`. Served at `GET /api/v1/audit` and shown in the console.
-- **94 tests pass**, 13 skipped (Postgres + Redis without a live server).
+- **Everything persists**: endpoints, profiles, **assignment rules**, **admins**
+  and the **audit log** each have an `InMemory*` and a `Postgres*` store/log behind
+  one contract test; the queue and replay cache have Redis backends. With a live
+  Postgres + Redis the full suite runs **120 tests, 0 skipped**.
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
@@ -99,7 +102,7 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
 2. ~~Postgres store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP + signature + conditions/replay~~ ✓ · ~~persist profiles~~ ✓ · ~~assignment rules~~ ✓
-3. ~~Web console~~ ✓ · ~~traffic recorder~~ ✓ · ~~admin auth~~ ✓ · ~~audit log~~ ✓ · persist rules + admins.
+3. ~~Web console~~ ✓ · ~~traffic recorder~~ ✓ · ~~admin auth~~ ✓ · ~~audit log~~ ✓ · ~~persist rules + admins + audit~~ ✓
 4. Capture real lab traffic (see LAB-CAPTURE.md) → replace the `[a capturar]`
    payloads with precise Pydantic models; add keepalive/avatar routes.
 5. SubjectConfirmationData (Recipient/InResponseTo) checks; AuthnRequest↔Response correlation.
