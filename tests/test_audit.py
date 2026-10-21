@@ -1,0 +1,50 @@
+"""Tests for the admin audit log."""
+
+from __future__ import annotations
+
+import pytest
+
+from app.audit import AuditEntry, InMemoryAuditLog
+
+pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.api import create_app  # noqa: E402
+from app.auth import AdminService  # noqa: E402
+from app.service import EmsService  # noqa: E402
+
+
+def test_inmemory_audit_newest_first_and_limit() -> None:
+    log = InMemoryAuditLog()
+    for i in range(5):
+        log.record(AuditEntry(actor="a", action=f"act{i}"))
+    assert [e.action for e in log.list(limit=3)] == ["act4", "act3", "act2"]
+
+
+def test_actions_recorded_in_setup_mode() -> None:
+    client = TestClient(create_app(EmsService()))  # no admin -> setup mode
+    client.post("/api/v1/profiles/Default", json={"x": 1})
+    client.post("/api/v1/assignment_rules", json={"id": "r1", "target_vdom": "A"})
+    client.delete("/api/v1/assignment_rules/r1")
+
+    entries = client.get("/api/v1/audit").json()
+    triples = {(e["action"], e["target"], e["actor"]) for e in entries}
+    assert ("profile.publish", "Default", "setup") in triples
+    assert ("rule.add", "r1", "setup") in triples
+    assert ("rule.remove", "r1", "setup") in triples
+
+
+def test_actor_is_admin_when_authenticated() -> None:
+    admins = AdminService(secret="t")
+    admins.add_admin("kenzo", "pw")
+    client = TestClient(create_app(EmsService(), admin_service=admins))
+    token = client.post(
+        "/api/v1/auth/login", json={"username": "kenzo", "password": "pw"}
+    ).json()["token"]
+    h = {"Authorization": f"Bearer {token}"}
+
+    client.post("/api/v1/profiles/Default", json={"x": 1}, headers=h)
+    entries = client.get("/api/v1/audit", headers=h).json()
+    assert entries[0]["actor"] == "kenzo"
+    assert entries[0]["action"] == "profile.publish"
+    assert entries[0]["target"] == "Default"

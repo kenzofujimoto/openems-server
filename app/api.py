@@ -23,9 +23,15 @@ except ImportError as exc:  # pragma: no cover - only hit without FastAPI
         "FastAPI is required to run the HTTP server: pip install -r requirements.txt"
     ) from exc
 
+from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService
 
 _STATIC_DIR = Path(__file__).parent / "static"
+
+
+def _actor(request: "Request") -> str:
+    claims = getattr(request.state, "admin", None)
+    return claims.get("username", "setup") if claims else "setup"
 
 from .models import AssignmentRule, Condition, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
@@ -42,10 +48,12 @@ def create_app(
     saml_sp: SamlSp | None = None,
     record_path: str | None = None,
     admin_service: AdminService | None = None,
+    audit_log: AuditLog | None = None,
 ) -> "FastAPI":
     svc = service or EmsService()
     saml = saml_sp or SamlSp("http://localhost:8013")
     admin = admin_service or AdminService()
+    audit = audit_log or InMemoryAuditLog()
     # optional bootstrap admin from env, e.g. OPENEMS_ADMIN=admin:changeme
     env_admin = os.environ.get("OPENEMS_ADMIN")
     if env_admin and ":" in env_admin:
@@ -67,10 +75,12 @@ def create_app(
         if admin.has_admins() and path.startswith("/api/v1/") and path != "/api/v1/auth/login":
             header = request.headers.get("authorization", "")
             token = header[7:] if header[:7].lower() == "bearer " else ""
-            if admin.verify_token(token) is None:
+            claims = admin.verify_token(token)
+            if claims is None:
                 return JSONResponse(
                     {"detail": "authentication required"}, status_code=401
                 )
+            request.state.admin = claims  # who is acting, for the audit log
         return await call_next(request)
 
     @app.post("/api/v1/auth/login")
@@ -149,8 +159,11 @@ def create_app(
     # --- config / profile push -----------------------------------------
 
     @app.post("/api/v1/profiles/{vdom}")
-    async def set_profile(vdom: str, payload: dict[str, Any]) -> dict[str, Any]:
+    async def set_profile(vdom: str, payload: dict[str, Any], request: "Request") -> dict[str, Any]:
         profile = svc.set_profile(vdom, payload)
+        audit.record(AuditEntry(
+            actor=_actor(request), action="profile.publish", target=vdom,
+            metadata={"version": profile.version}))
         return {"vdom": profile.vdom, "version": profile.version}
 
     @app.get("/fct/api/public/v1/config/")
@@ -182,7 +195,7 @@ def create_app(
     # --- group assignment rules -----------------------------------------
 
     @app.post("/api/v1/assignment_rules")
-    async def add_rule(payload: dict[str, Any]) -> dict[str, Any]:
+    async def add_rule(payload: dict[str, Any], request: "Request") -> dict[str, Any]:
         conditions = [
             Condition(field=c["field"], op=c["op"], value=c["value"])
             for c in payload.get("conditions", [])
@@ -195,6 +208,9 @@ def create_app(
             enabled=bool(payload.get("enabled", True)),
         )
         svc.add_rule(rule)
+        audit.record(AuditEntry(
+            actor=_actor(request), action="rule.add", target=rule.id,
+            metadata={"target_vdom": rule.target_vdom, "priority": rule.priority}))
         return {"id": rule.id, "target_vdom": rule.target_vdom, "priority": rule.priority}
 
     @app.get("/api/v1/assignment_rules")
@@ -214,10 +230,20 @@ def create_app(
         ]
 
     @app.delete("/api/v1/assignment_rules/{rule_id}")
-    async def delete_rule(rule_id: str) -> dict[str, Any]:
+    async def delete_rule(rule_id: str, request: "Request") -> dict[str, Any]:
         if not svc.remove_rule(rule_id):
             raise HTTPException(status_code=404, detail="unknown rule")
+        audit.record(AuditEntry(
+            actor=_actor(request), action="rule.remove", target=rule_id))
         return {"removed": rule_id}
+
+    @app.get("/api/v1/audit")
+    async def get_audit(limit: int = 100) -> list[dict[str, Any]]:
+        return [
+            {"ts": e.ts.isoformat(), "actor": e.actor, "action": e.action,
+             "target": e.target, "metadata": e.metadata}
+            for e in audit.list(limit)
+        ]
 
     @app.get("/api/v1/endpoints/detail")
     async def endpoint_detail(devid: str) -> dict[str, Any]:

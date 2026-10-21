@@ -102,6 +102,14 @@
       <tbody id="profiles"></tbody>
     </table>
   </div>
+
+  <div class="panel">
+    <h2>Audit log</h2>
+    <table>
+      <thead><tr><th>time</th><th>actor</th><th>action</th><th>target</th><th>details</th></tr></thead>
+      <tbody id="audit"></tbody>
+    </table>
+  </div>
 </main>
 
 <div class="modal-bg" id="modal-bg" onclick="closeDetail(event)">
@@ -227,7 +235,7 @@ function editRule(i) {
 }
 async function deleteRule(id) {
   try { await api("/api/v1/assignment_rules/" + encodeURIComponent(id), { method:"DELETE" });
-    toast(`rule ${id} removed`); await loadRules(); }
+    toast(`rule ${id} removed`); await loadRules(); loadAudit(); }
   catch (e) { toast(e.message, true); }
 }
 async function publishProfile() {
@@ -236,7 +244,7 @@ async function publishProfile() {
     const body = JSON.parse(document.getElementById("p-body").value);
     const r = await api("/api/v1/profiles/" + encodeURIComponent(vdom), {
       method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
-    toast(`profile ${vdom} v${r.version} published`); await loadProfiles();
+    toast(`profile ${vdom} v${r.version} published`); await loadProfiles(); loadAudit();
   } catch (e) { toast("profile: " + e.message, true); }
 }
 async function addRule() {
@@ -253,11 +261,20 @@ async function addRule() {
     };
     await api("/api/v1/assignment_rules", {
       method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(rule) });
-    toast(`rule ${rule.id} added`); await loadRules();
+    toast(`rule ${rule.id} added`); await loadRules(); loadAudit();
   } catch (e) { toast("rule: " + e.message, true); }
 }
+async function loadAudit() {
+  const log = await api("/api/v1/audit?limit=50");
+  document.getElementById("audit").innerHTML = log.map(a => `
+    <tr><td style="color:var(--muted)">${esc((a.ts||"").replace("T"," ").slice(0,19))}</td>
+    <td>${esc(a.actor)}</td><td><span class="tag">${esc(a.action)}</span></td>
+    <td>${esc(a.target||"")}</td>
+    <td style="color:var(--muted)">${esc(JSON.stringify(a.metadata||{}))}</td></tr>`
+  ).join("") || `<tr><td colspan="5" style="color:var(--muted)">no activity yet</td></tr>`;
+}
 async function refreshAll() {
-  try { await Promise.all([loadEndpoints(), loadRules(), loadProfiles()]); }
+  try { await Promise.all([loadEndpoints(), loadRules(), loadProfiles(), loadAudit()]); }
   catch (e) { toast(e.message, true); }
 }
 if (TOKEN) document.getElementById("logout-btn").style.display = "";
