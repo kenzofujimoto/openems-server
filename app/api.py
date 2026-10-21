@@ -343,4 +343,46 @@ app = None  # built lazily by `uvicorn app.api:build` or create_app() in code
 
 
 def build() -> "FastAPI":
-    return create_app()
+    """uvicorn factory wiring backends from env.
+
+    OPENEMS_DATABASE_URL -> Postgres for endpoints/profiles/rules/admins/audit.
+    OPENEMS_REDIS_URL    -> Redis for the push queue and SAML replay cache.
+    Unset backends fall back to in-memory, so `uvicorn app.api:build` works with
+    no infrastructure. OPENEMS_ADMIN / OPENEMS_RECORD are handled in create_app.
+    """
+    from .service import EmsService
+
+    store = profile_store = rule_store = admin_store = audit_log = None
+    queue = replay_cache = None
+
+    dsn = os.environ.get("OPENEMS_DATABASE_URL")
+    if dsn:
+        from .audit import PostgresAuditLog
+        from .stores import (
+            PostgresAdminStore,
+            PostgresProfileStore,
+            PostgresRuleStore,
+            PostgresStore,
+        )
+
+        store = PostgresStore(dsn); store.init_schema()
+        profile_store = PostgresProfileStore(dsn); profile_store.init_schema()
+        rule_store = PostgresRuleStore(dsn); rule_store.init_schema()
+        admin_store = PostgresAdminStore(dsn); admin_store.init_schema()
+        audit_log = PostgresAuditLog(dsn); audit_log.init_schema()
+
+    redis_url = os.environ.get("OPENEMS_REDIS_URL")
+    if redis_url:
+        from .queue import RedisQueue
+        from .replay import RedisReplayCache
+
+        queue = RedisQueue(redis_url)
+        replay_cache = RedisReplayCache(redis_url)
+
+    svc = EmsService(
+        store=store, queue=queue, profile_store=profile_store, rule_store=rule_store
+    )
+    admin = AdminService(store=admin_store) if admin_store is not None else AdminService()
+    base_url = os.environ.get("OPENEMS_BASE_URL", "http://localhost:8013")
+    saml = SamlSp(base_url, replay_cache=replay_cache)
+    return create_app(svc, saml_sp=saml, admin_service=admin, audit_log=audit_log)

@@ -1,0 +1,11 @@
+.git
+.github
+tests
+tools
+__pycache__
+**/__pycache__
+.pytest_cache
+.venv
+*.pyc
+*.md
+LAB-CAPTURE.md

@@ -1,11 +1,13 @@
 # openems-server
 
+[![CI](https://github.com/kenzofujimoto/openems-server/actions/workflows/ci.yml/badge.svg)](https://github.com/kenzofujimoto/openems-server/actions/workflows/ci.yml)
+
 A **clean-room, open-source** endpoint-management server that aims to be
 *protocol-compatible* with FortiClient-style endpoint agents, so endpoints can
 register, send posture/telemetry, and be managed by a free server.
 
 > **Provenance / legal.** This project is written **only** from the behavioural
-> interoperability specification in [`../SPEC-INTEROP.md`](../SPEC-INTEROP.md),
+> interoperability specification in [`SPEC-INTEROP.md`](SPEC-INTEROP.md),
 > which documents an *observed interface* (endpoints, fields, sequences). No
 > proprietary Fortinet code, binary, or asset is copied here, and the names
 > "Fortinet"/"FortiClient" are not used as product branding. Reverse engineering
@@ -84,11 +86,21 @@ then tighten the request/response models here. Until then the bodies above use a
 pragmatic JSON shape.
 
 ## Run
+
+Full stack (server + PostgreSQL + Redis) with Docker:
+```bash
+docker compose up --build
+# console at http://localhost:8013/console/  (admin / changeme)
+```
+
+Or just the server (in-memory backends, no infra):
 ```bash
 python -m venv .venv && . .venv/Scripts/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn --factory app.api:build --port 8013
 ```
+Wire real backends via env: `OPENEMS_DATABASE_URL` (Postgres),
+`OPENEMS_REDIS_URL` (Redis), `OPENEMS_ADMIN=user:pass` (bootstrap admin).
 
 ## Test
 ```bash

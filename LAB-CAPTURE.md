@@ -1,6 +1,6 @@
 # Lab capture guide — fixing the 8013 endpoint-channel payloads
 
-Goal: turn the `[a capturar]` items in [`../SPEC-INTEROP.md`](../SPEC-INTEROP.md)
+Goal: turn the `[a capturar]` items in [`SPEC-INTEROP.md`](SPEC-INTEROP.md)
 (exact register/refresh/keepalive/avatar/host_tags bodies, serialization,
 keepalive cadence, auth scheme, TLS pinning) into **observed facts**, then tighten
 this server's request models and tests.

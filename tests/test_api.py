@@ -188,6 +188,15 @@ def test_assignment_rule_add_list_and_assigned_config(client: TestClient) -> Non
 
 # --- management web console -------------------------------------------------
 
+def test_build_factory_without_backends() -> None:
+    # the uvicorn factory must produce a working in-memory app when no
+    # OPENEMS_DATABASE_URL / OPENEMS_REDIS_URL are set
+    from app.api import build
+
+    c = TestClient(build())
+    assert c.get("/api/v1/endpoints/count").json() == {"count": 0}
+
+
 def test_root_redirects_to_console(client: TestClient) -> None:
     resp = client.get("/", follow_redirects=False)
     assert resp.status_code == 302
