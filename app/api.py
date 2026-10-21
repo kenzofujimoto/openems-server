@@ -20,7 +20,7 @@ except ImportError as exc:  # pragma: no cover - only hit without FastAPI
         "FastAPI is required to run the HTTP server: pip install -r requirements.txt"
     ) from exc
 
-from .models import RegisterRequest
+from .models import AssignmentRule, Condition, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
 from .service import (
     EmsService,
@@ -58,7 +58,8 @@ def create_app(
             "client_id": endpoint.client_id,
             "emsserial": svc.ems_serial,
             "status": endpoint.status.value,
-            "config_version": svc.current_config_version(endpoint.vdom),
+            "vdom": svc.effective_vdom(endpoint),
+            "config_version": svc.current_config_version(svc.effective_vdom(endpoint)),
         }
 
     @app.post("/fct/api/public/v1/refresh/")
@@ -133,6 +134,50 @@ def create_app(
         except UnknownEndpointError as err:
             raise HTTPException(status_code=404, detail="unknown client_id") from err
         return {"client_id": endpoint.client_id, "config_version": endpoint.config_version}
+
+    # --- group assignment rules -----------------------------------------
+
+    @app.post("/api/v1/assignment_rules")
+    async def add_rule(payload: dict[str, Any]) -> dict[str, Any]:
+        conditions = [
+            Condition(field=c["field"], op=c["op"], value=c["value"])
+            for c in payload.get("conditions", [])
+        ]
+        rule = AssignmentRule(
+            id=str(payload.get("id", "")),
+            target_vdom=str(payload.get("target_vdom", "")),
+            conditions=conditions,
+            priority=int(payload.get("priority", 100)),
+            enabled=bool(payload.get("enabled", True)),
+        )
+        svc.add_rule(rule)
+        return {"id": rule.id, "target_vdom": rule.target_vdom, "priority": rule.priority}
+
+    @app.get("/api/v1/assignment_rules")
+    async def list_rules() -> list[dict[str, Any]]:
+        return [
+            {
+                "id": r.id,
+                "target_vdom": r.target_vdom,
+                "priority": r.priority,
+                "enabled": r.enabled,
+                "conditions": [
+                    {"field": c.field, "op": c.op, "value": c.value}
+                    for c in r.conditions
+                ],
+            }
+            for r in svc.list_rules()
+        ]
+
+    @app.get("/fct/api/public/v1/config/assigned/")
+    async def assigned_config(client_id: str) -> dict[str, Any]:
+        try:
+            profile = svc.effective_profile(client_id)
+        except UnknownEndpointError as err:
+            raise HTTPException(status_code=404, detail="unknown client_id") from err
+        if profile is None:
+            raise HTTPException(status_code=404, detail="no profile assigned")
+        return {"vdom": profile.vdom, "version": profile.version, "body": profile.body}
 
     # --- SAML SP (/fct_saml/*) ------------------------------------------
 

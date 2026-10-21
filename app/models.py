@@ -69,3 +69,32 @@ class Profile:
     version: int = 0
     body: dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=_utcnow)
+
+
+@dataclass(slots=True)
+class Condition:
+    """One predicate matched against an endpoint attribute.
+
+    field: os | hostname | fctver | vdom | host_tag
+    op:    equals | contains | in | has_tag   (has_tag applies to host_tag)
+    value: str for equals/contains/has_tag; list[str] for in
+    """
+
+    field: str
+    op: str
+    value: Any
+
+
+@dataclass(slots=True)
+class AssignmentRule:
+    """A group-assignment rule: if all conditions match, assign target_vdom.
+
+    Rules are evaluated by ascending `priority` (lower wins); the first matching
+    enabled rule decides the endpoint's effective vdom/profile.
+    """
+
+    id: str
+    target_vdom: str
+    conditions: list[Condition] = field(default_factory=list)
+    priority: int = 100
+    enabled: bool = True

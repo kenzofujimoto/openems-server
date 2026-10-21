@@ -37,13 +37,21 @@ register, send posture/telemetry, and be managed by a free server.
   `AudienceRestriction`, and rejects a reused assertion ID via a `ReplayCache`
   (`app/replay.py`: `InMemoryReplayCache`, or `RedisReplayCache` using
   `SET NX EX`).
-- **60 tests pass**, 13 skipped (Postgres + Redis without a live server).
+- **Group assignment rules** (`app/rules.py`): priority-ordered rules with
+  conditions (`os`/`hostname`/`fctver`/`vdom`/`host_tag`, ops
+  `equals`/`contains`/`in`/`has_tag`, all AND-ed) decide an endpoint's effective
+  vdom/profile. Config push targets each endpoint by its *effective* vdom, so a
+  rule can move an endpoint to a different policy than it registered under.
+  Endpoint fetches its assigned config by client_id.
+- **71 tests pass**, 13 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
     `POST /fct/api/public/v1/config/ack/`
+    plus `GET /fct/api/public/v1/config/assigned/?client_id=...`
   - management: `GET /api/v1/endpoints/index|count`,
-    `GET /api/v1/report/fct/host_tags?devid=...`, `POST /api/v1/profiles/{vdom}`
+    `GET /api/v1/report/fct/host_tags?devid=...`, `POST /api/v1/profiles/{vdom}`,
+    `POST|GET /api/v1/assignment_rules`
   - SAML: `GET /fct_saml/{prefix}/metadata`, `GET /fct_saml/login`,
     `POST /fct_saml/{prefix}/acs`, `POST /fct_saml/parse_remote_metadata`
 
@@ -72,8 +80,8 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
-2. ~~Postgres store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP + signature + conditions/replay~~ ✓ · ~~persist profiles~~ ✓
-3. Policy assignment rules; web console.
+2. ~~Postgres store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP + signature + conditions/replay~~ ✓ · ~~persist profiles~~ ✓ · ~~assignment rules~~ ✓
+3. Web console; persist rules; policy audit log.
 4. Keepalive cadence + avatar chunking once lab traffic is captured.
 5. SubjectConfirmationData (Recipient/InResponseTo) checks; AuthnRequest↔Response correlation.
 

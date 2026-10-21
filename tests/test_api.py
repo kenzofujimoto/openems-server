@@ -153,3 +153,34 @@ def test_saml_acs_consumes_response(client: TestClient) -> None:
     resp = client.post("/fct_saml/acme/acs", data={"SAMLResponse": b64})
     assert resp.status_code == 200
     assert resp.json()["name_id"] == "bob@example.com"
+
+
+# --- group assignment rules ------------------------------------------------
+
+def test_assignment_rule_add_list_and_assigned_config(client: TestClient) -> None:
+    # 1. admin adds a rule: Windows endpoints -> "Strict" vdom
+    rule = {
+        "id": "win",
+        "target_vdom": "Strict",
+        "priority": 10,
+        "conditions": [{"field": "os", "op": "contains", "value": "Windows"}],
+    }
+    assert client.post("/api/v1/assignment_rules", json=rule).status_code == 200
+    listed = client.get("/api/v1/assignment_rules").json()
+    assert listed[0]["id"] == "win" and listed[0]["target_vdom"] == "Strict"
+
+    # 2. a Windows endpoint registers under Default but is assigned to Strict
+    reg = client.post(
+        "/fct/api/public/v1/register/", json={"devid": "DEV-1", "os": "Windows 11"}
+    ).json()
+    assert reg["vdom"] == "Strict"
+    cid = reg["client_id"]
+
+    # 3. admin publishes the Strict profile
+    client.post("/api/v1/profiles/Strict", json={"firewall": "on"})
+
+    # 4. endpoint fetches its *assigned* config by client_id
+    cfg = client.get(
+        "/fct/api/public/v1/config/assigned/", params={"client_id": cid}
+    ).json()
+    assert cfg["vdom"] == "Strict" and cfg["body"] == {"firewall": "on"}

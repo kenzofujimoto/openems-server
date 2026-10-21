@@ -13,8 +13,9 @@ from datetime import timezone, datetime
 
 from typing import Any
 
-from .models import Endpoint, EndpointStatus, Profile, RegisterRequest
+from .models import AssignmentRule, Endpoint, EndpointStatus, Profile, RegisterRequest
 from .queue import InMemoryQueue, Queue
+from .rules import evaluate_rules
 from .stores import InMemoryProfileStore, InMemoryStore, ProfileStore, Store
 
 
@@ -50,6 +51,7 @@ class EmsService:
         self._store: Store = store or InMemoryStore()
         self._queue: Queue = queue or InMemoryQueue()
         self._profile_store: ProfileStore = profile_store or InMemoryProfileStore()
+        self._rules: list[AssignmentRule] = []
         self._ems_serial = ems_serial
         self._require_invitation = require_invitation
         self._valid_invitations = valid_invitations or set()
@@ -136,7 +138,7 @@ class EmsService:
         )
         self._profile_store.put(profile)
         for endpoint in self._store.all():
-            if endpoint.vdom == vdom:
+            if self.effective_vdom(endpoint) == vdom:
                 self._queue.push(
                     endpoint.client_id,
                     {"type": "config_update", "vdom": vdom, "version": profile.version},
@@ -152,6 +154,25 @@ class EmsService:
     def current_config_version(self, vdom: str) -> int:
         profile = self._profile_store.get(vdom)
         return profile.version if profile else 0
+
+    # --- group assignment rules -----------------------------------------
+
+    def add_rule(self, rule: AssignmentRule) -> None:
+        self._rules.append(rule)
+
+    def list_rules(self) -> list[AssignmentRule]:
+        return list(self._rules)
+
+    def effective_vdom(self, endpoint: Endpoint) -> str:
+        """The vdom assigned to an endpoint: first matching rule, else its own."""
+        return evaluate_rules(endpoint, self._rules) or endpoint.vdom
+
+    def effective_profile(self, client_id: str) -> Profile | None:
+        """Resolve the profile an endpoint should run, via its effective vdom."""
+        endpoint = self._store.get_by_client_id(client_id)
+        if endpoint is None:
+            raise UnknownEndpointError(client_id)
+        return self._profile_store.get(self.effective_vdom(endpoint))
 
     def pull_messages(self, client_id: str) -> list[dict[str, Any]]:
         """Drain pending push notifications for an endpoint (config updates, …)."""
