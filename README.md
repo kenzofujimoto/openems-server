@@ -29,10 +29,13 @@ register, send posture/telemetry, and be managed by a free server.
 - **SAML signature verification** (`app/saml_signatures.py`, signxml): with
   `SamlSp(require_signature=True)` the ACS verifies the response's enveloped
   XML-DSig against the registered IdP certificate and fails closed. Tested
-  end-to-end (valid → accept, tampered → reject, wrong cert → reject). Still
-  TODO for production: validate assertion conditions (NotOnOrAfter/Audience) and
-  replay protection.
-- **47 tests pass**, 9 skipped (Postgres + Redis without a live server).
+  end-to-end (valid → accept, tampered → reject, wrong cert → reject).
+- **SAML assertion conditions + replay protection**: the ACS enforces the
+  `NotBefore`/`NotOnOrAfter` window (with clock-skew tolerance) and the
+  `AudienceRestriction`, and rejects a reused assertion ID via a `ReplayCache`
+  (`app/replay.py`: `InMemoryReplayCache`, or `RedisReplayCache` using
+  `SET NX EX`).
+- **56 tests pass**, 9 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
@@ -67,10 +70,10 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
-2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP~~ ✓ · ~~SAML signature verification~~ ✓
-3. SAML assertion conditions (NotOnOrAfter/Audience) + replay protection.
-4. Persist profiles + policy assignment rules; web console.
-5. Keepalive cadence + avatar chunking once lab traffic is captured.
+2. ~~PostgreSQL store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP~~ ✓ · ~~signature verification~~ ✓ · ~~assertion conditions + replay~~ ✓
+3. Persist profiles + policy assignment rules; web console.
+4. Keepalive cadence + avatar chunking once lab traffic is captured.
+5. SubjectConfirmationData (Recipient/InResponseTo) checks; AuthnRequest↔Response correlation.
 
 ## License
 MIT (see `LICENSE`). Contributions welcome.

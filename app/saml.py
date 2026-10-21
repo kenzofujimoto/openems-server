@@ -19,10 +19,12 @@ import base64
 import secrets
 import zlib
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
 from urllib.parse import urlencode
 from xml.etree import ElementTree as ET
+
+from .replay import InMemoryReplayCache, ReplayCache
 
 SAMLP = "urn:oasis:names:tc:SAML:2.0:protocol"
 SAML = "urn:oasis:names:tc:SAML:2.0:assertion"
@@ -55,6 +57,10 @@ class SamlAssertion:
     name_id: str
     attributes: dict[str, list[str]] = field(default_factory=dict)
     session_index: Optional[str] = None
+    assertion_id: Optional[str] = None
+    not_before: Optional[datetime] = None
+    not_on_or_after: Optional[datetime] = None
+    audiences: list[str] = field(default_factory=list)
 
 
 def _utcnow_iso() -> str:
@@ -164,7 +170,68 @@ def parse_saml_response(
     authn = assertion.find(f"{{{SAML}}}AuthnStatement")
     session_index = authn.get("SessionIndex") if authn is not None else None
 
-    return SamlAssertion(name_id=name_id, attributes=attributes, session_index=session_index)
+    conditions = assertion.find(f"{{{SAML}}}Conditions")
+    not_before = not_on_or_after = None
+    audiences: list[str] = []
+    if conditions is not None:
+        not_before = _parse_dt(conditions.get("NotBefore"))
+        not_on_or_after = _parse_dt(conditions.get("NotOnOrAfter"))
+        audiences = [
+            (a.text or "").strip()
+            for a in conditions.findall(
+                f"{{{SAML}}}AudienceRestriction/{{{SAML}}}Audience"
+            )
+            if (a.text or "").strip()
+        ]
+
+    return SamlAssertion(
+        name_id=name_id,
+        attributes=attributes,
+        session_index=session_index,
+        assertion_id=assertion.get("ID"),
+        not_before=not_before,
+        not_on_or_after=not_on_or_after,
+        audiences=audiences,
+    )
+
+
+def _parse_dt(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)  # Python 3.11+ accepts the trailing 'Z'
+    except ValueError:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def validate_conditions(
+    assertion: SamlAssertion,
+    *,
+    audience: Optional[str] = None,
+    now: Optional[datetime] = None,
+    clock_skew_seconds: int = 60,
+    require_audience: bool = False,
+) -> None:
+    """Enforce the SAML assertion validity window and audience restriction.
+
+    Raises SamlError on an expired/not-yet-valid assertion or an audience
+    mismatch. `clock_skew_seconds` tolerates small IdP/SP clock drift.
+    """
+    now = now or datetime.now(timezone.utc)
+    skew = timedelta(seconds=clock_skew_seconds)
+
+    if assertion.not_before is not None and now + skew < assertion.not_before:
+        raise SamlError("assertion is not yet valid (NotBefore)")
+    if assertion.not_on_or_after is not None and now - skew >= assertion.not_on_or_after:
+        raise SamlError("assertion has expired (NotOnOrAfter)")
+
+    if audience is not None:
+        if assertion.audiences:
+            if audience not in assertion.audiences:
+                raise SamlError("assertion audience does not include this SP")
+        elif require_audience:
+            raise SamlError("assertion has no AudienceRestriction")
 
 
 # --- IdP metadata import ------------------------------------------------
@@ -211,9 +278,22 @@ class SamlSp:
     each tenant gets a distinct ACS URL.
     """
 
-    def __init__(self, base_url: str, *, require_signature: bool = False) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        require_signature: bool = False,
+        validate_conditions: bool = True,
+        require_audience: bool = False,
+        clock_skew_seconds: int = 60,
+        replay_cache: "ReplayCache | None" = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._require_signature = require_signature
+        self._validate_conditions = validate_conditions
+        self._require_audience = require_audience
+        self._clock_skew_seconds = clock_skew_seconds
+        self._replay_cache: ReplayCache = replay_cache or InMemoryReplayCache()
         self._idps: dict[str, IdpConfig] = {}
 
     def sp_config(self, prefix: str) -> SpConfig:
@@ -245,15 +325,40 @@ class SamlSp:
         )
         return url
 
-    def consume(self, prefix: str, saml_response_b64: str) -> SamlAssertion:
+    def consume(
+        self, prefix: str, saml_response_b64: str, *, now: Optional[datetime] = None
+    ) -> SamlAssertion:
         idp = self._idp(prefix)  # ensure the tenant exists before trusting a response
         verifier: Optional[Callable[[bytes], bool]] = None
         if self._require_signature and idp.certificate:
             from .saml_signatures import certificate_to_pem, make_signxml_verifier
 
             verifier = make_signxml_verifier(certificate_to_pem(idp.certificate))
-        return parse_saml_response(
+
+        assertion = parse_saml_response(
             saml_response_b64,
             verify_signature=verifier,
             require_signature=self._require_signature,
         )
+
+        if self._validate_conditions:
+            validate_conditions(
+                assertion,
+                audience=self.sp_config(prefix).entity_id,
+                now=now,
+                clock_skew_seconds=self._clock_skew_seconds,
+                require_audience=self._require_audience,
+            )
+
+        # replay protection: refuse a second use of the same assertion ID
+        if assertion.assertion_id:
+            expires_at = assertion.not_on_or_after or (
+                (now or datetime.now(timezone.utc))
+                + timedelta(seconds=self._clock_skew_seconds)
+            )
+            if not self._replay_cache.check_and_remember(
+                assertion.assertion_id, expires_at
+            ):
+                raise SamlError("assertion replay detected")
+
+        return assertion
