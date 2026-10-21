@@ -44,15 +44,16 @@ DEFAULT_HOSTS = (
 
 # --- pure helpers (unit-tested, no side effects) ------------------------
 
-def render_hosts_block(domains: list[str]) -> str:
-    """Render the managed hosts block for the blocked domains."""
+def render_hosts_block(domains: list[str], ip: str = "0.0.0.0") -> str:
+    """Render the managed hosts block. `ip` is 0.0.0.0 (hard block) or 127.0.0.1
+    (send the browser to the local block-page server)."""
     lines = [HOSTS_BEGIN]
     for d in domains:
         d = d.strip().lstrip("*.")
         if not d:
             continue
-        lines.append(f"0.0.0.0 {d}")
-        lines.append(f"0.0.0.0 www.{d}")
+        lines.append(f"{ip} {d}")
+        lines.append(f"{ip} www.{d}")
     lines.append(HOSTS_END)
     return "\n".join(lines) + "\n"
 
@@ -83,14 +84,14 @@ def processes_to_kill(running: list[str], blocked: list[str]) -> list[str]:
 
 # --- side effects (enforcement) -----------------------------------------
 
-def apply_hosts(domains: list[str], hosts_path: str) -> None:
+def apply_hosts(domains: list[str], hosts_path: str, ip: str = "0.0.0.0") -> None:
     try:
         with open(hosts_path, encoding="utf-8", errors="replace") as fh:
             current = fh.read()
     except FileNotFoundError:
         current = ""
     with open(hosts_path, "w", encoding="utf-8") as fh:
-        fh.write(replace_managed_block(current, render_hosts_block(domains)))
+        fh.write(replace_managed_block(current, render_hosts_block(domains, ip)))
 
 
 def clear_hosts(hosts_path: str) -> None:
@@ -133,6 +134,21 @@ class AgentConfig:
     hosts_path: str = DEFAULT_HOSTS
     interval: int = 15
     dry_run: bool = False
+    block_page: bool = False       # serve a branded block page instead of a hard fail
+    block_page_port: int = 80
+
+
+def start_block_page(port: int = 80):
+    """Start the local block-page server in a daemon thread (best-effort)."""
+    import threading
+
+    try:
+        from blockpage import serve  # same directory
+    except ImportError:
+        return None
+    t = threading.Thread(target=lambda: serve(port), daemon=True)
+    t.start()
+    return t
 
 
 def _api(url: str, data: dict | None = None):
@@ -169,11 +185,12 @@ def enforce(cfg: AgentConfig, profile: dict | None, log: Callable[[str], None] =
     sites = list(body.get("web_filter", {}).get("blocked", []))
     apps = list(body.get("app_control", {}).get("blocked", []))
 
+    redirect = "127.0.0.1" if cfg.block_page else "0.0.0.0"
     if cfg.dry_run:
-        log(f"[dry-run] would block {len(sites)} site(s) in {cfg.hosts_path}")
+        log(f"[dry-run] would block {len(sites)} site(s) in {cfg.hosts_path} -> {redirect}")
     else:
-        apply_hosts(sites, cfg.hosts_path)
-        log(f"web filter: {len(sites)} site(s) blocked via {cfg.hosts_path}")
+        apply_hosts(sites, cfg.hosts_path, redirect)
+        log(f"web filter: {len(sites)} site(s) blocked via {cfg.hosts_path} -> {redirect}")
 
     killed = processes_to_kill(list_processes(), apps)
     for name in killed:
@@ -201,6 +218,9 @@ def report_host_tags(cfg: AgentConfig, client_id: str, tags: list[str]) -> None:
 
 
 def run(cfg: AgentConfig, log: Callable[[str], None] = print) -> None:
+    if cfg.block_page:
+        start_block_page(cfg.block_page_port)
+        log(f"block-page server on :{cfg.block_page_port}")
     client_id = register(cfg)
     log(f"registered as client_id={client_id} (vdom={cfg.vdom})")
     while True:
@@ -221,9 +241,13 @@ def main(argv: list[str] | None = None) -> int:
                     help="hosts file to manage (use a temp path to test safely)")
     ap.add_argument("--interval", type=int, default=15)
     ap.add_argument("--dry-run", action="store_true", help="log actions, change nothing")
+    ap.add_argument("--block-page", action="store_true",
+                    help="serve a local branded block page (hosts -> 127.0.0.1)")
+    ap.add_argument("--block-page-port", type=int, default=80)
     args = ap.parse_args(argv)
     run(AgentConfig(server=args.server.rstrip("/"), devid=args.devid, vdom=args.vdom,
-                    hosts_path=args.hosts_path, interval=args.interval, dry_run=args.dry_run))
+                    hosts_path=args.hosts_path, interval=args.interval, dry_run=args.dry_run,
+                    block_page=args.block_page, block_page_port=args.block_page_port))
     return 0
 
 

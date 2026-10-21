@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>openems console</title>
+<title>RSM Endpoint Management</title>
 <style>
-  :root { --bg:#0f1419; --panel:#1a2029; --line:#2a333f; --fg:#e6edf3; --muted:#8b98a5; --accent:#e5484d; --ok:#3fb950; }
+  :root { --bg:#0f1714; --panel:#17201b; --line:#273530; --fg:#e8f0ea; --muted:#8ca198; --accent:#3f9c35; --accent-dark:#2e7d28; --ok:#3fb950; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 system-ui, sans-serif; }
-  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); border-top:4px solid var(--accent); background:var(--panel); }
+  header .brand { font-size:22px; margin:0; font-weight:800; letter-spacing:1px; color:var(--accent); }
   header h1 { font-size:16px; margin:0; font-weight:600; letter-spacing:.3px; }
   header .sub { color:var(--muted); font-size:12px; }
   header .spacer { flex:1; }
@@ -43,8 +44,8 @@
 </head>
 <body>
 <header>
-  <h1>openems</h1>
-  <span class="sub">clean-room endpoint management console</span>
+  <span class="brand">RSM</span>
+  <span class="sub">Endpoint Management · openems</span>
   <span class="spacer"></span>
   <button class="ghost" id="logout-btn" style="display:none" onclick="logout()">Sign out</button>
   <button class="ghost" onclick="refreshAll()">Refresh</button>

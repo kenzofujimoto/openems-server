@@ -108,3 +108,27 @@ def test_service_load_config(tmp_path) -> None:
     cfg = service.load_config(str(cfg_file))
     assert cfg.server == "http://x:8013"  # trailing slash trimmed
     assert cfg.devid == "PC1" and cfg.vdom == "Strict" and cfg.interval == 30
+
+
+# --- block page mode ----------------------------------------------------
+
+def test_render_hosts_block_redirect_ip() -> None:
+    assert "127.0.0.1 example.com" in a.render_hosts_block(["example.com"], "127.0.0.1")
+    assert "0.0.0.0 example.com" in a.render_hosts_block(["example.com"])  # default
+
+
+def test_enforce_block_page_uses_loopback(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(a, "list_processes", lambda: [])
+    hosts = tmp_path / "hosts"
+    cfg = a.AgentConfig(server="x", devid="d", hosts_path=str(hosts), block_page=True)
+    a.enforce(cfg, {"body": {"web_filter": {"blocked": ["blocked.test"]}}}, log=lambda m: None)
+    assert "127.0.0.1 blocked.test" in hosts.read_text(encoding="utf-8")
+
+
+def test_blockpage_render_is_branded() -> None:
+    import blockpage
+
+    page = blockpage.render("example.com").decode("utf-8")
+    assert "Acesso bloqueado" in page
+    assert "example.com" in page
+    assert "RSM" in page

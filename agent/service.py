@@ -51,6 +51,8 @@ def load_config(path: str = CONFIG_PATH) -> agent.AgentConfig:
         vdom=str(d.get("vdom", "Default")),
         hosts_path=str(d.get("hosts_path", agent.DEFAULT_HOSTS)),
         interval=int(d.get("interval", 15)),
+        block_page=bool(d.get("block_page", False)),
+        block_page_port=int(d.get("block_page_port", 80)),
     )
 
 
