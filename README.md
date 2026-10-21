@@ -27,6 +27,11 @@ register, send posture/telemetry, and be managed by a free server.
   drains its queue, fetches the config, and acks the applied version. Profiles are
   held by a `ProfileStore` — `InMemoryProfileStore` or `PostgresProfileStore`
   (same contract test pattern as the endpoint store).
+- **Reference endpoint agent** (`agent/`): enforces server-defined blocks
+  **locally, on any network, with no VPN** — web filtering via the OS hosts file
+  and app control by terminating blocked processes. Policy rides in the profile
+  `body` (`web_filter.blocked`, `app_control.blocked`) and is delivered through
+  the config push + assignment rules. See [`agent/README.md`](agent/README.md).
 - **SAML 2.0 SP** (`app/saml.py`, clean-room implementation of the OASIS standard):
   SP metadata, AuthnRequest (HTTP-Redirect), SAMLResponse parsing at the ACS
   (HTTP-POST), multi-tenant IdP registry keyed by URL prefix.
