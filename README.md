@@ -43,7 +43,14 @@ register, send posture/telemetry, and be managed by a free server.
   vdom/profile. Config push targets each endpoint by its *effective* vdom, so a
   rule can move an endpoint to a different policy than it registered under.
   Endpoint fetches its assigned config by client_id.
-- **71 tests pass**, 13 skipped (Postgres + Redis without a live server).
+- **Traffic recorder** (`app/recording.py`): an ASGI middleware that tees every
+  endpoint-channel request body to a JSONL file (enable with `record_path=` or
+  `OPENEMS_RECORD=`), replaying it downstream so routes still work and redacting
+  sensitive headers. Point a lab endpoint at the server and capture its real wire
+  format in cleartext — no TLS interception. `tools/analyze_capture.py` summarizes
+  the capture (paths, JSON keys, sample bodies). See
+  [`../LAB-CAPTURE.md`](../LAB-CAPTURE.md).
+- **80 tests pass**, 13 skipped (Postgres + Redis without a live server).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
@@ -81,8 +88,9 @@ OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pyte
 ## Roadmap
 1. Capture lab traffic → fix endpoint-channel payloads.
 2. ~~Postgres store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP + signature + conditions/replay~~ ✓ · ~~persist profiles~~ ✓ · ~~assignment rules~~ ✓
-3. Web console; persist rules; policy audit log.
-4. Keepalive cadence + avatar chunking once lab traffic is captured.
+3. ~~Web console~~ ✓ · ~~traffic recorder + capture tooling~~ ✓ · persist rules; policy audit log.
+4. Capture real lab traffic (see LAB-CAPTURE.md) → replace the `[a capturar]`
+   payloads with precise Pydantic models; add keepalive/avatar routes.
 5. SubjectConfirmationData (Recipient/InResponseTo) checks; AuthnRequest↔Response correlation.
 
 ## License

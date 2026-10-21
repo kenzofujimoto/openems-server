@@ -10,6 +10,7 @@ web dependency, so unit tests run without installing this layer.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -35,11 +36,19 @@ from .service import (
 
 
 def create_app(
-    service: EmsService | None = None, saml_sp: SamlSp | None = None
+    service: EmsService | None = None,
+    saml_sp: SamlSp | None = None,
+    record_path: str | None = None,
 ) -> "FastAPI":
     svc = service or EmsService()
     saml = saml_sp or SamlSp("http://localhost:8013")
     app = FastAPI(title="openems-server", version="0.1.0")
+
+    record_to = record_path or os.environ.get("OPENEMS_RECORD")
+    if record_to:
+        from .recording import RecorderMiddleware
+
+        app.add_middleware(RecorderMiddleware, out_path=record_to)
 
     @app.post("/fct/api/public/v1/register/")
     async def register(payload: dict[str, Any], request: Request) -> dict[str, Any]:
