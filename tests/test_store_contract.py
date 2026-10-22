@@ -107,3 +107,10 @@ def test_credentials_and_full_policy_status_roundtrip(store) -> None:
     assert restored.applied_digest == "a" * 64
     assert restored.last_error == "pending retry"
     assert restored.last_applied == endpoint.last_applied
+
+
+def test_create_cannot_overwrite_existing_identity(store) -> None:
+    first = _ep("DEV-1", "first")
+    assert store.create(first)
+    assert not store.create(_ep("DEV-1", "attacker"))
+    assert store.get_by_devid("DEV-1").client_id == "first"
