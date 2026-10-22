@@ -330,3 +330,21 @@ def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes(script_
     '''
     result = run_pwsh(tmp_path, script, str(path))
     assert result.returncode == 0, result.stderr
+
+
+def test_installer_copies_every_local_module_the_agent_imports():
+    import ast
+    import re
+
+    agent_dir = Path(service.__file__).parent
+    local = {path.stem for path in agent_dir.glob("*.py") if not path.stem.startswith("test_")}
+    imported = set()
+    for name in ("service.py", "openems_agent.py", "blockpage.py"):
+        for node in ast.walk(ast.parse((agent_dir / name).read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                imported.add(node.module.split(".")[0])
+    script = (agent_dir / "install_service.ps1").read_text(encoding="utf-8")
+    copied = set(re.findall(r"'([\w.]+)\.py'", re.search(r"foreach \(\$name in @\(([^)]*)\)\)", script).group(1)))
+    assert (imported & local) - copied == set()
