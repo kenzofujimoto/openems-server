@@ -7,6 +7,8 @@ use sha2::{Digest, Sha256};
 
 const MAX_ENTRIES: usize = 10_000;
 
+type Normalizer = fn(&str) -> Result<String>;
+
 pub fn policy_digest(body: &Map<String, Value>) -> String {
     let encoded = canonical_json(&Value::Object(body.clone()));
     hex::encode(Sha256::digest(encoded.as_bytes()))
@@ -72,8 +74,7 @@ pub fn validate_policy(body: &Value) -> Result<Value> {
         return Err(invalid("policy body must be an object"));
     };
     let mut normalized = object.clone();
-    let sections: [(&str, fn(&str) -> Result<String>); 2] =
-        [("web_filter", normalize_domain), ("app_control", normalize_process)];
+    let sections: [(&str, Normalizer); 2] = [("web_filter", normalize_domain), ("app_control", normalize_process)];
     for (section, normalize) in sections {
         let Some(settings) = normalized.get_mut(section) else { continue };
         let Some(settings) = settings.as_object_mut() else {
@@ -138,17 +139,30 @@ impl Assignment {
 
 /// Port of `_validated_profile`: reject anything whose digest does not match its body.
 pub fn validate_assignment(value: &Value) -> Result<Assignment> {
-    let vdom = value.get("vdom").and_then(Value::as_str).filter(|vdom| !vdom.is_empty())
+    let vdom = value
+        .get("vdom")
+        .and_then(Value::as_str)
+        .filter(|vdom| !vdom.is_empty())
         .ok_or_else(|| invalid("invalid assignment identity"))?;
     let version = value.get("version").and_then(Value::as_i64).ok_or_else(|| invalid("invalid assignment version"))?;
     let digest = value.get("digest").and_then(Value::as_str).unwrap_or_default();
     let body = value.get("body");
     let unassigned = value.get("unassigned").and_then(Value::as_bool) == Some(true);
     if unassigned {
-        if version != 0 || !matches!(body, None | Some(Value::Null)) || value.get("digest").and_then(Value::as_str) != Some("") {
+        if version != 0
+            || !matches!(body, None | Some(Value::Null))
+            || value.get("digest").and_then(Value::as_str) != Some("")
+        {
             return Err(invalid("invalid policy release"));
         }
-        return Ok(Assignment { vdom: vdom.into(), version, digest: String::new(), body: None, unassigned, raw: value.clone() });
+        return Ok(Assignment {
+            vdom: vdom.into(),
+            version,
+            digest: String::new(),
+            body: None,
+            unassigned,
+            raw: value.clone(),
+        });
     }
     let Some(Value::Object(body)) = body else {
         return Err(invalid("policy integrity check failed"));
@@ -157,7 +171,14 @@ pub fn validate_assignment(value: &Value) -> Result<Assignment> {
         return Err(invalid("policy integrity check failed"));
     }
     validate_policy(&Value::Object(body.clone()))?;
-    Ok(Assignment { vdom: vdom.into(), version, digest: digest.into(), body: Some(body.clone()), unassigned, raw: value.clone() })
+    Ok(Assignment {
+        vdom: vdom.into(),
+        version,
+        digest: digest.into(),
+        body: Some(body.clone()),
+        unassigned,
+        raw: value.clone(),
+    })
 }
 
 #[cfg(test)]
@@ -169,7 +190,8 @@ mod tests {
     fn signed_assignment_is_verified() {
         let body = json!({"web_filter": {"blocked": ["example.com"]}});
         let digest = policy_digest(body.as_object().unwrap());
-        let assignment = validate_assignment(&json!({"vdom": "Default", "version": 2, "digest": digest, "body": body})).unwrap();
+        let assignment =
+            validate_assignment(&json!({"vdom": "Default", "version": 2, "digest": digest, "body": body})).unwrap();
         assert_eq!(assignment.blocked_lists().unwrap(), (vec!["example.com".to_owned()], vec![]));
         let tampered = json!({"vdom": "Default", "version": 2, "digest": digest, "body": {"web_filter": {"blocked": ["evil.com"]}}});
         assert!(validate_assignment(&tampered).is_err());
@@ -180,7 +202,12 @@ mod tests {
         let release = json!({"vdom": "Empty", "version": 0, "digest": "", "body": null, "unassigned": true});
         let assignment = validate_assignment(&release).unwrap();
         assert_eq!(assignment.blocked_lists().unwrap(), (vec![], vec![]));
-        assert!(validate_assignment(&json!({"vdom": "Empty", "version": 1, "digest": "", "body": null, "unassigned": true})).is_err());
+        assert!(
+            validate_assignment(
+                &json!({"vdom": "Empty", "version": 1, "digest": "", "body": null, "unassigned": true})
+            )
+            .is_err()
+        );
         assert!(validate_assignment(&json!({"vdom": "", "version": 0, "digest": "", "unassigned": true})).is_err());
         assert!(validate_assignment(&json!({"vdom": "X", "version": true, "digest": ""})).is_err());
     }

@@ -31,7 +31,9 @@ fn domain_normalization_matches_python() {
     for case in cases(&vectors, "domains") {
         let input = case["input"].as_str().unwrap();
         match case.get("normalized") {
-            Some(expected) => assert_eq!(normalize_domain(input).as_deref().ok(), expected.as_str(), "domain {input:?}"),
+            Some(expected) => {
+                assert_eq!(normalize_domain(input).as_deref().ok(), expected.as_str(), "domain {input:?}")
+            }
             None => assert!(normalize_domain(input).is_err(), "domain {input:?} must be rejected"),
         }
     }
@@ -43,7 +45,9 @@ fn process_normalization_matches_python() {
     for case in cases(&vectors, "processes") {
         let input = case["input"].as_str().unwrap();
         match case.get("normalized") {
-            Some(expected) => assert_eq!(normalize_process(input).as_deref().ok(), expected.as_str(), "process {input:?}"),
+            Some(expected) => {
+                assert_eq!(normalize_process(input).as_deref().ok(), expected.as_str(), "process {input:?}")
+            }
             None => assert!(normalize_process(input).is_err(), "process {input:?} must be rejected"),
         }
     }

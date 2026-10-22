@@ -1,0 +1,221 @@
+//! Agent configuration: the same strict agent.json the Python service reads.
+
+use crate::error::{AgentError, Result};
+use crate::fsutil::read_text_without_bom;
+use crate::hosts::DEFAULT_HOSTS;
+use serde_json::Value;
+use std::net::IpAddr;
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentConfig {
+    pub server: String,
+    pub devid: String,
+    pub vdom: String,
+    pub hosts_path: PathBuf,
+    pub interval: u64,
+    pub dry_run: bool,
+    pub block_page: bool,
+    pub block_page_port: u16,
+    pub invitation: Option<String>,
+    pub device_token: Option<String>,
+    pub state_path: PathBuf,
+    pub allow_insecure_http: bool,
+}
+
+/// ProgramData\openems on Windows, /etc/openems elsewhere.
+pub fn data_dir() -> PathBuf {
+    if cfg!(windows) {
+        let base = std::env::var_os("PROGRAMDATA").map_or_else(|| PathBuf::from(r"C:\ProgramData"), PathBuf::from);
+        base.join("openems")
+    } else {
+        PathBuf::from("/var/lib/openems")
+    }
+}
+
+pub fn default_config_path() -> PathBuf {
+    if cfg!(windows) { data_dir().join("agent.json") } else { PathBuf::from("/etc/openems/agent.json") }
+}
+
+impl AgentConfig {
+    pub fn new(server: impl Into<String>, devid: impl Into<String>) -> Self {
+        AgentConfig {
+            server: server.into(),
+            devid: devid.into(),
+            vdom: "Default".into(),
+            hosts_path: PathBuf::from(DEFAULT_HOSTS),
+            interval: 15,
+            dry_run: false,
+            block_page: false,
+            block_page_port: 80,
+            invitation: None,
+            device_token: None,
+            state_path: data_dir().join("state.json"),
+            allow_insecure_http: false,
+        }
+    }
+
+    /// Read agent.json; unknown keys and loosely typed values are rejected.
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let text = read_text_without_bom(path)
+            .map_err(|error| AgentError::Config(format!("cannot read configuration: {error}")))?;
+        let value: Value =
+            serde_json::from_str(&text).map_err(|_| AgentError::Config("configuration is not valid JSON".into()))?;
+        let Value::Object(data) = value else {
+            return Err(AgentError::Config("agent configuration must be an object".into()));
+        };
+        const TEXT: [&str; 7] = ["server", "devid", "vdom", "hosts_path", "state_path", "invitation", "device_token"];
+        const FLAGS: [&str; 3] = ["block_page", "dry_run", "allow_insecure_http"];
+        const NUMBERS: [&str; 2] = ["interval", "block_page_port"];
+        if data.keys().any(|key| {
+            !TEXT.contains(&key.as_str()) && !FLAGS.contains(&key.as_str()) && !NUMBERS.contains(&key.as_str())
+        }) {
+            return Err(AgentError::Config("unknown agent configuration option".into()));
+        }
+        let text = |key: &str| -> Result<Option<String>> {
+            match data.get(key) {
+                None => Ok(None),
+                Some(Value::String(value)) if !value.trim().is_empty() => Ok(Some(value.clone())),
+                Some(_) => Err(AgentError::Config(format!("invalid configuration option: {key}"))),
+            }
+        };
+        let flag = |key: &str| -> Result<bool> {
+            match data.get(key) {
+                None => Ok(false),
+                Some(Value::Bool(value)) => Ok(*value),
+                Some(_) => Err(AgentError::Config(format!("invalid configuration option: {key}"))),
+            }
+        };
+        let number = |key: &str, default: u64| -> Result<u64> {
+            match data.get(key) {
+                None => Ok(default),
+                Some(Value::Number(value)) if value.is_u64() => Ok(value.as_u64().unwrap_or(default)),
+                Some(_) => Err(AgentError::Config(format!("invalid configuration option: {key}"))),
+            }
+        };
+        let (Some(server), Some(devid)) = (text("server")?, text("devid")?) else {
+            return Err(AgentError::Config("server and device identity are required".into()));
+        };
+        let port = number("block_page_port", 80)?;
+        let mut config = AgentConfig::new(server, devid);
+        config.vdom = text("vdom")?.unwrap_or(config.vdom);
+        config.hosts_path = text("hosts_path")?.map_or(config.hosts_path, PathBuf::from);
+        config.state_path = text("state_path")?.map_or_else(|| path.with_file_name("state.json"), PathBuf::from);
+        config.invitation = text("invitation")?;
+        config.device_token = text("device_token")?;
+        config.interval = number("interval", 15)?;
+        config.block_page = flag("block_page")?;
+        config.dry_run = flag("dry_run")?;
+        config.allow_insecure_http = flag("allow_insecure_http")?;
+        config.block_page_port = u16::try_from(port)
+            .ok()
+            .filter(|port| *port > 0)
+            .ok_or_else(|| AgentError::Config("block page port is out of range".into()))?;
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Port of `_validate_server`: an origin only, HTTPS unless loopback or explicitly allowed.
+    pub fn validate(&mut self) -> Result<()> {
+        let origin = parse_origin(&self.server)?;
+        let loopback = origin.host == "localhost" || origin.host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
+        let secure = origin.scheme == "https" || (origin.scheme == "http" && (loopback || self.allow_insecure_http));
+        if !secure {
+            return Err(AgentError::Config("HTTPS is required for remote endpoint connections".into()));
+        }
+        if self.interval == 0 {
+            return Err(AgentError::Config("interval must be positive".into()));
+        }
+        if self.devid.trim().is_empty() {
+            return Err(AgentError::Config("devid is required".into()));
+        }
+        self.server = self.server.trim_end_matches('/').to_owned();
+        Ok(())
+    }
+}
+
+struct Origin {
+    scheme: String,
+    host: String,
+}
+
+fn parse_origin(url: &str) -> Result<Origin> {
+    let bad = || AgentError::Config("server must be an origin without credentials, query or path".into());
+    let (scheme, rest) = url.split_once("://").ok_or_else(bad)?;
+    let scheme = scheme.to_ascii_lowercase();
+    if scheme != "http" && scheme != "https" {
+        return Err(bad());
+    }
+    let split = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let (authority, tail) = rest.split_at(split);
+    if !(tail.is_empty() || tail == "/") || authority.contains('@') || authority.is_empty() {
+        return Err(bad());
+    }
+    let host = if let Some(bracketed) = authority.strip_prefix('[') {
+        bracketed.split_once(']').map(|(host, _)| host).ok_or_else(bad)?
+    } else {
+        authority
+            .rsplit_once(':')
+            .map_or(authority, |(host, port)| if port.chars().all(|c| c.is_ascii_digit()) { host } else { authority })
+    };
+    if host.is_empty() {
+        return Err(bad());
+    }
+    Ok(Origin { scheme, host: host.to_ascii_lowercase() })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn validated(server: &str, insecure: bool) -> Result<String> {
+        let mut config = AgentConfig::new(server, "pc");
+        config.allow_insecure_http = insecure;
+        config.validate().map(|()| config.server)
+    }
+
+    #[test]
+    fn servers_must_be_secure_origins() {
+        assert_eq!(validated("https://ems.example.com/", false).unwrap(), "https://ems.example.com");
+        assert!(validated("http://127.0.0.1:8013", false).is_ok());
+        assert!(validated("http://localhost:8013", false).is_ok());
+        assert!(validated("http://[::1]:8013", false).is_ok());
+        assert!(validated("http://ems.example.com", false).is_err());
+        assert!(validated("http://ems.example.com", true).is_ok());
+        for bad in [
+            "https://user:pw@ems.example.com",
+            "https://ems.example.com/path",
+            "https://ems.example.com?x=1",
+            "ftp://ems",
+            "ems.example.com",
+        ] {
+            assert!(validated(bad, false).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn configuration_files_are_strict() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("agent.json");
+        std::fs::write(
+            &path,
+            "\u{feff}{\"server\": \"https://ems.example.com\", \"devid\": \"PC1\", \"interval\": 30}",
+        )
+        .unwrap();
+        let config = AgentConfig::from_file(&path).unwrap();
+        assert_eq!((config.interval, config.state_path.clone()), (30, dir.path().join("state.json")));
+        for bad in [
+            r#"{"server": "https://e.com", "devid": "PC1", "extra": 1}"#,
+            r#"{"server": "https://e.com", "devid": "PC1", "interval": "30"}"#,
+            r#"{"server": "https://e.com", "devid": 5}"#,
+            r#"{"server": "https://e.com", "devid": "PC1", "dry_run": "yes"}"#,
+            r#"{"server": "https://e.com", "devid": "PC1", "block_page_port": 70000}"#,
+            r#"[]"#,
+            r#"{"devid": "PC1"}"#,
+        ] {
+            std::fs::write(&path, bad).unwrap();
+            let error = AgentConfig::from_file(&path).unwrap_err();
+            assert!(error.to_string().contains("configuration"), "{bad}: {error}");
+        }
+    }
+}
