@@ -43,10 +43,57 @@ def test_https_configuration_is_opt_in_and_serializes(native, tmp_path):
 def test_msi_removes_owned_root_before_deleting_executable():
     root = ET.parse(Path(__file__).resolve().parents[1] / "agent-rs/installer/openems-agent.wxs").getroot()
     ns = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
-    action = root.find(".//w:CustomAction[@Id='RemoveBlockPageTrust']", ns)
+    action = root.find(".//w:CustomAction[@Id='PrepareAgentRemoval']", ns)
     assert action is not None, "MSI must not leave its trusted root after removal"
-    assert action.attrib["ExeCommand"] == "remove-block-page-trust"
+    assert action.attrib["ExeCommand"] == "installer-prepare --remove"
+    assert action.attrib["BinaryRef"] == "AgentActions"
     assert action.attrib["Return"] == "check"
-    sequence = root.find(".//w:InstallExecuteSequence/w:Custom[@Action='RemoveBlockPageTrust']", ns)
+    sequence = root.find(".//w:InstallExecuteSequence/w:Custom[@Action='PrepareAgentRemoval']", ns)
     assert sequence is not None and sequence.attrib["After"] == "StopServices"
     assert 'NOT UPGRADINGPRODUCTCODE' in sequence.attrib["Condition"]
+
+
+def test_installer_cli_exposes_explicit_transaction_commands(native):
+    result = run_agent(native, "installer-prepare", "--help", invitation=None)
+    assert result.returncode == 0, result.stderr
+    assert "--block-page-https" in result.stdout
+    assert "--remove" in result.stdout
+    for command in ("installer-rollback", "installer-commit"):
+        result = run_agent(native, command, "--help", invitation=None)
+        assert result.returncode == 0, result.stderr
+
+
+def test_installer_cli_rejects_removal_with_enable_options(native, tmp_path):
+    path = tmp_path / "agent.json"
+    result = run_agent(native, "installer-prepare", "--remove", "--block-page", "--config", str(path), invitation=None)
+    assert result.returncode != 0
+    assert "cannot be used with" in result.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_msi_opt_in_and_transaction_sequence():
+    root = ET.parse(Path(__file__).resolve().parents[1] / "agent-rs/installer/openems-agent.wxs").getroot()
+    ns = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
+    for name in ("BLOCKPAGE", "BLOCKPAGEHTTPS"):
+        prop = root.find(f".//w:Property[@Id='{name}']", ns)
+        assert prop is not None and prop.attrib["Secure"] == "yes"
+        assert prop.attrib.get("Value") != "1"
+        assert any(name in launch.attrib["Condition"] and '"1"' in launch.attrib["Condition"] for launch in root.findall(".//w:Launch", ns))
+    assert root.find(".//w:MajorUpgrade", ns).attrib["Schedule"] == "afterInstallInitialize"
+    assert root.find(".//w:Binary[@Id='AgentActions']", ns) is not None
+    for suffix in ("Setup", "Removal"):
+        prepare = root.find(f".//w:CustomAction[@Id='PrepareAgent{suffix}']", ns)
+        rollback = root.find(f".//w:CustomAction[@Id='RollbackAgent{suffix}']", ns)
+        commit = root.find(f".//w:CustomAction[@Id='CommitAgent{suffix}']", ns)
+        assert prepare is not None and rollback is not None and commit is not None
+        assert rollback.attrib["Execute"] == "rollback"
+        assert commit.attrib["Execute"] == "commit"
+        for action in (prepare, rollback, commit):
+            assert action.attrib["BinaryRef"] == "AgentActions"
+            assert action.attrib["Impersonate"] == "no" and action.attrib["Return"] == "check"
+        scheduled = root.find(f".//w:Custom[@Action='RollbackAgent{suffix}']", ns)
+        assert scheduled.attrib["Before"] == f"PrepareAgent{suffix}"
+    setup = root.find(".//w:CustomAction[@Id='PrepareAgentSetup']", ns)
+    assert "installer-prepare" in setup.attrib["ExeCommand"]
+    assert "[BlockPageArguments]" in setup.attrib["ExeCommand"]
+    assert "[HttpsBlockPageArguments]" in setup.attrib["ExeCommand"]
