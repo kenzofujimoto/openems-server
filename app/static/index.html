@@ -3,284 +3,121 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>RSM Endpoint Management</title>
+<title>RSM Endpoint Management · openems</title>
 <style>
-  :root { --bg:#0f1714; --panel:#17201b; --line:#273530; --fg:#e8f0ea; --muted:#8ca198; --accent:#3f9c35; --accent-dark:#2e7d28; --ok:#3fb950; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 system-ui, sans-serif; }
+  :root { --bg:#0f1714; --panel:#17201b; --line:#273530; --fg:#e8f0ea; --muted:#a3b8ac; --accent:#3f9c35; --error:#ffb4a9; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 system-ui,sans-serif; }
   header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); border-top:4px solid var(--accent); background:var(--panel); }
-  header .brand { font-size:22px; margin:0; font-weight:800; letter-spacing:1px; color:var(--accent); }
-  header h1 { font-size:16px; margin:0; font-weight:600; letter-spacing:.3px; }
-  header .sub { color:var(--muted); font-size:12px; }
-  header .spacer { flex:1; }
-  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:7px 12px; font-size:13px; cursor:pointer; }
-  button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
-  main { padding:20px; max-width:1100px; margin:0 auto; display:grid; gap:20px; }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
-  .panel h2 { margin:0 0 12px; font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); }
+  .brand { font-size:22px; font-weight:800; color:var(--accent); }
+  .sub, label, th, .muted { color:var(--muted); }
+  .spacer { flex:1; }
+  button { background:var(--accent); color:#fff; border:1px solid transparent; border-radius:6px; padding:7px 12px; cursor:pointer; font:inherit; }
+  button.ghost { background:transparent; border-color:var(--line); color:var(--fg); }
+  button:disabled { opacity:.55; cursor:wait; }
+  :focus-visible { outline:3px solid #a5e39d; outline-offset:3px; }
+  main { padding:20px; max-width:1180px; margin:auto; display:grid; gap:20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; overflow:auto; }
+  h2 { margin:0 0 12px; font-size:16px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
-  th { color:var(--muted); font-weight:500; }
-  .tag { display:inline-block; background:#223; border:1px solid var(--line); border-radius:4px; padding:1px 6px; margin:1px; font-size:11px; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  input, textarea { background:var(--bg); border:1px solid var(--line); color:var(--fg); border-radius:6px; padding:7px 9px; font:13px/1.4 monospace; }
-  input { min-width:120px; } textarea { width:100%; min-height:60px; }
-  label { color:var(--muted); font-size:12px; display:block; margin-bottom:3px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+  th { font-weight:500; }
+  input,textarea,select { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px; font:inherit; max-width:100%; }
+  textarea { width:100%; min-height:75px; font-family:monospace; }
+  label { display:block; margin:8px 0 3px; }
+  input[type=checkbox] { width:auto; }
+  fieldset { border:1px solid var(--line); border-radius:6px; margin:12px 0; min-width:0; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
   .big { font-size:28px; font-weight:700; }
-  .toast { position:fixed; bottom:18px; right:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 14px; font-size:13px; opacity:0; transition:opacity .2s; }
-  .toast.show { opacity:1; }
-  .toast.err { border-color:var(--accent); }
-  tr.click { cursor:pointer; } tr.click:hover td { background:#1f2733; }
-  .btn-sm { padding:3px 8px; font-size:12px; border-radius:5px; }
-  .btn-sm.del { background:transparent; border:1px solid var(--accent); color:var(--accent); }
-  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; }
-  .modal-bg.show { display:flex; }
-  .modal { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; width:min(560px,92vw); max-height:88vh; overflow:auto; }
-  .kv { display:grid; grid-template-columns:150px 1fr; gap:4px 12px; font-size:13px; }
-  .kv dt { color:var(--muted); } .kv dd { margin:0; font-family:monospace; word-break:break-all; }
-  @media (max-width:720px){ .grid2 { grid-template-columns:1fr; } }
+  .error { color:var(--error); margin:10px 0; }
+  .error button { margin-left:8px; }
+  .loading { color:var(--muted); }
+  .toast { position:fixed; bottom:18px; right:18px; max-width:min(600px,90vw); padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  dialog { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:20px; width:min(620px,92vw); max-height:88vh; }
+  dialog::backdrop { background:rgba(0,0,0,.65); }
+  .kv { display:grid; grid-template-columns:155px 1fr; gap:6px 12px; }
+  .kv dt { color:var(--muted); }
+  .kv dd { margin:0; overflow-wrap:anywhere; }
+  details { margin:12px 0; }
+  .condition { padding-bottom:10px; border-bottom:1px solid var(--line); }
+  [hidden] { display:none !important; }
+  @media(max-width:720px) { .grid2 { grid-template-columns:1fr; } .kv { grid-template-columns:1fr; } header { flex-wrap:wrap; } }
 </style>
+<script src="console.js" defer></script>
 </head>
 <body>
 <header>
-  <span class="brand">RSM</span>
-  <span class="sub">Endpoint Management · openems</span>
-  <span class="spacer"></span>
-  <button class="ghost" id="logout-btn" style="display:none" onclick="logout()">Sign out</button>
-  <button class="ghost" onclick="refreshAll()">Refresh</button>
+  <span class="brand">RSM</span><span class="sub">Endpoint Management · openems</span>
+  <span class="spacer"></span><span id="session-user"></span>
+  <button class="ghost" id="logout-btn" hidden>Sign out</button>
+  <button class="ghost" id="refresh-btn">Refresh</button>
 </header>
-
-<main>
-  <div class="panel">
-    <h2>Endpoints</h2>
-    <div class="big" id="count">–</div>
-    <table>
-      <thead><tr><th>devid</th><th>hostname</th><th>os</th><th>status</th><th>host tags</th></tr></thead>
-      <tbody id="endpoints"></tbody>
-    </table>
-  </div>
-
+<main id="main-content">
+  <p id="connection-status" role="status" hidden></p>
+  <section class="panel" aria-labelledby="endpoints-heading">
+    <h2 id="endpoints-heading">Endpoints</h2><div class="big" id="count">–</div>
+    <p id="endpoints-loading" class="loading" role="status">Loading endpoints…</p>
+    <div id="endpoints-error" class="error" role="alert" hidden></div>
+    <table><thead><tr><th>Device ID</th><th>Hostname</th><th>OS</th><th>Connection</th><th>Policy</th><th>Last seen</th><th>Host tags</th></tr></thead><tbody id="endpoints"></tbody></table>
+  </section>
   <div class="grid2">
-    <div class="panel">
-      <h2>Publish profile</h2>
-      <div class="row">
-        <div><label>vdom</label><input id="p-vdom" value="Default" /></div>
-      </div>
-      <label style="margin-top:10px">body (JSON)</label>
-      <textarea id="p-body">{ "firewall": "on" }</textarea>
-      <div class="row" style="margin-top:10px"><button onclick="publishProfile()">Publish</button></div>
-    </div>
-
-    <div class="panel">
-      <h2>Assignment rule</h2>
-      <div class="row">
-        <div><label>id</label><input id="r-id" value="win" /></div>
-        <div><label>target vdom</label><input id="r-vdom" value="Strict" /></div>
-        <div><label>priority</label><input id="r-prio" value="10" style="min-width:70px" /></div>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <div><label>field</label><input id="r-field" value="os" /></div>
-        <div><label>op</label><input id="r-op" value="contains" /></div>
-        <div><label>value</label><input id="r-val" value="Windows" /></div>
-      </div>
-      <div class="row" style="margin-top:10px"><button onclick="addRule()">Add rule</button></div>
-    </div>
+    <section class="panel" aria-labelledby="profile-heading">
+      <h2 id="profile-heading">Publish profile</h2>
+      <form id="profile-form"><fieldset id="profile-fields"><legend>Blocking policy</legend>
+        <label for="p-vdom">Target group (vdom)</label><input id="p-vdom" value="Default" required />
+        <label for="p-domains">Blocked domains (one per line)</label><textarea id="p-domains" placeholder="example.com" aria-describedby="domain-help"></textarea>
+        <p id="domain-help" class="muted">Explicit hostnames only. No URL paths, wildcard or HTTPS inspection.</p>
+        <label for="p-apps">Blocked process names (one per line)</label><textarea id="p-apps" placeholder="example.exe"></textarea>
+        <p class="muted">The agent periodically terminates these processes. Administrative permissions are required on the endpoint.</p>
+        <details><summary>Advanced JSON</summary>
+          <label for="p-advanced"><input id="p-advanced" type="checkbox" /> Publish JSON instead of the fields above</label>
+          <label for="p-body">Policy JSON (web_filter and app_control)</label><textarea id="p-body">{"web_filter":{"blocked":[]},"app_control":{"blocked":[]}}</textarea>
+        </details>
+        <p id="profile-summary" role="status"></p><p id="profile-error" class="error" role="alert" hidden></p>
+        <button type="submit" id="publish-btn">Publish</button>
+      </fieldset></form>
+    </section>
+    <section class="panel" aria-labelledby="rule-heading">
+      <h2 id="rule-heading">Assignment rule</h2>
+      <form id="rule-form"><fieldset id="rule-fields"><legend>All conditions must match</legend>
+        <label for="r-id">Rule ID</label><input id="r-id" required />
+        <label for="r-vdom">Target group (vdom)</label><input id="r-vdom" value="Strict" required />
+        <label for="r-prio">Priority (lower runs first)</label><input id="r-prio" type="number" value="100" step="1" required />
+        <label for="r-enabled"><input id="r-enabled" type="checkbox" checked /> Enabled</label>
+        <div id="conditions"></div>
+        <p class="muted">Values use JSON: "Windows" for text or ["Windows 10", "Windows 11"] for a list.</p>
+        <button id="add-condition-btn" type="button" class="ghost">Add condition</button>
+        <p id="rule-error" class="error" role="alert" hidden></p>
+        <div class="row"><button type="submit" id="save-rule-btn">Save rule</button><button type="button" id="new-rule-btn" class="ghost">New rule</button></div>
+      </fieldset></form>
+    </section>
   </div>
-
-  <div class="panel">
-    <h2>Rules</h2>
-    <table>
-      <thead><tr><th>priority</th><th>id</th><th>→ vdom</th><th>conditions</th><th>enabled</th><th></th></tr></thead>
-      <tbody id="rules"></tbody>
-    </table>
-  </div>
-
-  <div class="panel">
-    <h2>Published profiles</h2>
-    <table>
-      <thead><tr><th>vdom</th><th>version</th><th>body</th><th>updated</th></tr></thead>
-      <tbody id="profiles"></tbody>
-    </table>
-  </div>
-
-  <div class="panel">
-    <h2>Audit log</h2>
-    <table>
-      <thead><tr><th>time</th><th>actor</th><th>action</th><th>target</th><th>details</th></tr></thead>
-      <tbody id="audit"></tbody>
-    </table>
-  </div>
+  <section class="panel" aria-labelledby="rules-heading"><h2 id="rules-heading">Rules</h2>
+    <p id="rules-loading" class="loading" role="status">Loading rules…</p><div id="rules-error" class="error" role="alert" hidden></div>
+    <table><thead><tr><th>Priority</th><th>ID</th><th>Target group</th><th>Conditions</th><th>Enabled</th><th>Actions</th></tr></thead><tbody id="rules"></tbody></table>
+  </section>
+  <section class="panel" aria-labelledby="profiles-heading"><h2 id="profiles-heading">Published profiles</h2>
+    <p id="profiles-loading" class="loading" role="status">Loading profiles…</p><div id="profiles-error" class="error" role="alert" hidden></div>
+    <table><thead><tr><th>Group</th><th>Version</th><th>Body</th><th>Updated</th></tr></thead><tbody id="profiles"></tbody></table>
+  </section>
+  <section class="panel" aria-labelledby="audit-heading"><h2 id="audit-heading">Audit log</h2>
+    <p id="audit-loading" class="loading" role="status">Loading audit log…</p><div id="audit-error" class="error" role="alert" hidden></div>
+    <table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead><tbody id="audit"></tbody></table>
+  </section>
 </main>
-
-<div class="modal-bg" id="modal-bg" onclick="closeDetail(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">Endpoint detail</h2>
-      <button class="ghost" onclick="closeDetail()">Close</button>
-    </div>
-    <div id="detail" style="margin-top:12px"></div>
-  </div>
-</div>
-
-<div class="modal-bg" id="login-bg">
-  <div class="modal" style="width:min(360px,92vw)">
-    <h2 style="margin:0 0 12px">Sign in</h2>
-    <label>username</label><input id="l-user" style="width:100%" autocomplete="username" />
-    <label style="margin-top:8px">password</label>
-    <input id="l-pass" type="password" style="width:100%" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')doLogin()" />
-    <div class="row" style="margin-top:14px"><button onclick="doLogin()">Sign in</button></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-const API = ""; // same origin
-let TOKEN = null;
-try { TOKEN = localStorage.getItem("openems_token"); } catch (e) {}
-function toast(msg, isErr) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.className = "toast show" + (isErr ? " err" : "");
-  setTimeout(() => (t.className = "toast"), 2500);
-}
-function showLogin() { document.getElementById("login-bg").classList.add("show"); }
-function setToken(tok) {
-  TOKEN = tok;
-  try { tok ? localStorage.setItem("openems_token", tok) : localStorage.removeItem("openems_token"); } catch (e) {}
-  document.getElementById("logout-btn").style.display = tok ? "" : "none";
-}
-async function doLogin() {
-  try {
-    const r = await fetch(API + "/api/v1/auth/login", {
-      method:"POST", headers:{"content-type":"application/json"},
-      body: JSON.stringify({ username: document.getElementById("l-user").value,
-                             password: document.getElementById("l-pass").value }) });
-    if (!r.ok) { toast("invalid credentials", true); return; }
-    setToken((await r.json()).token);
-    document.getElementById("login-bg").classList.remove("show");
-    document.getElementById("l-pass").value = "";
-    refreshAll();
-  } catch (e) { toast(e.message, true); }
-}
-function logout() { setToken(null); showLogin(); }
-async function api(path, opts = {}) {
-  opts.headers = Object.assign({}, opts.headers, TOKEN ? { Authorization: "Bearer " + TOKEN } : {});
-  const res = await fetch(API + path, opts);
-  if (res.status === 401) { setToken(null); showLogin(); throw new Error("authentication required"); }
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.status);
-  return res.status === 204 ? null : res.json();
-}
-function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c])); }
-
-async function loadEndpoints() {
-  const [list, count] = await Promise.all([
-    api("/api/v1/endpoints/index"), api("/api/v1/endpoints/count"),
-  ]);
-  document.getElementById("count").textContent = count.count;
-  document.getElementById("endpoints").innerHTML = list.map(e => `
-    <tr class="click" onclick="showDetail('${esc(e.devid)}')"><td>${esc(e.devid)}</td><td>${esc(e.hostname||"")}</td><td>${esc(e.os||"")}</td>
-    <td>${esc(e.status)}</td><td>${(e.host_tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</td></tr>`
-  ).join("") || `<tr><td colspan="5" style="color:var(--muted)">no endpoints registered</td></tr>`;
-}
-window._rules = [];
-async function loadRules() {
-  const rules = await api("/api/v1/assignment_rules");
-  window._rules = rules;
-  document.getElementById("rules").innerHTML = rules.map((r,i) => `
-    <tr><td>${r.priority}</td><td>${esc(r.id)}</td><td>${esc(r.target_vdom)}</td>
-    <td>${r.conditions.map(c=>`<span class="tag">${esc(c.field)} ${esc(c.op)} ${esc(JSON.stringify(c.value))}</span>`).join("")}</td>
-    <td>${r.enabled ? "yes" : "no"}</td>
-    <td class="row"><button class="ghost btn-sm" onclick="editRule(${i})">Edit</button>
-    <button class="btn-sm del" onclick="deleteRule('${esc(r.id)}')">Delete</button></td></tr>`
-  ).join("") || `<tr><td colspan="6" style="color:var(--muted)">no rules</td></tr>`;
-}
-async function loadProfiles() {
-  const profiles = await api("/api/v1/profiles");
-  document.getElementById("profiles").innerHTML = profiles.map(p => `
-    <tr><td>${esc(p.vdom)}</td><td>v${p.version}</td>
-    <td><code>${esc(JSON.stringify(p.body))}</code></td>
-    <td style="color:var(--muted)">${esc((p.updated_at||"").replace("T"," ").slice(0,19))}</td></tr>`
-  ).join("") || `<tr><td colspan="4" style="color:var(--muted)">no profiles</td></tr>`;
-}
-async function showDetail(devid) {
-  try {
-    const e = await api("/api/v1/endpoints/detail?devid=" + encodeURIComponent(devid));
-    const assigned = e.effective_vdom !== e.vdom
-      ? `${esc(e.effective_vdom)} <span class="tag">by rule, was ${esc(e.vdom)}</span>` : esc(e.effective_vdom);
-    document.getElementById("detail").innerHTML = `<dl class="kv">
-      <dt>devid</dt><dd>${esc(e.devid)}</dd>
-      <dt>client_id</dt><dd>${esc(e.client_id)}</dd>
-      <dt>hostname</dt><dd>${esc(e.hostname||"–")}</dd>
-      <dt>os</dt><dd>${esc(e.os||"–")}</dd>
-      <dt>fctver</dt><dd>${esc(e.fctver||"–")}</dd>
-      <dt>status</dt><dd>${esc(e.status)}</dd>
-      <dt>effective vdom</dt><dd>${assigned}</dd>
-      <dt>config version</dt><dd>${e.config_version} / ${e.current_config_version} (applied/current)</dd>
-      <dt>host tags</dt><dd>${(e.host_tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("") || "–"}</dd>
-      <dt>last seen</dt><dd>${esc((e.last_seen||"").replace("T"," ").slice(0,19))}</dd></dl>`;
-    document.getElementById("modal-bg").classList.add("show");
-  } catch (e) { toast(e.message, true); }
-}
-function closeDetail(ev) { document.getElementById("modal-bg").classList.remove("show"); }
-function editRule(i) {
-  const r = window._rules[i]; const c = (r.conditions||[])[0] || {};
-  document.getElementById("r-id").value = r.id;
-  document.getElementById("r-vdom").value = r.target_vdom;
-  document.getElementById("r-prio").value = r.priority;
-  document.getElementById("r-field").value = c.field || "";
-  document.getElementById("r-op").value = c.op || "";
-  document.getElementById("r-val").value = c.value || "";
-  toast("rule loaded into form — edit and Add to save");
-}
-async function deleteRule(id) {
-  try { await api("/api/v1/assignment_rules/" + encodeURIComponent(id), { method:"DELETE" });
-    toast(`rule ${id} removed`); await loadRules(); loadAudit(); }
-  catch (e) { toast(e.message, true); }
-}
-async function publishProfile() {
-  try {
-    const vdom = document.getElementById("p-vdom").value.trim();
-    const body = JSON.parse(document.getElementById("p-body").value);
-    const r = await api("/api/v1/profiles/" + encodeURIComponent(vdom), {
-      method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
-    toast(`profile ${vdom} v${r.version} published`); await loadProfiles(); loadAudit();
-  } catch (e) { toast("profile: " + e.message, true); }
-}
-async function addRule() {
-  try {
-    const rule = {
-      id: document.getElementById("r-id").value.trim(),
-      target_vdom: document.getElementById("r-vdom").value.trim(),
-      priority: parseInt(document.getElementById("r-prio").value, 10) || 100,
-      conditions: [{
-        field: document.getElementById("r-field").value.trim(),
-        op: document.getElementById("r-op").value.trim(),
-        value: document.getElementById("r-val").value.trim(),
-      }],
-    };
-    await api("/api/v1/assignment_rules", {
-      method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(rule) });
-    toast(`rule ${rule.id} added`); await loadRules(); loadAudit();
-  } catch (e) { toast("rule: " + e.message, true); }
-}
-async function loadAudit() {
-  const log = await api("/api/v1/audit?limit=50");
-  document.getElementById("audit").innerHTML = log.map(a => `
-    <tr><td style="color:var(--muted)">${esc((a.ts||"").replace("T"," ").slice(0,19))}</td>
-    <td>${esc(a.actor)}</td><td><span class="tag">${esc(a.action)}</span></td>
-    <td>${esc(a.target||"")}</td>
-    <td style="color:var(--muted)">${esc(JSON.stringify(a.metadata||{}))}</td></tr>`
-  ).join("") || `<tr><td colspan="5" style="color:var(--muted)">no activity yet</td></tr>`;
-}
-async function refreshAll() {
-  try { await Promise.all([loadEndpoints(), loadRules(), loadProfiles(), loadAudit()]); }
-  catch (e) { toast(e.message, true); }
-}
-if (TOKEN) document.getElementById("logout-btn").style.display = "";
-refreshAll();
-setInterval(() => { if (!document.getElementById("login-bg").classList.contains("show")) loadEndpoints(); }, 5000);
-</script>
+<dialog id="endpoint-dialog" aria-labelledby="detail-heading">
+  <div class="row"><h2 id="detail-heading">Endpoint detail</h2><button class="ghost" id="close-detail-btn" autofocus>Close</button></div>
+  <div id="detail"></div>
+</dialog>
+<dialog id="login-dialog" aria-labelledby="login-heading">
+  <h2 id="login-heading">Sign in</h2>
+  <form id="login-form">
+    <label for="l-user">Username</label><input id="l-user" autocomplete="username" required autofocus />
+    <label for="l-pass">Password</label><input id="l-pass" type="password" autocomplete="current-password" required />
+    <p id="login-error" class="error" role="alert" hidden></p><button type="submit" id="login-btn">Sign in</button>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" hidden></div>
 </body>
 </html>
