@@ -40,12 +40,16 @@ function showError(id, message) {
   element(id).hidden = !message;
 }
 
+function canWrite() {
+  return ["admin", "superadmin"].includes(sessionRole);
+}
+
 function updateSession(session) {
   csrfToken = session ? session.csrf_token : null;
   sessionRole = session ? session.role : null;
   element("session-user").textContent = session ? `${session.username} (${session.role})` : "";
   element("logout-btn").hidden = !session;
-  const readOnly = sessionRole !== "admin";
+  const readOnly = !canWrite();
   element("profile-fields").disabled = readOnly;
   element("rule-fields").disabled = readOnly;
 }
@@ -68,7 +72,7 @@ async function api(path, options = {}) {
     const response = await fetch(path, {
       ...options, headers, credentials: "same-origin", signal: controller.signal,
     });
-    if (response.status === 401) {
+    if (response.status === 401 && path !== "/api/v1/auth/login") {
       showLogin();
       throw new Error("Session expired. Sign in again.");
     }
@@ -244,9 +248,9 @@ async function renderRules() {
         toast(`Rule ${rule.id} removed`);
         await Promise.all([loadRules(), loadAudit()]);
       } catch (error) { toast(errorMessage(error), true); }
-      finally { remove.disabled = sessionRole !== "admin"; }
+      finally { remove.disabled = !canWrite(); }
     });
-    edit.disabled = remove.disabled = sessionRole !== "admin";
+    edit.disabled = remove.disabled = !canWrite();
     actions.append(edit, remove);
     row.append(actions);
     return row;
@@ -410,6 +414,8 @@ window.addEventListener("offline", connectionStatus);
 window.addEventListener("online", connectionStatus);
 
 async function start() {
+  try { localStorage.removeItem("openems_token"); }
+  catch (error) { console.warn("Legacy session storage could not be cleared", errorMessage(error)); }
   addCondition();
   updatePolicySummary();
   updateSession(null);
