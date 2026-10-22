@@ -80,7 +80,7 @@ def test_enrolls_enforces_acknowledges_and_preserves_foreign_entries(native, tmp
         publish(client)
         result = once(native, origin, tmp_path)
         assert result.returncode == 0, result.stderr
-        text = hosts.read_text(encoding="utf-8")
+        text = hosts.read_bytes().decode("utf-8")  # read_text() would hide CRLF
         assert "0.0.0.0 example.com" in text and "0.0.0.0 www.example.com" in text
         assert text.startswith("127.0.0.1 localhost\r\n10.0.0.5 intranet.local\r\n")
         state = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
