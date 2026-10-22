@@ -1,15 +1,14 @@
 """Real loopback HTTP integration; only disposable hosts files are modified."""
 
-from contextlib import contextmanager
-from pathlib import Path
 import socket
 import threading
 import time
+from contextlib import contextmanager
 
 import httpx
+import openems_agent as agent
 import uvicorn
 
-import openems_agent as agent
 from app.api import create_app
 from app.auth import AdminService
 from app.service import EmsService

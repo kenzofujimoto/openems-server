@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import os
 import secrets
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Iterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,6 +18,7 @@ from fastapi.testclient import TestClient
 from app.api import build, create_app
 from app.audit import InMemoryAuditLog
 from app.auth import AdminService
+from app.limits import RequestSizeLimitMiddleware
 from app.service import EmsService
 from app.sessions import InMemorySessionStore
 
@@ -89,7 +91,7 @@ def idp_metadata():
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test-idp")])
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     certificate = (
         x509.CertificateBuilder()
         .subject_name(name)
@@ -393,6 +395,54 @@ def test_invalid_declared_lengths_are_rejected_before_parsing(http, content_leng
     assert response.status_code == 400
 
 
+def test_real_asgi_chunks_reject_overflow_before_reading_the_remainder(http):
+    received, sent = [], []
+    chunks = [b'{"devid":"', b"x" * 16, b"unread-tail", b'"}']
+
+    async def receive():
+        index = len(received)
+        received.append(index)
+        return {
+            "type": "http.request",
+            "body": chunks[index],
+            "more_body": index < len(chunks) - 1,
+        }
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "method": "POST",
+        "path": "/fct/api/public/v1/register/",
+        "query_string": b"",
+        "headers": [(b"content-length", b"1")],
+        "client": ("127.0.0.1", 12345),
+    }
+    asyncio.run(
+        RequestSizeLimitMiddleware(http.client.app, max_bytes=16)(scope, receive, send)
+    )
+    assert received == [0, 1]
+    assert sent[0]["status"] == 413
+    assert http.service.count() == 0
+
+
+def test_disconnected_upload_does_not_reach_registration(http):
+    responses = []
+
+    async def disconnected():
+        return {"type": "http.disconnect"}
+
+    async def send(message):
+        responses.append(message)
+
+    scope = {"type": "http", "headers": []}
+    asyncio.run(RequestSizeLimitMiddleware(http.client.app)(scope, disconnected, send))
+    assert responses == []
+    assert http.service.count() == 0
+
+
 @pytest.mark.parametrize(
     "path,payload",
     [
@@ -456,26 +506,71 @@ def test_tag_validation_and_deduplication_preserve_state(http):
     assert response.json()["host_tags"] == ["safe", "managed"]
 
 
-def test_unassigned_policy_has_no_applicable_ack_and_cross_group_fetch_is_denied(http):
+def test_explicit_unassigned_ack_confirms_release_and_cross_group_fetch_is_denied(http):
     endpoint = http.enroll()
     headers = {"Authorization": "Bearer " + endpoint["device_token"]}
     identity = {"client_id": endpoint["client_id"]}
+    published = http.client.post(
+        "/api/v1/profiles/Default", headers=http.admin_headers, json={}
+    ).json()
+    assert (
+        http.client.post(
+            "/fct/api/public/v1/config/ack/",
+            headers=headers,
+            json={
+                **identity,
+                "vdom": "Default",
+                "version": 1,
+                "digest": published["digest"],
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        http.client.post(
+            "/api/v1/assignment_rules",
+            headers=http.admin_headers,
+            json={"id": "release", "target_vdom": "Unassigned", "conditions": []},
+        ).status_code
+        == 200
+    )
     assigned = http.client.get(
         "/fct/api/public/v1/config/assigned/", params=identity, headers=headers
     )
     assert assigned.json() == {
-        "vdom": "Default",
+        "vdom": "Unassigned",
         "version": 0,
         "digest": "",
         "body": None,
         "unassigned": True,
     }
+    for invalid in (
+        {"vdom": "Default", "version": 0, "digest": ""},
+        {"vdom": "Unassigned", "version": 1, "digest": ""},
+        {"vdom": "Unassigned", "version": 0, "digest": "a" * 64},
+    ):
+        assert (
+            http.client.post(
+                "/fct/api/public/v1/config/ack/",
+                headers=headers,
+                json={**identity, **invalid},
+            ).status_code
+            == 409
+        )
     ack = http.client.post(
         "/fct/api/public/v1/config/ack/",
         headers=headers,
-        json={**identity, "vdom": "Default", "version": 0, "digest": ""},
+        json={**identity, "vdom": "Unassigned", "version": 0, "digest": ""},
     )
-    assert ack.status_code == 409
+    assert ack.status_code == 200
+    detail = http.client.get(
+        "/api/v1/endpoints/detail",
+        params={"devid": "test-pc"},
+        headers=http.admin_headers,
+    ).json()
+    assert detail["config_version"] == 0
+    assert detail["applied_vdom"] == "Unassigned" and detail["applied_digest"] == ""
+    assert detail["last_applied"] is not None
     assert endpoint["device_token"] not in ack.text
     assert (
         http.client.post(
@@ -488,7 +583,7 @@ def test_unassigned_policy_has_no_applicable_ack_and_cross_group_fetch_is_denied
     assert (
         http.client.get(
             "/fct/api/public/v1/config/",
-            params={**identity, "vdom": "Default"},
+            params={**identity, "vdom": "Unassigned"},
             headers=headers,
         ).status_code
         == 404
