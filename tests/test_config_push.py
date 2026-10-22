@@ -6,6 +6,7 @@ import pytest
 
 from app.models import RegisterRequest
 from app.service import EmsService, UnknownEndpointError, UnknownProfileError
+from app.stores import InMemoryProfileStore
 
 
 def test_set_profile_bumps_version() -> None:
@@ -14,6 +15,15 @@ def test_set_profile_bumps_version() -> None:
     p2 = svc.set_profile("Default", {"av": "off"})
     assert (p1.version, p2.version) == (1, 2)
     assert svc.get_profile("Default").body == {"av": "off"}
+
+
+def test_set_profile_uses_atomic_store_versioning() -> None:
+    class AtomicOnlyStore(InMemoryProfileStore):
+        def put(self, profile):
+            raise AssertionError("read-modify-write publication races across workers")
+
+    svc = EmsService(require_invitation=False, profile_store=AtomicOnlyStore())
+    assert [svc.set_profile("Default", {}).version for _ in range(3)] == [1, 2, 3]
 
 
 def test_get_profile_unknown_vdom_raises() -> None:
