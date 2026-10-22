@@ -45,7 +45,9 @@ fn corrupted_configuration_is_never_replaced() {
     let path = dir.path().join("agent.json");
     for bytes in [b"not JSON".as_slice(), br#"{"server":"https://ems.example.com","devid":"PC","unexpected":true}"#] {
         std::fs::write(&path, bytes).unwrap();
-        assert!(configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "NEW")), true, true).is_err());
+        assert!(
+            configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "NEW")), true, true).is_err()
+        );
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
     }
 }
@@ -58,7 +60,9 @@ fn different_server_and_invalid_options_preserve_original_bytes() {
     original.dry_run = true;
     original.write_file(&path).unwrap();
     let bytes = std::fs::read(&path).unwrap();
-    assert!(configure_install(&path, Some(AgentConfig::new("https://other.example.com", "NEW")), false, false).is_err());
+    assert!(
+        configure_install(&path, Some(AgentConfig::new("https://other.example.com", "NEW")), false, false).is_err()
+    );
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
     // A dry-run installation cannot enable HTTPS enforcement.
     std::fs::write(&path, br#"{"server":"https://ems.example.com","devid":"PC","dry_run":true}"#).unwrap();
@@ -71,9 +75,27 @@ fn different_server_and_invalid_options_preserve_original_bytes() {
 fn false_flags_preserve_enabled_https_and_fresh_defaults() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("agent.json");
-    let initial = configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "PC")), false, false).unwrap();
+    let initial =
+        configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "PC")), false, false).unwrap();
     assert!(!initial.block_page && !initial.block_page_https);
     let enabled = configure_install(&path, None, false, true).unwrap();
     assert!(enabled.block_page && enabled.block_page_https);
     assert_eq!(configure_install(&path, None, false, false).unwrap(), enabled);
+}
+
+#[test]
+fn enabling_https_preserves_legacy_token_and_explicit_configuration() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.json");
+    let original = serde_json::json!({
+        "server":"https://ems.example.com", "devid":"REGISTERED", "dry_run":false,
+        "device_token":"legacy-token", "invitation":"invite", "interval":31
+    });
+    std::fs::write(&path, serde_json::to_vec(&original).unwrap()).unwrap();
+    configure_install(&path, None, false, true).unwrap();
+    let actual: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let mut expected = original;
+    expected["block_page"] = true.into();
+    expected["block_page_https"] = true.into();
+    assert_eq!(actual, expected);
 }
