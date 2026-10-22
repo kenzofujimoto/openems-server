@@ -4,6 +4,15 @@
 
 Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.md`.
 
+## Estado atual do teste no host — autorizado posteriormente pelo usuário
+
+- Em 2026-10-22, o usuário autorizou explicitamente testar na própria máquina fora do Sandbox. Essa autorização específica substitui a proibição anterior para este teste controlado, não para a suíte destrutiva de MSI/serviço.
+- **Novo agente instalado e CA local confiável ativa no host.** Serviço atualizado preservando cadastro/configuração; `127.0.0.1:443` pertence ao PID do serviço. Listeners Docker/WSL em IPv6 foram preservados; bind IPv4 foi verificado disponível antes da troca.
+- Checkpoint protegido de executável/configuração/estado/hosts e ACLs: `C:\ProgramData\openems-checkpoint-b258bb1772a4426f86f5196deb969fbc`. Procedimento operacional temporário em `.venv/host-https-test/host-update.ps1`, com modo `-Rollback -Checkpoint <pasta>`. Rollback remove só a CA criada nesta tentativa antes de restaurar a configuração e o executável; erros da limpeza não impedem a tentativa de restauração. Não registrar conteúdo da configuração/tokens.
+- **Chrome do host aprovado por aba manual e captura do usuário**, URL `https://example.com/` conferida pela lista de abas. A aba criada/controlada pela automação sofreu `STATUS_ACCESS_VIOLATION`, com timeouts CDP; causa não determinada. Não continuar controlando a aba manual para evitar interferir no aceite.
+- Evidência em `validation/host-chrome-https-2026-10-22.json`. O estado instalado foi mantido para o teste solicitado; não confundir com as validações anteriores sem alteração no host.
+- Próximo recorte proposto: `PLAN-installer-blockpage.md` (F1/F2: opções no MSI, preservação de upgrade, transação de CA e pacote para a segunda máquina). Ainda precisa de aprovação específica do plano antes de alterar implementação em vários arquivos. Firefox permanece pendente; cada máquina deve gerar e proteger sua própria CA.
+
 ### Continuação — aceite em Sandbox
 
 - `deploy/test-trust-sandbox.ps1` prepara tarefa SYSTEM somente dentro de Windows Sandbox. Recusa o host de desenvolvimento antes de qualquer escrita; testa configuração sem CA implícita, instalação explícita, ACL/owner SYSTEM, identidade estável, remoção exata e limpeza repetida.

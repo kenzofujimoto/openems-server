@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-22",
+  "scope": "User-authorized local Windows service upgrade and Chrome HTTPS block page",
+  "passed": true,
+  "checks": [
+    "Protected checkpoint of previous executable, configuration, state and hosts created",
+    "Installed executable matches the locally tested native release SHA256",
+    "Machine-local CA installed explicitly as SYSTEM",
+    "Running agent service owns 127.0.0.1:443",
+    "Windows TLS validates example.com and returns the RSM block page without bypass",
+    "User-opened Chrome tab at https://example.com/ displays the RSM block page"
+  ],
+  "installed_sha256": "EE5E56A9FE71AD121F62316C9CB8303F805ABCE1161B8D1718F046EFF0B8EB34",
+  "rollback_checkpoint": "C:\\ProgramData\\openems-checkpoint-b258bb1772a4426f86f5196deb969fbc",
+  "retained_state": "New service build and its local CA remain installed for the authorized host test",
+  "limitations": [
+    "Automation-created Chrome tab crashed with STATUS_ACCESS_VIOLATION; cause unconfirmed",
+    "Manual Chrome tab succeeded; do not interpret the automation crash as a certificate error",
+    "Firefox and other browsers on additional endpoints remain unvalidated",
+    "MSI installation, upgrade and removal remain pending"
+  ]
+}
