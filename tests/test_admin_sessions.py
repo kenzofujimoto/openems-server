@@ -8,6 +8,7 @@ import hmac
 import json
 import os
 import secrets
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -40,10 +41,16 @@ def test_unknown_roles_are_rejected(admin, role):
 
 @pytest.mark.parametrize(
     "role,action,allowed",
-    [("viewer", "read", True), ("viewer", "write", False),
-     ("viewer", "manage_idp", False), ("admin", "write", True),
-     ("admin", "manage_idp", True), ("superadmin", "manage_idp", True),
-     ("other", "read", False), ("admin", "unknown", False)],
+    [
+        ("viewer", "read", True),
+        ("viewer", "write", False),
+        ("viewer", "manage_idp", False),
+        ("admin", "write", True),
+        ("admin", "manage_idp", True),
+        ("superadmin", "manage_idp", True),
+        ("other", "read", False),
+        ("admin", "unknown", False),
+    ],
 )
 def test_permissions_are_explicit_and_fail_closed(admin, role, action, allowed):
     assert admin.is_allowed(role, action) is allowed
@@ -90,16 +97,34 @@ def test_live_account_changes_invalidate_existing_sessions(admin, change):
     assert admin.verify_token(token) is None
 
 
-@pytest.mark.parametrize("payload", [[], None, {"exp": "broken"}, {"exp": True},
-                                    {"sid": [], "exp": 99999999999}])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        None,
+        {"exp": "broken"},
+        {"exp": True},
+        {"sid": [], "exp": 99999999999},
+        {"v": True, "sid": "a" * 64, "exp": 99999999999},
+        {"v": 2, "sid": "a" * 64, "exp": 99999999999},
+        {"v": 1, "sid": "z" * 64, "exp": 99999999999},
+        {"v": 1, "sid": [], "exp": 99999999999},
+        {"v": 1, "sid": "a" * 64, "exp": 99999999999},
+    ],
+)
 def test_signed_malformed_claims_fail_closed_without_crashing(admin, payload):
     raw = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    signature = hmac.new(b"session-test-secret", raw.encode(), hashlib.sha256).hexdigest()
+    signature = hmac.new(
+        b"session-test-secret", raw.encode(), hashlib.sha256
+    ).hexdigest()
     assert admin.verify_token(f"{raw}.{signature}") is None
 
 
-@pytest.mark.parametrize("token", ["not-a-token", "é.sig", ".", "x." + "x" * 100000],
-                         ids=["no-separator", "non-ascii", "empty", "oversized"])
+@pytest.mark.parametrize(
+    "token",
+    ["not-a-token", "é.sig", ".", "x." + "x" * 100000],
+    ids=["no-separator", "non-ascii", "empty", "oversized"],
+)
 def test_malformed_tokens_are_rejected(admin, token):
     assert admin.verify_token(token) is None
 
@@ -109,26 +134,45 @@ def test_login_rate_limit_is_shared_between_workers(monkeypatch):
     from app.sessions import InMemorySessionStore
 
     account_store, session_store = InMemoryAdminStore(), InMemorySessionStore()
-    workers = [AdminService(store=account_store, session_store=session_store,
-                            login_max_attempts=2, login_window_seconds=60)
-               for _ in range(2)]
+    workers = [
+        AdminService(
+            store=account_store,
+            session_store=session_store,
+            login_max_attempts=2,
+            login_window_seconds=60,
+        )
+        for _ in range(2)
+    ]
     workers[0].add_admin("alice", "correct")
     monkeypatch.setattr("app.auth.time.time", lambda: 1_000)
-    assert workers[0].authenticate_with_rate_limit("alice", "wrong", "127.0.0.1") is None
-    assert workers[1].authenticate_with_rate_limit("alice", "wrong", "127.0.0.1") is None
+    assert (
+        workers[0].authenticate_with_rate_limit("alice", "wrong", "127.0.0.1") is None
+    )
+    assert (
+        workers[1].authenticate_with_rate_limit("alice", "wrong", "127.0.0.1") is None
+    )
     with pytest.raises(LoginRateLimited) as error:
         workers[0].authenticate_with_rate_limit("alice", "correct", "127.0.0.1")
     assert 0 < error.value.retry_after <= 60
     # A separate remote address is independent, while a spoofed header is never an input.
-    assert workers[0].authenticate_with_rate_limit("alice", "correct", "127.0.0.2") == "admin"
+    assert (
+        workers[0].authenticate_with_rate_limit("alice", "correct", "127.0.0.2")
+        == "admin"
+    )
     monkeypatch.setattr("app.auth.time.time", lambda: 1_061)
-    assert workers[0].authenticate_with_rate_limit("alice", "correct", "127.0.0.1") == "admin"
+    assert (
+        workers[0].authenticate_with_rate_limit("alice", "correct", "127.0.0.1")
+        == "admin"
+    )
 
 
 def test_successful_login_resets_its_attempt_bucket(admin):
     for _ in range(8):
         assert admin.authenticate_with_rate_limit("alice", "wrong", "127.0.0.1") is None
-        assert admin.authenticate_with_rate_limit("alice", "correct-password", "127.0.0.1") == "admin"
+        assert (
+            admin.authenticate_with_rate_limit("alice", "correct-password", "127.0.0.1")
+            == "admin"
+        )
 
 
 @pytest.fixture(params=["memory", "postgres"])
@@ -155,8 +199,12 @@ def shared_sessions(request):
 def test_shared_session_revocation_and_credential_changes(shared_sessions):
     first_store, second_store = shared_sessions
     accounts = InMemoryAdminStore()
-    first = AdminService(secret="shared-test-secret", store=accounts, session_store=first_store)
-    second = AdminService(secret="shared-test-secret", store=accounts, session_store=second_store)
+    first = AdminService(
+        secret="shared-test-secret", store=accounts, session_store=first_store
+    )
+    second = AdminService(
+        secret="shared-test-secret", store=accounts, session_store=second_store
+    )
     username = f"user-{secrets.token_hex(8)}"
     first.add_admin(username, "password")
     token = first.issue_token(username, "admin")
@@ -171,8 +219,95 @@ def test_shared_session_revocation_and_credential_changes(shared_sessions):
 def test_shared_login_limit_is_atomic(shared_sessions):
     first, second = shared_sessions
     key = f"test-{secrets.token_hex(8)}"
-    assert first.consume_login_attempt(key, now=1_000, window_seconds=60, max_attempts=2) == 0
-    assert second.consume_login_attempt(key, now=1_001, window_seconds=60, max_attempts=2) == 0
-    assert first.consume_login_attempt(key, now=1_002, window_seconds=60, max_attempts=2) == 58
+    assert (
+        first.consume_login_attempt(key, now=1_000, window_seconds=60, max_attempts=2)
+        == 0
+    )
+    assert (
+        second.consume_login_attempt(key, now=1_001, window_seconds=60, max_attempts=2)
+        == 0
+    )
+    assert (
+        first.consume_login_attempt(key, now=1_002, window_seconds=60, max_attempts=2)
+        == 58
+    )
     first.reset_login(key)
-    assert second.consume_login_attempt(key, now=1_003, window_seconds=60, max_attempts=2) == 0
+    assert (
+        second.consume_login_attempt(key, now=1_003, window_seconds=60, max_attempts=2)
+        == 0
+    )
+
+
+def test_concurrent_attempts_do_not_exceed_the_login_limit(shared_sessions):
+    first, second = shared_sessions
+    key = f"concurrent-{secrets.token_hex(8)}"
+
+    def attempt(index):
+        store = first if index % 2 else second
+        return store.consume_login_attempt(
+            key, now=1_000, window_seconds=60, max_attempts=3
+        )
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(attempt, range(16)))
+    assert results.count(0) == 3
+    assert results.count(60) == 13
+
+
+def test_expired_sessions_are_collected_and_capacity_is_bounded():
+    from app.sessions import AdminSession, InMemorySessionStore
+
+    store = InMemorySessionStore(max_sessions=1)
+    store.put(AdminSession("old", "user", "admin", "hash", "csrf", 1, 10))
+    with pytest.raises(ValueError, match="capacity"):
+        store.put(AdminSession("other", "user", "admin", "hash", "csrf", 2, 20))
+    assert store.get("old") is not None
+    store.put(AdminSession("new", "user", "admin", "hash", "csrf", 10, 20))
+    assert store.get("old") is None
+    assert store.get("new") is not None
+
+
+def test_login_bucket_capacity_fails_closed_and_expired_buckets_are_collected():
+    from app.sessions import InMemorySessionStore
+
+    store = InMemorySessionStore(max_login_buckets=1)
+    assert (
+        store.consume_login_attempt("a", now=0, window_seconds=60, max_attempts=2) == 0
+    )
+    assert (
+        store.consume_login_attempt("b", now=1, window_seconds=60, max_attempts=2) == 60
+    )
+    assert (
+        store.consume_login_attempt("b", now=60, window_seconds=60, max_attempts=2) == 0
+    )
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"login_max_attempts": 0}, {"login_window_seconds": 0}]
+)
+def test_invalid_login_limits_are_rejected(kwargs):
+    with pytest.raises(ValueError):
+        AdminService(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "username,password",
+    [("", "pw"), ("x" * 257, "pw"), ("user", ""), ("user", "x" * 4097)],
+)
+def test_invalid_account_input_cannot_be_saved(admin, username, password):
+    with pytest.raises(ValueError):
+        admin.add_admin(username, password)
+
+
+@pytest.mark.parametrize(
+    "username,password",
+    [(None, "pw"), ("user", None), ("x" * 257, "pw"), ("user", "x" * 4097)],
+)
+def test_invalid_credentials_fail_closed(admin, username, password):
+    assert admin.authenticate(username, password) is None
+
+
+@pytest.mark.parametrize("ttl", [True, 86_401, 1.5])
+def test_session_lifetime_is_bounded(admin, ttl):
+    with pytest.raises(ValueError):
+        admin.issue_session("alice", "admin", ttl_seconds=ttl)
