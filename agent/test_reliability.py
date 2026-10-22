@@ -3,6 +3,7 @@
 import importlib
 import json
 import subprocess
+import threading
 import urllib.error
 
 import pytest
@@ -198,3 +199,46 @@ def test_no_profile_argument_never_releases_block(tmp_path):
     cfg = a.AgentConfig(server="https://ems", devid="pc", hosts_path=str(hosts))
     a.enforce(cfg, None, log=lambda message: None)
     assert "example.com" in hosts.read_text()
+
+
+def test_running_agent_enforces_cache_while_network_is_blocked(tmp_path, monkeypatch):
+    calls = []
+    engine = runtime(tmp_path, monkeypatch, fake_server([profile()], calls))
+    engine.cycle(now=0)
+    stop = threading.Event()
+    network_entered = threading.Event()
+    release_network = threading.Event()
+    def blocked_network(*args, **kwargs):
+        network_entered.set()
+        release_network.wait(2)
+        raise urllib.error.URLError("offline")
+    monkeypatch.setattr(a, "_api", blocked_network)
+    original_enforce = a.enforce
+    local_enforced = threading.Event()
+    def observe_enforcement(*args, **kwargs):
+        local_enforced.set()
+        stop.set()
+        return original_enforce(*args, **kwargs)
+    monkeypatch.setattr(a, "enforce", observe_enforcement)
+    thread = threading.Thread(target=a.run, args=(engine.cfg,), kwargs={"stop_event": stop, "log": lambda message: None})
+    thread.start()
+    try:
+        assert network_entered.wait(1)
+        assert local_enforced.wait(.5), "network request delayed cached local enforcement"
+    finally:
+        stop.set()
+        release_network.set()
+        thread.join(3)
+    assert not thread.is_alive()
+
+
+def test_state_file_is_protected_before_credential_bytes_are_written(tmp_path, monkeypatch):
+    protected = []
+    def secure_file(path):
+        from pathlib import Path
+        protected.append(Path(path).read_bytes())
+    monkeypatch.setattr(a, "_secure_file", secure_file, raising=False)
+    calls = []
+    engine = runtime(tmp_path, monkeypatch, fake_server([profile()], calls))
+    engine.cycle(now=0)
+    assert protected and all(contents == b"" for contents in protected)
