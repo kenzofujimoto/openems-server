@@ -24,6 +24,7 @@ def test_verify_handles_garbage() -> None:
 
 def test_token_issue_and_verify() -> None:
     svc = AdminService(secret="unit-test-secret")
+    svc.add_admin("admin", "pw")
     token = svc.issue_token("admin", "admin")
     claims = svc.verify_token(token)
     assert claims == {"username": "admin", "role": "admin"}
@@ -31,12 +32,14 @@ def test_token_issue_and_verify() -> None:
 
 def test_expired_token_rejected() -> None:
     svc = AdminService(secret="s")
+    svc.add_admin("admin", "pw")
     token = svc.issue_token("admin", "admin", ttl_seconds=-1)
     assert svc.verify_token(token) is None
 
 
 def test_tampered_token_rejected() -> None:
     svc = AdminService(secret="s")
+    svc.add_admin("admin", "pw")
     token = svc.issue_token("admin", "admin")
     raw, sig = token.split(".", 1)
     assert svc.verify_token(raw + "." + ("0" * len(sig))) is None
@@ -44,6 +47,7 @@ def test_tampered_token_rejected() -> None:
 
 def test_token_from_other_secret_rejected() -> None:
     a, b = AdminService(secret="a"), AdminService(secret="b")
+    a.add_admin("admin", "pw")
     assert b.verify_token(a.issue_token("admin", "admin")) is None
 
 
