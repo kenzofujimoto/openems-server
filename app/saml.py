@@ -5,12 +5,9 @@ exposes (SPEC-INTEROP.md §4): SP metadata, an AuthnRequest (HTTP-Redirect
 binding) and parsing of a SAMLResponse at the ACS (HTTP-POST binding). SAML is a
 public standard, so this is an original implementation of that standard.
 
-SECURITY NOTE — XML-DSig signature verification is wired through a pluggable
-hook. `SamlSp(require_signature=True)` builds a signxml-based verifier from the
-registered IdP certificate (see app/saml_signatures.py) and refuses any response
-whose enveloped signature does not verify. It is OFF by default so the core can
-be tested without crypto; enable it in production, and additionally validate the
-assertion conditions (NotOnOrAfter, Audience) and replay protection.
+Security defaults require a signed whole Response, mandatory validity and recipient
+checks, correlation with an outstanding AuthnRequest, and atomic replay protection.
+Explicit require_signature=False is reserved for parser fixtures and local labs.
 """
 
 from __future__ import annotations
@@ -18,13 +15,19 @@ from __future__ import annotations
 import base64
 import secrets
 import zlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Optional
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 from xml.etree import ElementTree as ET
 
-from .replay import InMemoryReplayCache, ReplayCache
+from .idp_store import IdpStore, InMemoryIdpStore
+from .replay import (
+    InMemoryPendingRequestStore,
+    InMemoryReplayCache,
+    PendingRequestStore,
+    ReplayCache,
+)
 
 SAMLP = "urn:oasis:names:tc:SAML:2.0:protocol"
 SAML = "urn:oasis:names:tc:SAML:2.0:assertion"
@@ -41,30 +44,39 @@ class SamlError(Exception):
 
 @dataclass(slots=True)
 class SpConfig:
-    entity_id: str                 # SP EntityID (this EMS)
-    acs_url: str                   # Assertion Consumer Service URL
+    entity_id: str  # SP EntityID (this EMS)
+    acs_url: str  # Assertion Consumer Service URL
 
 
 @dataclass(slots=True)
 class IdpConfig:
-    entity_id: str                 # IdP EntityID
-    sso_url: str                   # IdP SingleSignOnService (HTTP-Redirect)
-    certificate: Optional[str] = None  # IdP signing cert (PEM body), if known
+    entity_id: str  # IdP EntityID
+    sso_url: str  # IdP SingleSignOnService (HTTP-Redirect)
+    certificate: str | None = None  # IdP signing cert (PEM body), if known
 
 
 @dataclass(slots=True)
 class SamlAssertion:
     name_id: str
     attributes: dict[str, list[str]] = field(default_factory=dict)
-    session_index: Optional[str] = None
-    assertion_id: Optional[str] = None
-    not_before: Optional[datetime] = None
-    not_on_or_after: Optional[datetime] = None
+    session_index: str | None = None
+    assertion_id: str | None = None
+    not_before: datetime | None = None
+    not_on_or_after: datetime | None = None
     audiences: list[str] = field(default_factory=list)
+    issuer: str | None = None
+    response_issuer: str | None = None
+    destination: str | None = None
+    recipient: str | None = None
+    in_response_to: str | None = None
+    subject_in_response_to: str | None = None
+    subject_expiry: datetime | None = None
+    response_id: str | None = None
+    audience_restrictions: list[list[str]] = field(default_factory=list)
 
 
 def _utcnow_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _new_id() -> str:
@@ -72,6 +84,7 @@ def _new_id() -> str:
 
 
 # --- SP metadata --------------------------------------------------------
+
 
 def build_sp_metadata(sp: SpConfig) -> str:
     ed = ET.Element(f"{{{MD}}}EntityDescriptor", {"entityID": sp.entity_id})
@@ -83,15 +96,21 @@ def build_sp_metadata(sp: SpConfig) -> str:
     ET.SubElement(
         spd,
         f"{{{MD}}}AssertionConsumerService",
-        {"Binding": BIND_POST, "Location": sp.acs_url, "index": "0", "isDefault": "true"},
+        {
+            "Binding": BIND_POST,
+            "Location": sp.acs_url,
+            "index": "0",
+            "isDefault": "true",
+        },
     )
     return ET.tostring(ed, encoding="unicode")
 
 
 # --- AuthnRequest (SP -> IdP, HTTP-Redirect) ----------------------------
 
+
 def build_authn_request(
-    sp: SpConfig, idp: IdpConfig, *, relay_state: Optional[str] = None
+    sp: SpConfig, idp: IdpConfig, *, relay_state: str | None = None
 ) -> tuple[str, str]:
     """Return (request_id, redirect_url) for the HTTP-Redirect binding."""
     req_id = _new_id()
@@ -121,25 +140,44 @@ def build_authn_request(
 
 # --- SAMLResponse parsing (IdP -> SP ACS, HTTP-POST) --------------------
 
+
 def parse_saml_response(
     saml_response_b64: str,
     *,
-    verify_signature: Optional[Callable[[bytes], bool]] = None,
-    require_signature: bool = False,
+    verify_signature: Callable[[bytes], ET.Element | None] | None = None,
+    require_signature: bool = True,
 ) -> SamlAssertion:
+    if len(saml_response_b64) > 1_400_000:
+        raise SamlError("SAMLResponse exceeds size limit")
     try:
-        xml_bytes = base64.b64decode(saml_response_b64)
+        xml_bytes = base64.b64decode(saml_response_b64, validate=True)
     except (ValueError, TypeError) as err:
         raise SamlError("SAMLResponse is not valid base64") from err
 
+    if (
+        len(xml_bytes) > 1_000_000
+        or b"<!DOCTYPE" in xml_bytes.upper()
+        or b"<!ENTITY" in xml_bytes.upper()
+    ):
+        raise SamlError("SAMLResponse XML exceeds limits or contains a DTD")
     if require_signature:
-        if verify_signature is None or not verify_signature(xml_bytes):
+        root = verify_signature(xml_bytes) if verify_signature is not None else None
+        if not isinstance(root, ET.Element):
             raise SamlError("SAMLResponse signature could not be verified")
+    else:
+        try:
+            root = ET.fromstring(xml_bytes)
+        except ET.ParseError as err:
+            raise SamlError("SAMLResponse is not well-formed XML") from err
 
-    try:
-        root = ET.fromstring(xml_bytes)
-    except ET.ParseError as err:
-        raise SamlError("SAMLResponse is not well-formed XML") from err
+    if root.tag != f"{{{SAMLP}}}Response":
+        raise SamlError("Expected a SAML Response root")
+    assertions = list(root.iter(f"{{{SAML}}}Assertion"))
+    if len(assertions) != 1 or root.find(f"{{{SAML}}}Assertion") is not assertions[0]:
+        raise SamlError("Response must contain exactly one direct Assertion")
+    ids = [node.get("ID") for node in root.iter() if node.get("ID")]
+    if len(set(ids)) != len(ids):
+        raise SamlError("Response contains duplicate IDs")
 
     status = root.find(f"{{{SAMLP}}}Status/{{{SAMLP}}}StatusCode")
     if status is None or status.get("Value") != STATUS_SUCCESS:
@@ -156,14 +194,9 @@ def parse_saml_response(
     name_id = name_id_el.text.strip()
 
     attributes: dict[str, list[str]] = {}
-    for attr in assertion.findall(
-        f"{{{SAML}}}AttributeStatement/{{{SAML}}}Attribute"
-    ):
+    for attr in assertion.findall(f"{{{SAML}}}AttributeStatement/{{{SAML}}}Attribute"):
         name = attr.get("Name", "")
-        values = [
-            (v.text or "")
-            for v in attr.findall(f"{{{SAML}}}AttributeValue")
-        ]
+        values = [(v.text or "") for v in attr.findall(f"{{{SAML}}}AttributeValue")]
         if name:
             attributes[name] = values
 
@@ -184,6 +217,23 @@ def parse_saml_response(
             if (a.text or "").strip()
         ]
 
+    confirmation = assertion.find(f"{{{SAML}}}Subject/{{{SAML}}}SubjectConfirmation")
+    subject_data = (
+        confirmation.find(f"{{{SAML}}}SubjectConfirmationData")
+        if confirmation is not None
+        else None
+    )
+    if require_signature and (
+        confirmation is None
+        or confirmation.get("Method") != "urn:oasis:names:tc:SAML:2.0:cm:bearer"
+    ):
+        raise SamlError("Assertion requires bearer SubjectConfirmation")
+    if (
+        require_signature
+        and len(assertion.findall(f"{{{SAML}}}Subject/{{{SAML}}}SubjectConfirmation"))
+        != 1
+    ):
+        raise SamlError("Assertion requires exactly one SubjectConfirmation")
     return SamlAssertion(
         name_id=name_id,
         attributes=attributes,
@@ -192,24 +242,44 @@ def parse_saml_response(
         not_before=not_before,
         not_on_or_after=not_on_or_after,
         audiences=audiences,
+        issuer=assertion.findtext(f"{{{SAML}}}Issuer"),
+        response_issuer=root.findtext(f"{{{SAML}}}Issuer"),
+        response_id=root.get("ID"),
+        destination=root.get("Destination"),
+        in_response_to=root.get("InResponseTo"),
+        recipient=subject_data.get("Recipient") if subject_data is not None else None,
+        subject_in_response_to=subject_data.get("InResponseTo")
+        if subject_data is not None
+        else None,
+        subject_expiry=_parse_dt(subject_data.get("NotOnOrAfter"))
+        if subject_data is not None
+        else None,
+        audience_restrictions=[
+            [(a.text or "").strip() for a in restriction.findall(f"{{{SAML}}}Audience")]
+            for restriction in conditions.findall(f"{{{SAML}}}AudienceRestriction")
+        ]
+        if conditions is not None
+        else [],
     )
 
 
-def _parse_dt(value: Optional[str]) -> Optional[datetime]:
+def _parse_dt(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
         dt = datetime.fromisoformat(value)  # Python 3.11+ accepts the trailing 'Z'
-    except ValueError:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except ValueError as err:
+        raise SamlError("Malformed SAML timestamp") from err
+    if dt.tzinfo is None:
+        raise SamlError("SAML timestamps require timezone")
+    return dt
 
 
 def validate_conditions(
     assertion: SamlAssertion,
     *,
-    audience: Optional[str] = None,
-    now: Optional[datetime] = None,
+    audience: str | None = None,
+    now: datetime | None = None,
     clock_skew_seconds: int = 60,
     require_audience: bool = False,
 ) -> None:
@@ -218,17 +288,23 @@ def validate_conditions(
     Raises SamlError on an expired/not-yet-valid assertion or an audience
     mismatch. `clock_skew_seconds` tolerates small IdP/SP clock drift.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     skew = timedelta(seconds=clock_skew_seconds)
 
     if assertion.not_before is not None and now + skew < assertion.not_before:
         raise SamlError("assertion is not yet valid (NotBefore)")
-    if assertion.not_on_or_after is not None and now - skew >= assertion.not_on_or_after:
+    if (
+        assertion.not_on_or_after is not None
+        and now - skew >= assertion.not_on_or_after
+    ):
         raise SamlError("assertion has expired (NotOnOrAfter)")
 
     if audience is not None:
         if assertion.audiences:
-            if audience not in assertion.audiences:
+            if audience not in assertion.audiences or any(
+                audience not in restriction
+                for restriction in assertion.audience_restrictions
+            ):
                 raise SamlError("assertion audience does not include this SP")
         elif require_audience:
             raise SamlError("assertion has no AudienceRestriction")
@@ -236,7 +312,14 @@ def validate_conditions(
 
 # --- IdP metadata import ------------------------------------------------
 
+
 def parse_idp_metadata(xml_text: str) -> IdpConfig:
+    if (
+        len(xml_text) > 1_000_000
+        or "<!DOCTYPE" in xml_text.upper()
+        or "<!ENTITY" in xml_text.upper()
+    ):
+        raise SamlError("IdP metadata exceeds limits or contains a DTD")
     try:
         ed = ET.fromstring(xml_text)
     except ET.ParseError as err:
@@ -253,12 +336,12 @@ def parse_idp_metadata(xml_text: str) -> IdpConfig:
     if sso is None or not sso.get("Location"):
         raise SamlError("IdP metadata has no SingleSignOnService")
 
-    cert_el = idp_desc.find(
-        f"{{{MD}}}KeyDescriptor//{{{DS}}}X509Certificate"
-    )
+    cert_el = idp_desc.find(f"{{{MD}}}KeyDescriptor//{{{DS}}}X509Certificate")
     certificate = (cert_el.text or "").strip() if cert_el is not None else None
 
-    return IdpConfig(entity_id=entity_id, sso_url=sso.get("Location"), certificate=certificate)
+    return IdpConfig(
+        entity_id=entity_id, sso_url=sso.get("Location"), certificate=certificate
+    )
 
 
 def _raw_deflate(data: bytes) -> bytes:
@@ -282,11 +365,14 @@ class SamlSp:
         self,
         base_url: str,
         *,
-        require_signature: bool = False,
+        require_signature: bool = True,
         validate_conditions: bool = True,
-        require_audience: bool = False,
+        require_audience: bool = True,
         clock_skew_seconds: int = 60,
-        replay_cache: "ReplayCache | None" = None,
+        replay_cache: ReplayCache | None = None,
+        idp_store: IdpStore | None = None,
+        pending_store: PendingRequestStore | None = None,
+        request_ttl_seconds: int = 300,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._require_signature = require_signature
@@ -294,7 +380,11 @@ class SamlSp:
         self._require_audience = require_audience
         self._clock_skew_seconds = clock_skew_seconds
         self._replay_cache: ReplayCache = replay_cache or InMemoryReplayCache()
-        self._idps: dict[str, IdpConfig] = {}
+        if clock_skew_seconds < 0 or request_ttl_seconds <= 0:
+            raise ValueError("SAML skew and request TTL must be non-negative/positive")
+        self._idp_store = idp_store or InMemoryIdpStore()
+        self._pending_store = pending_store or InMemoryPendingRequestStore()
+        self._request_ttl_seconds = request_ttl_seconds
 
     def sp_config(self, prefix: str) -> SpConfig:
         return SpConfig(
@@ -303,15 +393,19 @@ class SamlSp:
         )
 
     def register_idp(self, prefix: str, idp: IdpConfig) -> None:
-        self._idps[prefix] = idp
+        if self._require_signature and not idp.certificate:
+            raise SamlError("IdP signing certificate is required")
+        self._idp_store.put(prefix, idp)
 
     def register_idp_from_metadata(self, prefix: str, metadata_xml: str) -> IdpConfig:
         idp = parse_idp_metadata(metadata_xml)
-        self._idps[prefix] = idp
+        if self._require_signature and not idp.certificate:
+            raise SamlError("IdP signing certificate is required")
+        self._idp_store.put(prefix, idp)
         return idp
 
     def _idp(self, prefix: str) -> IdpConfig:
-        idp = self._idps.get(prefix)
+        idp = self._idp_store.get(prefix)
         if idp is None:
             raise UnknownIdpError(prefix)
         return idp
@@ -319,17 +413,28 @@ class SamlSp:
     def metadata(self, prefix: str) -> str:
         return build_sp_metadata(self.sp_config(prefix))
 
-    def login_redirect(self, prefix: str, *, relay_state: Optional[str] = None) -> str:
-        _, url = build_authn_request(
+    def login_redirect(self, prefix: str, *, relay_state: str | None = None) -> str:
+        request_id, url = build_authn_request(
             self.sp_config(prefix), self._idp(prefix), relay_state=relay_state
+        )
+        self._pending_store.put(
+            request_id,
+            prefix,
+            relay_state,
+            datetime.now(UTC) + timedelta(seconds=self._request_ttl_seconds),
         )
         return url
 
     def consume(
-        self, prefix: str, saml_response_b64: str, *, now: Optional[datetime] = None
+        self,
+        prefix: str,
+        saml_response_b64: str,
+        *,
+        relay_state: str | None = None,
+        now: datetime | None = None,
     ) -> SamlAssertion:
         idp = self._idp(prefix)  # ensure the tenant exists before trusting a response
-        verifier: Optional[Callable[[bytes], bool]] = None
+        verifier: Callable[[bytes], ET.Element | None] | None = None
         if self._require_signature and idp.certificate:
             from .saml_signatures import certificate_to_pem, make_signxml_verifier
 
@@ -341,24 +446,58 @@ class SamlSp:
             require_signature=self._require_signature,
         )
 
-        if self._validate_conditions:
+        current = now or datetime.now(UTC)
+        if self._require_signature:
+            self._validate_binding(prefix, idp, assertion, current)
+
+        if self._validate_conditions or self._require_signature:
             validate_conditions(
                 assertion,
                 audience=self.sp_config(prefix).entity_id,
                 now=now,
                 clock_skew_seconds=self._clock_skew_seconds,
-                require_audience=self._require_audience,
+                require_audience=self._require_audience or self._require_signature,
             )
 
-        # replay protection: refuse a second use of the same assertion ID
+        if self._require_signature and not self._pending_store.consume(
+            assertion.in_response_to or "", prefix, relay_state
+        ):
+            raise SamlError(
+                "SAML response has no matching outstanding request or RelayState"
+            )
+
         if assertion.assertion_id:
-            expires_at = assertion.not_on_or_after or (
-                (now or datetime.now(timezone.utc))
-                + timedelta(seconds=self._clock_skew_seconds)
+            # Every instant accepted by the clock-skew rule must remain protected.
+            expires_at = (assertion.not_on_or_after or current) + timedelta(
+                seconds=self._clock_skew_seconds
             )
-            if not self._replay_cache.check_and_remember(
-                assertion.assertion_id, expires_at
-            ):
+            key = f"{prefix}:{idp.entity_id}:{assertion.assertion_id}"
+            if not self._replay_cache.check_and_remember(key, expires_at):
                 raise SamlError("assertion replay detected")
-
         return assertion
+
+    def _validate_binding(
+        self, prefix: str, idp: IdpConfig, assertion: SamlAssertion, now: datetime
+    ) -> None:
+        if not assertion.assertion_id or not assertion.response_id:
+            raise SamlError("Response and Assertion require IDs")
+        if (
+            assertion.issuer != idp.entity_id
+            or assertion.response_issuer != idp.entity_id
+        ):
+            raise SamlError("SAML issuer does not match registered IdP")
+        acs = self.sp_config(prefix).acs_url
+        if assertion.destination != acs or assertion.recipient != acs:
+            raise SamlError("SAML destination/recipient does not match ACS")
+        if (
+            not assertion.in_response_to
+            or assertion.subject_in_response_to != assertion.in_response_to
+        ):
+            raise SamlError("SAML InResponseTo is missing or inconsistent")
+        if assertion.not_on_or_after is None or assertion.subject_expiry is None:
+            raise SamlError("SAML assertion and SubjectConfirmation require expiry")
+        if (
+            now - timedelta(seconds=self._clock_skew_seconds)
+            >= assertion.subject_expiry
+        ):
+            raise SamlError("SAML SubjectConfirmation has expired")
