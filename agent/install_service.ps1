@@ -91,7 +91,7 @@ try {
     }
     Set-Acl -LiteralPath $cfgDir -AclObject $security
     New-Item -ItemType Directory -Path $installedDir | Out-Null
-    foreach ($name in @('service.py', 'openems_agent.py', 'blockpage.py', 'requirements.txt', 'uninstall_service.ps1')) {
+    foreach ($name in @('service.py', 'openems_agent.py', 'policy.py', 'blockpage.py', 'requirements.txt', 'uninstall_service.ps1')) {
         $sourcePath = Join-Path $sourceDir $name
         if (((Get-Item -LiteralPath $sourcePath).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
             throw "Agent source files must not be reparse points"
