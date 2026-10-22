@@ -476,13 +476,21 @@ def test_parser_rejects_missing_subject_and_non_direct_assertion():
 def test_signature_reference_must_cover_document_root(secure_exchange):
     """Moving a signature to an unsigned wrapper must not promote its inner response."""
     from lxml import etree
+
     from app.saml import DS, SAMLP
+
     sp, xml, encode = secure_exchange
     signed = etree.fromstring(base64.b64decode(encode(xml)))
     signature = signed.find(f"{{{DS}}}Signature")
     signed.remove(signature)
-    wrapper = etree.Element(f"{{{SAMLP}}}Response", nsmap=signed.nsmap, ID="_unsigned_wrapper")
+    wrapper = etree.Element(
+        f"{{{SAMLP}}}Response", nsmap=signed.nsmap, ID="_unsigned_wrapper"
+    )
     wrapper.append(signed)
     wrapper.append(signature)
     with pytest.raises(SamlError, match="signature"):
-        sp.consume("acme", base64.b64encode(etree.tostring(wrapper)).decode(), relay_state="state")
+        sp.consume(
+            "acme",
+            base64.b64encode(etree.tostring(wrapper)).decode(),
+            relay_state="state",
+        )

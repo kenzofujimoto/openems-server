@@ -23,18 +23,30 @@ def make_signxml_verifier(cert_pem: str) -> Callable[[bytes], ET.Element | None]
 
     def verify(xml_bytes: bytes) -> ET.Element | None:
         try:
-            result = XMLVerifier().verify(
+            document = etree.fromstring(
                 xml_bytes,
+                parser=etree.XMLParser(resolve_entities=False, no_network=True),
+            )
+            if document.tag != SAMLP_RESPONSE or not document.get("ID"):
+                return None
+            result = XMLVerifier().verify(
+                document,
                 x509_cert=cert_pem,
                 expect_config=SignatureConfiguration(
                     location="./", expect_references=1
                 ),
             )
             signed = result.signed_xml
-            if signed.tag != SAMLP_RESPONSE:
+            if signed.tag != SAMLP_RESPONSE or signed.get("ID") != document.get("ID"):
                 return None
             return ET.fromstring(etree.tostring(signed))
-        except (SignXMLException, etree.LxmlError, ET.ParseError, ValueError, TypeError):
+        except (
+            SignXMLException,
+            etree.LxmlError,
+            ET.ParseError,
+            ValueError,
+            TypeError,
+        ):
             # Invalid signature, malformed XML, missing crypto support: reject.
             return None
 
