@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 import importlib
 import os
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
 import pytest
@@ -35,6 +34,7 @@ def runner():
 
 def test_upgrades_legacy_schema_and_preserves_endpoint_and_profile(database):
     import psycopg
+
     from app.stores import PostgresProfileStore, PostgresStore
     with psycopg.connect(database) as conn:
         conn.execute("""CREATE TABLE endpoints (
@@ -110,15 +110,18 @@ def test_missing_directory_rejected_before_connecting(tmp_path):
         runner()("invalid dsn", migration_dir=tmp_path / "missing")
 
 
-def test_symlink_migration_cannot_escape_tree(database, tmp_path):
+def test_symlink_migration_cannot_escape_tree(database, tmp_path, monkeypatch):
     external = tmp_path / "external.sql"
     external.write_text("SELECT 1", encoding="utf-8")
     migration_dir = tmp_path / "migrations"
     migration_dir.mkdir()
-    try:
-        (migration_dir / "001_escape.sql").symlink_to(external)
-    except OSError:
-        pytest.skip("Creating symlinks requires OS privileges")
+    migration = migration_dir / "001_escape.sql"
+    migration.write_text("SELECT 1", encoding="utf-8")
+    # Windows runners may not have symlink privileges; exercise path rejection
+    # independently of the OS capability to create a symlink.
+    path_type = type(migration)
+    original = path_type.is_symlink
+    monkeypatch.setattr(path_type, "is_symlink", lambda path: path == migration or original(path))
     with pytest.raises(ValueError, match="outside|symlink"):
         runner()(database, migration_dir=migration_dir)
 
