@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-br"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acesso bloqueado</title>
+<style>
+  :root { --blue:#009cde; --blue-dark:#006e9d; --green:#3f9c35; --gray:#888b8d;
+    --ink:#1f2428; --text:#515356; --line:#e7e9ec; --canvas:#f6f7f9; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; background:var(--canvas);
+    color:var(--text); font:16px/1.6 "Prelo","Noto Sans","Segoe UI","Helvetica Neue",Arial,sans-serif; }
+  .brandbar { display:flex; height:6px; }
+  .brandbar span:nth-child(1) { flex:1; background:var(--gray); }
+  .brandbar span:nth-child(2) { flex:2; background:var(--green); }
+  .brandbar span:nth-child(3) { flex:7; background:var(--blue); }
+  header { padding:24px 32px; }
+  header img { height:40px; width:auto; display:block; }
+  main { flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { width:100%; max-width:600px; background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:44px 40px; text-align:center; }
+  .badge { width:64px; height:64px; margin:0 auto 20px; border-radius:16px; background:#e5f5fc;
+    display:flex; align-items:center; justify-content:center; }
+  h1 { margin:0; color:var(--ink); font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+  .host { display:inline-block; margin:16px 0 20px; padding:8px 14px; border-radius:10px; background:var(--canvas);
+    border:1px solid var(--line); color:var(--blue-dark); font:15px/1.4 Consolas,"Courier New",monospace; word-break:break-all; }
+  p { margin:0 auto; max-width:440px; }
+  footer { padding:24px; text-align:center; font-size:13px; color:var(--gray); }
+  footer strong { color:var(--blue-dark); font-weight:500; }
+</style></head>
+<body>
+  <div class="brandbar" aria-hidden="true"><span></span><span></span><span></span></div>
+  <header><img src="data:image/png;base64,{logo}" alt="RSM"></header>
+  <main>
+    <div class="card">
+      <div class="badge" aria-hidden="true">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <rect x="4" y="10.5" width="16" height="10" rx="2.5" stroke="#006e9d" stroke-width="1.8"/>
+          <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="#006e9d" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="12" cy="15.5" r="1.4" fill="#009cde"/>
+        </svg>
+      </div>
+      <h1>Acesso bloqueado</h1>
+      <div class="host">{host}</div>
+      <p>Este site foi bloqueado pela pol&iacute;tica de seguran&ccedil;a da sua organiza&ccedil;&atilde;o.
+      Se voc&ecirc; acredita que isto &eacute; um engano, fale com o time de TI.</p>
+    </div>
+  </main>
+  <footer>RSM Brasil &middot; <strong>O poder de ser compreendido</strong></footer>
+</body></html>
