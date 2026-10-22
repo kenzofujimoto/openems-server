@@ -1,0 +1,20 @@
+{
+  "environment": "Windows Sandbox",
+  "date": "2026-10-22",
+  "scope": "Native agent machine CA trust lifecycle under SYSTEM",
+  "passed": true,
+  "checks": [
+    "configure does not create authority",
+    "SYSTEM installs one root; authority owner and protected ACL are SYSTEM-only",
+    "repeated installation preserves root identity",
+    "removal restores original roots and removes authority",
+    "repeated removal succeeds"
+  ],
+  "error": null,
+  "not_validated": [
+    "HTTPS block page acceptance in Chrome, Edge and Firefox",
+    "Live policy revocation in browsers",
+    "Service recovery and reboot",
+    "MSI installation, upgrade and removal"
+  ]
+}
