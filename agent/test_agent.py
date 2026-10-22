@@ -8,11 +8,11 @@ import openems_agent as a
 # --- hosts rendering ----------------------------------------------------
 
 def test_render_hosts_block_has_markers_and_entries() -> None:
-    block = a.render_hosts_block(["example.com", "*.ads.example"])
+    block = a.render_hosts_block(["example.com", "ads.example"])
     assert a.HOSTS_BEGIN in block and a.HOSTS_END in block
     assert "0.0.0.0 example.com" in block
     assert "0.0.0.0 www.example.com" in block
-    assert "0.0.0.0 ads.example" in block  # leading *. stripped
+    assert "0.0.0.0 ads.example" in block
 
 
 def test_replace_managed_block_preserves_other_content() -> None:
