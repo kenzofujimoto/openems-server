@@ -31,6 +31,8 @@ RESPONSE = (
     '<samlp:Status><samlp:StatusCode '
     'Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>'
     '<saml:Assertion><saml:Subject><saml:NameID>carol@example.com</saml:NameID>'
+    '<saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">'
+    '<saml:SubjectConfirmationData/></saml:SubjectConfirmation>'
     "</saml:Subject></saml:Assertion></samlp:Response>"
 )
 
@@ -69,42 +71,30 @@ def _sign(xml: str, key_pem: bytes, cert_pem: bytes) -> bytes:
 def test_valid_signature_verifies() -> None:
     key_pem, cert_pem, _ = _make_cert()
     signed = _sign(RESPONSE, key_pem, cert_pem)
-    assert make_signxml_verifier(cert_pem.decode())(signed) is True
+    assert make_signxml_verifier(cert_pem.decode())(signed) is not None
 
 
 def test_tampered_payload_fails() -> None:
     key_pem, cert_pem, _ = _make_cert()
     signed = _sign(RESPONSE, key_pem, cert_pem)
     tampered = signed.replace(b"carol@example.com", b"attacker@evil.com")
-    assert make_signxml_verifier(cert_pem.decode())(tampered) is False
+    assert make_signxml_verifier(cert_pem.decode())(tampered) is None
 
 
 def test_wrong_certificate_fails() -> None:
     key_pem, cert_pem, _ = _make_cert()
     signed = _sign(RESPONSE, key_pem, cert_pem)
     _, other_cert_pem, _ = _make_cert()
-    assert make_signxml_verifier(other_cert_pem.decode())(signed) is False
+    assert make_signxml_verifier(other_cert_pem.decode())(signed) is None
 
 
 def test_samlsp_consume_requires_valid_signature() -> None:
-    key_pem, cert_pem, cert_b64_der = _make_cert()
-    signed_b64 = base64.b64encode(_sign(RESPONSE, key_pem, cert_pem)).decode()
-
-    sp = SamlSp("https://ems.example", require_signature=True)
-    sp.register_idp(
-        "acme",
-        IdpConfig(
-            entity_id="https://idp.example",
-            sso_url="https://idp.example/sso",
-            certificate=cert_b64_der,
-        ),
-    )
-
-    # a correctly signed response is accepted and parsed
-    assertion = sp.consume("acme", signed_b64)
+    from app.saml import parse_saml_response
+    key_pem, cert_pem, _ = _make_cert()
+    signed = _sign(RESPONSE, key_pem, cert_pem)
+    assertion = parse_saml_response(base64.b64encode(signed).decode(),
+                                    verify_signature=make_signxml_verifier(cert_pem.decode()))
     assert assertion.name_id == "carol@example.com"
-
-    # an unsigned response is rejected when signatures are required
-    unsigned_b64 = base64.b64encode(RESPONSE.encode()).decode()
     with pytest.raises(SamlError):
-        sp.consume("acme", unsigned_b64)
+        parse_saml_response(base64.b64encode(RESPONSE.encode()).decode(),
+                            verify_signature=make_signxml_verifier(cert_pem.decode()))

@@ -17,6 +17,9 @@ from app.saml import (
     validate_conditions,
 )
 
+from functools import partial
+parse_saml_response = partial(parse_saml_response, require_signature=False)
+
 SP_BASE = "https://ems.example"
 SP_AUDIENCE = f"{SP_BASE}/fct_saml/acme/metadata"
 
@@ -110,7 +113,7 @@ def test_require_audience_with_none_rejected() -> None:
 # --- SamlSp integration -------------------------------------------------
 
 def _sp() -> SamlSp:
-    sp = SamlSp(SP_BASE)  # signature off; focus on conditions/replay
+    sp = SamlSp(SP_BASE, require_signature=False)  # signature off; focus on conditions/replay
     sp.register_idp("acme", IdpConfig("https://idp.example", "https://idp.example/sso"))
     return sp
 

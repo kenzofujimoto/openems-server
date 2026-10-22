@@ -18,6 +18,9 @@ from app.saml import (
     parse_saml_response,
 )
 
+from functools import partial
+parse_saml_response = partial(parse_saml_response, require_signature=False)
+
 SP = SpConfig(entity_id="https://ems.example/sp", acs_url="https://ems.example/acs")
 IDP = IdpConfig(entity_id="https://idp.example", sso_url="https://idp.example/sso")
 
@@ -109,14 +112,14 @@ def test_parse_idp_metadata() -> None:
 
 
 def test_sp_registers_idp_from_metadata_and_builds_login() -> None:
-    sp = SamlSp("https://ems.example")
+    sp = SamlSp("https://ems.example", require_signature=False)
     sp.register_idp_from_metadata("acme", IDP_METADATA)
     url = sp.login_redirect("acme")
     assert url.startswith("https://idp.example/sso?")
 
 
 def test_sp_consume_unknown_prefix_raises() -> None:
-    sp = SamlSp("https://ems.example")
+    sp = SamlSp("https://ems.example", require_signature=False)
     with pytest.raises(SamlError):
         sp.consume("ghost", _b64(_response_xml(
             "urn:oasis:names:tc:SAML:2.0:status:Success"
