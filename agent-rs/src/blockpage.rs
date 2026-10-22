@@ -72,6 +72,7 @@ fn host_header(request: &str) -> String {
 
 fn serve(mut stream: TcpStream) {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
     let mut buffer = [0u8; 8192];
     let length = stream.read(&mut buffer).unwrap_or(0);
     let request = String::from_utf8_lossy(&buffer[..length]);
@@ -88,17 +89,26 @@ pub fn start(port: u16, stop: Arc<StopSignal>) -> Result<JoinHandle<()>> {
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     listener.set_nonblocking(true)?;
     Ok(std::thread::Builder::new().name("openems-blockpage".into()).spawn(move || {
-        while !stop.is_stopped() {
-            match listener.accept() {
-                Ok((stream, _)) => {
-                    let _ = stream.set_nonblocking(false);
-                    std::thread::spawn(move || serve(stream));
-                }
-                Err(_) => {
-                    stop.wait(Duration::from_millis(200));
-                }
+        std::thread::scope(|scope| {
+            for _ in 0..4 {
+                let listener = &listener;
+                let stop = &stop;
+                scope.spawn(move || {
+                    while !stop.is_stopped() {
+                        match listener.accept() {
+                            Ok((stream, _)) => {
+                                if stream.set_nonblocking(false).is_ok() {
+                                    serve(stream);
+                                }
+                            }
+                            Err(_) => {
+                                stop.wait(Duration::from_millis(200));
+                            }
+                        }
+                    }
+                });
             }
-        }
+        });
     })?)
 }
 

@@ -48,8 +48,11 @@
                   ExeCommand="configure-recovery" />
     <CustomAction Id="CleanupHosts" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="ignore"
                   ExeCommand="cleanup-hosts" />
+    <CustomAction Id="RemoveBlockPageTrust" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="remove-block-page-trust" />
 
     <InstallExecuteSequence>
+      <Custom Action="RemoveBlockPageTrust" After="StopServices" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="ConfigureRecovery" After="InstallServices" Condition="NOT REMOVE" />
       <Custom Action="ConfigureAgent" Before="StartServices" Condition="NOT Installed AND NOT REMOVE" />
       <Custom Action="CleanupHosts" After="StopServices" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />

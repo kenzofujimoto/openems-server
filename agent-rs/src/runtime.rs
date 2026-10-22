@@ -79,6 +79,7 @@ pub struct Runtime {
     inner: Mutex<Inner>,
     log: Logger,
     stop: Arc<StopSignal>,
+    pub blocked_domains: Arc<crate::https_blockpage::BlockedDomains>,
 }
 
 pub fn enforce(cfg: &AgentConfig, assignment: &Assignment, log: &Logger) -> Result<Enforcement> {
@@ -125,7 +126,13 @@ impl Runtime {
             inner.profile = profile;
         }
         let api = ApiClient::new(&cfg.server);
-        Ok(Runtime { cfg, api, inner: Mutex::new(inner), log, stop })
+        let blocked_domains = Arc::new(crate::https_blockpage::BlockedDomains::default());
+        if !cfg.dry_run
+            && let Some(profile) = &inner.profile
+        {
+            blocked_domains.replace(&profile.blocked_lists()?.0)?;
+        }
+        Ok(Runtime { cfg, api, inner: Mutex::new(inner), log, stop, blocked_domains })
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -191,6 +198,13 @@ impl Runtime {
         let mut inner = self.lock();
         match attempt {
             Ok(assignment) => {
+                // Revocation follows the newest validated policy immediately, not the next enforcement tick.
+                if !self.cfg.dry_run {
+                    let sites = assignment.blocked_lists().map(|lists| lists.0).unwrap_or_default();
+                    if self.blocked_domains.replace(&sites).is_err() {
+                        return false;
+                    }
+                }
                 inner.profile = Some(assignment);
                 inner.failures = 0;
                 inner.next_sync = now + self.cfg.interval as f64;

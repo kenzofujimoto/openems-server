@@ -159,8 +159,9 @@ pub fn uninstall(config: Option<PathBuf>) -> Result<()> {
             std::thread::sleep(Duration::from_millis(250));
         }
     }
+    clear_hosts(&hosts_path)?;
+    crate::trust::remove(Some(&config_path))?;
     service.delete().map_err(service_error)?;
     drop(service);
-    clear_hosts(&hosts_path)?;
     Ok(())
 }

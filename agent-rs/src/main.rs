@@ -31,6 +31,16 @@ enum Command {
     },
     /// Write a protected agent.json for the service.
     Configure(ConfigureArgs),
+    /// Install this machine's HTTPS block-page root explicitly (Windows SYSTEM).
+    InstallBlockPageTrust {
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+    /// Remove only this installation's HTTPS root and protected authority file.
+    RemoveBlockPageTrust {
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
     /// Register the agent as an auto-start Windows service with failure recovery.
     #[cfg(windows)]
     InstallService {
@@ -82,6 +92,12 @@ struct ConfigureArgs {
     #[arg(long, default_value_t = 80)]
     block_page_port: u16,
     #[arg(long)]
+    block_page_https: bool,
+    #[arg(long, default_value_t = 443)]
+    block_page_https_port: u16,
+    #[arg(long)]
+    authority_path: Option<PathBuf>,
+    #[arg(long)]
     allow_insecure_http: bool,
     /// One-time enrollment invitation; OPENEMS_INVITATION is used when omitted.
     #[arg(long)]
@@ -112,6 +128,12 @@ struct RunArgs {
     #[arg(long, default_value_t = 80)]
     block_page_port: u16,
     #[arg(long)]
+    block_page_https: bool,
+    #[arg(long, default_value_t = 443)]
+    block_page_https_port: u16,
+    #[arg(long)]
+    authority_path: Option<PathBuf>,
+    #[arg(long)]
     allow_insecure_http: bool,
 }
 
@@ -134,6 +156,10 @@ fn resolve(args: RunArgs) -> Result<AgentConfig> {
     config.dry_run = args.dry_run;
     config.block_page = args.block_page;
     config.block_page_port = args.block_page_port;
+    config.block_page_https = args.block_page_https;
+    config.block_page_https_port = args.block_page_https_port;
+    config.authority_path =
+        args.authority_path.unwrap_or_else(|| config.state_path.with_file_name("https").join("authority.json"));
     config.allow_insecure_http = args.allow_insecure_http;
     config.invitation = non_empty_env("OPENEMS_INVITATION");
     config.device_token = non_empty_env("OPENEMS_DEVICE_TOKEN");
@@ -151,6 +177,9 @@ fn configure(args: ConfigureArgs) -> Result<PathBuf> {
     config.interval = args.interval;
     config.block_page = args.block_page;
     config.block_page_port = args.block_page_port;
+    config.block_page_https = args.block_page_https;
+    config.block_page_https_port = args.block_page_https_port;
+    config.authority_path = args.authority_path.unwrap_or_else(|| path.with_file_name("https").join("authority.json"));
     config.allow_insecure_http = args.allow_insecure_http;
     // msiexec passes an empty property when no invitation was given.
     config.invitation =
@@ -163,7 +192,11 @@ fn configure(args: ConfigureArgs) -> Result<PathBuf> {
 fn execute(command: Command) -> Result<ExitCode> {
     match command {
         Command::RunOnce(args) => {
-            let enforced = app::run_once(resolve(args)?, stderr_logger())?;
+            let config = resolve(args)?;
+            if config.block_page_https {
+                return Err(AgentError::Config("HTTPS block page requires continuous run".into()));
+            }
+            let enforced = app::run_once(config, stderr_logger())?;
             Ok(if enforced { ExitCode::SUCCESS } else { ExitCode::FAILURE })
         }
         Command::Run(args) => {
@@ -184,6 +217,16 @@ fn execute(command: Command) -> Result<ExitCode> {
         }
         Command::Configure(args) => {
             println!("configuration written to {}", configure(args)?.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::InstallBlockPageTrust { config } => {
+            openems_agent::trust::install(config.as_deref())?;
+            println!("local HTTPS root installed");
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::RemoveBlockPageTrust { config } => {
+            openems_agent::trust::remove(config.as_deref())?;
+            println!("local HTTPS root removed");
             Ok(ExitCode::SUCCESS)
         }
         #[cfg(windows)]

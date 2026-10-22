@@ -17,6 +17,9 @@ pub struct AgentConfig {
     pub dry_run: bool,
     pub block_page: bool,
     pub block_page_port: u16,
+    pub block_page_https: bool,
+    pub block_page_https_port: u16,
+    pub authority_path: PathBuf,
     pub invitation: Option<String>,
     pub device_token: Option<String>,
     pub state_path: PathBuf,
@@ -48,6 +51,9 @@ impl AgentConfig {
             dry_run: false,
             block_page: false,
             block_page_port: 80,
+            block_page_https: false,
+            block_page_https_port: 443,
+            authority_path: data_dir().join("https").join("authority.json"),
             invitation: None,
             device_token: None,
             state_path: data_dir().join("state.json"),
@@ -64,9 +70,10 @@ impl AgentConfig {
         let Value::Object(data) = value else {
             return Err(AgentError::Config("agent configuration must be an object".into()));
         };
-        const TEXT: [&str; 7] = ["server", "devid", "vdom", "hosts_path", "state_path", "invitation", "device_token"];
-        const FLAGS: [&str; 3] = ["block_page", "dry_run", "allow_insecure_http"];
-        const NUMBERS: [&str; 2] = ["interval", "block_page_port"];
+        const TEXT: [&str; 8] =
+            ["server", "devid", "vdom", "hosts_path", "state_path", "invitation", "device_token", "authority_path"];
+        const FLAGS: [&str; 4] = ["block_page", "dry_run", "allow_insecure_http", "block_page_https"];
+        const NUMBERS: [&str; 3] = ["interval", "block_page_port", "block_page_https_port"];
         if data.keys().any(|key| {
             !TEXT.contains(&key.as_str()) && !FLAGS.contains(&key.as_str()) && !NUMBERS.contains(&key.as_str())
         }) {
@@ -105,6 +112,13 @@ impl AgentConfig {
         config.device_token = text("device_token")?;
         config.interval = number("interval", 15)?;
         config.block_page = flag("block_page")?;
+        config.block_page_https = flag("block_page_https")?;
+        config.authority_path =
+            text("authority_path")?.map_or_else(|| path.with_file_name("https").join("authority.json"), PathBuf::from);
+        config.block_page_https_port = u16::try_from(number("block_page_https_port", 443)?)
+            .ok()
+            .filter(|port| *port > 0)
+            .ok_or_else(|| AgentError::Config("HTTPS block page port is out of range".into()))?;
         config.dry_run = flag("dry_run")?;
         config.allow_insecure_http = flag("allow_insecure_http")?;
         config.block_page_port = u16::try_from(port)
@@ -126,6 +140,16 @@ impl AgentConfig {
         if self.interval == 0 {
             return Err(AgentError::Config("interval must be positive".into()));
         }
+        if self.block_page_https
+            && (!self.block_page
+                || self.dry_run
+                || self.block_page_https_port == 0
+                || self.block_page_https_port == self.block_page_port)
+        {
+            return Err(AgentError::Config(
+                "HTTPS block page requires block_page, distinct ports and enforcement mode".into(),
+            ));
+        }
         if self.devid.trim().is_empty() {
             return Err(AgentError::Config("devid is required".into()));
         }
@@ -144,6 +168,9 @@ impl AgentConfig {
             "interval": self.interval,
             "block_page": self.block_page,
             "block_page_port": self.block_page_port,
+            "block_page_https": self.block_page_https,
+            "block_page_https_port": self.block_page_https_port,
+            "authority_path": self.authority_path.to_string_lossy(),
             "allow_insecure_http": self.allow_insecure_http,
         });
         if let Some(invitation) = &self.invitation {

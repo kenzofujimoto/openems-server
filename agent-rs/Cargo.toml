@@ -9,14 +9,18 @@ fastrand = "2.5.0"
 gethostname = "1.1.0"
 hex = "0.4.3"
 idna = "1.1.0"
+rcgen = { version = "0.14", features = ["x509-parser"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.11.1"
+time = "0.3"
+x509-parser = "0.18"
 ureq = { version = "3.5.0", default-features = false, features = ["rustls", "json"] }
 
 [target."cfg(windows)".dependencies]
 windows-service = "0.8.1"
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Memory"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Memory"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"
