@@ -52,3 +52,9 @@ def test_fixture_builder_matches_harness_fixtures():
     plan = json.loads(result.stdout)
     assert plan['fixtures'] == json.loads(run('-Plan').stdout)['fixtures']
     assert plan['defines'] == ['FaultInjection=1']
+
+def test_msi_wait_keeps_process_handle():
+    # Start-Process -PassThru loses the handle in Windows PowerShell 5.1: exits go unnoticed.
+    text = SCRIPT.read_text(encoding='utf-8')
+    assert 'Start-Process -FilePath msiexec' not in text
+    assert 'UseShellExecute = $false' in text
