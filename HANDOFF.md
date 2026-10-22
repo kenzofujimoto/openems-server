@@ -13,6 +13,14 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 - Evidência em `validation/host-chrome-https-2026-10-22.json`. O estado instalado foi mantido para o teste solicitado; não confundir com as validações anteriores sem alteração no host.
 - Próximo recorte proposto: `PLAN-installer-blockpage.md` (F1/F2: opções no MSI, preservação de upgrade, transação de CA e pacote para a segunda máquina). Ainda precisa de aprovação específica do plano antes de alterar implementação em vários arquivos. Firefox permanece pendente; cada máquina deve gerar e proteger sua própria CA.
 
+### Continuação — transação MSI (`PLAN-installer-blockpage.md`, passos 1–6)
+
+- MSI com `BLOCKPAGE=1` / `BLOCKPAGEHTTPS=1` (opt-in; HTTPS implica HTTP; outro valor aborta). Upgrade sem `SERVER` preserva cadastro/configuração (`MajorUpgrade` em `afterInstallInitialize`).
+- Ações `installer-prepare` / `installer-rollback` / `installer-commit` (`agent-rs/src/installer.rs`) executadas do executável embutido na tabela Binary. Journal SYSTEM-only em `ProgramData\openems\installer-transaction` com snapshots de config, state, hosts, backup do hosts e autoridade (bytes + ACL); rollback remove só a raiz criada pela transação e recusa restaurar se o arquivo mudou fora dela. Portas do bloqueio são reservadas antes de qualquer mudança. Journal não finalizado bloqueia a próxima instalação com diagnóstico (não é reparado automaticamente).
+- Injeção de falha `FAIL_SETUP` / `FAIL_REMOVAL` existe apenas em builds com `-d FaultInjection=1` (`tools/build-msi-fixtures.ps1`); tabela InstallExecuteSequence do MSI de produção conferida sem essas ações.
+- Fixtures 0.2.0/0.2.1/0.2.2 compiladas com WiX 5.0.2 portátil (`.venv/wix-tools`, `DOTNET_ROOT=.venv/dotnet-sdk`) em `.venv/sandbox-acceptance/msi-input/`, com roteiro e `RUN-MSI-TEST.cmd`. Perfil `.venv/sandbox-acceptance/msi-acceptance.wsb`: rede desabilitada (backend simulado é loopback), clipboard desabilitado, entrada somente leitura. Resultado esperado em `results/msi-result.json`.
+- Verificação: Rust fmt/Clippy/testes e release OK; **460 Python aprovados, 41 ignorados, 5 deselecionados** com o binário release. **Aceite real do MSI no Sandbox ainda não executado**; não considerar instalação/upgrade/rollback/remoção validados até `msi-result.json` com `passed: true`. Pendentes depois disso: passo 7 (pacote para segunda máquina, Firefox/Chrome) e assinatura.
+
 ### Continuação — aceite em Sandbox
 
 - `deploy/test-trust-sandbox.ps1` prepara tarefa SYSTEM somente dentro de Windows Sandbox. Recusa o host de desenvolvimento antes de qualquer escrita; testa configuração sem CA implícita, instalação explícita, ACL/owner SYSTEM, identidade estável, remoção exata e limpeza repetida.
