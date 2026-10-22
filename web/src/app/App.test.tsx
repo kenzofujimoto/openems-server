@@ -79,6 +79,17 @@ describe("dashboard", () => {
     await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
     await waitFor(() => expect(screen.queryByText("Não foi possível carregar as estatísticas.")).not.toBeInTheDocument());
   });
+
+  it("explains statistics that the server does not provide yet instead of failing", async () => {
+    server.use(
+      http.get("*/api/v1/stats/overview", () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
+      http.get("*/api/v1/events", () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
+    );
+    renderApp("/");
+    expect(await screen.findByText(/Estatísticas de bloqueio chegam com o agente nativo/)).toBeInTheDocument();
+    expect(screen.queryByText("Não foi possível carregar as estatísticas.")).not.toBeInTheDocument();
+    expect(await screen.findByText("Nenhum evento recente.")).toBeInTheDocument();
+  });
 });
 
 describe("endpoints", () => {
@@ -86,7 +97,8 @@ describe("endpoints", () => {
     const user = userEvent.setup();
     renderApp("/endpoints");
     expect(await screen.findByRole("heading", { name: "Endpoints" })).toBeInTheDocument();
-    expect(await screen.findAllByRole("row")).toHaveLength(endpoints.length + 1);
+    await screen.findByRole("button", { name: "Abrir RSM-SP-001" });
+    expect(screen.getAllByRole("row")).toHaveLength(endpoints.length + 1);
 
     await user.type(screen.getByRole("searchbox", { name: "Buscar endpoints" }), "auditoria");
     expect(screen.getAllByRole("row")).toHaveLength(4);
@@ -99,7 +111,7 @@ describe("endpoints", () => {
   it("filters by policy status", async () => {
     const user = userEvent.setup();
     renderApp("/endpoints");
-    await screen.findAllByRole("row");
+    await screen.findByRole("button", { name: "Abrir RSM-SP-001" });
     await user.click(screen.getByRole("button", { name: "Erro" }));
     expect(screen.getAllByRole("row")).toHaveLength(2);
   });
