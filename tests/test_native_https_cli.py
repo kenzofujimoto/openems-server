@@ -1,6 +1,8 @@
 """HTTPS lifecycle CLI contracts, without changing Windows trust or system hosts."""
 
 import json
+from pathlib import Path
+from xml.etree import ElementTree as ET
 
 from tests.test_native_agent import run_agent
 
@@ -36,3 +38,15 @@ def test_https_configuration_is_opt_in_and_serializes(native, tmp_path):
     assert settings["block_page_https"] is True
     assert settings["block_page_https_port"] == 18443
     assert not (tmp_path / "https").exists()
+
+
+def test_msi_removes_owned_root_before_deleting_executable():
+    root = ET.parse(Path(__file__).resolve().parents[1] / "agent-rs/installer/openems-agent.wxs").getroot()
+    ns = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
+    action = root.find(".//w:CustomAction[@Id='RemoveBlockPageTrust']", ns)
+    assert action is not None, "MSI must not leave its trusted root after removal"
+    assert action.attrib["ExeCommand"] == "remove-block-page-trust"
+    assert action.attrib["Return"] == "check"
+    sequence = root.find(".//w:InstallExecuteSequence/w:Custom[@Action='RemoveBlockPageTrust']", ns)
+    assert sequence is not None and sequence.attrib["After"] == "StopServices"
+    assert 'NOT UPGRADINGPRODUCTCODE' in sequence.attrib["Condition"]
