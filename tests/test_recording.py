@@ -7,10 +7,10 @@ import json
 import pytest
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
-from app.api import create_app  # noqa: E402
-from app.service import EmsService  # noqa: E402
+from app.api import create_app
+from app.service import EmsService
 
 
 def _lines(path):
@@ -20,7 +20,7 @@ def _lines(path):
 
 def test_records_endpoint_channel_body_and_still_serves(tmp_path) -> None:
     cap = tmp_path / "cap.jsonl"
-    client = TestClient(create_app(EmsService(), record_path=str(cap)))
+    client = TestClient(create_app(EmsService(require_invitation=False), record_path=str(cap)))
 
     resp = client.post("/fct/api/public/v1/register/", json={"devid": "DEV-1"})
     # the route still worked (body was replayed downstream)

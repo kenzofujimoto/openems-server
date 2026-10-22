@@ -4,15 +4,17 @@ on:
   push:
   pull_request:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
 
+jobs:
+  integration:
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_PASSWORD: pw
+          POSTGRES_PASSWORD: ci-disposable-only
         ports:
           - 5432:5432
         options: >-
@@ -29,15 +31,83 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
-
+    env:
+      OPENEMS_TEST_DSN: postgresql://postgres:ci-disposable-only@127.0.0.1:5432/postgres
+      OPENEMS_TEST_REDIS: redis://127.0.0.1:6379/0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-      - run: pip install -r requirements.txt
-      - name: Run tests (with Postgres + Redis)
+          python-version: "3.14"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Lint
+        run: python -m ruff check app agent tools tests
+      - name: Full suite including PostgreSQL, Redis, cryptographic SAML and browser
+        # `coverage combine` only reads data files named `.coverage.*`.
         env:
-          OPENEMS_TEST_DSN: postgresql://postgres:pw@localhost:5432/postgres
-          OPENEMS_TEST_REDIS: redis://localhost:6379/0
-        run: python -m pytest -q
+          COVERAGE_FILE: .coverage.linux
+        run: python -m pytest -q -m "not windows_only" --junitxml=integration.junit.xml --cov=app --cov=agent --cov-report=term-missing --cov-report=json:coverage.json --cov-report=xml:coverage.xml
+      - name: Reject skipped Linux tests
+        run: python tools/check_quality.py integration.junit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-coverage
+          include-hidden-files: true
+          path: |
+            *.junit.xml
+            coverage.json
+            coverage.xml
+            .coverage.linux
+      - name: Build runtime image
+        run: docker build -t openems:ci .
+
+  windows-service:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Agent and mocked Windows service checks
+        env:
+          COVERAGE_FILE: .coverage.windows
+        run: python -m pytest agent -q --junitxml=windows.junit.xml --cov=app --cov=agent --cov-report=term-missing
+      - name: Reject skipped Windows tests
+        run: python tools/check_quality.py windows.junit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-coverage
+          include-hidden-files: true
+          path: |
+            windows.junit.xml
+            .coverage.windows
+
+  coverage:
+    needs: [integration, windows-service]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: python -m pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-coverage
+          path: coverage-input/linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-coverage
+          path: coverage-input/windows
+      - name: Combine real platform coverage
+        run: |
+          python -m coverage combine coverage-input/linux coverage-input/windows
+          python -m coverage report --show-missing
+          python -m coverage json -o coverage.json
+          python tools/check_quality.py coverage-input/linux/integration.junit.xml coverage.json

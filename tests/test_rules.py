@@ -8,7 +8,7 @@ from app.service import EmsService
 
 
 def _ep(**kw) -> Endpoint:
-    base = dict(devid="DEV-1", client_id="cid-1", os="", hostname="", fctver="", vdom="Default")
+    base = {"devid": "DEV-1", "client_id": "cid-1", "os": "", "hostname": "", "fctver": "", "vdom": "Default"}
     base.update(kw)
     return Endpoint(**base)
 
@@ -70,7 +70,7 @@ def test_all_conditions_must_match() -> None:
 # --- service integration ------------------------------------------------
 
 def test_effective_vdom_follows_rule() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     ep = svc.register(RegisterRequest(devid="DEV-1", os="Windows 11", vdom="Default"))
     svc.add_rule(AssignmentRule(id="win", target_vdom="Strict",
                                 conditions=[Condition("os", "contains", "Windows")]))
@@ -81,7 +81,7 @@ def test_effective_vdom_follows_rule() -> None:
 
 
 def test_config_push_targets_effective_vdom() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     ep = svc.register(RegisterRequest(devid="DEV-1", os="Windows 11", vdom="Default"))
     svc.add_rule(AssignmentRule(id="win", target_vdom="Strict",
                                 conditions=[Condition("os", "contains", "Windows")]))
@@ -93,7 +93,7 @@ def test_config_push_targets_effective_vdom() -> None:
 
 
 def test_effective_profile_resolves_via_rule() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     ep = svc.register(RegisterRequest(devid="DEV-1", os="Windows 11", vdom="Default"))
     svc.add_rule(AssignmentRule(id="win", target_vdom="Strict",
                                 conditions=[Condition("os", "contains", "Windows")]))

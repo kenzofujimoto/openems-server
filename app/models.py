@@ -8,13 +8,13 @@ so a compatible agent can be understood; the implementation here is original.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class EndpointStatus(str, Enum):
@@ -37,8 +37,8 @@ class RegisterRequest:
     os: str = ""
     hostname: str = ""
     vdom: str = "Default"
-    invitation: Optional[str] = None
-    key: Optional[str] = None
+    invitation: str | None = None
+    key: str | None = None
 
 
 @dataclass(slots=True)
@@ -55,6 +55,12 @@ class Endpoint:
     config_version: int = 0  # profile version this endpoint has applied
     last_seen: datetime = field(default_factory=_utcnow)
     created_at: datetime = field(default_factory=_utcnow)
+    credential_hash: str = field(default="", repr=False)
+    device_token: str = field(default="", repr=False, compare=False)
+    applied_vdom: str = ""
+    applied_digest: str = ""
+    last_error: str = ""
+    last_applied: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -69,6 +75,12 @@ class Profile:
     version: int = 0
     body: dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=_utcnow)
+
+    @property
+    def digest(self) -> str:
+        from agent.policy import policy_digest
+
+        return policy_digest(self.body)
 
 
 @dataclass(slots=True)

@@ -9,3 +9,7 @@ signxml==5.2.0             # SAML XML-DSig verification (pulls lxml + cryptograp
 # Dev / test
 pytest==9.0.2
 httpx==0.28.1        # for FastAPI TestClient-based integration tests
+pytest-cov==7.1.0
+ruff==0.17.1
+playwright==1.64.0
+pywin32==312; sys_platform == "win32"

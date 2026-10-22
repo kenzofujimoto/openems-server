@@ -1,31 +1,19 @@
-"""openems agent as a Windows service (LocalSystem, auto-start at boot).
-
-Why a service: running under LocalSystem means the policy is enforced
-continuously, independent of who is logged in, and a **standard (non-admin)
-user cannot stop it or bypass it** — stopping the service, editing the hosts
-file (ACL-protected) and uninstalling all require administrator rights.
-
-  Honest limit: a local **administrator** can always stop/remove any service
-  (Windows trust model), so "only bypassable with admin" is the real guarantee —
-  the same as every endpoint agent, FortiClient included.
-
-Install (run an elevated / Administrator shell):
-    pip install pywin32
-    python service.py install
-    python service.py start
-Config is read from C:\\ProgramData\\openems\\agent.json
-(see install_service.ps1, which writes it for you).
-
-Commands: install | start | stop | remove | restart.
-"""
+"""Windows service entry point; install using install_service.ps1 as administrator."""
 
 from __future__ import annotations
 
 import json
+import logging
 import os
+import sys
 import threading
-from datetime import datetime, timezone
+from collections.abc import Callable
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from urllib.parse import urlsplit
 
+# Isolated Python invocations intentionally ignore PYTHONPATH and user packages.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import openems_agent as agent
 
 try:
@@ -38,53 +26,110 @@ try:
 except ImportError:
     HAVE_PYWIN32 = False
 
-CONFIG_PATH = r"C:\ProgramData\openems\agent.json"
-LOG_PATH = r"C:\ProgramData\openems\agent.log"
+_DATA_DIR = Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "openems"
+CONFIG_PATH = str(_DATA_DIR / "agent.json")
+LOG_PATH = str(_DATA_DIR / "agent.log")
+_LOG_LOCK = threading.Lock()
 
 
 def load_config(path: str = CONFIG_PATH) -> agent.AgentConfig:
-    with open(path, encoding="utf-8") as fh:
-        d = json.load(fh)
-    return agent.AgentConfig(
-        server=str(d["server"]).rstrip("/"),
-        devid=str(d["devid"]),
-        vdom=str(d.get("vdom", "Default")),
-        hosts_path=str(d.get("hosts_path", agent.DEFAULT_HOSTS)),
-        interval=int(d.get("interval", 15)),
-        block_page=bool(d.get("block_page", False)),
-        block_page_port=int(d.get("block_page_port", 80)),
-    )
+    """Read legacy BOM files too; never coerce truthy strings or numeric identities."""
+    with open(path, encoding="utf-8-sig") as fh:
+        data = json.load(fh)
+    if not isinstance(data, dict):
+        raise ValueError("Agent configuration must be an object")  # noqa: TRY004 - configuration validation contract
+    text_fields = {"server", "devid", "vdom", "hosts_path", "state_path", "invitation", "device_token"}
+    bool_fields = {"block_page", "dry_run", "allow_insecure_http"}
+    int_fields = {"interval", "block_page_port"}
+    if data.keys() - text_fields - bool_fields - int_fields:
+        raise ValueError("Unknown agent configuration option")
+    for name in text_fields & data.keys():
+        if not isinstance(data[name], str) or not data[name].strip():
+            raise ValueError(f"Invalid configuration option: {name}")
+    for name in bool_fields & data.keys():
+        if type(data[name]) is not bool:
+            raise ValueError(f"Invalid configuration option: {name}")
+    for name in int_fields & data.keys():
+        if type(data[name]) is not int:
+            raise ValueError(f"Invalid configuration option: {name}")
+    if not {"server", "devid"} <= data.keys():
+        raise ValueError("Server and device identity are required")
+    endpoint = urlsplit(data["server"])
+    if endpoint.scheme not in {"http", "https"} or not endpoint.hostname or endpoint.username or endpoint.password:
+        raise ValueError("Invalid server URL")
+    if endpoint.query or endpoint.fragment:
+        raise ValueError("Server URL cannot contain a query or fragment")
+    if data.get("interval", 15) < 1 or not 1 <= data.get("block_page_port", 80) <= 65535:
+        raise ValueError("Interval and port must be within their valid ranges")
+    data["server"] = data["server"].rstrip("/")
+    data.setdefault("state_path", str(Path(path).with_name("state.json")))
+    return agent.AgentConfig(**data)
+
+
+class _StrictRotatingFileHandler(RotatingFileHandler):
+    def handleError(self, record: logging.LogRecord) -> None:
+        raise OSError("log write failed")
+
+
+def _make_log_handler() -> RotatingFileHandler:
+    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+    handler = _StrictRotatingFileHandler(LOG_PATH, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    return handler
 
 
 def log(msg: str) -> None:
+    # A short lived handler also recovers if a disk/log ACL is repaired.
     try:
-        os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-        with open(LOG_PATH, "a", encoding="utf-8") as fh:
-            fh.write(f"{datetime.now(timezone.utc).isoformat()} {msg}\n")
+        with _LOG_LOCK:
+            handler = _make_log_handler()
+            try:
+                record = logging.LogRecord("openems", logging.INFO, "", 0, str(msg), (), None)
+                handler.emit(record)
+            finally:
+                handler.close()
     except OSError:
-        pass
+        sys.stderr.write("openems service log unavailable\n")
+        if HAVE_PYWIN32:
+            servicemanager.LogErrorMsg("openems service log unavailable")
 
 
 def run_loop(stop_event: threading.Event) -> None:
-    """Register once, then enforce + report on each interval until stopped."""
-    try:
-        cfg = load_config()
-    except Exception as e:
-        log(f"config error: {e!r}")
-        return
-    client_id = None
-    while not stop_event.is_set():
+    """Use the same cache, registration, ACK and enforcement path as the CLI."""
+    agent.run(load_config(), log=log, stop_event=stop_event)
+
+
+class _UnexpectedWorkerExit(RuntimeError):
+    pass
+
+
+def supervise(stop_event: threading.Event, wait: Callable[[], object], wake: Callable[[], object]) -> None:
+    """Wake the SCM thread when the worker stops, including unexpected failures."""
+    failures: list[Exception] = []
+
+    def execute() -> None:
         try:
-            if client_id is None:
-                client_id = agent.register(cfg)
-                log(f"registered client_id={client_id}")
-            result = agent.enforce(cfg, agent.fetch_profile(cfg, client_id), log=log)
-            agent.report_host_tags(cfg, client_id, agent.compute_host_tags(cfg, result))
-        except Exception as e:
-            log(f"loop error: {e!r}")
-            client_id = None  # re-register next cycle
-        stop_event.wait(cfg.interval)
-    log("service stopped")
+            run_loop(stop_event)
+            if not stop_event.is_set():
+                raise _UnexpectedWorkerExit("Agent worker exited unexpectedly")
+        except Exception as exc:  # noqa: BLE001 - forward worker failures to the SCM thread
+            failures.append(exc)
+        finally:
+            wake()
+
+    worker = threading.Thread(target=execute, name="openems-agent", daemon=True)
+    worker.start()
+    try:
+        wait()
+    finally:
+        stop_event.set()
+        worker.join(timeout=30)
+    if worker.is_alive():
+        raise RuntimeError("Agent worker did not stop within 30 seconds")
+    if failures:
+        if isinstance(failures[0], _UnexpectedWorkerExit):
+            raise RuntimeError("Agent worker exited unexpectedly") from failures[0]
+        raise RuntimeError(f"Agent worker failed ({type(failures[0]).__name__})") from failures[0]
 
 
 if HAVE_PYWIN32:
@@ -105,17 +150,25 @@ if HAVE_PYWIN32:
             win32event.SetEvent(self._wait)
 
         def SvcDoRun(self):
-            servicemanager.LogMsg(
-                servicemanager.EVENTLOG_INFORMATION_TYPE,
-                servicemanager.PYS_SERVICE_STARTED,
-                (self._svc_name_, ""),
-            )
-            worker = threading.Thread(target=run_loop, args=(self._stop,), daemon=True)
-            worker.start()
-            win32event.WaitForSingleObject(self._wait, win32event.INFINITE)
+            try:
+                supervise(
+                    self._stop,
+                    lambda: win32event.WaitForSingleObject(self._wait, win32event.INFINITE),
+                    lambda: win32event.SetEvent(self._wait),
+                )
+            except Exception as exc:  # noqa: BLE001 - sanitize failures at the native SCM boundary
+                message = f"openems agent service failed ({type(exc).__name__}); inspect configuration and logs"
+                log(message)
+                servicemanager.LogErrorMsg(message)
+                self.ReportServiceStatus(win32service.SERVICE_STOPPED, win32ExitCode=1066, svcExitCode=1)
+                # The native service host records unhandled tracebacks too.
+                raise RuntimeError(message) from None
 
 
 if __name__ == "__main__":
-    if not HAVE_PYWIN32:
-        raise SystemExit("pywin32 is required: pip install pywin32")
-    win32serviceutil.HandleCommandLine(OpenemsAgentService)
+    if sys.argv[1:] == ["cleanup-hosts"]:
+        agent.clear_hosts(load_config().hosts_path)
+    else:
+        if not HAVE_PYWIN32:
+            raise SystemExit("pywin32 is required: install agent/requirements.txt")
+        win32serviceutil.HandleCommandLine(OpenemsAgentService)

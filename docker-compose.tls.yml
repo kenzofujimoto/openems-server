@@ -1,0 +1,23 @@
+# docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d
+# Certificates are operator supplied. This does not generate or install a CA.
+services:
+  server:
+    ports: !reset []
+  tls:
+    image: nginx:1.28-alpine
+    depends_on:
+      - server
+    ports:
+      - "${OPENEMS_HTTPS_BIND:-127.0.0.1}:${OPENEMS_HTTPS_PORT:-8443}:8443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${OPENEMS_TLS_CERT:?Set absolute TLS certificate path}:/etc/nginx/tls/tls.crt:ro
+      - ${OPENEMS_TLS_KEY:?Set absolute TLS private key path}:/etc/nginx/tls/tls.key:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

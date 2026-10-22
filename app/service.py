@@ -8,11 +8,16 @@ an in-memory store suitable for tests and a first bring-up.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import secrets
-from datetime import timezone, datetime
-
+from datetime import UTC, datetime, timedelta
+from threading import RLock
 from typing import Any
 
+from agent.policy import validate_policy
+
+from .enrollment import EnrollmentStore, InMemoryEnrollmentStore
 from .models import AssignmentRule, Endpoint, EndpointStatus, Profile, RegisterRequest
 from .queue import InMemoryQueue, Queue
 from .rules import evaluate_rules
@@ -53,8 +58,9 @@ class EmsService:
         profile_store: ProfileStore | None = None,
         rule_store: RuleStore | None = None,
         ems_serial: str = "OPENEMS0000000000",
-        require_invitation: bool = False,
+        require_invitation: bool = True,
         valid_invitations: set[str] | None = None,
+        enrollment_store: EnrollmentStore | None = None,
     ) -> None:
         self._store: Store = store or InMemoryStore()
         self._queue: Queue = queue or InMemoryQueue()
@@ -62,39 +68,79 @@ class EmsService:
         self._rule_store: RuleStore = rule_store or InMemoryRuleStore()
         self._ems_serial = ems_serial
         self._require_invitation = require_invitation
-        self._valid_invitations = valid_invitations or set()
+        self._enrollment = enrollment_store or InMemoryEnrollmentStore()
+        self._lock = RLock()
+        for invitation in valid_invitations or set():
+            self._enrollment.add(invitation, "Default", 1, datetime.now(UTC) + timedelta(days=1))
 
     # --- endpoint channel (port 8013) -----------------------------------
 
     def register(self, req: RegisterRequest, *, reg_ip: str = "") -> Endpoint:
         if not req.devid:
             raise RegistrationError("devid is required")
-        if self._require_invitation:
-            if not req.invitation or req.invitation not in self._valid_invitations:
-                raise RegistrationError("a valid invitation code is required")
+        with self._lock:
+            existing = self._store.get_by_devid(req.devid)
+            if existing:
+                if self._require_invitation and not self.authenticate_device(existing.client_id, req.key or ""):
+                    raise RegistrationError("device proof of possession is required")
+                if existing.status is EndpointStatus.UNREGISTERED:
+                    raise RegistrationError("device is revoked")
+                existing.hostname = req.hostname or existing.hostname
+                existing.os = req.os or existing.os
+                existing.fctver = req.fctver or existing.fctver
+                existing.reg_ip = reg_ip
+                existing.last_seen = datetime.now(UTC)
+                self._store.upsert(existing)
+                return existing
+            if self._require_invitation and not self._enrollment.consume(req.invitation or "", req.vdom):
+                raise RegistrationError("a valid unused invitation for this group is required")
+            token = secrets.token_urlsafe(32)
+            endpoint = Endpoint(
+                devid=req.devid, client_id=self._new_client_id(), hostname=req.hostname,
+                os=req.os, fctver=req.fctver, vdom=req.vdom, reg_ip=reg_ip,
+                credential_hash=self._credential_hash(token), device_token=token,
+            )
+            if not self._store.create(endpoint):
+                raise RegistrationError("device already exists; proof of possession is required")
+            return endpoint
 
-        existing = self._store.get_by_devid(req.devid)
-        client_id = existing.client_id if existing else self._new_client_id()
+    @staticmethod
+    def _credential_hash(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
-        endpoint = Endpoint(
-            devid=req.devid,
-            client_id=client_id,
-            hostname=req.hostname,
-            os=req.os,
-            fctver=req.fctver,
-            vdom=req.vdom,
-            status=EndpointStatus.REGISTERED,
-            reg_ip=reg_ip,
-            host_tags=existing.host_tags if existing else [],
+    def authenticate_device(self, client_id: str, token: str) -> bool:
+        endpoint = self._store.get_by_client_id(client_id)
+        return bool(
+            endpoint is not None and endpoint.status is not EndpointStatus.UNREGISTERED
+            and token and len(token) <= 512 and endpoint.credential_hash
+            and hmac.compare_digest(endpoint.credential_hash, self._credential_hash(token))
         )
+
+    def create_invitation(self, vdom: str = "Default", max_uses: int = 1, ttl_seconds: int = 3600) -> str:
+        token = secrets.token_urlsafe(32)
+        self._enrollment.add(token, vdom, max_uses, datetime.now(UTC) + timedelta(seconds=ttl_seconds))
+        return token
+
+    def rotate_device_token(self, devid: str) -> str:
+        endpoint = self.get_endpoint(devid)
+        if endpoint.status is EndpointStatus.UNREGISTERED:
+            raise RegistrationError("device is revoked")
+        token = secrets.token_urlsafe(32)
+        endpoint.credential_hash = self._credential_hash(token)
         self._store.upsert(endpoint)
-        return endpoint
+        return token
+
+    def revoke_device(self, devid: str) -> None:
+        endpoint = self.get_endpoint(devid)
+        endpoint.credential_hash = ""
+        endpoint.status = EndpointStatus.UNREGISTERED
+        self._store.upsert(endpoint)
 
     def refresh(self, client_id: str) -> Endpoint:
         endpoint = self._store.get_by_client_id(client_id)
         if endpoint is None:
             raise UnknownEndpointError(client_id)
-        endpoint.last_seen = datetime.now(timezone.utc)
+        endpoint.last_seen = datetime.now(UTC)
         self._store.upsert(endpoint)
         return endpoint
 
@@ -111,7 +157,7 @@ class EmsService:
         if endpoint is None:
             raise UnknownEndpointError(client_id)
         endpoint.host_tags = list(tags)
-        endpoint.last_seen = datetime.now(timezone.utc)
+        endpoint.last_seen = datetime.now(UTC)
         self._store.upsert(endpoint)
         return endpoint
 
@@ -124,6 +170,12 @@ class EmsService:
         endpoint = self._store.get_by_devid(devid)
         if endpoint is None:
             raise UnknownEndpointError(devid)
+        return endpoint
+
+    def get_endpoint_by_client_id(self, client_id: str) -> Endpoint:
+        endpoint = self._store.get_by_client_id(client_id)
+        if endpoint is None:
+            raise UnknownEndpointError(client_id)
         return endpoint
 
     def count(self) -> int:
@@ -144,13 +196,8 @@ class EmsService:
         registered endpoint in that vdom; endpoints pull it and then fetch the
         profile via get_profile().
         """
-        previous = self._profile_store.get(vdom)
-        profile = Profile(
-            vdom=vdom,
-            version=(previous.version + 1) if previous else 1,
-            body=dict(body),
-        )
-        self._profile_store.put(profile)
+        # The store assigns the version atomically so concurrent workers never collide.
+        profile = self._profile_store.publish(vdom, validate_policy(body))
         for endpoint in self._store.all():
             if self.effective_vdom(endpoint) == vdom:
                 self._queue.push(
@@ -202,12 +249,33 @@ class EmsService:
             raise UnknownEndpointError(client_id)
         return self._queue.pull(client_id)
 
-    def ack_config(self, client_id: str, version: int) -> Endpoint:
+    def ack_config(
+        self, client_id: str, version: int, *, vdom: str | None = None,
+        digest: str | None = None, success: bool = True, error: str = "",
+    ) -> Endpoint:
         """Record that the endpoint has applied a given profile version."""
         endpoint = self._store.get_by_client_id(client_id)
         if endpoint is None:
             raise UnknownEndpointError(client_id)
-        endpoint.config_version = version
+        # A group without a profile is an explicit release: version 0, empty digest.
+        profile = self.effective_profile(client_id)
+        expected_vdom = profile.vdom if profile else self.effective_vdom(endpoint)
+        expected_version = profile.version if profile else 0
+        expected_digest = profile.digest if profile else ""
+        if (version != expected_version
+                or (vdom is not None and vdom != expected_vdom)
+                or (digest is not None and digest != expected_digest)
+                or (profile is None and (vdom is None or digest is None))):
+            raise ValueError("acknowledgment does not match assigned policy")
+        if success:
+            endpoint.config_version = expected_version
+            endpoint.applied_vdom = expected_vdom
+            endpoint.applied_digest = expected_digest
+            endpoint.last_applied = datetime.now(UTC)
+            endpoint.last_error = ""
+        else:
+            endpoint.last_error = error[:1000] or "policy application failed"
+        endpoint.last_seen = datetime.now(UTC)
         self._store.upsert(endpoint)
         return endpoint
 

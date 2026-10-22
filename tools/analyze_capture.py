@@ -15,7 +15,14 @@ import base64
 import json
 import sys
 from collections import defaultdict
-from typing import Any, Iterable
+from collections.abc import Iterable
+from pathlib import Path
+from typing import Any
+
+# Support both `python -m tools.analyze_capture` and the documented script form.
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.recording import safe_body
 
 
 def load(path: str) -> Iterable[dict[str, Any]]:
@@ -27,14 +34,15 @@ def load(path: str) -> Iterable[dict[str, Any]]:
 
 
 def body_of(rec: dict[str, Any]) -> str:
+    raw = b""
     if "body_text" in rec:
-        return rec["body_text"]
-    if "body_b64" in rec:
+        raw = rec["body_text"].encode("utf-8")
+    elif "body_b64" in rec:
         try:
-            return base64.b64decode(rec["body_b64"]).decode("utf-8", "replace")
-        except Exception:
-            return "<binary>"
-    return ""
+            raw = base64.b64decode(rec["body_b64"], validate=True)
+        except ValueError:
+            return "<omitted>"
+    return safe_body(raw, rec.get("content_type", "")) or "<omitted>"
 
 
 def main(path: str) -> int:

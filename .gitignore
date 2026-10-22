@@ -2,3 +2,15 @@ __pycache__/
 .venv/
 *.pyc
 .pytest_cache/
+# Isolated development and verification artifacts
+.coverage
+.coverage.*
+coverage.json
+coverage.xml
+htmlcov/
+*.junit.xml
+.ruff_cache/
+.env
+.env.*
+!.env.example
+captures/

@@ -9,15 +9,16 @@ from __future__ import annotations
 import pytest
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
-from app.api import create_app  # noqa: E402
-from app.service import EmsService  # noqa: E402
+from app.api import create_app
+from app.saml import SamlSp
+from app.service import EmsService
 
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(create_app(EmsService()))
+    return TestClient(create_app(EmsService(require_invitation=False), lab_mode=True, saml_sp=SamlSp("http://localhost:8013", require_signature=False, require_audience=False)))
 
 
 def test_register_returns_client_id(client: TestClient) -> None:
@@ -28,9 +29,9 @@ def test_register_returns_client_id(client: TestClient) -> None:
     assert body["status"] == "registered"
 
 
-def test_register_without_devid_is_400(client: TestClient) -> None:
+def test_register_without_devid_is_422(client: TestClient) -> None:
     resp = client.post("/fct/api/public/v1/register/", json={"hostname": "pc"})
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 def test_refresh_unknown_client_is_404(client: TestClient) -> None:
@@ -58,8 +59,8 @@ def test_endpoints_index_and_count(client: TestClient) -> None:
 
 def test_host_tags_report_roundtrip(client: TestClient) -> None:
     # register, then (via the service behind the app) the report route reads tags
-    svc = EmsService()
-    app_client = TestClient(create_app(svc))
+    svc = EmsService(require_invitation=False)
+    app_client = TestClient(create_app(svc, lab_mode=True))
     cid = app_client.post(
         "/fct/api/public/v1/register/", json={"devid": "DEV-9"}
     ).json()["client_id"]
@@ -104,7 +105,7 @@ def test_get_config_unknown_vdom_is_404(client: TestClient) -> None:
 
 # --- SAML SP ---------------------------------------------------------------
 
-import base64  # noqa: E402
+import base64
 
 _IDP_METADATA = (
     '<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" '
@@ -215,7 +216,7 @@ def test_build_factory_without_backends() -> None:
     from app.api import build
 
     c = TestClient(build())
-    assert c.get("/api/v1/endpoints/count").json() == {"count": 0}
+    assert c.get("/api/v1/endpoints/count").status_code == 401
 
 
 def test_root_redirects_to_console(client: TestClient) -> None:

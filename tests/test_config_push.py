@@ -6,24 +6,34 @@ import pytest
 
 from app.models import RegisterRequest
 from app.service import EmsService, UnknownEndpointError, UnknownProfileError
+from app.stores import InMemoryProfileStore
 
 
 def test_set_profile_bumps_version() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     p1 = svc.set_profile("Default", {"av": "on"})
     p2 = svc.set_profile("Default", {"av": "off"})
     assert (p1.version, p2.version) == (1, 2)
     assert svc.get_profile("Default").body == {"av": "off"}
 
 
+def test_set_profile_uses_atomic_store_versioning() -> None:
+    class AtomicOnlyStore(InMemoryProfileStore):
+        def put(self, profile):
+            raise AssertionError("read-modify-write publication races across workers")
+
+    svc = EmsService(require_invitation=False, profile_store=AtomicOnlyStore())
+    assert [svc.set_profile("Default", {}).version for _ in range(3)] == [1, 2, 3]
+
+
 def test_get_profile_unknown_vdom_raises() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     with pytest.raises(UnknownProfileError):
         svc.get_profile("nope")
 
 
 def test_setting_profile_enqueues_update_for_vdom_endpoints() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     ep = svc.register(RegisterRequest(devid="DEV-1", vdom="Default"))
     svc.register(RegisterRequest(devid="DEV-2", vdom="Other"))
 
@@ -34,7 +44,7 @@ def test_setting_profile_enqueues_update_for_vdom_endpoints() -> None:
 
 
 def test_endpoint_in_other_vdom_gets_no_update() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     svc.register(RegisterRequest(devid="DEV-1", vdom="Default"))
     other = svc.register(RegisterRequest(devid="DEV-2", vdom="Other"))
     svc.set_profile("Default", {"x": 1})
@@ -42,7 +52,7 @@ def test_endpoint_in_other_vdom_gets_no_update() -> None:
 
 
 def test_pull_messages_drains() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     ep = svc.register(RegisterRequest(devid="DEV-1", vdom="Default"))
     svc.set_profile("Default", {"x": 1})
     svc.pull_messages(ep.client_id)
@@ -50,7 +60,7 @@ def test_pull_messages_drains() -> None:
 
 
 def test_ack_config_records_applied_version() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     ep = svc.register(RegisterRequest(devid="DEV-1", vdom="Default"))
     svc.set_profile("Default", {"x": 1})
     updated = svc.ack_config(ep.client_id, 1)
@@ -58,6 +68,6 @@ def test_ack_config_records_applied_version() -> None:
 
 
 def test_pull_messages_unknown_client_raises() -> None:
-    svc = EmsService()
+    svc = EmsService(require_invitation=False)
     with pytest.raises(UnknownEndpointError):
         svc.pull_messages("nope")

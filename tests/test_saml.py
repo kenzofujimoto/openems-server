@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from functools import partial
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -17,6 +18,8 @@ from app.saml import (
     parse_idp_metadata,
     parse_saml_response,
 )
+
+parse_saml_response = partial(parse_saml_response, require_signature=False)
 
 SP = SpConfig(entity_id="https://ems.example/sp", acs_url="https://ems.example/acs")
 IDP = IdpConfig(entity_id="https://idp.example", sso_url="https://idp.example/sso")
@@ -73,9 +76,9 @@ def test_authn_request_redirect_carries_samlrequest() -> None:
 
 
 def test_parse_success_response_extracts_nameid_and_attributes() -> None:
-    assertion = parse_saml_response(_b64(_response_xml(
-        "urn:oasis:names:tc:SAML:2.0:status:Success"
-    )))
+    assertion = parse_saml_response(
+        _b64(_response_xml("urn:oasis:names:tc:SAML:2.0:status:Success"))
+    )
     assert assertion.name_id == "alice@example.com"
     assert assertion.attributes["groups"] == ["admins", "vpn"]
     assert assertion.session_index == "sess-123"
@@ -83,9 +86,9 @@ def test_parse_success_response_extracts_nameid_and_attributes() -> None:
 
 def test_parse_non_success_status_raises() -> None:
     with pytest.raises(SamlError):
-        parse_saml_response(_b64(_response_xml(
-            "urn:oasis:names:tc:SAML:2.0:status:Responder"
-        )))
+        parse_saml_response(
+            _b64(_response_xml("urn:oasis:names:tc:SAML:2.0:status:Responder"))
+        )
 
 
 def test_parse_rejects_bad_base64() -> None:
@@ -109,15 +112,15 @@ def test_parse_idp_metadata() -> None:
 
 
 def test_sp_registers_idp_from_metadata_and_builds_login() -> None:
-    sp = SamlSp("https://ems.example")
+    sp = SamlSp("https://ems.example", require_signature=False)
     sp.register_idp_from_metadata("acme", IDP_METADATA)
     url = sp.login_redirect("acme")
     assert url.startswith("https://idp.example/sso?")
 
 
 def test_sp_consume_unknown_prefix_raises() -> None:
-    sp = SamlSp("https://ems.example")
+    sp = SamlSp("https://ems.example", require_signature=False)
     with pytest.raises(SamlError):
-        sp.consume("ghost", _b64(_response_xml(
-            "urn:oasis:names:tc:SAML:2.0:status:Success"
-        )))
+        sp.consume(
+            "ghost", _b64(_response_xml("urn:oasis:names:tc:SAML:2.0:status:Success"))
+        )

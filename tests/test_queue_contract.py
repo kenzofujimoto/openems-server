@@ -25,7 +25,7 @@ def _make_redis():
         pytest.skip("OPENEMS_TEST_REDIS not set; skipping RedisQueue contract test")
     q = RedisQueue(url, prefix="test-queue:")
     # clean slate
-    q._redis.flushdb()  # noqa: SLF001 - test-only reset
+    q._redis.flushdb()
     return q
 
 
