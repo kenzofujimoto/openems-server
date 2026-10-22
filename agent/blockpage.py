@@ -12,6 +12,7 @@ wordmark as text, the public tagline) — it does not embed RSM's logo asset.
 from __future__ import annotations
 
 import html
+import socket
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -80,15 +81,31 @@ class _Handler(BaseHTTPRequestHandler):
 
     do_GET = _serve
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         self._serve()
 
     def log_message(self, *args) -> None:  # silence
         pass
 
 
-def serve(port: int = 80, bind: str = "0.0.0.0") -> None:
-    ThreadingHTTPServer((bind, port), _Handler).serve_forever()
+class _LocalHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = False
+    allow_reuse_port = False
+
+    def server_bind(self) -> None:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+def create_server(port: int = 80, bind: str = "127.0.0.1") -> ThreadingHTTPServer:
+    """Bind before starting the worker so callers can report startup failures."""
+    return _LocalHTTPServer((bind, port), _Handler)
+
+
+def serve(port: int = 80, bind: str = "127.0.0.1") -> None:
+    with create_server(port, bind) as server:
+        server.serve_forever()
 
 
 if __name__ == "__main__":

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import openems_agent as a
 
-
 # --- hosts rendering ----------------------------------------------------
+
 
 def test_render_hosts_block_has_markers_and_entries() -> None:
     block = a.render_hosts_block(["example.com", "ads.example"])
@@ -40,6 +40,7 @@ def test_replace_managed_block_updates_policy() -> None:
 
 # --- hosts file I/O (temp file, never the system hosts) -----------------
 
+
 def test_apply_and_clear_hosts(tmp_path) -> None:
     hosts = tmp_path / "hosts"
     hosts.write_text("127.0.0.1 localhost\n", encoding="utf-8")
@@ -52,6 +53,7 @@ def test_apply_and_clear_hosts(tmp_path) -> None:
 
 # --- app matching -------------------------------------------------------
 
+
 def test_processes_to_kill_case_insensitive_and_deduped() -> None:
     running = ["chrome.exe", "PING.EXE", "ping.exe", "notepad.exe"]
     assert a.processes_to_kill(running, ["ping.exe"]) == ["PING.EXE"]
@@ -60,16 +62,21 @@ def test_processes_to_kill_case_insensitive_and_deduped() -> None:
 
 # --- enforce (dry-run, stubbed process list) ----------------------------
 
+
 def test_enforce_dry_run_reports_without_changes(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(a, "list_processes", lambda: ["ping.exe", "chrome.exe"])
     killed_calls = []
     monkeypatch.setattr(a, "kill_process", lambda n: killed_calls.append(n))
 
-    cfg = a.AgentConfig(server="http://x", devid="d", hosts_path=str(tmp_path / "hosts"), dry_run=True)
-    profile = {"body": {
-        "web_filter": {"blocked": ["ads.test"]},
-        "app_control": {"blocked": ["ping.exe"]},
-    }}
+    cfg = a.AgentConfig(
+        server="http://x", devid="d", hosts_path=str(tmp_path / "hosts"), dry_run=True
+    )
+    profile = {
+        "body": {
+            "web_filter": {"blocked": ["ads.test"]},
+            "app_control": {"blocked": ["ping.exe"]},
+        }
+    }
     result = a.enforce(cfg, profile, log=lambda m: None)
 
     assert result["sites"] == ["ads.test"]
@@ -80,6 +87,7 @@ def test_enforce_dry_run_reports_without_changes(tmp_path, monkeypatch) -> None:
 
 # --- telemetry / host tags ---------------------------------------------
 
+
 def test_compute_host_tags() -> None:
     import sys
 
@@ -89,10 +97,13 @@ def test_compute_host_tags() -> None:
     assert "vdom:Strict" in tags
     assert "app-control:clean" in tags
     assert "web-filter:1-blocked" in tags
-    assert "app-control:enforced" in a.compute_host_tags(cfg, {"sites": [], "killed": ["app.exe"]})
+    assert "app-control:enforced" in a.compute_host_tags(
+        cfg, {"sites": [], "killed": ["app.exe"]}
+    )
 
 
 # --- service config loading --------------------------------------------
+
 
 def test_service_load_config(tmp_path) -> None:
     import json
@@ -101,8 +112,14 @@ def test_service_load_config(tmp_path) -> None:
 
     cfg_file = tmp_path / "agent.json"
     cfg_file.write_text(
-        json.dumps({"server": "http://x:8013/", "devid": "PC1",
-                    "vdom": "Strict", "interval": 30}),
+        json.dumps(
+            {
+                "server": "http://x:8013/",
+                "devid": "PC1",
+                "vdom": "Strict",
+                "interval": 30,
+            }
+        ),
         encoding="utf-8",
     )
     cfg = service.load_config(str(cfg_file))
@@ -112,16 +129,19 @@ def test_service_load_config(tmp_path) -> None:
 
 # --- block page mode ----------------------------------------------------
 
+
 def test_render_hosts_block_redirect_ip() -> None:
     assert "127.0.0.1 example.com" in a.render_hosts_block(["example.com"], "127.0.0.1")
     assert "0.0.0.0 example.com" in a.render_hosts_block(["example.com"])  # default
 
 
 def test_enforce_block_page_uses_loopback(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(a, "list_processes", lambda: [])
+    monkeypatch.setattr(a, "list_processes", list)
     hosts = tmp_path / "hosts"
     cfg = a.AgentConfig(server="x", devid="d", hosts_path=str(hosts), block_page=True)
-    a.enforce(cfg, {"body": {"web_filter": {"blocked": ["blocked.test"]}}}, log=lambda m: None)
+    a.enforce(
+        cfg, {"body": {"web_filter": {"blocked": ["blocked.test"]}}}, log=lambda m: None
+    )
     assert "127.0.0.1 blocked.test" in hosts.read_text(encoding="utf-8")
 
 

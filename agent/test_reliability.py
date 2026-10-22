@@ -6,9 +6,8 @@ import subprocess
 import threading
 import urllib.error
 
-import pytest
-
 import openems_agent as a
+import pytest
 
 
 @pytest.mark.parametrize(
@@ -141,7 +140,7 @@ def profile(vdom="Default", domain="example.com"):
 
 def runtime(tmp_path, monkeypatch, api):
     monkeypatch.setattr(a, "_api", api)
-    monkeypatch.setattr(a, "list_processes", lambda: [])
+    monkeypatch.setattr(a, "list_processes", list)
     cfg = a.AgentConfig(
         server="https://ems.test",
         devid="pc",
@@ -342,7 +341,21 @@ def test_state_file_is_protected_before_credential_bytes_are_written(
     assert protected and all(contents == b"" for contents in protected)
 
 
-@pytest.mark.parametrize("content", [a.HOSTS_END + "\n" + a.HOSTS_BEGIN + "\n", a.HOSTS_BEGIN + "\n", a.HOSTS_BEGIN + "\n" + a.HOSTS_END + "\n" + a.HOSTS_BEGIN + "\n" + a.HOSTS_END + "\n"])
+@pytest.mark.parametrize(
+    "content",
+    [
+        a.HOSTS_END + "\n" + a.HOSTS_BEGIN + "\n",
+        a.HOSTS_BEGIN + "\n",
+        a.HOSTS_BEGIN
+        + "\n"
+        + a.HOSTS_END
+        + "\n"
+        + a.HOSTS_BEGIN
+        + "\n"
+        + a.HOSTS_END
+        + "\n",
+    ],
+)
 def test_malformed_managed_markers_never_acknowledge_a_hosts_write(tmp_path, content):
     hosts = tmp_path / "hosts"
     hosts.write_text(content)
@@ -359,24 +372,67 @@ def test_hosts_without_final_newline_restores_exact_original(tmp_path):
     assert hosts.read_bytes() == b"# preserved without newline"
 
 
-@pytest.mark.parametrize("server,interval,devid", [("https://user:password@ems.test", 1, "pc"), ("https://ems.test/path", 1, "pc"), ("https://ems.test", 0, "pc"), ("https://ems.test", True, "pc"), ("https://ems.test", 1, "")])
-def test_invalid_runtime_configuration_fails_before_io(tmp_path, server, interval, devid):
+@pytest.mark.parametrize(
+    "server,interval,devid",
+    [
+        ("https://user:password@ems.test", 1, "pc"),
+        ("https://ems.test/path", 1, "pc"),
+        ("https://ems.test", 0, "pc"),
+        ("https://ems.test", True, "pc"),
+        ("https://ems.test", 1, ""),
+    ],
+)
+def test_invalid_runtime_configuration_fails_before_io(
+    tmp_path, server, interval, devid
+):
     with pytest.raises(ValueError):
-        a.AgentRuntime(a.AgentConfig(server=server, interval=interval, devid=devid, state_path=str(tmp_path / "state.json")))
+        a.AgentRuntime(
+            a.AgentConfig(
+                server=server,
+                interval=interval,
+                devid=devid,
+                state_path=str(tmp_path / "state.json"),
+            )
+        )
     assert not (tmp_path / "state.json").exists()
 
 
-@pytest.mark.parametrize("state", ["not-json", json.dumps({"server": "https://other.test", "devid": "pc"}), json.dumps({"server": "https://ems.test", "devid": "pc", "client_id": []})])
+@pytest.mark.parametrize(
+    "state",
+    [
+        "not-json",
+        json.dumps({"server": "https://other.test", "devid": "pc"}),
+        json.dumps({"server": "https://ems.test", "devid": "pc", "client_id": []}),
+    ],
+)
 def test_corrupt_or_foreign_cache_never_silently_resets_identity(tmp_path, state):
     cache = tmp_path / "state.json"
     cache.write_text(state)
     with pytest.raises(ValueError, match="cannot load"):
-        a.AgentRuntime(a.AgentConfig(server="https://ems.test", devid="pc", state_path=str(cache)))
+        a.AgentRuntime(
+            a.AgentConfig(server="https://ems.test", devid="pc", state_path=str(cache))
+        )
     assert cache.read_text() == state
 
 
-@pytest.mark.parametrize("assigned", [None, {"vdom": ""}, {"vdom": "Default", "version": True}, {"vdom": "Default", "version": 1, "digest": "", "body": None, "unassigned": True}])
-def test_malformed_assignment_keeps_last_applied_policy(tmp_path, monkeypatch, assigned):
+@pytest.mark.parametrize(
+    "assigned",
+    [
+        None,
+        {"vdom": ""},
+        {"vdom": "Default", "version": True},
+        {
+            "vdom": "Default",
+            "version": 1,
+            "digest": "",
+            "body": None,
+            "unassigned": True,
+        },
+    ],
+)
+def test_malformed_assignment_keeps_last_applied_policy(
+    tmp_path, monkeypatch, assigned
+):
     calls = []
     assignments = [profile()]
     engine = runtime(tmp_path, monkeypatch, fake_server(assignments, calls))
@@ -384,7 +440,9 @@ def test_malformed_assignment_keeps_last_applied_policy(tmp_path, monkeypatch, a
     assignments[0] = assigned
     engine.cycle(now=2)
     assert "example.com" in (tmp_path / "hosts").read_text()
-    assert json.loads((tmp_path / "state.json").read_text())["profile"]["body"]["web_filter"]["blocked"] == ["example.com"]
+    assert json.loads((tmp_path / "state.json").read_text())["profile"]["body"][
+        "web_filter"
+    ]["blocked"] == ["example.com"]
 
 
 def test_runtime_dry_run_never_writes_or_confirms_policy(tmp_path, monkeypatch):
@@ -397,14 +455,18 @@ def test_runtime_dry_run_never_writes_or_confirms_policy(tmp_path, monkeypatch):
     assert not any(c[0].endswith("/config/ack/") for c in calls)
 
 
-def test_transient_failure_backs_off_without_repeating_registration(tmp_path, monkeypatch):
+def test_transient_failure_backs_off_without_repeating_registration(
+    tmp_path, monkeypatch
+):
     calls = []
     base = fake_server([profile()], calls)
     engine = runtime(tmp_path, monkeypatch, base)
     engine.cycle(now=0)
+
     def offline(url, *args, **kwargs):
         calls.append((url, args, kwargs))
         raise urllib.error.URLError("offline")
+
     monkeypatch.setattr(a, "_api", offline)
     engine.cycle(now=2)
     count = len(calls)
@@ -419,35 +481,62 @@ def test_cli_reads_enrollment_secrets_from_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENEMS_INVITATION", "single-use")
     monkeypatch.setenv("OPENEMS_DEVICE_TOKEN", "device-secret")
     monkeypatch.setattr(a, "run", lambda cfg: observed.append(cfg))
-    assert a.main(["--devid", "pc", "--hosts-file", str(tmp_path / "hosts"), "--dry-run"]) == 0
+    assert (
+        a.main(["--devid", "pc", "--hosts-file", str(tmp_path / "hosts"), "--dry-run"])
+        == 0
+    )
     assert observed[0].invitation == "single-use"
     assert observed[0].device_token == "device-secret"
 
 
 def test_api_sends_bearer_credentials_and_disables_redirects_and_proxy(monkeypatch):
     observed = []
+
     class Response:
-        def __enter__(self): return self
-        def __exit__(self, *args): return None
-        def read(self, limit): return b'{"ok":true}'
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self, limit):
+            return b'{"ok":true}'
+
     class Opener:
         def open(self, request, timeout):
             observed.append(request)
             return Response()
+
     handlers = []
+
     def build(*values):
         handlers.extend(values)
         return Opener()
+
     monkeypatch.setattr(a.urllib.request, "build_opener", build)
-    assert a._api("https://ems.test/", {"client_id": "client"}, token="private") == {"ok": True}
+    assert a._api("https://ems.test/", {"client_id": "client"}, token="private") == {
+        "ok": True
+    }
     assert observed[0].get_header("Authorization") == "Bearer private"
     assert observed[0].get_method() == "POST"
     assert handlers[0].proxies == {}
     with pytest.raises(urllib.error.HTTPError):
-        handlers[1].redirect_request(observed[0], None, 302, "redirect", {}, "https://other.test")
+        handlers[1].redirect_request(
+            observed[0], None, 302, "redirect", {}, "https://other.test"
+        )
 
 
-@pytest.mark.parametrize("body", [None, {"extra": {1, 2}}, {"web_filter": {"blocked": ["x.test"] * 10001}}, {"app_control": {"blocked": ["app..exe"]}}, {"app_control": {"blocked": ["app.exe "]}}, {"web_filter": {"blocked": ["x\ud800.test"]}}])
+@pytest.mark.parametrize(
+    "body",
+    [
+        None,
+        {"extra": {1, 2}},
+        {"web_filter": {"blocked": ["x.test"] * 10001}},
+        {"app_control": {"blocked": ["app..exe"]}},
+        {"app_control": {"blocked": ["app.exe "]}},
+        {"web_filter": {"blocked": ["x\ud800.test"]}},
+    ],
+)
 def test_policy_boundary_values_fail_explicitly(body):
     policy = importlib.import_module("agent.policy")
     with pytest.raises(ValueError):
@@ -456,8 +545,10 @@ def test_policy_boundary_values_fail_explicitly(body):
 
 def test_block_page_bind_failure_is_visible_to_caller(monkeypatch):
     import blockpage
+
     def unavailable(port, bind="127.0.0.1"):
         raise OSError("port busy")
+
     monkeypatch.setattr(blockpage, "create_server", unavailable)
     with pytest.raises(OSError, match="port busy"):
         a.start_block_page(8123)
@@ -465,11 +556,17 @@ def test_block_page_bind_failure_is_visible_to_caller(monkeypatch):
 
 def test_agent_stop_closes_block_page_listener(tmp_path, monkeypatch):
     from unittest.mock import Mock
+
     page = Mock()
     monkeypatch.setattr(a, "start_block_page", lambda port: page)
     stop = threading.Event()
     stop.set()
-    cfg = a.AgentConfig(server="https://ems.test", devid="pc", state_path=str(tmp_path / "state.json"), block_page=True)
+    cfg = a.AgentConfig(
+        server="https://ems.test",
+        devid="pc",
+        state_path=str(tmp_path / "state.json"),
+        block_page=True,
+    )
     a.run(cfg, stop_event=stop)
     page.shutdown.assert_called_once()
     page.server_close.assert_called_once()
@@ -477,11 +574,18 @@ def test_agent_stop_closes_block_page_listener(tmp_path, monkeypatch):
 
 def test_process_listing_and_exact_kill_commands_are_checked(monkeypatch):
     from types import SimpleNamespace
+
     calls = []
+
     def execute(command, **kwargs):
         calls.append((command, kwargs))
-        output = '"safe.exe","123","Console","1","4 K"\n' if command[0] == "tasklist" else "/usr/bin/safe\nother\n"
+        output = (
+            '"safe.exe","123","Console","1","4 K"\n'
+            if command[0] == "tasklist"
+            else "/usr/bin/safe\nother\n"
+        )
         return subprocess.CompletedProcess(command, 0, stdout=output)
+
     monkeypatch.setattr(a.subprocess, "run", execute)
     monkeypatch.setattr(a, "os", SimpleNamespace(name="nt"))
     assert a.list_processes() == ["safe.exe"]
@@ -495,8 +599,11 @@ def test_process_listing_and_exact_kill_commands_are_checked(monkeypatch):
 
 def test_dns_flush_uses_platform_tools_and_surfaces_failure(monkeypatch):
     from types import SimpleNamespace
+
     calls = []
-    monkeypatch.setattr(a.subprocess, "run", lambda command, **kwargs: calls.append((command, kwargs)))
+    monkeypatch.setattr(
+        a.subprocess, "run", lambda command, **kwargs: calls.append((command, kwargs))
+    )
     monkeypatch.setattr(a, "os", SimpleNamespace(name="posix"))
     monkeypatch.setattr(a.platform, "system", lambda: "Darwin")
     a.flush_dns()
@@ -513,12 +620,20 @@ def test_enforcement_reports_only_successful_process_termination(tmp_path, monke
     calls = []
     monkeypatch.setattr(a, "list_processes", lambda: ["safe.exe", "other.exe"])
     monkeypatch.setattr(a, "kill_process", lambda name: calls.append(name))
-    cfg = a.AgentConfig(server="https://ems.test", devid="pc", hosts_path=str(tmp_path / "hosts"))
-    outcome = a.enforce(cfg, {"body": {"app_control": {"blocked": ["safe.exe"]}}}, log=lambda message: None)
+    cfg = a.AgentConfig(
+        server="https://ems.test", devid="pc", hosts_path=str(tmp_path / "hosts")
+    )
+    outcome = a.enforce(
+        cfg,
+        {"body": {"app_control": {"blocked": ["safe.exe"]}}},
+        log=lambda message: None,
+    )
     assert calls == outcome["killed"] == ["safe.exe"]
 
 
-@pytest.mark.parametrize("response", [{"client_id": "client"}, {"device_token": "token"}])
+@pytest.mark.parametrize(
+    "response", [{"client_id": "client"}, {"device_token": "token"}]
+)
 def test_registration_requires_credential_and_identity(monkeypatch, response):
     monkeypatch.setattr(a, "_api", lambda *args, **kwargs: response)
     with pytest.raises(ValueError):
@@ -527,11 +642,18 @@ def test_registration_requires_credential_and_identity(monkeypatch, response):
 
 def test_registration_reuses_credential_without_server_reissuing_it(monkeypatch):
     payloads = []
+
     def api(url, data):
         payloads.append(data)
         return {"client_id": "renewed"}
+
     monkeypatch.setattr(a, "_api", api)
-    cfg = a.AgentConfig(server="https://ems.test", devid="pc", device_token="existing", invitation="invite")
+    cfg = a.AgentConfig(
+        server="https://ems.test",
+        devid="pc",
+        device_token="existing",
+        invitation="invite",
+    )
     assert a.register(cfg) == "renewed"
     assert cfg.device_token == "existing"
     assert payloads[0]["key"] == "existing" and payloads[0]["invitation"] == "invite"
@@ -539,37 +661,59 @@ def test_registration_reuses_credential_without_server_reissuing_it(monkeypatch)
 
 def test_api_rejects_oversized_reply(monkeypatch):
     class Response:
-        def __enter__(self): return self
-        def __exit__(self, *args): return None
-        def read(self, limit): return b"x" * limit
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self, limit):
+            return b"x" * limit
+
     class Opener:
-        def open(self, *args, **kwargs): return Response()
+        def open(self, *args, **kwargs):
+            return Response()
+
     monkeypatch.setattr(a.urllib.request, "build_opener", lambda *args: Opener())
     with pytest.raises(ValueError, match="size limit"):
         a._api("https://ems.test")
 
 
-def test_runtime_404_preserves_block_and_recovers_with_existing_key(tmp_path, monkeypatch):
+def test_runtime_404_preserves_block_and_recovers_with_existing_key(
+    tmp_path, monkeypatch
+):
     calls = []
     base = fake_server([profile()], calls)
     engine = runtime(tmp_path, monkeypatch, base)
     engine.cycle(now=0)
+
     def unknown(url, data=None, **kwargs):
         raise urllib.error.HTTPError(url, 404, "unknown", {}, None)
+
     monkeypatch.setattr(a, "_api", unknown)
     engine.cycle(now=2)
     assert engine.client_id is None
     assert "example.com" in (tmp_path / "hosts").read_text()
     monkeypatch.setattr(a, "_api", base)
     engine.cycle(now=100)
-    assert [call for call in calls if call[0].endswith("/register/")][-1][1]["key"] == "private-token"
+    assert [call for call in calls if call[0].endswith("/register/")][-1][1][
+        "key"
+    ] == "private-token"
 
 
-def test_fatal_network_worker_is_not_hidden_by_running_local_loop(tmp_path, monkeypatch):
+def test_fatal_network_worker_is_not_hidden_by_running_local_loop(
+    tmp_path, monkeypatch
+):
     def fatal(*args):
         raise SystemExit("unexpected worker termination")
+
     monkeypatch.setattr(a.AgentRuntime, "_synchronize", fatal)
-    cfg = a.AgentConfig(server="https://ems.test", devid="pc", state_path=str(tmp_path / "state.json"), interval=.01)
+    cfg = a.AgentConfig(
+        server="https://ems.test",
+        devid="pc",
+        state_path=str(tmp_path / "state.json"),
+        interval=0.01,
+    )
     with pytest.raises(RuntimeError, match="worker terminated"):
         a.run(cfg, log=lambda message: None)
 
