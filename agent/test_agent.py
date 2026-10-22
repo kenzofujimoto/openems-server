@@ -152,3 +152,19 @@ def test_blockpage_render_is_branded() -> None:
     assert "Acesso bloqueado" in page
     assert "example.com" in page
     assert "RSM" in page
+
+
+def test_blockpage_uses_rsm_identity_offline() -> None:
+    import base64
+    import re
+
+    import blockpage
+
+    page = blockpage.render("example.com").decode("utf-8")
+    # The official logo is embedded so the page works with no network access.
+    match = re.search(r'<img[^>]+src="data:image/png;base64,([A-Za-z0-9+/=]+)"[^>]*alt="RSM"', page)
+    assert match is not None
+    assert base64.b64decode(match.group(1)).startswith(b"\x89PNG\r\n\x1a\n")
+    assert "#009cde" in page.lower() and "#3f9c35" in page.lower()
+    assert "Prelo" in page and "Noto Sans" in page
+    assert "http://" not in page and "https://" not in page
