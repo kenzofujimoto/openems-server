@@ -11,6 +11,24 @@ import pytest
 SCRIPT = Path(__file__).resolve().parents[1] / "deploy/test-trust-sandbox.ps1"
 
 
+@pytest.mark.skipif(os.name != "nt", reason="PowerShell environment probe")
+@pytest.mark.parametrize("profile,service,expected", [(True, True, "True"), (True, False, "False"), (False, True, "False"), (False, False, "False")])
+def test_sandbox_detection_uses_profile_and_running_execution_service(profile, service, expected):
+    command = (
+        "function Test-Path { param($LiteralPath) return ($env:PROBE_PROFILE -eq '1') }; "
+        "function Get-Service { param($Name, $ErrorAction) "
+        "if ($env:PROBE_SERVICE -eq '1') { [pscustomobject]@{Status='Running'} } }; "
+        "& $env:OPENEMS_HARNESS -ProbeEnvironment"
+    )
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-Command", command],
+        env={**os.environ, "OPENEMS_HARNESS": str(SCRIPT), "PROBE_PROFILE": str(int(profile)), "PROBE_SERVICE": str(int(service))},
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == expected
+
+
 def test_sandbox_acceptance_harness_exists():
     assert SCRIPT.is_file()
 
