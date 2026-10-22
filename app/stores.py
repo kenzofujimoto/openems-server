@@ -7,6 +7,9 @@ is exercised by tests/test_store_contract.py.
 
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import replace
+from threading import RLock
 from typing import Protocol, runtime_checkable
 
 from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, Profile
@@ -14,6 +17,7 @@ from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, Profile
 
 @runtime_checkable
 class Store(Protocol):
+    def create(self, endpoint: Endpoint) -> bool: ...
     def upsert(self, endpoint: Endpoint) -> None: ...
     def get_by_client_id(self, client_id: str) -> Endpoint | None: ...
     def get_by_devid(self, devid: str) -> Endpoint | None: ...
@@ -26,19 +30,33 @@ class InMemoryStore:
     def __init__(self) -> None:
         self._by_client: dict[str, Endpoint] = {}
         self._by_devid: dict[str, Endpoint] = {}
+        self._lock = RLock()
+
+    def create(self, endpoint: Endpoint) -> bool:
+        with self._lock:
+            if endpoint.devid in self._by_devid:
+                return False
+            self.upsert(endpoint)
+            return True
 
     def upsert(self, endpoint: Endpoint) -> None:
-        self._by_client[endpoint.client_id] = endpoint
-        self._by_devid[endpoint.devid] = endpoint
+        with self._lock:
+            self._by_client = {key: row for key, row in self._by_client.items() if row.devid != endpoint.devid}
+            stored = deepcopy(replace(endpoint, device_token=""))
+            self._by_client[endpoint.client_id] = stored
+            self._by_devid[endpoint.devid] = stored
 
     def get_by_client_id(self, client_id: str) -> Endpoint | None:
-        return self._by_client.get(client_id)
+        with self._lock:
+            return deepcopy(self._by_client.get(client_id))
 
     def get_by_devid(self, devid: str) -> Endpoint | None:
-        return self._by_devid.get(devid)
+        with self._lock:
+            return deepcopy(self._by_devid.get(devid))
 
     def all(self) -> list[Endpoint]:
-        return list(self._by_devid.values())
+        with self._lock:
+            return deepcopy(list(self._by_devid.values()))
 
 
 SCHEMA = """
@@ -56,6 +74,12 @@ CREATE TABLE IF NOT EXISTS endpoints (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_endpoints_client_id ON endpoints (client_id);
+ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS credential_hash TEXT NOT NULL DEFAULT '';
+ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS config_version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS applied_vdom TEXT NOT NULL DEFAULT '';
+ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS applied_digest TEXT NOT NULL DEFAULT '';
+ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS last_error TEXT NOT NULL DEFAULT '';
+ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS last_applied TIMESTAMPTZ;
 """
 
 
@@ -79,24 +103,29 @@ class PostgresStore:
             cur.execute(SCHEMA)
 
     def upsert(self, endpoint: Endpoint) -> None:
+        self._write(endpoint, create_only=False)
+
+    def create(self, endpoint: Endpoint) -> bool:
+        return self._write(endpoint, create_only=True)
+
+    def _write(self, endpoint: Endpoint, *, create_only: bool) -> bool:
+        conflict = "DO NOTHING" if create_only else """DO UPDATE SET
+            client_id=EXCLUDED.client_id, hostname=EXCLUDED.hostname,
+            os=EXCLUDED.os, fctver=EXCLUDED.fctver, vdom=EXCLUDED.vdom,
+            status=EXCLUDED.status, reg_ip=EXCLUDED.reg_ip, host_tags=EXCLUDED.host_tags,
+            last_seen=EXCLUDED.last_seen, credential_hash=EXCLUDED.credential_hash,
+            config_version=EXCLUDED.config_version, applied_vdom=EXCLUDED.applied_vdom,
+            applied_digest=EXCLUDED.applied_digest, last_error=EXCLUDED.last_error,
+            last_applied=EXCLUDED.last_applied"""
         with self._conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO endpoints
                     (devid, client_id, hostname, os, fctver, vdom, status,
-                     reg_ip, host_tags, last_seen, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (devid) DO UPDATE SET
-                    client_id = EXCLUDED.client_id,
-                    hostname  = EXCLUDED.hostname,
-                    os        = EXCLUDED.os,
-                    fctver    = EXCLUDED.fctver,
-                    vdom      = EXCLUDED.vdom,
-                    status    = EXCLUDED.status,
-                    reg_ip    = EXCLUDED.reg_ip,
-                    host_tags = EXCLUDED.host_tags,
-                    last_seen = EXCLUDED.last_seen
-                """,
+                     reg_ip, host_tags, last_seen, created_at, credential_hash,
+                     config_version, applied_vdom, applied_digest, last_error, last_applied)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (devid) """ + conflict,
                 (
                     endpoint.devid,
                     endpoint.client_id,
@@ -109,8 +138,15 @@ class PostgresStore:
                     self._Jsonb(endpoint.host_tags),
                     endpoint.last_seen,
                     endpoint.created_at,
+                    endpoint.credential_hash,
+                    endpoint.config_version,
+                    endpoint.applied_vdom,
+                    endpoint.applied_digest,
+                    endpoint.last_error,
+                    endpoint.last_applied,
                 ),
             )
+            return cur.rowcount == 1
 
     def get_by_client_id(self, client_id: str) -> Endpoint | None:
         return self._one("WHERE client_id = %s", (client_id,))
@@ -130,7 +166,8 @@ class PostgresStore:
 
     _SELECT = (
         "SELECT devid, client_id, hostname, os, fctver, vdom, status, reg_ip, "
-        "host_tags, last_seen, created_at FROM endpoints "
+        "host_tags, last_seen, created_at, credential_hash, config_version, "
+        "applied_vdom, applied_digest, last_error, last_applied FROM endpoints "
     )
 
     def _one(self, where: str, params: tuple[object, ...]) -> Endpoint | None:
@@ -153,6 +190,12 @@ class PostgresStore:
             host_tags=list(r[8]) if r[8] else [],
             last_seen=r[9],
             created_at=r[10],
+            credential_hash=r[11],
+            config_version=r[12],
+            applied_vdom=r[13],
+            applied_digest=r[14],
+            last_error=r[15],
+            last_applied=r[16],
         )
 
 

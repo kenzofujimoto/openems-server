@@ -42,7 +42,7 @@ def test_postgres_audit_roundtrip() -> None:
 
 
 def test_actions_recorded_in_setup_mode() -> None:
-    client = TestClient(create_app(EmsService()))  # no admin -> setup mode
+    client = TestClient(create_app(EmsService(require_invitation=False), lab_mode=True))  # no admin -> setup mode
     client.post("/api/v1/profiles/Default", json={"x": 1})
     client.post("/api/v1/assignment_rules", json={"id": "r1", "target_vdom": "A"})
     client.delete("/api/v1/assignment_rules/r1")
@@ -57,7 +57,7 @@ def test_actions_recorded_in_setup_mode() -> None:
 def test_actor_is_admin_when_authenticated() -> None:
     admins = AdminService(secret="t")
     admins.add_admin("kenzo", "pw")
-    client = TestClient(create_app(EmsService(), admin_service=admins))
+    client = TestClient(create_app(EmsService(require_invitation=False), admin_service=admins))
     token = client.post(
         "/api/v1/auth/login", json={"username": "kenzo", "password": "pw"}
     ).json()["token"]

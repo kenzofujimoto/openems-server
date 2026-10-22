@@ -55,6 +55,12 @@ class Endpoint:
     config_version: int = 0  # profile version this endpoint has applied
     last_seen: datetime = field(default_factory=_utcnow)
     created_at: datetime = field(default_factory=_utcnow)
+    credential_hash: str = field(default="", repr=False)
+    device_token: str = field(default="", repr=False, compare=False)
+    applied_vdom: str = ""
+    applied_digest: str = ""
+    last_error: str = ""
+    last_applied: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -69,6 +75,12 @@ class Profile:
     version: int = 0
     body: dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=_utcnow)
+
+    @property
+    def digest(self) -> str:
+        from agent.policy import policy_digest
+
+        return policy_digest(self.body)
 
 
 @dataclass(slots=True)

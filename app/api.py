@@ -1,398 +1,422 @@
-"""HTTP layer: maps the interoperable endpoints onto EmsService.
-
-Routes mirror SPEC-INTEROP.md:
-  endpoint channel : /fct/api/public/v1/register|refresh|update_client_id
-  management API   : /api/v1/endpoints/index|count , /api/v1/report/fct/host_tags
-
-Requires FastAPI (see requirements.txt). The core service in service.py has no
-web dependency, so unit tests run without installing this layer.
-"""
-
+"""Authenticated reference-agent and management HTTP interfaces."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+import ipaddress
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-try:
-    from fastapi import FastAPI, Form, HTTPException, Request, Response
-    from fastapi.responses import JSONResponse, RedirectResponse
-    from fastapi.staticfiles import StaticFiles
-except ImportError as exc:  # pragma: no cover - only hit without FastAPI
-    raise SystemExit(
-        "FastAPI is required to run the HTTP server: pip install -r requirements.txt"
-    ) from exc
+from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
-from .auth import AdminService
-
-_STATIC_DIR = Path(__file__).parent / "static"
-
-
-def _actor(request: "Request") -> str:
-    claims = getattr(request.state, "admin", None)
-    return claims.get("username", "setup") if claims else "setup"
-
-from .models import AssignmentRule, Condition, RegisterRequest
+from .auth import AdminService, LoginRateLimited
+from .limits import RequestSizeLimitMiddleware
+from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
-from .service import (
-    EmsService,
-    RegistrationError,
-    UnknownEndpointError,
-    UnknownProfileError,
-)
+from .schemas import (AckPayload, ClientPayload, DevicePayload, IdpPayload, InvitationPayload,
+                      LoginPayload, RegisterPayload, RulePayload, TagsPayload, profile_response)
+from .service import EmsService, RegistrationError, UnknownEndpointError, UnknownProfileError
+
+_STATIC_DIR = Path(__file__).parent / 'static'
+_COOKIE = 'openems_session'
+_SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
 
 
-def create_app(
-    service: EmsService | None = None,
-    saml_sp: SamlSp | None = None,
-    record_path: str | None = None,
-    admin_service: AdminService | None = None,
-    audit_log: AuditLog | None = None,
-) -> "FastAPI":
-    svc = service or EmsService()
-    saml = saml_sp or SamlSp("http://localhost:8013")
+def _actor(request: Request) -> str:
+    return getattr(request.state, 'admin', {}).get('username', 'setup')
+
+
+def _loopback(host: str | None) -> bool:
+    if host in {'localhost', 'testclient', 'testserver'}:
+        return True
+    try:
+        return ipaddress.ip_address(host or '').is_loopback
+    except ValueError:
+        return False
+
+
+def _bearer(request: Request) -> str:
+    header = request.headers.get('authorization', '')
+    return header[7:] if header[:7].lower() == 'bearer ' else ''
+
+
+def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
+               record_path: str | None = None, admin_service: AdminService | None = None,
+               audit_log: AuditLog | None = None, *, lab_mode: bool = False,
+               close_resources: list[Any] | None = None) -> FastAPI:
+    svc = service or EmsService(require_invitation=not lab_mode)
+    saml = saml_sp or SamlSp('http://localhost:8013')
     admin = admin_service or AdminService()
     audit = audit_log or InMemoryAuditLog()
-    # optional bootstrap admin from env, e.g. OPENEMS_ADMIN=admin:changeme
-    env_admin = os.environ.get("OPENEMS_ADMIN")
-    if env_admin and ":" in env_admin:
-        u, p = env_admin.split(":", 1)
-        admin.add_admin(u, p)
-    app = FastAPI(title="openems-server", version="0.1.0")
+    env_admin = os.environ.get('OPENEMS_ADMIN')
+    if env_admin and not admin.has_admins():
+        if ':' not in env_admin:
+            raise ValueError('OPENEMS_ADMIN must contain username:password')
+        username, password = env_admin.split(':', 1)
+        admin.add_admin(username, password)
 
-    record_to = record_path or os.environ.get("OPENEMS_RECORD")
-    if record_to:
-        from .recording import RecorderMiddleware
+    @asynccontextmanager
+    async def lifespan(application):
+        yield
+        for resource in close_resources or []:
+            close = getattr(resource, 'close', None)
+            if close:
+                close()
 
-        app.add_middleware(RecorderMiddleware, out_path=record_to)
+    app = FastAPI(title='openems-server', version='0.2.0', lifespan=lifespan)
+    app.state.service = svc
+    app.state.admin = admin
+    app.state.saml = saml
 
-    @app.middleware("http")
-    async def admin_guard(request: "Request", call_next):
+    def record(request: Request, action: str, target: str = '', **metadata) -> None:
+        audit.record(AuditEntry(actor=_actor(request), action=action, target=target, metadata=metadata))
+
+    def endpoint_view(endpoint: Endpoint) -> dict[str, Any]:
+        assigned = svc.effective_vdom(endpoint)
+        desired = svc.effective_profile(endpoint.client_id)
+        return {
+            'devid': endpoint.devid, 'client_id': endpoint.client_id, 'hostname': endpoint.hostname,
+            'os': endpoint.os, 'fctver': endpoint.fctver, 'vdom': endpoint.vdom,
+            'effective_vdom': assigned, 'status': endpoint.status.value,
+            'online': endpoint.status is EndpointStatus.REGISTERED and
+                      (datetime.now(timezone.utc) - endpoint.last_seen).total_seconds() <= 90,
+            'host_tags': endpoint.host_tags, 'config_version': endpoint.config_version,
+            'current_config_version': desired.version if desired else 0,
+            'applied_vdom': endpoint.applied_vdom, 'applied_digest': endpoint.applied_digest,
+            'last_error': endpoint.last_error, 'last_applied': endpoint.last_applied.isoformat() if endpoint.last_applied else None,
+            'last_seen': endpoint.last_seen.isoformat(),
+            'desired_profile': {'vdom': desired.vdom, 'version': desired.version, 'digest': desired.digest} if desired else None,
+        }
+
+    @app.middleware('http')
+    async def security_guard(request: Request, call_next):
         path = request.url.path
-        # Until an admin is created the API runs open (setup mode); once any admin
-        # exists, every /api/v1/* call (except login) requires a valid token.
-        if admin.has_admins() and path.startswith("/api/v1/") and path != "/api/v1/auth/login":
-            header = request.headers.get("authorization", "")
-            token = header[7:] if header[:7].lower() == "bearer " else ""
+        local_lab = lab_mode and _loopback(request.client.host if request.client else None)
+        if lab_mode and not local_lab:
+            return JSONResponse({'detail': 'laboratory mode requires a loopback client'}, status_code=403)
+        management = path.startswith('/api/v1/') or path == '/fct_saml/parse_remote_metadata'
+        if management and path != '/api/v1/auth/login':
+            token = _bearer(request) or request.cookies.get(_COOKIE, '')
             claims = admin.verify_token(token)
             if claims is None:
-                return JSONResponse(
-                    {"detail": "authentication required"}, status_code=401
-                )
-            request.state.admin = claims  # who is acting, for the audit log
-        return await call_next(request)
+                if not (local_lab and not admin.has_admins()):
+                    return JSONResponse({'detail': 'authentication required'}, status_code=401)
+            else:
+                request.state.admin = claims
+                request.state.token = token
+                action = 'manage_idp' if path == '/fct_saml/parse_remote_metadata' else ('read' if request.method in _SAFE_METHODS else 'write')
+                if path == '/api/v1/auth/logout':
+                    action = 'read'
+                if not admin.is_allowed(claims['role'], action):
+                    return JSONResponse({'detail': 'insufficient permission'}, status_code=403)
+                if request.method not in _SAFE_METHODS and not _bearer(request):
+                    if not admin.verify_csrf(token, request.headers.get('x-csrf-token', '')):
+                        return JSONResponse({'detail': 'invalid CSRF token'}, status_code=403)
+        if path.startswith('/fct/api/') and path != '/fct/api/public/v1/register/' and not local_lab:
+            client_id = request.query_params.get('client_id', '')
+            if request.method not in _SAFE_METHODS:
+                try:
+                    payload = await request.json()
+                    client_id = payload.get('client_id', '') if isinstance(payload, dict) else ''
+                except (ValueError, UnicodeError):
+                    client_id = ''
+            if not isinstance(client_id, str) or not svc.authenticate_device(client_id, _bearer(request)):
+                return JSONResponse({'detail': 'device authentication required'}, status_code=401)
+            request.state.device = client_id
+        response = await call_next(request)
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        if management:
+            response.headers['Cache-Control'] = 'no-store'
+        return response
 
-    @app.post("/api/v1/auth/login")
-    async def login(payload: dict[str, Any]) -> dict[str, Any]:
-        username = str(payload.get("username", ""))
-        role = admin.authenticate(username, str(payload.get("password", "")))
+    record_to = record_path or os.environ.get('OPENEMS_RECORD')
+    if record_to:
+        from .recording import RecorderMiddleware
+        app.add_middleware(RecorderMiddleware, out_path=record_to)
+    app.add_middleware(RequestSizeLimitMiddleware)
+
+    @app.exception_handler(UnknownEndpointError)
+    async def unknown_endpoint(request: Request, error: UnknownEndpointError):
+        return JSONResponse({'detail': 'unknown endpoint'}, status_code=404)
+
+    @app.post('/api/v1/auth/login')
+    def login(payload: LoginPayload, request: Request, response: Response):
+        try:
+            role = admin.authenticate_with_rate_limit(payload.username, payload.password,
+                                                     request.client.host if request.client else '')
+        except LoginRateLimited as error:
+            audit.record(AuditEntry(actor=payload.username, action='auth.rate_limited'))
+            raise HTTPException(status_code=429, detail='too many login attempts', headers={'Retry-After': str(error.retry_after)}) from error
         if role is None:
-            raise HTTPException(status_code=401, detail="invalid credentials")
-        return {"token": admin.issue_token(username, role), "role": role}
-
-    @app.post("/fct/api/public/v1/register/")
-    async def register(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+            audit.record(AuditEntry(actor=payload.username, action='auth.failure'))
+            raise HTTPException(status_code=401, detail='invalid credentials')
         try:
-            endpoint = svc.register(
-                RegisterRequest(
-                    devid=str(payload.get("devid", "")),
-                    fctver=str(payload.get("fctver", "")),
-                    os=str(payload.get("os", "")),
-                    hostname=str(payload.get("hostname", "")),
-                    vdom=str(payload.get("vdom", "Default")),
-                    invitation=payload.get("invitation"),
-                    key=payload.get("key"),
-                ),
-                reg_ip=request.client.host if request.client else "",
-            )
-        except RegistrationError as err:
-            raise HTTPException(status_code=400, detail=str(err)) from err
-        return {
-            "client_id": endpoint.client_id,
-            "emsserial": svc.ems_serial,
-            "status": endpoint.status.value,
-            "vdom": svc.effective_vdom(endpoint),
-            "config_version": svc.current_config_version(svc.effective_vdom(endpoint)),
-        }
+            session = admin.issue_session(payload.username, role)
+        except ValueError as error:
+            raise HTTPException(status_code=503, detail='session capacity reached') from error
+        response.set_cookie(_COOKIE, session['token'], httponly=True, secure=not lab_mode,
+                            samesite='strict', max_age=3600, path='/')
+        response.headers['Cache-Control'] = 'no-store'
+        audit.record(AuditEntry(actor=payload.username, action='auth.login'))
+        return {**session, 'username': payload.username, 'role': role}
 
-    @app.post("/fct/api/public/v1/refresh/")
-    async def refresh(payload: dict[str, Any]) -> dict[str, Any]:
+    @app.get('/api/v1/auth/session')
+    def session(request: Request):
+        claims = getattr(request.state, 'admin', None)
+        if claims is None:
+            raise HTTPException(status_code=401, detail='authentication required')
+        return {**claims, 'csrf_token': admin.csrf_for_token(request.state.token)}
+
+    @app.post('/api/v1/auth/logout')
+    def logout(request: Request, response: Response):
+        admin.revoke_token(getattr(request.state, 'token', ''))
+        response.delete_cookie(_COOKIE, path='/', httponly=True, secure=not lab_mode, samesite='strict')
+        record(request, 'auth.logout')
+        return {'ok': True}
+
+    @app.post('/fct/api/public/v1/register/')
+    def register(payload: RegisterPayload, request: Request):
         try:
-            endpoint = svc.refresh(str(payload.get("client_id", "")))
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown client_id") from err
-        return {"client_id": endpoint.client_id, "status": endpoint.status.value}
+            endpoint = svc.register(RegisterRequest(**payload.model_dump()), reg_ip=request.client.host if request.client else '')
+        except RegistrationError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        result = {'client_id': endpoint.client_id, 'emsserial': svc.ems_serial,
+                  'status': endpoint.status.value, 'vdom': svc.effective_vdom(endpoint),
+                  'config_version': endpoint.config_version}
+        if endpoint.device_token:
+            result['device_token'] = endpoint.device_token
+        return result
 
-    @app.post("/fct/api/public/v1/update_client_id/")
-    async def update_client_id(payload: dict[str, Any]) -> dict[str, Any]:
+    @app.post('/fct/api/public/v1/refresh/')
+    def refresh(payload: ClientPayload):
+        endpoint = svc.refresh(payload.client_id)
+        return {'client_id': endpoint.client_id, 'status': endpoint.status.value}
+
+    @app.post('/fct/api/public/v1/update_client_id/')
+    def update_client_id(payload: ClientPayload):
+        return {'client_id': svc.update_client_id(payload.client_id).client_id}
+
+    @app.post('/fct/api/public/v1/host_tags/')
+    def report_host_tags(payload: TagsPayload):
+        endpoint = svc.ingest_host_tags(payload.client_id, payload.tags)
+        return {'ok': True, 'devid': endpoint.devid, 'host_tags': endpoint.host_tags}
+
+    @app.get('/api/v1/endpoints/index')
+    def endpoints_index():
+        return [endpoint_view(endpoint) for endpoint in svc.list_endpoints()]
+
+    @app.get('/api/v1/endpoints/count')
+    def endpoints_count():
+        return {'count': svc.count()}
+
+    @app.get('/api/v1/endpoints/detail')
+    def endpoint_detail(devid: str = Query(max_length=256)):
+        return endpoint_view(svc.get_endpoint(devid))
+
+    @app.get('/api/v1/report/fct/host_tags')
+    def host_tags(devid: str = Query(max_length=256)):
+        return {'devid': devid, 'host_tags': svc.host_tags_by_devid(devid)}
+
+    @app.post('/api/v1/endpoints/credentials/rotate')
+    def rotate_credential(payload: DevicePayload, request: Request):
         try:
-            endpoint = svc.update_client_id(str(payload.get("client_id", "")))
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown client_id") from err
-        return {"client_id": endpoint.client_id}
+            token = svc.rotate_device_token(payload.devid)
+        except RegistrationError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        record(request, 'device.credential.rotate', payload.devid)
+        return {'device_token': token}
 
-    @app.post("/fct/api/public/v1/host_tags/")
-    async def report_host_tags(payload: dict[str, Any]) -> dict[str, Any]:
+    @app.post('/api/v1/endpoints/revoke')
+    def revoke_endpoint(payload: DevicePayload, request: Request):
+        svc.revoke_device(payload.devid)
+        record(request, 'device.revoke', payload.devid)
+        return {'ok': True}
+
+    @app.post('/api/v1/enrollment/invitations')
+    def invitation(payload: InvitationPayload, request: Request):
+        token = svc.create_invitation(payload.vdom, payload.max_uses, payload.ttl_seconds)
+        record(request, 'enrollment.invitation.create', payload.vdom, max_uses=payload.max_uses, ttl_seconds=payload.ttl_seconds)
+        return {'invitation': token, 'vdom': payload.vdom, 'max_uses': payload.max_uses, 'ttl_seconds': payload.ttl_seconds}
+
+    @app.post('/api/v1/profiles/{vdom}')
+    def set_profile(vdom: str, payload: dict[str, Any], request: Request):
+        if not vdom or len(vdom) > 128:
+            raise HTTPException(status_code=422, detail='invalid group')
         try:
-            endpoint = svc.ingest_host_tags(
-                str(payload.get("client_id", "")), list(payload.get("tags", []))
-            )
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown client_id") from err
-        return {"ok": True, "devid": endpoint.devid, "host_tags": endpoint.host_tags}
+            profile = svc.set_profile(vdom, payload)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        record(request, 'profile.publish', vdom, version=profile.version)
+        return {'vdom': profile.vdom, 'version': profile.version, 'digest': profile.digest}
 
-    @app.get("/api/v1/endpoints/index")
-    async def endpoints_index() -> list[dict[str, Any]]:
-        return [
-            {
-                "devid": e.devid,
-                "hostname": e.hostname,
-                "os": e.os,
-                "status": e.status.value,
-                "host_tags": e.host_tags,
-            }
-            for e in svc.list_endpoints()
-        ]
+    @app.get('/api/v1/profiles')
+    def list_profiles():
+        return [{**profile_response(profile), 'updated_at': profile.updated_at.isoformat()} for profile in svc.list_profiles()]
 
-    @app.get("/api/v1/endpoints/count")
-    async def endpoints_count() -> dict[str, int]:
-        return {"count": svc.count()}
-
-    @app.get("/api/v1/report/fct/host_tags")
-    async def host_tags(devid: str) -> dict[str, Any]:
+    @app.get('/fct/api/public/v1/config/')
+    def get_config(request: Request, vdom: str = 'Default', client_id: str = ''):
+        if not lab_mode:
+            endpoint = svc.get_endpoint_by_client_id(client_id)
+            if svc.effective_vdom(endpoint) != vdom:
+                raise HTTPException(status_code=403, detail='policy is not assigned to this device')
         try:
-            return {"devid": devid, "host_tags": svc.host_tags_by_devid(devid)}
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown devid") from err
+            return profile_response(svc.get_profile(vdom))
+        except UnknownProfileError as error:
+            raise HTTPException(status_code=404, detail='no profile for group') from error
 
-    # --- config / profile push -----------------------------------------
-
-    @app.post("/api/v1/profiles/{vdom}")
-    async def set_profile(vdom: str, payload: dict[str, Any], request: "Request") -> dict[str, Any]:
-        profile = svc.set_profile(vdom, payload)
-        audit.record(AuditEntry(
-            actor=_actor(request), action="profile.publish", target=vdom,
-            metadata={"version": profile.version}))
-        return {"vdom": profile.vdom, "version": profile.version}
-
-    @app.get("/fct/api/public/v1/config/")
-    async def get_config(vdom: str = "Default") -> dict[str, Any]:
-        try:
-            profile = svc.get_profile(vdom)
-        except UnknownProfileError as err:
-            raise HTTPException(status_code=404, detail="no profile for vdom") from err
-        return {"vdom": profile.vdom, "version": profile.version, "body": profile.body}
-
-    @app.post("/fct/api/public/v1/messages/pull/")
-    async def pull_messages(payload: dict[str, Any]) -> dict[str, Any]:
-        try:
-            messages = svc.pull_messages(str(payload.get("client_id", "")))
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown client_id") from err
-        return {"messages": messages}
-
-    @app.post("/fct/api/public/v1/config/ack/")
-    async def ack_config(payload: dict[str, Any]) -> dict[str, Any]:
-        try:
-            endpoint = svc.ack_config(
-                str(payload.get("client_id", "")), int(payload.get("version", 0))
-            )
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown client_id") from err
-        return {"client_id": endpoint.client_id, "config_version": endpoint.config_version}
-
-    # --- group assignment rules -----------------------------------------
-
-    @app.post("/api/v1/assignment_rules")
-    async def add_rule(payload: dict[str, Any], request: "Request") -> dict[str, Any]:
-        conditions = [
-            Condition(field=c["field"], op=c["op"], value=c["value"])
-            for c in payload.get("conditions", [])
-        ]
-        rule = AssignmentRule(
-            id=str(payload.get("id", "")),
-            target_vdom=str(payload.get("target_vdom", "")),
-            conditions=conditions,
-            priority=int(payload.get("priority", 100)),
-            enabled=bool(payload.get("enabled", True)),
-        )
-        svc.add_rule(rule)
-        audit.record(AuditEntry(
-            actor=_actor(request), action="rule.add", target=rule.id,
-            metadata={"target_vdom": rule.target_vdom, "priority": rule.priority}))
-        return {"id": rule.id, "target_vdom": rule.target_vdom, "priority": rule.priority}
-
-    @app.get("/api/v1/assignment_rules")
-    async def list_rules() -> list[dict[str, Any]]:
-        return [
-            {
-                "id": r.id,
-                "target_vdom": r.target_vdom,
-                "priority": r.priority,
-                "enabled": r.enabled,
-                "conditions": [
-                    {"field": c.field, "op": c.op, "value": c.value}
-                    for c in r.conditions
-                ],
-            }
-            for r in svc.list_rules()
-        ]
-
-    @app.delete("/api/v1/assignment_rules/{rule_id}")
-    async def delete_rule(rule_id: str, request: "Request") -> dict[str, Any]:
-        if not svc.remove_rule(rule_id):
-            raise HTTPException(status_code=404, detail="unknown rule")
-        audit.record(AuditEntry(
-            actor=_actor(request), action="rule.remove", target=rule_id))
-        return {"removed": rule_id}
-
-    @app.get("/api/v1/audit")
-    async def get_audit(limit: int = 100) -> list[dict[str, Any]]:
-        return [
-            {"ts": e.ts.isoformat(), "actor": e.actor, "action": e.action,
-             "target": e.target, "metadata": e.metadata}
-            for e in audit.list(limit)
-        ]
-
-    @app.get("/api/v1/endpoints/detail")
-    async def endpoint_detail(devid: str) -> dict[str, Any]:
-        try:
-            e = svc.get_endpoint(devid)
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown devid") from err
-        eff = svc.effective_vdom(e)
-        return {
-            "devid": e.devid,
-            "client_id": e.client_id,
-            "hostname": e.hostname,
-            "os": e.os,
-            "fctver": e.fctver,
-            "vdom": e.vdom,
-            "effective_vdom": eff,
-            "status": e.status.value,
-            "host_tags": e.host_tags,
-            "config_version": e.config_version,
-            "current_config_version": svc.current_config_version(eff),
-            "last_seen": e.last_seen.isoformat(),
-        }
-
-    @app.get("/api/v1/profiles")
-    async def list_profiles() -> list[dict[str, Any]]:
-        return [
-            {"vdom": p.vdom, "version": p.version, "body": p.body,
-             "updated_at": p.updated_at.isoformat()}
-            for p in svc.list_profiles()
-        ]
-
-    @app.get("/fct/api/public/v1/config/assigned/")
-    async def assigned_config(client_id: str) -> dict[str, Any]:
-        try:
-            profile = svc.effective_profile(client_id)
-        except UnknownEndpointError as err:
-            raise HTTPException(status_code=404, detail="unknown client_id") from err
+    @app.get('/fct/api/public/v1/config/assigned/')
+    def assigned_config(client_id: str):
+        profile = svc.effective_profile(client_id)
         if profile is None:
-            raise HTTPException(status_code=404, detail="no profile assigned")
-        return {"vdom": profile.vdom, "version": profile.version, "body": profile.body}
+            endpoint = svc.get_endpoint_by_client_id(client_id)
+            return {'vdom': svc.effective_vdom(endpoint), 'version': 0, 'digest': '', 'body': None, 'unassigned': True}
+        return profile_response(profile)
 
-    # --- SAML SP (/fct_saml/*) ------------------------------------------
+    @app.post('/fct/api/public/v1/messages/pull/')
+    def pull_messages(payload: ClientPayload):
+        return {'messages': svc.pull_messages(payload.client_id)}
 
-    @app.get("/fct_saml/{prefix}/metadata")
-    async def saml_metadata(prefix: str) -> Response:
-        return Response(content=saml.metadata(prefix), media_type="application/xml")
-
-    @app.get("/fct_saml/login")
-    async def saml_login(prefix: str = "Default", RelayState: str | None = None):
+    @app.post('/fct/api/public/v1/config/ack/')
+    def ack_config(payload: AckPayload):
+        if not lab_mode and (payload.vdom is None or payload.digest is None):
+            raise HTTPException(status_code=422, detail='policy group and digest are required')
         try:
-            url = saml.login_redirect(prefix, relay_state=RelayState)
-        except UnknownIdpError as err:
-            raise HTTPException(status_code=404, detail="no IdP for prefix") from err
-        return RedirectResponse(url, status_code=302)
+            endpoint = svc.ack_config(payload.client_id, payload.version, vdom=payload.vdom,
+                                      digest=payload.digest, success=payload.success, error=payload.error)
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return {'client_id': endpoint.client_id, 'config_version': endpoint.config_version,
+                'applied_vdom': endpoint.applied_vdom, 'last_error': endpoint.last_error}
 
-    @app.post("/fct_saml/{prefix}/acs")
-    async def saml_acs(
-        prefix: str,
-        SAMLResponse: str = Form(...),
-        RelayState: str | None = Form(default=None),
-    ) -> dict[str, Any]:
+    @app.post('/api/v1/assignment_rules')
+    def add_rule(payload: RulePayload, request: Request):
+        rule = AssignmentRule(id=payload.id, target_vdom=payload.target_vdom,
+                              priority=payload.priority, enabled=payload.enabled,
+                              conditions=[Condition(**condition.model_dump()) for condition in payload.conditions])
+        svc.add_rule(rule)
+        record(request, 'rule.add', rule.id, target_vdom=rule.target_vdom, priority=rule.priority)
+        return {'id': rule.id, 'target_vdom': rule.target_vdom, 'priority': rule.priority}
+
+    @app.get('/api/v1/assignment_rules')
+    def list_rules():
+        return [{'id': rule.id, 'target_vdom': rule.target_vdom, 'priority': rule.priority,
+                 'enabled': rule.enabled, 'conditions': [{'field': condition.field, 'op': condition.op, 'value': condition.value} for condition in rule.conditions]}
+                for rule in svc.list_rules()]
+
+    @app.delete('/api/v1/assignment_rules/{rule_id}')
+    def delete_rule(rule_id: str, request: Request):
+        if not svc.remove_rule(rule_id):
+            raise HTTPException(status_code=404, detail='unknown rule')
+        record(request, 'rule.remove', rule_id)
+        return {'removed': rule_id}
+
+    @app.get('/api/v1/audit')
+    def get_audit(limit: int = Query(default=100, ge=1, le=1000)):
+        return [{'ts': entry.ts.isoformat(), 'actor': entry.actor, 'action': entry.action,
+                 'target': entry.target, 'metadata': entry.metadata} for entry in audit.list(limit)]
+
+    @app.get('/fct_saml/{prefix}/metadata')
+    def saml_metadata(prefix: str):
+        return Response(content=saml.metadata(prefix), media_type='application/xml')
+
+    @app.get('/fct_saml/login')
+    def saml_login(prefix: str = 'Default', RelayState: str | None = None):
         try:
-            assertion = saml.consume(prefix, SAMLResponse)
-        except UnknownIdpError as err:
-            raise HTTPException(status_code=404, detail="no IdP for prefix") from err
-        except SamlError as err:
-            raise HTTPException(status_code=400, detail=str(err)) from err
-        return {
-            "name_id": assertion.name_id,
-            "attributes": assertion.attributes,
-            "relay_state": RelayState,
-        }
+            return RedirectResponse(saml.login_redirect(prefix, relay_state=RelayState), status_code=302)
+        except UnknownIdpError as error:
+            raise HTTPException(status_code=404, detail='no IdP for prefix') from error
+        except SamlError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
 
-    @app.post("/fct_saml/parse_remote_metadata")
-    async def saml_parse_remote_metadata(payload: dict[str, Any]) -> dict[str, Any]:
-        prefix = str(payload.get("prefix", "Default"))
-        metadata_xml = str(payload.get("metadata", ""))
+    @app.post('/fct_saml/{prefix}/acs')
+    def saml_acs(prefix: str, SAMLResponse: str = Form(...), RelayState: str | None = Form(default=None)):
         try:
-            idp = saml.register_idp_from_metadata(prefix, metadata_xml)
-        except SamlError as err:
-            raise HTTPException(status_code=400, detail=str(err)) from err
-        return {"prefix": prefix, "idp_entity_id": idp.entity_id, "sso_url": idp.sso_url}
+            assertion = saml.consume(prefix, SAMLResponse, relay_state=RelayState)
+        except UnknownIdpError as error:
+            raise HTTPException(status_code=404, detail='no IdP for prefix') from error
+        except SamlError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        return {'name_id': assertion.name_id, 'attributes': assertion.attributes, 'relay_state': RelayState}
 
-    # --- management web console -----------------------------------------
+    @app.post('/fct_saml/parse_remote_metadata')
+    def saml_parse_remote_metadata(payload: IdpPayload, request: Request):
+        try:
+            idp = saml.register_idp_from_metadata(payload.prefix, payload.metadata)
+        except SamlError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        record(request, 'idp.configure', payload.prefix, entity_id=idp.entity_id)
+        return {'prefix': payload.prefix, 'idp_entity_id': idp.entity_id, 'sso_url': idp.sso_url}
 
-    @app.get("/")
-    async def root() -> RedirectResponse:
-        return RedirectResponse("/console/", status_code=302)
+    @app.get('/')
+    def root():
+        return RedirectResponse('/console/', status_code=302)
 
-    if _STATIC_DIR.is_dir():
-        app.mount("/console", StaticFiles(directory=_STATIC_DIR, html=True), name="console")
-
+    app.mount('/console', StaticFiles(directory=_STATIC_DIR, html=True), name='console')
     return app
 
 
-app = None  # built lazily by `uvicorn app.api:build` or create_app() in code
+app = None
 
 
-def build() -> "FastAPI":
-    """uvicorn factory wiring backends from env.
+def build() -> FastAPI:
+    """Wire persistent stores from environment; default HTTP behavior is closed."""
+    from .enrollment import PostgresEnrollmentStore
+    from .idp_store import PostgresIdpStore
+    from .sessions import PostgresSessionStore
+    from .stores import PostgresAdminStore, PostgresProfileStore, PostgresRuleStore, PostgresStore
+    from .audit import PostgresAuditLog
+    from .queue import RedisQueue
+    from .replay import RedisReplayCache, RedisPendingRequestStore
 
-    OPENEMS_DATABASE_URL -> Postgres for endpoints/profiles/rules/admins/audit.
-    OPENEMS_REDIS_URL    -> Redis for the push queue and SAML replay cache.
-    Unset backends fall back to in-memory, so `uvicorn app.api:build` works with
-    no infrastructure. OPENEMS_ADMIN / OPENEMS_RECORD are handled in create_app.
-    """
-    from .service import EmsService
-
-    store = profile_store = rule_store = admin_store = audit_log = None
-    queue = replay_cache = None
-
-    dsn = os.environ.get("OPENEMS_DATABASE_URL")
+    lab_mode = os.environ.get('OPENEMS_LAB_MODE', '').lower() in {'1', 'true', 'yes'}
+    dsn = os.environ.get('OPENEMS_DATABASE_URL')
+    secret = os.environ.get('OPENEMS_SESSION_SECRET')
+    if dsn and (not secret or len(secret) < 32):
+        raise ValueError('OPENEMS_SESSION_SECRET with at least 32 characters is required with PostgreSQL')
+    base_url = os.environ.get('OPENEMS_BASE_URL', 'http://localhost:8013')
+    parsed = urlsplit(base_url)
+    if not parsed.hostname or parsed.scheme not in {'http', 'https'} or parsed.username or parsed.password:
+        raise ValueError('OPENEMS_BASE_URL must be an absolute HTTP(S) URL without credentials')
+    if parsed.scheme != 'https' and not _loopback(parsed.hostname):
+        raise ValueError('OPENEMS_BASE_URL must use HTTPS outside loopback')
+    resources = []
+    store = profile_store = rule_store = admin_store = audit_log = enrollment_store = idp_store = session_store = None
     if dsn:
-        from .audit import PostgresAuditLog
-        from .stores import (
-            PostgresAdminStore,
-            PostgresProfileStore,
-            PostgresRuleStore,
-            PostgresStore,
-        )
-
-        store = PostgresStore(dsn); store.init_schema()
-        profile_store = PostgresProfileStore(dsn); profile_store.init_schema()
-        rule_store = PostgresRuleStore(dsn); rule_store.init_schema()
-        admin_store = PostgresAdminStore(dsn); admin_store.init_schema()
-        audit_log = PostgresAuditLog(dsn); audit_log.init_schema()
-
-    redis_url = os.environ.get("OPENEMS_REDIS_URL")
-    if redis_url:
-        from .queue import RedisQueue
-        from .replay import RedisReplayCache
-
-        queue = RedisQueue(redis_url)
-        replay_cache = RedisReplayCache(redis_url)
-
-    svc = EmsService(
-        store=store, queue=queue, profile_store=profile_store, rule_store=rule_store
-    )
-    admin = AdminService(store=admin_store) if admin_store is not None else AdminService()
-    base_url = os.environ.get("OPENEMS_BASE_URL", "http://localhost:8013")
-    saml = SamlSp(base_url, replay_cache=replay_cache)
-    return create_app(svc, saml_sp=saml, admin_service=admin, audit_log=audit_log)
+        store = PostgresStore(dsn)
+        profile_store = PostgresProfileStore(dsn)
+        rule_store = PostgresRuleStore(dsn)
+        admin_store = PostgresAdminStore(dsn)
+        audit_log = PostgresAuditLog(dsn)
+        enrollment_store = PostgresEnrollmentStore(dsn)
+        idp_store = PostgresIdpStore(dsn)
+        session_store = PostgresSessionStore(dsn)
+        resources = [store, profile_store, rule_store, admin_store, audit_log, enrollment_store, idp_store, session_store]
+        for resource in resources:
+            resource.init_schema()
+    redis_url = os.environ.get('OPENEMS_REDIS_URL')
+    queue = RedisQueue(redis_url) if redis_url else None
+    replay = RedisReplayCache(redis_url) if redis_url else None
+    pending = RedisPendingRequestStore(redis_url) if redis_url else None
+    svc = EmsService(store=store, queue=queue, profile_store=profile_store, rule_store=rule_store,
+                     enrollment_store=enrollment_store, require_invitation=not lab_mode)
+    enrollment_token = os.environ.get('OPENEMS_ENROLLMENT_TOKEN')
+    if enrollment_token:
+        from datetime import timedelta
+        if len(enrollment_token) < 32:
+            raise ValueError('OPENEMS_ENROLLMENT_TOKEN must contain at least 32 characters')
+        svc._enrollment.add(enrollment_token, os.environ.get('OPENEMS_ENROLLMENT_VDOM', 'Default'),
+                            int(os.environ.get('OPENEMS_ENROLLMENT_USES', '1')),
+                            datetime.now(timezone.utc) + timedelta(days=1))
+    admin = AdminService(secret=secret, store=admin_store, session_store=session_store)
+    saml = SamlSp(base_url, replay_cache=replay, pending_store=pending, idp_store=idp_store)
+    if queue:
+        resources.append(queue)
+    return create_app(svc, saml_sp=saml, admin_service=admin, audit_log=audit_log,
+                      lab_mode=lab_mode, close_resources=resources)
