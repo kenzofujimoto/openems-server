@@ -35,6 +35,16 @@ def msiexec(*args: str, log: Path) -> int:
     return subprocess.run(["msiexec.exe", *args, "/qn", "/norestart", "/l*v", str(log)], check=False).returncode
 
 
+def failure_context(log: Path) -> str:
+    """msiexec writes UTF-16 logs; show the lines around the first failing action."""
+    try:
+        lines = log.read_text(encoding="utf-16", errors="replace").splitlines()
+    except OSError:
+        return "msiexec log unavailable"
+    failed = next((index for index, line in enumerate(lines) if "Return value 3" in line), len(lines) - 1)
+    return "\n".join(lines[max(0, failed - 40):failed + 5])
+
+
 def sc(*args: str) -> str:
     return subprocess.run(["sc.exe", *args], capture_output=True, text=True, check=False).stdout
 
@@ -48,7 +58,7 @@ def test_msi_installs_a_recovering_service_without_python_and_uninstalls_cleanly
     with live_server() as (_, origin, client):
         publish(client)
         assert msiexec("/i", str(msi), f"SERVER={origin}", f"INVITATION={INVITATION}", "DEVID=msi-pc",
-                       f"HOSTSFILE={hosts}", log=tmp_path / "install.log") == 0, (tmp_path / "install.log").read_text(errors="replace")[-4000:]
+                       f"HOSTSFILE={hosts}", log=tmp_path / "install.log") == 0, failure_context(tmp_path / "install.log")
         try:
             assert (INSTALL_DIR / "openems-agent.exe").is_file()
             assert not list(INSTALL_DIR.glob("*.py")), "the native install ships no Python code"
@@ -72,7 +82,7 @@ def test_msi_installs_a_recovering_service_without_python_and_uninstalls_cleanly
             assert "RUNNING" in sc("query", "openems-agent"), "service was not restarted after a crash"
         finally:
             removed = msiexec("/x", str(msi), log=tmp_path / "uninstall.log")
-        assert removed == 0, (tmp_path / "uninstall.log").read_text(errors="replace")[-4000:]
+        assert removed == 0, failure_context(tmp_path / "uninstall.log")
         assert "1060" in sc("query", "openems-agent")
         assert not (INSTALL_DIR / "openems-agent.exe").exists()
         assert hosts.read_bytes() == b"# msi checkpoint\r\n"
