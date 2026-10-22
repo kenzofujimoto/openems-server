@@ -381,11 +381,13 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         record(request, 'idp.configure', payload.prefix, entity_id=idp.entity_id)
         return {'prefix': payload.prefix, 'idp_entity_id': idp.entity_id, 'sso_url': idp.sso_url}
 
+    panel_root = (panel_dir or _PANEL_DIR).resolve()
+
     @app.get('/')
     def root():
-        return RedirectResponse('/console/', status_code=302)
-
-    panel_root = (panel_dir or _PANEL_DIR).resolve()
+        # The React panel replaces the legacy console once it has been built.
+        target = '/panel/' if (panel_root / 'index.html').is_file() else '/console/'
+        return RedirectResponse(target, status_code=302)
 
     @app.get('/panel', include_in_schema=False)
     def panel_redirect():

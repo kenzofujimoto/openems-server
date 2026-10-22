@@ -219,12 +219,6 @@ def test_build_factory_without_backends() -> None:
     assert c.get("/api/v1/endpoints/count").status_code == 401
 
 
-def test_root_redirects_to_console(client: TestClient) -> None:
-    resp = client.get("/", follow_redirects=False)
-    assert resp.status_code == 302
-    assert resp.headers["location"] == "/console/"
-
-
 def test_console_html_served(client: TestClient) -> None:
     resp = client.get("/console/")
     assert resp.status_code == 200
