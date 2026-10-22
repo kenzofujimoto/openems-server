@@ -32,3 +32,23 @@ def test_msi_harness_parses():
     result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', command], env={**os.environ, 'HARNESS':str(SCRIPT)}, capture_output=True, text=True, timeout=30)
     assert SCRIPT.exists()
     assert result.returncode == 0, result.stderr
+
+WXS = Path(__file__).resolve().parents[1] / 'agent-rs/installer/openems-agent.wxs'
+BUILDER = Path(__file__).resolve().parents[1] / 'tools/build-msi-fixtures.ps1'
+
+def test_fault_injection_exists_only_in_fixture_builds():
+    text = WXS.read_text(encoding='utf-8')
+    start, end = text.index('<?ifdef FaultInjection ?>'), text.index('<?endif?>')
+    guarded, outside = text[start:end], text[:start] + text[end:]
+    for name in ('FAIL_SETUP', 'FAIL_REMOVAL', 'InjectSetupFailure', 'InjectRemovalFailure'):
+        assert name in guarded
+        assert name not in outside, f'{name} must not ship in production MSIs'
+    assert 'Execute="deferred"' in guarded and 'Impersonate="no"' in guarded
+    assert 'After="StartServices"' in guarded and 'After="RemoveFiles"' in guarded
+
+def test_fixture_builder_matches_harness_fixtures():
+    result = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(BUILDER), '-Plan'], capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    plan = json.loads(result.stdout)
+    assert plan['fixtures'] == json.loads(run('-Plan').stdout)['fixtures']
+    assert plan['defines'] == ['FaultInjection=1']
