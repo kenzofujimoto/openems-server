@@ -1,5 +1,21 @@
 # Handoff — roadmap v2
 
+## Continuação Codex — F2 HTTPS local
+
+Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.md`.
+
+- Implementados listener HTTPS em loopback, autorização por SNI e Host, revogação pela política vigente e limites de conexões/leitura. Não há proxy de sites permitidos.
+- CA por máquina com DPAPI, diretório/chave restritos ao SYSTEM, validação da persistência e certificados de servidor por domínio com validade de até 24 horas.
+- Configuração nativa: `block_page_https`, `block_page_https_port` (443) e `authority_path` (subdiretório privado `https/authority.json`). HTTPS requer `block_page` e execução contínua; `run-once` recusa essa combinação.
+- Comandos explícitos: `install-block-page-trust --config <agent.json>` e `remove-block-page-trust --config <agent.json>`. No Windows, operações que acessam a CA exigem SYSTEM. Serviço não instala confiança automaticamente. Remoção sem autoridade é idempotente.
+- Desinstalação nativa e MSI removem o certificado exato pertencente à instalação; falha da limpeza impede que seja anunciada como concluída. Upgrade não executa essa remoção.
+- Nenhuma CA foi instalada e o serviço/executável instalado nesta máquina não foi substituído. O build local não atualiza o MSI publicado.
+- Testes usam CA efêmera, cliente TLS com raiz própria, portas efêmeras e store de confiança simulado. Validação real de instalação/remoção da CA e do MSI, e aceite em Chrome/Edge/Firefox, continuam pendentes de Windows descartável. Não executar aqui os testes `OPENEMS_SERVICE_TESTS=1`.
+- Sem push, PR, publicação de MSI ou execução de CI nesta continuação; commits locais incluem `[skip ci]`.
+- Validação final local: **39 testes Rust**, `cargo fmt --check`, Clippy sem avisos e build de release aprovados; **482 testes Python aprovados**, com 5 testes Windows de instalação real deselecionados por marcador. Os 18 contratos/comandos/vetores nativos passaram usando o novo executável de release. O MSI modificado teve contrato XML verificado, mas não foi compilado nem instalado nesta continuação.
+
+O restante da F2 (DNS local, curingas, categorias, horários, SafeSearch e políticas de navegador) permanece pendente.
+
 Estado em 2026-10-22. O plano completo de cada fase, com critérios de aceite, está em `roadmap-v2.md`.
 
 ## Andamento por fase
@@ -7,7 +23,7 @@ Estado em 2026-10-22. O plano completo de cada fase, com critérios de aceite, e
 | Fase | Estado | O que falta |
 |---|---|---|
 | F1 — Agente nativo (Windows) | Quase pronta. Agente Rust em `agent-rs/` com paridade do agente Python (testes de contrato em `tests/test_native_agent.py`), serviço com recuperação, MSI (WiX 5) testado em runner Windows real. | Componente da sessão do usuário (tarefa no logon, notificações). Assinatura de código (depende de certificado da RSM). MSI sem propriedade para ligar a página de bloqueio (hoje: `openems-agent.exe configure --block-page`). |
-| F2 — Filtro web completo | Não iniciada. **Próxima.** | Tudo. Prioridade do usuário: página de bloqueio em HTTPS em qualquer navegador (CA local por máquina + servidor local HTTPS com certificado por SNI; ver riscos no roadmap). |
+| F2 — Filtro web completo | Parcial na branch `feature/https-blockpage`: núcleo HTTPS local implementado; ver continuação acima. | Validar confiança/remoção em Windows descartável e navegadores; DNS local, curingas, categorias, horários, SafeSearch e políticas de navegador. |
 | F3 — Controle de aplicativos | Não iniciada. Hoje só encerra o processo pelo nome. | Tudo. |
 | F4 — USB | Não iniciada. | Tudo. |
 | F5 — Antiadulteração | Parcial: serviço automático no boot com reinício após falha. | ACL do serviço, watchdog, código de desinstalação, componente no logon. |
