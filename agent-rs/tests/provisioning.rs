@@ -1,0 +1,79 @@
+use openems_agent::config::AgentConfig;
+use openems_agent::provisioning::configure_install;
+
+#[test]
+fn fresh_install_requires_bootstrap_and_does_not_create_authority() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.json");
+    assert!(configure_install(&path, None, false, false).is_err());
+    assert!(!path.exists());
+    let mut config = AgentConfig::new("https://ems.example.com", "NEW");
+    config.authority_path = dir.path().join("https/authority.json");
+    let installed = configure_install(&path, Some(config), false, true).unwrap();
+    assert!(installed.block_page && installed.block_page_https);
+    assert!(!installed.authority_path.exists());
+    assert_eq!(AgentConfig::from_file(&path).unwrap(), installed);
+}
+
+#[test]
+fn upgrade_preserves_custom_configuration_credentials_and_state() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.json");
+    let state_path = dir.path().join("custom-state.json");
+    std::fs::write(&state_path, "policy-and-token-state").unwrap();
+    let original = serde_json::json!({
+        "server":"https://ems.example.com", "devid":"REGISTERED", "vdom":"Custom",
+        "hosts_path":dir.path().join("hosts"), "state_path":state_path,
+        "authority_path":dir.path().join("private/authority.json"),
+        "interval":91, "block_page":true, "block_page_https":false,
+        "block_page_port":8080, "block_page_https_port":8443,
+        "dry_run":true, "allow_insecure_http":true,
+        "invitation":"original-invitation", "device_token":"existing-token"
+    });
+    std::fs::write(&path, serde_json::to_vec(&original).unwrap()).unwrap();
+    let existing = AgentConfig::from_file(&path).unwrap();
+    let bootstrap = AgentConfig::new("https://ems.example.com/", "REPLACEMENT");
+    let installed = configure_install(&path, Some(bootstrap), false, false).unwrap();
+    assert_eq!(installed, existing);
+    assert_eq!(AgentConfig::from_file(&path).unwrap(), existing);
+    assert_eq!(std::fs::read_to_string(state_path).unwrap(), "policy-and-token-state");
+}
+
+#[test]
+fn corrupted_configuration_is_never_replaced() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.json");
+    for bytes in [b"not JSON".as_slice(), br#"{"server":"https://ems.example.com","devid":"PC","unexpected":true}"#] {
+        std::fs::write(&path, bytes).unwrap();
+        assert!(configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "NEW")), true, true).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+}
+
+#[test]
+fn different_server_and_invalid_options_preserve_original_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.json");
+    let mut original = AgentConfig::new("https://ems.example.com", "REGISTERED");
+    original.dry_run = true;
+    original.write_file(&path).unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+    assert!(configure_install(&path, Some(AgentConfig::new("https://other.example.com", "NEW")), false, false).is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    // A dry-run installation cannot enable HTTPS enforcement.
+    std::fs::write(&path, br#"{"server":"https://ems.example.com","devid":"PC","dry_run":true}"#).unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+    assert!(configure_install(&path, None, false, true).is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+}
+
+#[test]
+fn false_flags_preserve_enabled_https_and_fresh_defaults() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.json");
+    let initial = configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "PC")), false, false).unwrap();
+    assert!(!initial.block_page && !initial.block_page_https);
+    let enabled = configure_install(&path, None, false, true).unwrap();
+    assert!(enabled.block_page && enabled.block_page_https);
+    assert_eq!(configure_install(&path, None, false, false).unwrap(), enabled);
+}
