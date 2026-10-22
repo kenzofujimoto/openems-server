@@ -59,9 +59,17 @@ function Invoke-Msi([string]$Package, [bool]$Remove, [string[]]$Properties, [int
     $operation = if ($Remove) { '/x' } else { '/i' }
     $log = Join-Path $PSScriptRoot ([Guid]::NewGuid().ToString('N') + '.log')
     $arguments = @($operation, ('"' + (Join-Path $PSScriptRoot $Package) + '"'), '/qn', '/norestart', '/l*v', ('"' + $log + '"')) + $Properties
-    $process = Start-Process -FilePath msiexec.exe -ArgumentList $arguments -PassThru -WindowStyle Hidden
-    if (-not $process.WaitForExit(75000)) { throw 'MSI operation timed out; close Sandbox.' }
-    if ($process.ExitCode -ne $Expected) { throw ('Unexpected MSI exit code: ' + $process.ExitCode + '; expected ' + $Expected) }
+    # Process.Start keeps the handle; Start-Process -PassThru can miss the exit in Windows PowerShell 5.1.
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = Join-Path $env:SystemRoot 'System32\msiexec.exe'
+    $start.Arguments = $arguments -join ' '
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $process = [Diagnostics.Process]::Start($start)
+    try {
+        if (-not $process.WaitForExit(75000)) { throw ('MSI operation timed out; close Sandbox. Log: ' + $log) }
+        if ($process.ExitCode -ne $Expected) { throw ('Unexpected MSI exit code: ' + $process.ExitCode + '; expected ' + $Expected + '. Log: ' + $log) }
+    } finally { $process.Dispose() }
 }
 function Get-Roots { return @(Get-ChildItem Cert:\LocalMachine\Root | ForEach-Object Thumbprint | Sort-Object) }
 function Assert-Roots($Expected) {
