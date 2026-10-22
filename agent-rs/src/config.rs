@@ -132,6 +132,32 @@ impl AgentConfig {
         self.server = self.server.trim_end_matches('/').to_owned();
         Ok(())
     }
+
+    /// agent.json representation; the device token is never written here (it lives in state).
+    pub fn to_json(&self) -> Value {
+        let mut data = serde_json::json!({
+            "server": self.server,
+            "devid": self.devid,
+            "vdom": self.vdom,
+            "hosts_path": self.hosts_path.to_string_lossy(),
+            "state_path": self.state_path.to_string_lossy(),
+            "interval": self.interval,
+            "block_page": self.block_page,
+            "block_page_port": self.block_page_port,
+            "allow_insecure_http": self.allow_insecure_http,
+        });
+        if let Some(invitation) = &self.invitation {
+            data["invitation"] = invitation.clone().into();
+        }
+        data
+    }
+
+    /// Write a protected agent.json that `from_file` accepts.
+    pub fn write_file(&self, path: &Path) -> Result<()> {
+        let encoded =
+            serde_json::to_vec_pretty(&self.to_json()).map_err(|error| AgentError::Local(error.to_string()))?;
+        crate::fsutil::atomic_write(path, &encoded, None, true)
+    }
 }
 
 struct Origin {
@@ -191,6 +217,20 @@ mod tests {
         ] {
             assert!(validated(bad, false).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn written_configuration_round_trips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nested").join("agent.json");
+        let mut config = AgentConfig::new("https://ems.example.com", "PC1");
+        config.invitation = Some("invite".into());
+        config.device_token = Some("secret-token".into());
+        config.state_path = dir.path().join("state.json");
+        config.write_file(&path).unwrap();
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("secret-token"));
+        let loaded = AgentConfig::from_file(&path).unwrap();
+        assert_eq!(loaded, AgentConfig { device_token: None, ..config });
     }
 
     #[test]

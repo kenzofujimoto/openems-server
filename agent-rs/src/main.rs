@@ -29,10 +29,59 @@ enum Command {
         #[arg(long)]
         config: Option<PathBuf>,
     },
+    /// Write a protected agent.json for the service.
+    Configure(ConfigureArgs),
+    /// Register the agent as an auto-start Windows service with failure recovery.
+    #[cfg(windows)]
+    InstallService {
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Start the service right after registering it.
+        #[arg(long)]
+        start: bool,
+    },
+    /// Stop and remove the Windows service and its hosts block.
+    #[cfg(windows)]
+    UninstallService {
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
     /// Entry point used by the Windows Service Control Manager.
     #[cfg(windows)]
     #[command(hide = true)]
-    Service,
+    Service {
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+}
+
+#[derive(Args)]
+struct ConfigureArgs {
+    /// Where to write agent.json (defaults to the service location).
+    #[arg(long)]
+    config_path: Option<PathBuf>,
+    #[arg(long)]
+    server: String,
+    /// Defaults to the computer name.
+    #[arg(long)]
+    devid: Option<String>,
+    #[arg(long, default_value = "Default")]
+    vdom: String,
+    #[arg(long)]
+    hosts_file: Option<PathBuf>,
+    #[arg(long)]
+    state_path: Option<PathBuf>,
+    #[arg(long, default_value_t = 15)]
+    interval: u64,
+    #[arg(long)]
+    block_page: bool,
+    #[arg(long, default_value_t = 80)]
+    block_page_port: u16,
+    #[arg(long)]
+    allow_insecure_http: bool,
+    /// One-time enrollment invitation; OPENEMS_INVITATION is used when omitted.
+    #[arg(long)]
+    invitation: Option<String>,
 }
 
 #[derive(Args)]
@@ -88,6 +137,23 @@ fn resolve(args: RunArgs) -> Result<AgentConfig> {
     Ok(config)
 }
 
+fn configure(args: ConfigureArgs) -> Result<PathBuf> {
+    let path = args.config_path.unwrap_or_else(default_config_path);
+    let devid = args.devid.unwrap_or_else(|| gethostname::gethostname().to_string_lossy().into_owned());
+    let mut config = AgentConfig::new(args.server, devid);
+    config.vdom = args.vdom;
+    config.hosts_path = args.hosts_file.unwrap_or(config.hosts_path);
+    config.state_path = args.state_path.unwrap_or_else(|| path.with_file_name("state.json"));
+    config.interval = args.interval;
+    config.block_page = args.block_page;
+    config.block_page_port = args.block_page_port;
+    config.allow_insecure_http = args.allow_insecure_http;
+    config.invitation = args.invitation.or_else(|| non_empty_env("OPENEMS_INVITATION"));
+    config.validate()?;
+    config.write_file(&path)?;
+    Ok(path)
+}
+
 fn execute(command: Command) -> Result<ExitCode> {
     match command {
         Command::RunOnce(args) => {
@@ -110,10 +176,25 @@ fn execute(command: Command) -> Result<ExitCode> {
             clear_hosts(&path)?;
             Ok(ExitCode::SUCCESS)
         }
+        Command::Configure(args) => {
+            println!("configuration written to {}", configure(args)?.display());
+            Ok(ExitCode::SUCCESS)
+        }
         #[cfg(windows)]
-        Command::Service => {
-            openems_agent::service::run_dispatcher()
-                .map_err(|error| AgentError::Local(format!("service dispatcher failed: {error}")))?;
+        Command::InstallService { config, start } => {
+            openems_agent::service::install(config, start)?;
+            println!("service {} installed", openems_agent::service::SERVICE_NAME);
+            Ok(ExitCode::SUCCESS)
+        }
+        #[cfg(windows)]
+        Command::UninstallService { config } => {
+            openems_agent::service::uninstall(config)?;
+            println!("service {} removed; its hosts block was cleared", openems_agent::service::SERVICE_NAME);
+            Ok(ExitCode::SUCCESS)
+        }
+        #[cfg(windows)]
+        Command::Service { config } => {
+            openems_agent::service::run_dispatcher(config)?;
             Ok(ExitCode::SUCCESS)
         }
     }
