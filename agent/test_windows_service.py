@@ -92,6 +92,18 @@ def test_unexpected_worker_return_is_failure(monkeypatch):
         service.supervise(threading.Event(), lambda: wake.wait(2), wake.set)
 
 
+def run_pwsh(tmp_path: Path, script: str, *arguments: str) -> subprocess.CompletedProcess[str]:
+    """Run a harness from a script file; -Command would split arguments on spaces."""
+    harness_dir = tmp_path / "harness"
+    harness_dir.mkdir(exist_ok=True)
+    harness = harness_dir / "harness.ps1"
+    harness.write_text(script, encoding="utf-8-sig")
+    return subprocess.run(
+        [shutil.which("pwsh"), "-NoProfile", "-NonInteractive", "-File", str(harness), *arguments],
+        text=True, capture_output=True, timeout=20, check=False,
+    )
+
+
 def test_log_failure_is_visible_without_disclosing_message(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(service, "HAVE_PYWIN32", False)
     monkeypatch.setattr(service, "LOG_PATH", str(tmp_path / "missing" / "agent.log"))
@@ -104,7 +116,7 @@ def test_log_failure_is_visible_without_disclosing_message(tmp_path, monkeypatch
 
 @pytest.mark.skipif(shutil.which("pwsh") is None, reason="PowerShell is unavailable")
 @pytest.mark.parametrize("script_name", ["install_service.ps1", "uninstall_service.ps1"])
-def test_installer_native_failures_are_fatal_and_script_parses(script_name):
+def test_installer_native_failures_are_fatal_and_script_parses(script_name, tmp_path):
     path = Path(service.__file__).with_name(script_name)
     # Only load one function AST; never execute the installation body.
     script = r'''
@@ -117,10 +129,7 @@ def test_installer_native_failures_are_fatal_and_script_parses(script_name):
     try { Invoke-CheckedNative -FilePath $args[1] -Arguments @('-NoProfile', '-Command', 'exit 9'); throw 'Failure was ignored' }
     catch { if ($_.Exception.Message -notmatch 'exit code 9') { throw } }
     '''
-    result = subprocess.run(
-        [shutil.which("pwsh"), "-NoProfile", "-Command", "& {" + script + "}", str(path), shutil.which("pwsh")],
-        text=True, capture_output=True, timeout=20, check=False,
-    )
+    result = run_pwsh(tmp_path, script, str(path), shutil.which("pwsh"))
     assert result.returncode == 0, result.stderr
 
 
@@ -167,10 +176,7 @@ def test_install_start_failure_rolls_back_service_and_keeps_protected_data(tmp_p
     if (-not ($script:calls | Where-Object {$_ -match 'cleanup-hosts$'})) { throw 'Managed hosts rollback missing' }
     if ($script:calls[0] -ne '-I -c import sys; assert sys.version_info >= (3, 11); assert sys.prefix == sys.base_prefix, "A global Python installation is required"') { throw 'Runtime validation did not precede installation' }
     '''
-    result = subprocess.run(
-        [shutil.which("pwsh"), "-NoProfile", "-Command", "& {" + script + "}", str(path), str(tmp_path), "unused-runtime"],
-        text=True, capture_output=True, timeout=20, check=False,
-    )
+    result = run_pwsh(tmp_path, script, str(path), str(tmp_path), "unused-runtime")
     assert result.returncode == 0, result.stderr
 
 
@@ -292,7 +298,7 @@ def test_local_block_page_serves_http_and_escapes_host_header(method):
 @pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt" or shutil.which("pwsh") is None, reason="Windows ACL API harness")
 @pytest.mark.parametrize("script_name", ["install_service.ps1", "uninstall_service.ps1"])
-def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes(script_name):
+def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes(script_name, tmp_path):
     path = Path(service.__file__).with_name(script_name)
     script = r'''
     $errors = $null
@@ -320,8 +326,5 @@ def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes(script_
     try { Assert-ProtectedPath 'fake-path'; throw 'Untrusted ownership was accepted' }
     catch { if ($_.Exception.Message -notmatch 'owned by') { throw } }
     '''
-    result = subprocess.run(
-        [shutil.which("pwsh"), "-NoProfile", "-Command", "& {" + script + "}", str(path)],
-        text=True, capture_output=True, timeout=20, check=False,
-    )
+    result = run_pwsh(tmp_path, script, str(path))
     assert result.returncode == 0, result.stderr
