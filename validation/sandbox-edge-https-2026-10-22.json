@@ -1,0 +1,21 @@
+{
+  "environment": "Windows Sandbox with networking enabled",
+  "date": "2026-10-22",
+  "scope": "Native agent HTTPS page and live simulated policy release",
+  "passed": true,
+  "simulated_policy": true,
+  "checks": [
+    "Windows trust validates the blocked-domain TLS page without bypass",
+    "Edge page confirmed by the operator after the page appeared without certificate warning",
+    "Live simulated policy release revokes the block page without restarting the agent",
+    "Original hosts file and machine trust roots restored during cleanup"
+  ],
+  "error": null,
+  "cleanup_errors": [],
+  "not_validated": [
+    "Chrome and Firefox acceptance",
+    "Real management server end-to-end policy changes",
+    "Service recovery and reboot",
+    "MSI installation, upgrade and removal"
+  ]
+}
