@@ -98,9 +98,11 @@ def run_pwsh(tmp_path: Path, script: str, *arguments: str) -> subprocess.Complet
     harness_dir.mkdir(exist_ok=True)
     harness = harness_dir / "harness.ps1"
     harness.write_text(script, encoding="utf-8-sig")
+    # A cold pwsh start on hosted runners can exceed 20 seconds.
+    environment = {**os.environ, "POWERSHELL_TELEMETRY_OPTOUT": "1", "POWERSHELL_UPDATECHECK": "Off"}
     return subprocess.run(
         [shutil.which("pwsh"), "-NoProfile", "-NonInteractive", "-File", str(harness), *arguments],
-        text=True, capture_output=True, timeout=20, check=False,
+        text=True, capture_output=True, timeout=90, check=False, env=environment,
     )
 
 
