@@ -66,6 +66,20 @@
     <CustomAction Id="ConfigureRecovery" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="check"
                   ExeCommand="configure-recovery" />
 
+    <!-- Sandbox fixtures only (-d FaultInjection=1): fail late so MSI rollback runs. -->
+    <?ifdef FaultInjection ?>
+    <Property Id="FAIL_SETUP" Secure="yes" />
+    <Property Id="FAIL_REMOVAL" Secure="yes" />
+    <CustomAction Id="InjectSetupFailure" Directory="System64Folder" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="&quot;[System64Folder]cmd.exe&quot; /c exit 1" />
+    <CustomAction Id="InjectRemovalFailure" Directory="System64Folder" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="&quot;[System64Folder]cmd.exe&quot; /c exit 1" />
+    <InstallExecuteSequence>
+      <Custom Action="InjectSetupFailure" After="StartServices" Condition="FAIL_SETUP=&quot;1&quot; AND NOT REMOVE" />
+      <Custom Action="InjectRemovalFailure" After="RemoveFiles" Condition="FAIL_REMOVAL=&quot;1&quot; AND REMOVE=&quot;ALL&quot;" />
+    </InstallExecuteSequence>
+    <?endif?>
+
     <InstallExecuteSequence>
       <Custom Action="RollbackAgentRemoval" Before="PrepareAgentRemoval" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="PrepareAgentRemoval" After="StopServices" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
