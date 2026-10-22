@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import runpy
 import shutil
 import subprocess
 import sys
@@ -12,8 +13,8 @@ import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
 import blockpage
+import pytest
 import service
 
 
@@ -43,6 +44,14 @@ def test_load_config_accepts_existing_bom_and_durable_credentials(tmp_path):
 def test_load_config_rejects_invalid_options(tmp_path, field, value):
     with pytest.raises(ValueError):
         service.load_config(write_config(tmp_path, **{field: value}))
+
+
+@pytest.mark.parametrize("payload", [[], {"devid": "device-01"}])
+def test_load_config_rejects_missing_required_configuration(tmp_path, payload):
+    path = tmp_path / "invalid.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError):
+        service.load_config(str(path))
 
 
 def test_run_loop_uses_shared_agent_runtime(monkeypatch):
@@ -94,8 +103,9 @@ def test_log_failure_is_visible_without_disclosing_message(tmp_path, monkeypatch
 
 
 @pytest.mark.skipif(shutil.which("pwsh") is None, reason="PowerShell is unavailable")
-def test_installer_native_failures_are_fatal_and_script_parses():
-    path = Path(service.__file__).with_name("install_service.ps1")
+@pytest.mark.parametrize("script_name", ["install_service.ps1", "uninstall_service.ps1"])
+def test_installer_native_failures_are_fatal_and_script_parses(script_name):
+    path = Path(service.__file__).with_name(script_name)
     # Only load one function AST; never execute the installation body.
     script = r'''
     $errors = $null
@@ -244,13 +254,28 @@ def test_service_log_rotates_and_preserves_recent_messages(tmp_path, monkeypatch
     assert path.with_name("agent.log.1").exists()
 
 
-def test_local_block_page_serves_http_and_escapes_host_header():
+def test_cleanup_command_only_removes_managed_hosts_block(tmp_path, monkeypatch):
+    config_dir = tmp_path / "openems"
+    config_dir.mkdir()
+    hosts = tmp_path / "hosts"
+    hosts.write_text("127.0.0.1 localhost\n" + service.agent.render_hosts_block(["example.com"]), encoding="utf-8")
+    (config_dir / "agent.json").write_text(json.dumps({
+        "server": "https://ems.test", "devid": "device-01", "hosts_path": str(hosts),
+    }), encoding="utf-8")
+    monkeypatch.setenv("PROGRAMDATA", str(tmp_path))
+    monkeypatch.setattr(sys, "argv", [service.__file__, "cleanup-hosts"])
+    runpy.run_path(service.__file__, run_name="__main__")
+    assert hosts.read_text(encoding="utf-8") == "127.0.0.1 localhost\n"
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_local_block_page_serves_http_and_escapes_host_header(method):
     with blockpage.create_server(0) as listener:
         worker = threading.Thread(target=listener.serve_forever, daemon=True)
         worker.start()
         try:
             address = f"http://127.0.0.1:{listener.server_address[1]}/blocked/path"
-            request = urllib.request.Request(address, headers={"Host": "<script>alert(1)</script>.test"})
+            request = urllib.request.Request(address, headers={"Host": "<script>alert(1)</script>.test"}, method=method)
             with urllib.request.urlopen(request, timeout=3) as response:
                 body = response.read().decode("utf-8")
                 assert response.status == 200
@@ -266,8 +291,9 @@ def test_local_block_page_serves_http_and_escapes_host_header():
 
 @pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt" or shutil.which("pwsh") is None, reason="Windows ACL API harness")
-def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes():
-    path = Path(service.__file__).with_name("install_service.ps1")
+@pytest.mark.parametrize("script_name", ["install_service.ps1", "uninstall_service.ps1"])
+def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes(script_name):
+    path = Path(service.__file__).with_name(script_name)
     script = r'''
     $errors = $null
     $ast = [Management.Automation.Language.Parser]::ParseFile($args[0], [ref]$null, [ref]$errors)
@@ -275,19 +301,24 @@ def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes():
     Invoke-Expression $function.Extent.Text
     function Get-Item { param($LiteralPath, $ErrorAction) [PSCustomObject]@{Attributes = [IO.FileAttributes]::Normal} }
     $script:access = [Security.AccessControl.FileSystemRights]::ReadAndExecute
+    $script:owner = 'S-1-5-32-544'
     function Get-Acl {
         param($LiteralPath)
         $result = [PSCustomObject]@{Access = @([PSCustomObject]@{
             IdentityReference = [Security.Principal.SecurityIdentifier]::new('S-1-5-32-545')
             AccessControlType = 'Allow'; FileSystemRights = $script:access
         })}
-        $result | Add-Member ScriptMethod GetOwner { param($target) [Security.Principal.SecurityIdentifier]::new('S-1-5-32-544') }
+        $result | Add-Member ScriptMethod GetOwner { param($target) [Security.Principal.SecurityIdentifier]::new($script:owner) }
         return $result
     }
     Assert-ProtectedPath 'fake-path'
     $script:access = [Security.AccessControl.FileSystemRights]::Modify
     try { Assert-ProtectedPath 'fake-path'; throw 'Untrusted writes were accepted' }
     catch { if ($_.Exception.Message -notmatch 'only be writable') { throw } }
+    $script:access = [Security.AccessControl.FileSystemRights]::ReadAndExecute
+    $script:owner = 'S-1-5-21-1-2-3-1001'
+    try { Assert-ProtectedPath 'fake-path'; throw 'Untrusted ownership was accepted' }
+    catch { if ($_.Exception.Message -notmatch 'owned by') { throw } }
     '''
     result = subprocess.run(
         [shutil.which("pwsh"), "-NoProfile", "-Command", "& {" + script + "}", str(path)],
