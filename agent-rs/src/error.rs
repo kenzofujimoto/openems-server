@@ -9,8 +9,11 @@ pub enum AgentError {
     Policy(String),
     /// The cached endpoint state cannot be trusted.
     State(String),
-    /// The server answered with a non-success HTTP status.
-    Status(u16),
+    /// The server answered with a non-success HTTP status and its stated reason.
+    Status {
+        code: u16,
+        detail: String,
+    },
     /// Network or TLS failure talking to the server.
     Transport(String),
     /// Hosts file, process or other local operation failed.
@@ -20,12 +23,21 @@ pub enum AgentError {
 
 impl AgentError {
     /// Short category for logs, mirroring the Python agent's exception names.
+    /// Log-safe summary: the HTTP status and the server's reason, otherwise only the category.
+    pub fn summary(&self) -> String {
+        match self {
+            AgentError::Status { code, detail } if detail.is_empty() => format!("HTTP {code}"),
+            AgentError::Status { code, detail } => format!("HTTP {code}: {detail}"),
+            other => other.kind().to_owned(),
+        }
+    }
+
     pub fn kind(&self) -> &'static str {
         match self {
             AgentError::Config(_) => "ConfigError",
             AgentError::Policy(_) => "PolicyError",
             AgentError::State(_) => "StateError",
-            AgentError::Status(_) => "HTTPError",
+            AgentError::Status { .. } => "HTTPError",
             AgentError::Transport(_) => "TransportError",
             AgentError::Local(_) => "LocalError",
             AgentError::Io(_) => "OSError",
@@ -39,7 +51,7 @@ impl fmt::Display for AgentError {
             AgentError::Config(message) => write!(f, "invalid configuration: {message}"),
             AgentError::Policy(message) => write!(f, "invalid policy: {message}"),
             AgentError::State(message) => write!(f, "endpoint state error: {message}"),
-            AgentError::Status(code) => write!(f, "server returned HTTP {code}"),
+            AgentError::Status { code, detail } => write!(f, "server returned HTTP {code}: {detail}"),
             AgentError::Transport(message) => write!(f, "server unreachable: {message}"),
             AgentError::Local(message) => write!(f, "{message}"),
             AgentError::Io(error) => write!(f, "I/O error: {error}"),

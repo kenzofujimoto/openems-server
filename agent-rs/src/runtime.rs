@@ -200,11 +200,13 @@ impl Runtime {
                 inner.failures += 1;
                 let backoff = (self.cfg.interval as f64 * 2f64.powi(inner.failures.min(8) as i32)).min(300.0);
                 inner.next_sync = now + backoff * (0.8 + fastrand::f64() * 0.4);
-                if matches!(error, AgentError::Status(404)) {
+                // The server no longer recognises this identity (for example, its database was
+                // recreated): enroll again, presenting the old credential as proof of possession.
+                if matches!(error, AgentError::Status { code: 401 | 404, .. }) {
                     inner.client_id = None;
                 }
                 drop(inner);
-                (self.log)(&format!("synchronization failed ({}); cached enforcement continues", error.kind()));
+                (self.log)(&format!("synchronization failed ({}); cached enforcement continues", error.summary()));
                 false
             }
         }

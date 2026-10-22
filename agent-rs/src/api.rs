@@ -45,11 +45,20 @@ impl ApiClient {
         format!("{}/fct/api/public/v1/{path}/", self.server)
     }
 
+    /// The server's `detail` message, bounded and stripped of control characters for logs.
+    fn reason(response: &mut ureq::http::Response<ureq::Body>) -> String {
+        let body: Value = response.body_mut().with_config().limit(4096).read_json().unwrap_or(Value::Null);
+        body.get("detail")
+            .and_then(Value::as_str)
+            .map(|detail| detail.chars().filter(|c| !c.is_control()).take(200).collect())
+            .unwrap_or_default()
+    }
+
     fn finish(response: std::result::Result<ureq::http::Response<ureq::Body>, ureq::Error>) -> Result<Value> {
         let mut response = response.map_err(|error| AgentError::Transport(error.to_string()))?;
         let status = response.status().as_u16();
         if !(200..300).contains(&status) {
-            return Err(AgentError::Status(status));
+            return Err(AgentError::Status { code: status, detail: Self::reason(&mut response) });
         }
         response
             .body_mut()
