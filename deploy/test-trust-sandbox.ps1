@@ -1,14 +1,22 @@
 param(
     [string]$OutputDirectory = 'C:\openems-results',
-    [switch]$SystemPhase
+    [switch]$SystemPhase,
+    [switch]$ProbeEnvironment
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Check observed Sandbox signals without relying on an optional Containers folder.
+$executionService = Get-Service -Name 'CExecSvc' -ErrorAction SilentlyContinue
+$isSandbox = (Test-Path -LiteralPath 'C:\Users\WDAGUtilityAccount') -and
+    ($null -ne $executionService) -and ($executionService.Status -eq 'Running')
+if ($ProbeEnvironment) {
+    Write-Output $isSandbox
+    exit 0
+}
 # Refuse the development host before creating files, tasks or certificates.
-if (-not (Test-Path -LiteralPath 'C:\Users\WDAGUtilityAccount') -or
-    -not (Test-Path -LiteralPath 'C:\ProgramData\Microsoft\Windows\Containers')) {
+if (-not $isSandbox) {
     throw 'This acceptance harness requires Windows Sandbox.'
 }
 
