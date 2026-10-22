@@ -8,6 +8,7 @@ import re
 import threading
 from collections.abc import Iterator
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from itertools import pairwise
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -36,14 +37,20 @@ def page(console_coverage: list[list[dict]]) -> Iterator[Page]:
         tab = context.new_page()
         profiler = context.new_cdp_session(tab)
         profiler.send("Profiler.enable")
-        profiler.send("Profiler.startPreciseCoverage", {"callCount": False, "detailed": True})
+        profiler.send(
+            "Profiler.startPreciseCoverage", {"callCount": False, "detailed": True}
+        )
         yield tab
         coverage = profiler.send("Profiler.takePreciseCoverage")
         for script in coverage["result"]:
             if urlsplit(script["url"]).path.endswith("/console.js"):
-                console_coverage.append([
-                    block for function in script["functions"] for block in function["ranges"]
-                ])
+                console_coverage.append(
+                    [
+                        block
+                        for function in script["functions"]
+                        for block in function["ranges"]
+                    ]
+                )
         context.close()
         browser.close()
 
@@ -54,24 +61,47 @@ def console_coverage() -> Iterator[list[list[dict]]]:
     runs: list[list[dict]] = []
     yield runs
     source = Path(__file__).resolve().parents[1] / "app" / "static" / "console.js"
-    length = len(source.read_text(encoding="utf-8"))
-    boundaries = sorted({0, length} | {
-        value for run in runs for block in run
-        for value in (block["startOffset"], block["endOffset"])
-    })
+    length = len(source.read_bytes().decode("utf-8"))
+    boundaries = sorted(
+        {0, length}
+        | {
+            value
+            for run in runs
+            for block in run
+            for value in (block["startOffset"], block["endOffset"])
+        }
+    )
     executed = 0
-    for start, end in zip(boundaries, boundaries[1:], strict=False):
+    for start, end in pairwise(boundaries):
         for run in runs:
-            containing = [block for block in run if block["startOffset"] <= start and block["endOffset"] >= end]
-            if containing and min(containing, key=lambda block: block["endOffset"] - block["startOffset"])["count"] > 0:
+            containing = [
+                block
+                for block in run
+                if block["startOffset"] <= start and block["endOffset"] >= end
+            ]
+            if (
+                containing
+                and min(
+                    containing,
+                    key=lambda block: block["endOffset"] - block["startOffset"],
+                )["count"]
+                > 0
+            ):
                 executed += end - start
                 break
     percentage = 100 * executed / length
-    report = {"source": "app/static/console.js", "total_bytes": length, "executed_bytes": executed, "percent": round(percentage, 2)}
+    report = {
+        "source": "app/static/console.js",
+        "total_bytes": length,
+        "executed_bytes": executed,
+        "percent": round(percentage, 2),
+    }
     report_path = source.parents[2] / ".pytest_cache" / "console-coverage.json"
     report_path.parent.mkdir(exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    assert percentage >= 80, f"Console JavaScript executed-range coverage {percentage:.2f}% < 80%; see {report_path}"
+    assert percentage >= 80, (
+        f"Console JavaScript executed-range coverage {percentage:.2f}% < 80%; see {report_path}"
+    )
 
 
 def mock_api(page: Page, endpoints: list[dict], rules: list[dict]) -> list[dict]:
@@ -107,28 +137,43 @@ def mock_api(page: Page, endpoints: list[dict], rules: list[dict]) -> list[dict]
 def test_device_id_cannot_execute_javascript(page: Page, console_url: str) -> None:
     device_id = "machine');window.__injected=true;//"
     endpoint = {
-        "devid": device_id, "hostname": "<img src=x onerror=alert(1)>",
-        "os": "Windows", "status": "registered", "host_tags": [],
-        "vdom": "Default", "effective_vdom": "Default", "client_id": "public-id",
-        "config_version": 0, "current_config_version": 1,
-        "online": True, "desired_profile": {"vdom": "Default", "version": 1, "digest": "abc"},
+        "devid": device_id,
+        "hostname": "<img src=x onerror=alert(1)>",
+        "os": "Windows",
+        "status": "registered",
+        "host_tags": [],
+        "vdom": "Default",
+        "effective_vdom": "Default",
+        "client_id": "public-id",
+        "config_version": 0,
+        "current_config_version": 1,
+        "online": True,
+        "desired_profile": {"vdom": "Default", "version": 1, "digest": "abc"},
         "last_seen": "2026-10-22T12:00:00+00:00",
     }
     mock_api(page, [endpoint], [])
     page.goto(console_url)
     row = page.locator("#endpoints tr").filter(has_text=device_id)
     expect(row).to_be_visible()
-    row.get_by_role("button").click() if row.get_by_role("button").count() else row.click()
-    assert page.evaluate("window.__injected === undefined"), "Device ID executed as JavaScript"
+    row.get_by_role("button").click() if row.get_by_role(
+        "button"
+    ).count() else row.click()
+    assert page.evaluate("window.__injected === undefined"), (
+        "Device ID executed as JavaScript"
+    )
     expect(page.locator("#detail")).to_contain_text(device_id)
     assert page.locator("#endpoints img").count() == 0
 
 
 def test_rule_editor_roundtrip_preserves_all_conditions_and_types(
-    page: Page, console_url: str,
+    page: Page,
+    console_url: str,
 ) -> None:
     rule = {
-        "id": "mixed-rule", "target_vdom": "Strict", "priority": 0, "enabled": False,
+        "id": "mixed-rule",
+        "target_vdom": "Strict",
+        "priority": 0,
+        "enabled": False,
         "conditions": [
             {"field": "os", "op": "in", "value": ["Windows 11", "Windows 10"]},
             {"field": "hostname", "op": "contains", "value": "lab"},
@@ -143,10 +188,17 @@ def test_rule_editor_roundtrip_preserves_all_conditions_and_types(
 
 
 def test_cookie_session_removes_legacy_token_and_sends_csrf(
-    page: Page, console_url: str,
+    page: Page,
+    console_url: str,
 ) -> None:
     page.add_init_script("localStorage.setItem('openems_token', 'obsolete-secret')")
-    rule = {"id": "safe", "target_vdom": "Strict", "priority": 0, "enabled": False, "conditions": []}
+    rule = {
+        "id": "safe",
+        "target_vdom": "Strict",
+        "priority": 0,
+        "enabled": False,
+        "conditions": [],
+    }
     requests = []
     page.on("request", lambda request: requests.append(request))
     mock_api(page, [], [rule])
@@ -162,27 +214,49 @@ def test_cookie_session_removes_legacy_token_and_sends_csrf(
 
 @pytest.mark.parametrize("role,can_write", [("superadmin", True), ("viewer", False)])
 def test_role_permissions_are_reflected_in_controls(
-    page: Page, console_url: str, role: str, can_write: bool,
+    page: Page,
+    console_url: str,
+    role: str,
+    can_write: bool,
 ) -> None:
     mock_api(page, [], [])
-    page.route("**/api/v1/auth/session", lambda route: route.fulfill(json={
-        "username": "user", "role": role, "csrf_token": "test-csrf",
-    }))
+    page.route(
+        "**/api/v1/auth/session",
+        lambda route: route.fulfill(
+            json={
+                "username": "user",
+                "role": role,
+                "csrf_token": "test-csrf",
+            }
+        ),
+    )
     page.goto(console_url)
     expect(page.locator("#session-user")).to_contain_text(role)
-    expect(page.get_by_role("button", name="Publish", exact=True)).to_be_enabled(enabled=can_write)
-    expect(page.get_by_role("button", name="Save rule", exact=True)).to_be_enabled(enabled=can_write)
+    expect(page.get_by_role("button", name="Publish", exact=True)).to_be_enabled(
+        enabled=can_write
+    )
+    expect(page.get_by_role("button", name="Save rule", exact=True)).to_be_enabled(
+        enabled=can_write
+    )
 
 
 def test_policy_is_applied_only_after_exact_confirmation_and_errors_are_visible(
-    page: Page, console_url: str,
+    page: Page,
+    console_url: str,
 ) -> None:
     endpoint = {
-        "devid": "lab", "hostname": "lab", "os": "Windows", "host_tags": [],
-        "online": True, "effective_vdom": "Strict", "config_version": 1,
-        "applied_vdom": "Other", "applied_digest": "digest",
+        "devid": "lab",
+        "hostname": "lab",
+        "os": "Windows",
+        "host_tags": [],
+        "online": True,
+        "effective_vdom": "Strict",
+        "config_version": 1,
+        "applied_vdom": "Other",
+        "applied_digest": "digest",
         "desired_profile": {"vdom": "Strict", "version": 1, "digest": "digest"},
-        "last_seen": "2026-10-22T12:00:00+00:00", "last_applied": "2026-10-22T12:00:00+00:00",
+        "last_seen": "2026-10-22T12:00:00+00:00",
+        "last_applied": "2026-10-22T12:00:00+00:00",
     }
     mock_api(page, [endpoint], [])
     page.goto(console_url)
@@ -204,7 +278,8 @@ def test_policy_is_applied_only_after_exact_confirmation_and_errors_are_visible(
 
 
 def test_failed_refresh_keeps_previous_data_and_retry_recovers(
-    page: Page, console_url: str,
+    page: Page,
+    console_url: str,
 ) -> None:
     mock_api(page, [{"devid": "still-visible", "hostname": "lab", "online": True}], [])
     page.goto(console_url)
@@ -228,7 +303,8 @@ def test_failed_refresh_keeps_previous_data_and_retry_recovers(
 
 
 def test_policy_form_validates_and_publishes_explicit_blocks(
-    page: Page, console_url: str,
+    page: Page,
+    console_url: str,
 ) -> None:
     mock_api(page, [], [])
     writes = []
@@ -248,10 +324,67 @@ def test_policy_form_validates_and_publishes_explicit_blocks(
     page.get_by_label("Blocked process names (one per line)").fill("sample.exe")
     page.get_by_role("button", name="Publish", exact=True).click()
     expect(page.locator("#toast")).to_contain_text("v2 published")
-    assert writes == [{"web_filter": {"blocked": ["example.com"]}, "app_control": {"blocked": ["sample.exe"]}}]
+    assert writes == [
+        {
+            "web_filter": {"blocked": ["example.com"]},
+            "app_control": {"blocked": ["sample.exe"]},
+        }
+    ]
     page.get_by_text("Advanced JSON", exact=True).click()
     page.get_by_label("Publish JSON instead of the fields above").check()
-    page.get_by_label("Policy JSON (web_filter and app_control)").fill(json.dumps({"firewall": "on"}))
+    page.get_by_label("Policy JSON (web_filter and app_control)").fill(
+        json.dumps({"firewall": "on"})
+    )
     page.get_by_role("button", name="Publish", exact=True).click()
     expect(page.locator("#profile-error")).to_contain_text("Unsupported policy section")
     assert len(writes) == 1
+
+
+def test_login_shows_credential_error_and_logout_uses_csrf(
+    page: Page,
+    console_url: str,
+) -> None:
+    mock_api(page, [], [])
+    signed_in = False
+
+    def session(route: Route) -> None:
+        if signed_in:
+            route.fulfill(
+                json={"username": "admin", "role": "admin", "csrf_token": "login-csrf"}
+            )
+        else:
+            route.fulfill(status=401, json={"detail": "authentication required"})
+
+    def login(route: Route) -> None:
+        nonlocal signed_in
+        if route.request.post_data_json["password"] == "correct-password":
+            signed_in = True
+            route.fulfill(json={"csrf_token": "login-csrf"})
+        else:
+            route.fulfill(status=401, json={"detail": "invalid credentials"})
+
+    def logout(route: Route) -> None:
+        nonlocal signed_in
+        assert route.request.method == "POST"
+        assert route.request.headers.get("x-csrf-token") == "login-csrf"
+        signed_in = False
+        route.fulfill(json={"ok": True})
+
+    page.route("**/api/v1/auth/session", session)
+    page.route("**/api/v1/auth/login", login)
+    page.route("**/api/v1/auth/logout", logout)
+    page.goto(console_url)
+    expect(page.get_by_role("dialog", name="Sign in")).to_be_visible()
+    page.get_by_label("Username", exact=True).fill("admin")
+    page.get_by_label("Password", exact=True).fill("incorrect-password")
+    page.get_by_role("button", name="Sign in", exact=True).click()
+    expect(page.locator("#login-error")).to_contain_text("invalid credentials")
+    page.get_by_label("Password", exact=True).fill("correct-password")
+    page.get_by_role("button", name="Sign in", exact=True).click()
+    expect(page.get_by_role("dialog", name="Sign in")).not_to_be_visible()
+    expect(page.locator("#session-user")).to_contain_text("admin")
+    assert page.get_by_label("Password", exact=True).input_value() == ""
+    page.get_by_role("button", name="Sign out", exact=True).click()
+    expect(page.get_by_role("dialog", name="Sign in")).to_be_visible()
+    expect(page.locator("#session-user")).to_be_empty()
+    assert page.evaluate("localStorage.getItem('openems_token')") is None
