@@ -46,6 +46,10 @@ enum Command {
         #[arg(long)]
         config: Option<PathBuf>,
     },
+    /// Set restart-on-failure actions on the installed service (used by the MSI).
+    #[cfg(windows)]
+    #[command(hide = true)]
+    ConfigureRecovery,
     /// Entry point used by the Windows Service Control Manager.
     #[cfg(windows)]
     #[command(hide = true)]
@@ -192,6 +196,11 @@ fn execute(command: Command) -> Result<ExitCode> {
         Command::UninstallService { config } => {
             openems_agent::service::uninstall(config)?;
             println!("service {} removed; its hosts block was cleared", openems_agent::service::SERVICE_NAME);
+            Ok(ExitCode::SUCCESS)
+        }
+        #[cfg(windows)]
+        Command::ConfigureRecovery => {
+            openems_agent::service::configure_recovery()?;
             Ok(ExitCode::SUCCESS)
         }
         #[cfg(windows)]

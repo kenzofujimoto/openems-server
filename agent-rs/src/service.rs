@@ -109,6 +109,15 @@ pub fn install(config: Option<PathBuf>, start: bool) -> Result<()> {
         .create_service(&info, ServiceAccess::CHANGE_CONFIG | ServiceAccess::START | ServiceAccess::QUERY_STATUS)
         .map_err(service_error)?;
     service.set_description(DESCRIPTION).map_err(service_error)?;
+    apply_recovery(&service)?;
+    if start {
+        service.start::<&str>(&[]).map_err(service_error)?;
+    }
+    Ok(())
+}
+
+/// Restart after 5 s, 15 s and 60 s, also when the agent exits with an error code.
+fn apply_recovery(service: &windows_service::service::Service) -> Result<()> {
     let restart =
         |seconds| ServiceAction { action_type: ServiceActionType::Restart, delay: Duration::from_secs(seconds) };
     service
@@ -119,11 +128,17 @@ pub fn install(config: Option<PathBuf>, start: bool) -> Result<()> {
             actions: Some(vec![restart(5), restart(15), restart(60)]),
         })
         .map_err(service_error)?;
-    service.set_failure_actions_on_non_crash_failures(true).map_err(service_error)?;
-    if start {
-        service.start::<&str>(&[]).map_err(service_error)?;
-    }
-    Ok(())
+    service.set_failure_actions_on_non_crash_failures(true).map_err(service_error)
+}
+
+/// Configure recovery on an already registered service. The MSI calls this because
+/// Windows Installer opens services without SERVICE_START, which restart actions need.
+pub fn configure_recovery() -> Result<()> {
+    let manager = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT).map_err(service_error)?;
+    let service = manager
+        .open_service(SERVICE_NAME, ServiceAccess::CHANGE_CONFIG | ServiceAccess::START)
+        .map_err(service_error)?;
+    apply_recovery(&service)
 }
 
 /// Stop and remove the service, then clear only the managed hosts block.
