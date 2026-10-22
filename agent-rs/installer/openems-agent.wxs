@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Per-machine MSI for the native openems agent (WiX Toolset 5).
+
+  Build:   wix build installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d AgentExe=target/release/openems-agent.exe -o openems-agent.msi
+  Install: msiexec /i openems-agent.msi /qn SERVER=https://ems.example.com INVITATION=<one-time code> [VDOM=Default] [DEVID=name]
+
+  The executable lives in Program Files (writable only by administrators); the
+  configuration, state and logs live in the protected ProgramData\openems folder.
+  Uninstalling removes the service and clears only the managed hosts block; state
+  and logs are kept for troubleshooting, like the Python installer did.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="openems endpoint agent" Manufacturer="RSM Brasil" Version="$(var.Version)"
+           UpgradeCode="0C684B18-7540-4865-9516-567A9E81AA61" Scope="perMachine" Compressed="yes">
+    <SummaryInformation Description="openems endpoint agent" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of the openems agent is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="SERVER" Secure="yes" />
+    <Property Id="INVITATION" Secure="yes" Hidden="yes" />
+    <Property Id="VDOM" Value="Default" Secure="yes" />
+    <Property Id="DEVID" Secure="yes" />
+    <Property Id="HOSTSFILE" Secure="yes" />
+    <SetProperty Id="DEVID" Value="[ComputerName]" Before="CostFinalize" Sequence="execute" Condition="NOT DEVID" />
+    <SetProperty Id="HOSTSFILE" Value="[System64Folder]drivers\etc\hosts" Before="CostFinalize" Sequence="execute" Condition="NOT HOSTSFILE" />
+
+    <Launch Condition="Installed OR SERVER" Message="Pass SERVER=https://your-ems-server on the msiexec command line." />
+    <Launch Condition="Privileged" Message="The openems agent must be installed by an administrator." />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="openems">
+        <Component Id="AgentExecutable" Guid="6F1D2A2E-0F5B-4C7A-9A8E-3D0B5E1C7A11">
+          <File Id="AgentExe" Source="$(var.AgentExe)" Name="openems-agent.exe" KeyPath="yes" />
+          <ServiceInstall Id="AgentService" Name="openems-agent" DisplayName="openems endpoint agent"
+                          Description="Applies RSM endpoint policies and reports their status to the management server."
+                          Type="ownProcess" Start="auto" ErrorControl="normal" Account="LocalSystem" Arguments="service">
+            <ServiceConfig OnInstall="yes" OnReinstall="yes" FailureActionsWhenNonFatal="yes" />
+            <ServiceConfigFailureActions OnInstall="yes" OnReinstall="yes" ResetPeriod="86400">
+              <Failure Action="restartService" Delay="5000" />
+              <Failure Action="restartService" Delay="15000" />
+              <Failure Action="restartService" Delay="60000" />
+            </ServiceConfigFailureActions>
+          </ServiceInstall>
+          <ServiceControl Id="AgentServiceControl" Name="openems-agent" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Runs as LocalSystem before the service starts; writes the protected agent.json. -->
+    <CustomAction Id="ConfigureAgent" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="check" HideTarget="yes"
+                  ExeCommand="configure --server &quot;[SERVER]&quot; --devid &quot;[DEVID]&quot; --vdom &quot;[VDOM]&quot; --hosts-file &quot;[HOSTSFILE]&quot; --invitation &quot;[INVITATION]&quot;" />
+    <CustomAction Id="CleanupHosts" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="ignore"
+                  ExeCommand="cleanup-hosts" />
+
+    <InstallExecuteSequence>
+      <Custom Action="ConfigureAgent" Before="StartServices" Condition="NOT Installed AND NOT REMOVE" />
+      <Custom Action="CleanupHosts" After="StopServices" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>
