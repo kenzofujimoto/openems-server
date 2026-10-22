@@ -14,31 +14,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from tests.test_agent_integration import live_server
 
 ROOT = Path(__file__).resolve().parent.parent
-EXE = ".exe" if os.name == "nt" else ""
 INVITATION = "e2e-invitation"
-
-
-def _binary() -> Path | None:
-    configured = os.environ.get("OPENEMS_NATIVE_AGENT")
-    candidates = [Path(configured)] if configured else [
-        ROOT / "agent-rs" / "target" / profile / f"openems-agent{EXE}" for profile in ("release", "debug")
-    ]
-    return next((path for path in candidates if path.is_file()), None)
-
-
-@pytest.fixture(scope="module")
-def native() -> Path:
-    binary = _binary()
-    if binary is None:
-        if os.environ.get("OPENEMS_REQUIRE_NATIVE_AGENT") == "1":
-            pytest.fail("native agent binary is required but was not built")
-        pytest.skip("native agent is not built; run cargo build in agent-rs")
-    return binary
 
 
 def run_agent(binary: Path, *args: str, invitation: str | None = INVITATION) -> subprocess.CompletedProcess[str]:
@@ -180,3 +159,23 @@ def test_rejects_plain_http_to_remote_servers(native, tmp_path):
     result = once(native, "http://ems.example.com", tmp_path)
     assert result.returncode != 0
     assert "https" in result.stderr.lower()
+
+
+def test_configure_writes_a_strict_service_configuration(native, tmp_path):
+    config = tmp_path / "openems" / "agent.json"
+    with live_server() as (_, origin, client):
+        publish(client)
+        written = run_agent(
+            native, "configure", "--config-path", str(config), "--server", origin, "--devid", "native-pc",
+            "--invitation", INVITATION, "--hosts-file", str(tmp_path / "hosts"), "--state-path", str(tmp_path / "state.json"),
+            invitation=None,
+        )
+        assert written.returncode == 0, written.stderr
+        settings = json.loads(config.read_text(encoding="utf-8"))
+        assert settings["server"] == origin and settings["devid"] == "native-pc" and settings["invitation"] == INVITATION
+        assert INVITATION not in written.stdout + written.stderr
+        assert run_agent(native, "run-once", "--config", str(config), invitation=None).returncode == 0
+        assert detail(client)["applied_vdom"] == "Default"
+    refused = run_agent(native, "configure", "--config-path", str(config), "--server", "http://ems.example.com",
+                        "--devid", "pc", invitation=None)
+    assert refused.returncode != 0 and "https" in refused.stderr.lower()
