@@ -8,4 +8,7 @@ __pycache__
 .venv
 *.pyc
 *.md
+web/node_modules
+web/coverage
+app/panel_dist
 LAB-CAPTURE.md
