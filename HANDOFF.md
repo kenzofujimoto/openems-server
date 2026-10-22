@@ -4,6 +4,15 @@
 
 Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.md`.
 
+### Continuação — aceite em Sandbox
+
+- `deploy/test-trust-sandbox.ps1` prepara tarefa SYSTEM somente dentro de Windows Sandbox. Recusa o host de desenvolvimento antes de qualquer escrita; testa configuração sem CA implícita, instalação explícita, ACL/owner SYSTEM, identidade estável, remoção exata e limpeza repetida.
+- Testes de segurança do roteiro em `tests/test_sandbox_validation.py`: ausência de efeitos no host e sintaxe PowerShell. Falhas foram verificadas e commitadas antes da implementação.
+- Pacote local ignorado em `.venv/sandbox-acceptance/`: `trust-acceptance.wsb`, binário e roteiro em `input/`, saída em `results/`. Rede e clipboard desabilitados; entrada somente leitura; apenas resultados compartilhados para escrita. Nenhum segredo/configuração real foi incluído.
+- Sandbox iniciado; usuário confirmou que abriu. Até esta atualização, ainda sem `result.json`: **não considerar instalação/remoção real da CA validada**. Diagnóstico em `results/bootstrap.log`. Se for repetir, usar Sandbox novo (o roteiro recusa diretório de execução existente).
+- O teste da CA não substitui os aceites HTTPS nos navegadores, recuperação do serviço ou MSI. O serviço e a confiança do host continuam inalterados.
+- Verificação final desta continuação: **446 testes Python aprovados, 39 opcionais ignorados e 5 de instalação real deselecionados**, com binário release explicitamente selecionado. Inclui 3 contratos do roteiro (recusa do host e parser). `git diff --check` aprovado. Revisão independente do roteiro concluída; as correções para resultado obsoleto/parcial e a conferência de ACL/segunda remoção foram incorporadas. Resultado real do Sandbox continua pendente.
+
 - Implementados listener HTTPS em loopback, autorização por SNI e Host, revogação pela política vigente e limites de conexões/leitura. Não há proxy de sites permitidos.
 - CA por máquina com DPAPI, diretório/chave restritos ao SYSTEM, validação da persistência e certificados de servidor por domínio com validade de até 24 horas.
 - Configuração nativa: `block_page_https`, `block_page_https_port` (443) e `authority_path` (subdiretório privado `https/authority.json`). HTTPS requer `block_page` e execução contínua; `run-once` recusa essa combinação.
