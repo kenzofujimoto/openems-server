@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
@@ -39,6 +39,7 @@ from .service import (
 )
 
 _STATIC_DIR = Path(__file__).parent / 'static'
+_PANEL_DIR = Path(__file__).parent / 'panel_dist'
 _COOKIE = 'openems_session'
 _SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
 
@@ -64,7 +65,7 @@ def _bearer(request: Request) -> str:
 def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                record_path: str | None = None, admin_service: AdminService | None = None,
                audit_log: AuditLog | None = None, *, lab_mode: bool = False,
-               close_resources: list[Any] | None = None) -> FastAPI:
+               close_resources: list[Any] | None = None, panel_dir: Path | None = None) -> FastAPI:
     svc = service or EmsService(require_invitation=not lab_mode)
     saml = saml_sp or SamlSp('http://localhost:8013')
     admin = admin_service or AdminService()
@@ -383,6 +384,23 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     @app.get('/')
     def root():
         return RedirectResponse('/console/', status_code=302)
+
+    panel_root = (panel_dir or _PANEL_DIR).resolve()
+
+    @app.get('/panel', include_in_schema=False)
+    def panel_redirect():
+        return RedirectResponse('/panel/', status_code=307)
+
+    @app.get('/panel/{path:path}', include_in_schema=False)
+    def panel(path: str = ''):
+        # Built assets are served as files; every other path is a client route.
+        target = (panel_root / path).resolve()
+        if path and target.is_relative_to(panel_root) and target.is_file():
+            return FileResponse(target)
+        index = panel_root / 'index.html'
+        if not index.is_file():
+            raise HTTPException(status_code=404, detail='panel is not built')
+        return FileResponse(index, headers={'Cache-Control': 'no-store'})
 
     app.mount('/console', StaticFiles(directory=_STATIC_DIR, html=True), name='console')
     return app
