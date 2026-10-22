@@ -2,7 +2,7 @@
 
 Objetivo: chegar perto do que o FortiClient EMS oferece nas funções que não dependem de produtos Fortinet (FortiGate, FortiGuard, FortiSandbox, FortiAnalyzer, VPN/ZTNA), com um agente que não exige Python na máquina e um painel profissional.
 
-Status: aprovado em 2026-10-22, exceto a linguagem do agente (Go ou Rust), ainda em decisão.
+Status: aprovado em 2026-10-22, com o agente em Rust. Andamento de cada fase em `HANDOFF.md`.
 
 ## Decisões que precisam da sua aprovação
 
@@ -28,7 +28,7 @@ Extraída de rsm.global/brazil/pt-br:
 
 O FortiClient é um agente nativo (C/C++) com drivers de rede e de sistema, instalado por MSI/PKG/DEB, sem Python. Para chegar no mesmo modelo:
 
-- Agente nativo (Rust ou Go), instalado por MSI (WiX) no Windows, `.pkg` notarizado no macOS e `.deb`/`.rpm` no Linux.
+- Agente nativo em Rust, instalado por MSI (WiX) no Windows, `.pkg` notarizado no macOS e `.deb`/`.rpm` no Linux.
 - O painel gera o instalador com o endereço do servidor e o convite já configurados, para implantar via GPO, Intune ou manualmente.
 - O agente Python atual vira a referência de comportamento: os testes de contrato com o servidor continuam valendo para o agente nativo.
 
