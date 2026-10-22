@@ -1,0 +1,46 @@
+@import "tailwindcss";
+@import "@fontsource/noto-sans/latin-300.css";
+@import "@fontsource/noto-sans/latin-400.css";
+@import "@fontsource/noto-sans/latin-500.css";
+@import "@fontsource/noto-sans/latin-600.css";
+
+/* RSM Brasil identity (rsm.global/brazil): Prelo is licensed; Noto Sans is the
+   same open fallback the RSM site declares. */
+@theme {
+  --font-sans: "Prelo", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --color-rsm-blue: #009cde;
+  --color-rsm-blue-dark: #006e9d;
+  --color-rsm-blue-soft: #e5f5fc;
+  --color-rsm-green: #3f9c35;
+  --color-rsm-green-soft: #ebf5ea;
+  --color-rsm-navy: #27455c;
+  --color-rsm-gray: #515356;
+  --color-rsm-gray-mid: #888b8d;
+
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-line: #e7e9ec;
+  --color-ink: #1f2428;
+  --color-ink-soft: #515356;
+  --color-ink-muted: #888b8d;
+  --color-danger: #d14343;
+  --color-danger-soft: #fdeeee;
+  --color-warning: #c27c0e;
+  --color-warning-soft: #fdf4e3;
+
+  --radius-card: 14px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-rsm-blue);
+    outline-offset: 2px;
+  }
+}

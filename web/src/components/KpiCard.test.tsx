@@ -16,8 +16,9 @@ describe("KpiCard", () => {
     expect(screen.getByText("+50%")).toHaveAttribute("data-good", "false");
   });
 
-  it("renders without a delta", () => {
-    render(<KpiCard label="Total" value="10" icon={Monitor} />);
+  it("hides the comparison caption when there is no delta", () => {
+    render(<KpiCard label="Total" value="10" icon={Monitor} caption="vs. semana passada" />);
     expect(screen.getByText("10")).toBeInTheDocument();
+    expect(screen.queryByText("vs. semana passada")).not.toBeInTheDocument();
   });
 });
