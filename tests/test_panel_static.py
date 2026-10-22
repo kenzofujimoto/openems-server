@@ -41,3 +41,10 @@ def test_missing_build_is_reported_without_server_error(tmp_path):
         response = client.get("/panel/")
         assert response.status_code == 404
         assert response.json() == {"detail": "panel is not built"}
+
+
+def test_root_opens_the_panel_when_built_and_the_console_otherwise(panel_dir, tmp_path):
+    with TestClient(create_app(panel_dir=panel_dir)) as client:
+        assert client.get("/", follow_redirects=False).headers["location"] == "/panel/"
+    with TestClient(create_app(panel_dir=tmp_path / "absent")) as client:
+        assert client.get("/", follow_redirects=False).headers["location"] == "/console/"

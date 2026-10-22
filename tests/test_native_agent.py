@@ -27,10 +27,11 @@ def run_agent(binary: Path, *args: str, invitation: str | None = INVITATION) -> 
     return subprocess.run([str(binary), *args], capture_output=True, text=True, timeout=60, env=environment, check=False)
 
 
-def once(binary: Path, origin: str, tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+def once(binary: Path, origin: str, tmp_path: Path, *extra: str, invitation: str | None = INVITATION) -> subprocess.CompletedProcess[str]:
     return run_agent(
         binary, "run-once", "--server", origin, "--devid", "native-pc",
         "--hosts-file", str(tmp_path / "hosts"), "--state-path", str(tmp_path / "state.json"), *extra,
+        invitation=invitation,
     )
 
 
@@ -179,3 +180,28 @@ def test_configure_writes_a_strict_service_configuration(native, tmp_path):
     refused = run_agent(native, "configure", "--config-path", str(config), "--server", "http://ems.example.com",
                         "--devid", "pc", invitation=None)
     assert refused.returncode != 0 and "https" in refused.stderr.lower()
+
+
+def test_reports_the_server_reason_when_enrollment_is_refused(native, tmp_path):
+    with live_server() as (_, origin, client):
+        publish(client)
+        result = once(native, origin, tmp_path, invitation="not-the-right-invitation")
+        assert result.returncode == 0
+        assert "HTTP 400" in result.stderr and "invitation" in result.stderr
+        assert "not-the-right-invitation" not in result.stderr
+        assert client.get("/api/v1/endpoints/count").json()["count"] == 0
+
+
+def test_re_enrolls_when_the_server_no_longer_knows_the_device(native, tmp_path):
+    with live_server() as (service, origin, client):
+        publish(client)
+        assert once(native, origin, tmp_path).returncode == 0
+        # Simulate a server whose database was recreated: the device is unknown.
+        service._store._by_client.clear()
+        service._store._by_devid.clear()
+        fresh = client.post("/api/v1/enrollment/invitations", json={"vdom": "Default", "max_uses": 1, "ttl_seconds": 600}).json()["invitation"]
+        forgotten = once(native, origin, tmp_path, invitation=fresh)
+        assert "HTTP 401" in forgotten.stderr
+        recovered = once(native, origin, tmp_path, invitation=fresh)
+        assert recovered.returncode == 0, recovered.stderr
+        assert detail(client)["applied_vdom"] == "Default"
