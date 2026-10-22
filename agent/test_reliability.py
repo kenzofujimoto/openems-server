@@ -452,3 +452,142 @@ def test_policy_boundary_values_fail_explicitly(body):
     policy = importlib.import_module("agent.policy")
     with pytest.raises(ValueError):
         policy.validate_policy(body)
+
+
+def test_block_page_bind_failure_is_visible_to_caller(monkeypatch):
+    import blockpage
+    def unavailable(port, bind="127.0.0.1"):
+        raise OSError("port busy")
+    monkeypatch.setattr(blockpage, "create_server", unavailable)
+    with pytest.raises(OSError, match="port busy"):
+        a.start_block_page(8123)
+
+
+def test_agent_stop_closes_block_page_listener(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    page = Mock()
+    monkeypatch.setattr(a, "start_block_page", lambda port: page)
+    stop = threading.Event()
+    stop.set()
+    cfg = a.AgentConfig(server="https://ems.test", devid="pc", state_path=str(tmp_path / "state.json"), block_page=True)
+    a.run(cfg, stop_event=stop)
+    page.shutdown.assert_called_once()
+    page.server_close.assert_called_once()
+
+
+def test_process_listing_and_exact_kill_commands_are_checked(monkeypatch):
+    from types import SimpleNamespace
+    calls = []
+    def execute(command, **kwargs):
+        calls.append((command, kwargs))
+        output = '"safe.exe","123","Console","1","4 K"\n' if command[0] == "tasklist" else "/usr/bin/safe\nother\n"
+        return subprocess.CompletedProcess(command, 0, stdout=output)
+    monkeypatch.setattr(a.subprocess, "run", execute)
+    monkeypatch.setattr(a, "os", SimpleNamespace(name="nt"))
+    assert a.list_processes() == ["safe.exe"]
+    a.kill_process("safe.exe")
+    monkeypatch.setattr(a, "os", SimpleNamespace(name="posix"))
+    assert a.list_processes() == ["safe", "other"]
+    a.kill_process("safe")
+    assert calls[-1][0] == ["pkill", "-x", "safe"]
+    assert all(kwargs["check"] and kwargs["timeout"] == 15 for _, kwargs in calls)
+
+
+def test_dns_flush_uses_platform_tools_and_surfaces_failure(monkeypatch):
+    from types import SimpleNamespace
+    calls = []
+    monkeypatch.setattr(a.subprocess, "run", lambda command, **kwargs: calls.append((command, kwargs)))
+    monkeypatch.setattr(a, "os", SimpleNamespace(name="posix"))
+    monkeypatch.setattr(a.platform, "system", lambda: "Darwin")
+    a.flush_dns()
+    monkeypatch.setattr(a.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(a.shutil, "which", lambda name: "/usr/bin/resolvectl")
+    a.flush_dns()
+    monkeypatch.setattr(a, "os", SimpleNamespace(name="nt"))
+    a.flush_dns()
+    assert [entry[0][0] for entry in calls] == ["dscacheutil", "resolvectl", "ipconfig"]
+    assert all(kwargs["check"] for _, kwargs in calls)
+
+
+def test_enforcement_reports_only_successful_process_termination(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(a, "list_processes", lambda: ["safe.exe", "other.exe"])
+    monkeypatch.setattr(a, "kill_process", lambda name: calls.append(name))
+    cfg = a.AgentConfig(server="https://ems.test", devid="pc", hosts_path=str(tmp_path / "hosts"))
+    outcome = a.enforce(cfg, {"body": {"app_control": {"blocked": ["safe.exe"]}}}, log=lambda message: None)
+    assert calls == outcome["killed"] == ["safe.exe"]
+
+
+@pytest.mark.parametrize("response", [{"client_id": "client"}, {"device_token": "token"}])
+def test_registration_requires_credential_and_identity(monkeypatch, response):
+    monkeypatch.setattr(a, "_api", lambda *args, **kwargs: response)
+    with pytest.raises(ValueError):
+        a.register(a.AgentConfig(server="https://ems.test", devid="pc"))
+
+
+def test_registration_reuses_credential_without_server_reissuing_it(monkeypatch):
+    payloads = []
+    def api(url, data):
+        payloads.append(data)
+        return {"client_id": "renewed"}
+    monkeypatch.setattr(a, "_api", api)
+    cfg = a.AgentConfig(server="https://ems.test", devid="pc", device_token="existing", invitation="invite")
+    assert a.register(cfg) == "renewed"
+    assert cfg.device_token == "existing"
+    assert payloads[0]["key"] == "existing" and payloads[0]["invitation"] == "invite"
+
+
+def test_api_rejects_oversized_reply(monkeypatch):
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return None
+        def read(self, limit): return b"x" * limit
+    class Opener:
+        def open(self, *args, **kwargs): return Response()
+    monkeypatch.setattr(a.urllib.request, "build_opener", lambda *args: Opener())
+    with pytest.raises(ValueError, match="size limit"):
+        a._api("https://ems.test")
+
+
+def test_runtime_404_preserves_block_and_recovers_with_existing_key(tmp_path, monkeypatch):
+    calls = []
+    base = fake_server([profile()], calls)
+    engine = runtime(tmp_path, monkeypatch, base)
+    engine.cycle(now=0)
+    def unknown(url, data=None, **kwargs):
+        raise urllib.error.HTTPError(url, 404, "unknown", {}, None)
+    monkeypatch.setattr(a, "_api", unknown)
+    engine.cycle(now=2)
+    assert engine.client_id is None
+    assert "example.com" in (tmp_path / "hosts").read_text()
+    monkeypatch.setattr(a, "_api", base)
+    engine.cycle(now=100)
+    assert [call for call in calls if call[0].endswith("/register/")][-1][1]["key"] == "private-token"
+
+
+def test_fatal_network_worker_is_not_hidden_by_running_local_loop(tmp_path, monkeypatch):
+    def fatal(*args):
+        raise SystemExit("unexpected worker termination")
+    monkeypatch.setattr(a.AgentRuntime, "_synchronize", fatal)
+    cfg = a.AgentConfig(server="https://ems.test", devid="pc", state_path=str(tmp_path / "state.json"), interval=.01)
+    with pytest.raises(RuntimeError, match="worker terminated"):
+        a.run(cfg, log=lambda message: None)
+
+
+def test_host_write_detects_concurrent_unmanaged_edit(tmp_path):
+    hosts = tmp_path / "hosts"
+    hosts.write_bytes(b"new owner edit\n")
+    with pytest.raises(RuntimeError, match="concurrently"):
+        a._atomic_write(hosts, b"replacement", expected=b"old content\n")
+    assert hosts.read_bytes() == b"new owner edit\n"
+
+
+def test_invalid_render_target_or_broken_cleanup_markers_never_write(tmp_path):
+    with pytest.raises(ValueError):
+        a.render_hosts_block(["example.com"], "8.8.8.8")
+    assert a.clear_hosts(str(tmp_path / "missing")) is False
+    hosts = tmp_path / "hosts"
+    hosts.write_text(a.HOSTS_BEGIN)
+    with pytest.raises(ValueError):
+        a.clear_hosts(str(hosts))
+    assert hosts.read_text() == a.HOSTS_BEGIN
