@@ -77,3 +77,33 @@ def test_all_lists_every_endpoint(store) -> None:
     store.upsert(_ep("DEV-1", "cid-1"))
     store.upsert(_ep("DEV-2", "cid-2"))
     assert {e.devid for e in store.all()} == {"DEV-1", "DEV-2"}
+
+
+def test_rotated_identifier_stops_resolving(store) -> None:
+    store.upsert(_ep("DEV-1", "old"))
+    endpoint = store.get_by_devid("DEV-1")
+    endpoint.client_id = "new"
+    store.upsert(endpoint)
+    assert store.get_by_client_id("old") is None
+    assert store.get_by_client_id("new").devid == "DEV-1"
+
+
+def test_credentials_and_full_policy_status_roundtrip(store) -> None:
+    from datetime import datetime, timezone
+    endpoint = _ep("DEV-1", "client")
+    endpoint.credential_hash = "hashed-token"
+    endpoint.device_token = "never-persist-plaintext"
+    endpoint.config_version = 4
+    endpoint.applied_vdom = "Strict"
+    endpoint.applied_digest = "a" * 64
+    endpoint.last_error = "pending retry"
+    endpoint.last_applied = datetime.now(timezone.utc)
+    store.upsert(endpoint)
+    restored = store.get_by_devid("DEV-1")
+    assert restored.credential_hash == "hashed-token"
+    assert restored.device_token == ""
+    assert restored.config_version == 4
+    assert restored.applied_vdom == "Strict"
+    assert restored.applied_digest == "a" * 64
+    assert restored.last_error == "pending retry"
+    assert restored.last_applied == endpoint.last_applied
