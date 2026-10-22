@@ -11,14 +11,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-from datetime import timezone, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from threading import RLock
-
 from typing import Any
 
-from .models import AssignmentRule, Endpoint, EndpointStatus, Profile, RegisterRequest
-from .enrollment import EnrollmentStore, InMemoryEnrollmentStore
 from agent.policy import validate_policy
+
+from .enrollment import EnrollmentStore, InMemoryEnrollmentStore
+from .models import AssignmentRule, Endpoint, EndpointStatus, Profile, RegisterRequest
 from .queue import InMemoryQueue, Queue
 from .rules import evaluate_rules
 from .stores import (
@@ -71,7 +71,7 @@ class EmsService:
         self._enrollment = enrollment_store or InMemoryEnrollmentStore()
         self._lock = RLock()
         for invitation in valid_invitations or set():
-            self._enrollment.add(invitation, "Default", 1, datetime.now(timezone.utc) + timedelta(days=1))
+            self._enrollment.add(invitation, "Default", 1, datetime.now(UTC) + timedelta(days=1))
 
     # --- endpoint channel (port 8013) -----------------------------------
 
@@ -89,7 +89,7 @@ class EmsService:
                 existing.os = req.os or existing.os
                 existing.fctver = req.fctver or existing.fctver
                 existing.reg_ip = reg_ip
-                existing.last_seen = datetime.now(timezone.utc)
+                existing.last_seen = datetime.now(UTC)
                 self._store.upsert(existing)
                 return existing
             if self._require_invitation and not self._enrollment.consume(req.invitation or "", req.vdom):
@@ -118,7 +118,7 @@ class EmsService:
 
     def create_invitation(self, vdom: str = "Default", max_uses: int = 1, ttl_seconds: int = 3600) -> str:
         token = secrets.token_urlsafe(32)
-        self._enrollment.add(token, vdom, max_uses, datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds))
+        self._enrollment.add(token, vdom, max_uses, datetime.now(UTC) + timedelta(seconds=ttl_seconds))
         return token
 
     def rotate_device_token(self, devid: str) -> str:
@@ -140,7 +140,7 @@ class EmsService:
         endpoint = self._store.get_by_client_id(client_id)
         if endpoint is None:
             raise UnknownEndpointError(client_id)
-        endpoint.last_seen = datetime.now(timezone.utc)
+        endpoint.last_seen = datetime.now(UTC)
         self._store.upsert(endpoint)
         return endpoint
 
@@ -157,7 +157,7 @@ class EmsService:
         if endpoint is None:
             raise UnknownEndpointError(client_id)
         endpoint.host_tags = list(tags)
-        endpoint.last_seen = datetime.now(timezone.utc)
+        endpoint.last_seen = datetime.now(UTC)
         self._store.upsert(endpoint)
         return endpoint
 
@@ -262,20 +262,25 @@ class EmsService:
         endpoint = self._store.get_by_client_id(client_id)
         if endpoint is None:
             raise UnknownEndpointError(client_id)
+        # A group without a profile is an explicit release: version 0, empty digest.
         profile = self.effective_profile(client_id)
-        if (profile is None or version != profile.version
-                or (vdom is not None and vdom != profile.vdom)
-                or (digest is not None and digest != profile.digest)):
+        expected_vdom = profile.vdom if profile else self.effective_vdom(endpoint)
+        expected_version = profile.version if profile else 0
+        expected_digest = profile.digest if profile else ""
+        if (version != expected_version
+                or (vdom is not None and vdom != expected_vdom)
+                or (digest is not None and digest != expected_digest)
+                or (profile is None and (vdom is None or digest is None))):
             raise ValueError("acknowledgment does not match assigned policy")
         if success:
-            endpoint.config_version = profile.version
-            endpoint.applied_vdom = profile.vdom
-            endpoint.applied_digest = profile.digest
-            endpoint.last_applied = datetime.now(timezone.utc)
+            endpoint.config_version = expected_version
+            endpoint.applied_vdom = expected_vdom
+            endpoint.applied_digest = expected_digest
+            endpoint.last_applied = datetime.now(UTC)
             endpoint.last_error = ""
         else:
             endpoint.last_error = error[:1000] or "policy application failed"
-        endpoint.last_seen = datetime.now(timezone.utc)
+        endpoint.last_seen = datetime.now(UTC)
         self._store.upsert(endpoint)
         return endpoint
 

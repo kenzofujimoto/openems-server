@@ -1,15 +1,16 @@
 """Authenticated reference-agent and management HTTP interfaces."""
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 import ipaddress
 import os
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -18,9 +19,24 @@ from .auth import AdminService, LoginRateLimited
 from .limits import RequestSizeLimitMiddleware
 from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
-from .schemas import (AckPayload, ClientPayload, DevicePayload, IdpPayload, InvitationPayload,
-                      LoginPayload, RegisterPayload, RulePayload, TagsPayload, profile_response)
-from .service import EmsService, RegistrationError, UnknownEndpointError, UnknownProfileError
+from .schemas import (
+    AckPayload,
+    ClientPayload,
+    DevicePayload,
+    IdpPayload,
+    InvitationPayload,
+    LoginPayload,
+    RegisterPayload,
+    RulePayload,
+    TagsPayload,
+    profile_response,
+)
+from .service import (
+    EmsService,
+    RegistrationError,
+    UnknownEndpointError,
+    UnknownProfileError,
+)
 
 _STATIC_DIR = Path(__file__).parent / 'static'
 _COOKIE = 'openems_session'
@@ -84,7 +100,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'os': endpoint.os, 'fctver': endpoint.fctver, 'vdom': endpoint.vdom,
             'effective_vdom': assigned, 'status': endpoint.status.value,
             'online': endpoint.status is EndpointStatus.REGISTERED and
-                      (datetime.now(timezone.utc) - endpoint.last_seen).total_seconds() <= 90,
+                      (datetime.now(UTC) - endpoint.last_seen).total_seconds() <= 90,
             'host_tags': endpoint.host_tags, 'config_version': endpoint.config_version,
             'current_config_version': desired.version if desired else 0,
             'applied_vdom': endpoint.applied_vdom, 'applied_digest': endpoint.applied_digest,
@@ -95,6 +111,16 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
 
     @app.middleware('http')
     async def security_guard(request: Request, call_next):
+        # Hardening headers apply to every response, including early rejections.
+        response = await authorize(request, call_next)
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        if request.url.path.startswith(('/api/', '/fct/api/', '/fct_saml/')):
+            response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    async def authorize(request: Request, call_next):
         path = request.url.path
         local_lab = lab_mode and _loopback(request.client.host if request.client else None)
         if lab_mode and not local_lab:
@@ -103,10 +129,9 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         if management and path != '/api/v1/auth/login':
             token = _bearer(request) or request.cookies.get(_COOKIE, '')
             claims = admin.verify_token(token)
-            if claims is None:
-                if not (local_lab and not admin.has_admins()):
-                    return JSONResponse({'detail': 'authentication required'}, status_code=401)
-            else:
+            if claims is None and not (local_lab and not admin.has_admins()):
+                return JSONResponse({'detail': 'authentication required'}, status_code=401)
+            if claims is not None:
                 request.state.admin = claims
                 request.state.token = token
                 action = 'manage_idp' if path == '/fct_saml/parse_remote_metadata' else ('read' if request.method in _SAFE_METHODS else 'write')
@@ -114,9 +139,9 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                     action = 'read'
                 if not admin.is_allowed(claims['role'], action):
                     return JSONResponse({'detail': 'insufficient permission'}, status_code=403)
-                if request.method not in _SAFE_METHODS and not _bearer(request):
-                    if not admin.verify_csrf(token, request.headers.get('x-csrf-token', '')):
-                        return JSONResponse({'detail': 'invalid CSRF token'}, status_code=403)
+                cookie_write = request.method not in _SAFE_METHODS and not _bearer(request)
+                if cookie_write and not admin.verify_csrf(token, request.headers.get('x-csrf-token', '')):
+                    return JSONResponse({'detail': 'invalid CSRF token'}, status_code=403)
         if path.startswith('/fct/api/') and path != '/fct/api/public/v1/register/' and not local_lab:
             client_id = request.query_params.get('client_id', '')
             if request.method not in _SAFE_METHODS:
@@ -128,19 +153,20 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             if not isinstance(client_id, str) or not svc.authenticate_device(client_id, _bearer(request)):
                 return JSONResponse({'detail': 'device authentication required'}, status_code=401)
             request.state.device = client_id
-        response = await call_next(request)
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['Referrer-Policy'] = 'no-referrer'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
-        if management:
-            response.headers['Cache-Control'] = 'no-store'
-        return response
+        return await call_next(request)
 
     record_to = record_path or os.environ.get('OPENEMS_RECORD')
     if record_to:
         from .recording import RecorderMiddleware
         app.add_middleware(RecorderMiddleware, out_path=record_to)
     app.add_middleware(RequestSizeLimitMiddleware)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, error: RequestValidationError):
+        # Never echo submitted values: they may carry passwords or device secrets.
+        errors = [{'loc': list(item.get('loc', ())), 'msg': item.get('msg', ''), 'type': item.get('type', '')}
+                  for item in error.errors()]
+        return JSONResponse({'detail': errors}, status_code=422)
 
     @app.exception_handler(UnknownEndpointError)
     async def unknown_endpoint(request: Request, error: UnknownEndpointError):
@@ -367,13 +393,18 @@ app = None
 
 def build() -> FastAPI:
     """Wire persistent stores from environment; default HTTP behavior is closed."""
+    from .audit import PostgresAuditLog
     from .enrollment import PostgresEnrollmentStore
     from .idp_store import PostgresIdpStore
-    from .sessions import PostgresSessionStore
-    from .stores import PostgresAdminStore, PostgresProfileStore, PostgresRuleStore, PostgresStore
-    from .audit import PostgresAuditLog
     from .queue import RedisQueue
-    from .replay import RedisReplayCache, RedisPendingRequestStore
+    from .replay import RedisPendingRequestStore, RedisReplayCache
+    from .sessions import PostgresSessionStore
+    from .stores import (
+        PostgresAdminStore,
+        PostgresProfileStore,
+        PostgresRuleStore,
+        PostgresStore,
+    )
 
     lab_mode = os.environ.get('OPENEMS_LAB_MODE', '').lower() in {'1', 'true', 'yes'}
     dsn = os.environ.get('OPENEMS_DATABASE_URL')
@@ -413,7 +444,7 @@ def build() -> FastAPI:
             raise ValueError('OPENEMS_ENROLLMENT_TOKEN must contain at least 32 characters')
         svc._enrollment.add(enrollment_token, os.environ.get('OPENEMS_ENROLLMENT_VDOM', 'Default'),
                             int(os.environ.get('OPENEMS_ENROLLMENT_USES', '1')),
-                            datetime.now(timezone.utc) + timedelta(days=1))
+                            datetime.now(UTC) + timedelta(days=1))
     admin = AdminService(secret=secret, store=admin_store, session_store=session_store)
     saml = SamlSp(base_url, replay_cache=replay, pending_store=pending, idp_store=idp_store)
     if queue:
