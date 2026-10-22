@@ -84,3 +84,11 @@ def test_analyzer_redacts_legacy_capture(tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     assert "legacy-secret" not in output
     assert "public" in output
+
+
+def test_nested_json_in_query_or_body_string_cannot_hide_credentials() -> None:
+    request_scope = scope()
+    request_scope["query_string"] = b'metadata=%7B%22key%22%3A%22query-secret%22%7D'
+    record = _record_line(request_scope, b'{"metadata":"{\\"device_token\\":\\"body-secret\\"}"}')
+    assert "query-secret" not in record
+    assert "body-secret" not in record
