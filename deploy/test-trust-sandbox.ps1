@@ -1,11 +1,19 @@
 param(
     [string]$OutputDirectory = 'C:\openems-results',
     [switch]$SystemPhase,
-    [switch]$ProbeEnvironment
+    [switch]$ProbeEnvironment,
+    [switch]$Plan
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$directorySddl = 'O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)'
+$work = Join-Path 'C:\' ('openems-acceptance-' + [Guid]::NewGuid().ToString('N'))
+if ($Plan) {
+    @{ directory_sddl = $directorySddl; work_directory = $work } | ConvertTo-Json -Depth 5
+    exit 0
+}
 
 # Check observed Sandbox signals without relying on an optional Containers folder.
 $executionService = Get-Service -Name 'CExecSvc' -ErrorAction SilentlyContinue
@@ -27,14 +35,19 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 }
 
 if (-not $SystemPhase) {
-    $work = 'C:\openems-acceptance'
     if (Test-Path -LiteralPath $work) { throw 'Acceptance directory already exists; use a fresh Sandbox.' }
     New-Item -ItemType Directory -Path $work | Out-Null
+    # The CA rejects parent directories writable by untrusted principals.
+    # Use the same trusted owners as the service data directory, without inherited grants.
+    $directoryAcl = New-Object System.Security.AccessControl.DirectorySecurity
+    $directoryAcl.SetSecurityDescriptorSddlForm($directorySddl)
+    Set-Acl -LiteralPath $work -AclObject $directoryAcl
     New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'openems-agent.exe') -Destination $work
     Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $work 'test-trust-sandbox.ps1')
     # SYSTEM writes locally; mapped Sandbox shares belong to the interactive user.
-    $arguments = '-NoProfile -ExecutionPolicy Bypass -File C:\openems-acceptance\test-trust-sandbox.ps1 -SystemPhase -OutputDirectory C:\openems-acceptance'
+    $workScript = Join-Path $work 'test-trust-sandbox.ps1'
+    $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $workScript + '" -SystemPhase -OutputDirectory "' + $work + '"'
     $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
     $task = 'OpenemsTrustAcceptance'
     try {
