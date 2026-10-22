@@ -7,11 +7,11 @@ import pytest
 from app.audit import AuditEntry, InMemoryAuditLog
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
-from app.api import create_app  # noqa: E402
-from app.auth import AdminService  # noqa: E402
-from app.service import EmsService  # noqa: E402
+from app.api import create_app
+from app.auth import AdminService
+from app.service import EmsService
 
 
 def test_inmemory_audit_newest_first_and_limit() -> None:
@@ -31,7 +31,7 @@ def test_postgres_audit_roundtrip() -> None:
 
     log = PostgresAuditLog(dsn)
     log.init_schema()
-    with log._conn.cursor() as cur:  # noqa: SLF001
+    with log._conn.cursor() as cur:
         cur.execute("TRUNCATE audit_log")
     log.record(AuditEntry(actor="kenzo", action="rule.add", target="r1",
                           metadata={"priority": 10}))

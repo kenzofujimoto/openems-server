@@ -8,7 +8,7 @@ from app.service import EmsService
 
 
 def _ep(**kw) -> Endpoint:
-    base = dict(devid="DEV-1", client_id="cid-1", os="", hostname="", fctver="", vdom="Default")
+    base = {"devid": "DEV-1", "client_id": "cid-1", "os": "", "hostname": "", "fctver": "", "vdom": "Default"}
     base.update(kw)
     return Endpoint(**base)
 

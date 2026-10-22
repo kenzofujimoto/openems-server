@@ -9,11 +9,11 @@ from __future__ import annotations
 import pytest
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
-from app.api import create_app  # noqa: E402
+from app.api import create_app
 from app.saml import SamlSp
-from app.service import EmsService  # noqa: E402
+from app.service import EmsService
 
 
 @pytest.fixture
@@ -105,7 +105,7 @@ def test_get_config_unknown_vdom_is_404(client: TestClient) -> None:
 
 # --- SAML SP ---------------------------------------------------------------
 
-import base64  # noqa: E402
+import base64
 
 _IDP_METADATA = (
     '<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" '

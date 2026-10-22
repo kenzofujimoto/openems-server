@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import Lock
 from typing import Protocol
 
@@ -34,7 +34,7 @@ class InMemoryEnrollmentStore:
             if invitation is None:
                 return False
             scope, remaining, expiry = invitation
-            if scope != vdom or remaining < 1 or expiry <= datetime.now(timezone.utc):
+            if scope != vdom or remaining < 1 or expiry <= datetime.now(UTC):
                 return False
             self._invitations[_hash(token)] = (scope, remaining - 1, expiry)
             return True

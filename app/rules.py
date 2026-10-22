@@ -8,8 +8,6 @@ own vdom.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from .models import AssignmentRule, Condition, Endpoint
 
 
@@ -46,7 +44,7 @@ def match_rule(endpoint: Endpoint, rule: AssignmentRule) -> bool:
 
 def evaluate_rules(
     endpoint: Endpoint, rules: list[AssignmentRule]
-) -> Optional[str]:
+) -> str | None:
     """Return the target vdom of the highest-priority matching rule, or None."""
     for rule in sorted(rules, key=lambda r: r.priority):
         if match_rule(endpoint, rule):

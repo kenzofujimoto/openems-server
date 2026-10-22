@@ -10,6 +10,7 @@ at a reachable database, e.g.:
 from __future__ import annotations
 
 import os
+from datetime import UTC
 
 import pytest
 
@@ -28,7 +29,7 @@ def _make_postgres():
     store = PostgresStore(dsn)
     store.init_schema()
     # clean slate for the test run
-    with store._conn.cursor() as cur:  # noqa: SLF001 - test-only reset
+    with store._conn.cursor() as cur:
         cur.execute("TRUNCATE endpoints")
     return store
 
@@ -89,7 +90,7 @@ def test_rotated_identifier_stops_resolving(store) -> None:
 
 
 def test_credentials_and_full_policy_status_roundtrip(store) -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
     endpoint = _ep("DEV-1", "client")
     endpoint.credential_hash = "hashed-token"
     endpoint.device_token = "never-persist-plaintext"
@@ -97,7 +98,7 @@ def test_credentials_and_full_policy_status_roundtrip(store) -> None:
     endpoint.applied_vdom = "Strict"
     endpoint.applied_digest = "a" * 64
     endpoint.last_error = "pending retry"
-    endpoint.last_applied = datetime.now(timezone.utc)
+    endpoint.last_applied = datetime.now(UTC)
     store.upsert(endpoint)
     restored = store.get_by_devid("DEV-1")
     assert restored.credential_hash == "hashed-token"

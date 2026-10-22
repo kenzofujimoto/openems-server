@@ -32,7 +32,7 @@ def _make_rule_inmemory():
 def _make_rule_postgres():
     store = PostgresRuleStore(_dsn_or_skip())
     store.init_schema()
-    with store._conn.cursor() as cur:  # noqa: SLF001
+    with store._conn.cursor() as cur:
         cur.execute("TRUNCATE assignment_rules")
     return store
 
@@ -80,7 +80,7 @@ def _make_admin_inmemory():
 def _make_admin_postgres():
     store = PostgresAdminStore(_dsn_or_skip())
     store.init_schema()
-    with store._conn.cursor() as cur:  # noqa: SLF001
+    with store._conn.cursor() as cur:
         cur.execute("TRUNCATE admins")
     return store
 

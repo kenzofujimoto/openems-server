@@ -1,6 +1,6 @@
 """Device enrollment, policy identity and authenticated HTTP contracts."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -130,7 +130,7 @@ def test_failed_apply_and_offline_are_visible(secured):
     ack = {**identity, "vdom": "Default", "version": 1, "digest": assigned["digest"], "success": False, "error": "Hosts permission denied"}
     assert client.post("/fct/api/public/v1/config/ack/", headers=device, json=ack).status_code == 200
     endpoint = service.get_endpoint("pc")
-    endpoint.last_seen = datetime.now(timezone.utc) - timedelta(minutes=10)
+    endpoint.last_seen = datetime.now(UTC) - timedelta(minutes=10)
     service._store.upsert(endpoint)
     detail = client.get("/api/v1/endpoints/detail", params={"devid": "pc"}, headers=admin).json()
     assert detail["online"] is False
