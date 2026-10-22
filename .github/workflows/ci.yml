@@ -45,6 +45,9 @@ jobs:
       - name: Lint
         run: python -m ruff check app agent tools tests
       - name: Full suite including PostgreSQL, Redis, cryptographic SAML and browser
+        # `coverage combine` only reads data files named `.coverage.*`.
+        env:
+          COVERAGE_FILE: .coverage.linux
         run: python -m pytest -q -m "not windows_only" --junitxml=integration.junit.xml --cov=app --cov=agent --cov-report=term-missing --cov-report=json:coverage.json --cov-report=xml:coverage.xml
       - name: Reject skipped Linux tests
         run: python tools/check_quality.py integration.junit.xml
@@ -57,7 +60,7 @@ jobs:
             *.junit.xml
             coverage.json
             coverage.xml
-            .coverage
+            .coverage.linux
       - name: Build runtime image
         run: docker build -t openems:ci .
 
@@ -71,6 +74,8 @@ jobs:
           cache: pip
       - run: python -m pip install -r requirements.txt
       - name: Agent and mocked Windows service checks
+        env:
+          COVERAGE_FILE: .coverage.windows
         run: python -m pytest agent -q --junitxml=windows.junit.xml --cov=app --cov=agent --cov-report=term-missing
       - name: Reject skipped Windows tests
         run: python tools/check_quality.py windows.junit.xml
@@ -81,7 +86,7 @@ jobs:
           include-hidden-files: true
           path: |
             windows.junit.xml
-            .coverage
+            .coverage.windows
 
   coverage:
     needs: [integration, windows-service]

@@ -3,6 +3,15 @@ source = app,agent
 relative_files = True
 omit = */test_*.py
 
+[paths]
+# Windows data files store relative paths with backslashes; merge them on Linux.
+app =
+    app/
+    app\
+agent =
+    agent/
+    agent\
+
 [report]
 show_missing = True
 precision = 2
