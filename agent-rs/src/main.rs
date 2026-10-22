@@ -31,6 +31,18 @@ enum Command {
     },
     /// Write a protected agent.json for the service.
     Configure(ConfigureArgs),
+    /// Prepare a reversible installer transaction (Windows SYSTEM).
+    InstallerPrepare(InstallerArgs),
+    /// Restore the state captured by an installer transaction.
+    InstallerRollback {
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+    /// Remove private snapshots after a successful installer transaction.
+    InstallerCommit {
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
     /// Install this machine's HTTPS block-page root explicitly (Windows SYSTEM).
     InstallBlockPageTrust {
         #[arg(long)]
@@ -67,6 +79,28 @@ enum Command {
         #[arg(long)]
         config: Option<PathBuf>,
     },
+}
+
+#[derive(Args)]
+struct InstallerArgs {
+    #[arg(long)]
+    config: Option<PathBuf>,
+    #[arg(long)]
+    server: Option<String>,
+    #[arg(long)]
+    devid: Option<String>,
+    #[arg(long, default_value = "Default")]
+    vdom: String,
+    #[arg(long)]
+    hosts_file: Option<PathBuf>,
+    #[arg(long)]
+    invitation: Option<String>,
+    #[arg(long)]
+    block_page: bool,
+    #[arg(long)]
+    block_page_https: bool,
+    #[arg(long, conflicts_with_all = ["server", "devid", "hosts_file", "invitation", "block_page", "block_page_https"])]
+    remove: bool,
 }
 
 #[derive(Args)]
@@ -217,6 +251,39 @@ fn execute(command: Command) -> Result<ExitCode> {
         }
         Command::Configure(args) => {
             println!("configuration written to {}", configure(args)?.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::InstallerPrepare(args) => {
+            let path = args.config.unwrap_or_else(default_config_path);
+            if args.remove {
+                openems_agent::installer::prepare_removal(&path)?;
+            } else {
+                let bootstrap = args.server.filter(|server| !server.is_empty()).map(|server| {
+                    let devid = args.devid.unwrap_or_else(|| gethostname::gethostname().to_string_lossy().into_owned());
+                    let mut config = AgentConfig::new(server, devid);
+                    config.vdom = args.vdom;
+                    config.hosts_path = args.hosts_file.unwrap_or(config.hosts_path);
+                    config.state_path = path.with_file_name("state.json");
+                    config.authority_path = path.with_file_name("https").join("authority.json");
+                    config.invitation = args
+                        .invitation
+                        .filter(|value| !value.is_empty())
+                        .or_else(|| non_empty_env("OPENEMS_INVITATION"));
+                    config
+                });
+                openems_agent::installer::prepare(&path, bootstrap, args.block_page, args.block_page_https)?;
+            }
+            println!("installer transaction prepared");
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::InstallerRollback { config } => {
+            openems_agent::installer::rollback(&config.unwrap_or_else(default_config_path))?;
+            println!("installer transaction restored");
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::InstallerCommit { config } => {
+            openems_agent::installer::commit(&config.unwrap_or_else(default_config_path))?;
+            println!("installer transaction committed");
             Ok(ExitCode::SUCCESS)
         }
         Command::InstallBlockPageTrust { config } => {

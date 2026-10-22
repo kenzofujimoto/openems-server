@@ -14,7 +14,7 @@
   <Package Name="openems endpoint agent" Manufacturer="RSM Brasil" Version="$(var.Version)"
            UpgradeCode="0C684B18-7540-4865-9516-567A9E81AA61" Scope="perMachine" Compressed="yes">
     <SummaryInformation Description="openems endpoint agent" />
-    <MajorUpgrade DowngradeErrorMessage="A newer version of the openems agent is already installed." />
+    <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer version of the openems agent is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
     <Property Id="SERVER" Secure="yes" />
@@ -22,11 +22,20 @@
     <Property Id="VDOM" Value="Default" Secure="yes" />
     <Property Id="DEVID" Secure="yes" />
     <Property Id="HOSTSFILE" Secure="yes" />
+    <Property Id="BLOCKPAGE" Secure="yes" />
+    <Property Id="BLOCKPAGEHTTPS" Secure="yes" />
     <SetProperty Id="DEVID" Value="[ComputerName]" Before="CostFinalize" Sequence="execute" Condition="NOT DEVID" />
     <SetProperty Id="HOSTSFILE" Value="[System64Folder]drivers\etc\hosts" Before="CostFinalize" Sequence="execute" Condition="NOT HOSTSFILE" />
+    <SetProperty Id="BlockPageArguments" Value="--block-page" Before="CostFinalize" Sequence="execute" Condition="BLOCKPAGE=&quot;1&quot; OR BLOCKPAGEHTTPS=&quot;1&quot;" />
+    <SetProperty Id="HttpsBlockPageArguments" Value="--block-page-https" Before="CostFinalize" Sequence="execute" Condition="BLOCKPAGEHTTPS=&quot;1&quot;" />
 
-    <Launch Condition="Installed OR SERVER" Message="Pass SERVER=https://your-ems-server on the msiexec command line." />
+    <Launch Condition="Installed OR WIX_UPGRADE_DETECTED OR SERVER" Message="Pass SERVER=https://your-ems-server on the msiexec command line." />
     <Launch Condition="Privileged" Message="The openems agent must be installed by an administrator." />
+    <Launch Condition="NOT BLOCKPAGE OR BLOCKPAGE=&quot;1&quot;" Message="BLOCKPAGE accepts only 1 or omission. Omit it to preserve an existing setting." />
+    <Launch Condition="NOT BLOCKPAGEHTTPS OR BLOCKPAGEHTTPS=&quot;1&quot;" Message="BLOCKPAGEHTTPS accepts only 1 or omission. HTTPS also enables the HTTP page." />
+
+    <!-- Embedded executable remains available during rollback and uninstall commit. -->
+    <Binary Id="AgentActions" SourceFile="$(var.AgentExe)" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="openems">
@@ -41,21 +50,30 @@
     </StandardDirectory>
 
     <!-- Runs as LocalSystem before the service starts; writes the protected agent.json. -->
-    <CustomAction Id="ConfigureAgent" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="check" HideTarget="yes"
-                  ExeCommand="configure --server &quot;[SERVER]&quot; --devid &quot;[DEVID]&quot; --vdom &quot;[VDOM]&quot; --hosts-file &quot;[HOSTSFILE]&quot; --invitation &quot;[INVITATION]&quot;" />
+    <CustomAction Id="PrepareAgentSetup" BinaryRef="AgentActions" Execute="deferred" Impersonate="no" Return="check" HideTarget="yes"
+                  ExeCommand="installer-prepare --server &quot;[SERVER]&quot; --devid &quot;[DEVID]&quot; --vdom &quot;[VDOM]&quot; --hosts-file &quot;[HOSTSFILE]&quot; --invitation &quot;[INVITATION]&quot; [BlockPageArguments] [HttpsBlockPageArguments]" />
+    <CustomAction Id="RollbackAgentSetup" BinaryRef="AgentActions" Execute="rollback" Impersonate="no" Return="check"
+                  ExeCommand="installer-rollback" />
+    <CustomAction Id="CommitAgentSetup" BinaryRef="AgentActions" Execute="commit" Impersonate="no" Return="check"
+                  ExeCommand="installer-commit" />
+    <CustomAction Id="PrepareAgentRemoval" BinaryRef="AgentActions" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="installer-prepare --remove" />
+    <CustomAction Id="RollbackAgentRemoval" BinaryRef="AgentActions" Execute="rollback" Impersonate="no" Return="check"
+                  ExeCommand="installer-rollback" />
+    <CustomAction Id="CommitAgentRemoval" BinaryRef="AgentActions" Execute="commit" Impersonate="no" Return="check"
+                  ExeCommand="installer-commit" />
     <!-- Windows Installer cannot set restart actions itself (error 1939); the agent does it. -->
     <CustomAction Id="ConfigureRecovery" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="check"
                   ExeCommand="configure-recovery" />
-    <CustomAction Id="CleanupHosts" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="ignore"
-                  ExeCommand="cleanup-hosts" />
-    <CustomAction Id="RemoveBlockPageTrust" FileRef="AgentExe" Execute="deferred" Impersonate="no" Return="check"
-                  ExeCommand="remove-block-page-trust" />
 
     <InstallExecuteSequence>
-      <Custom Action="RemoveBlockPageTrust" After="StopServices" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="RollbackAgentRemoval" Before="PrepareAgentRemoval" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="PrepareAgentRemoval" After="StopServices" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="CommitAgentRemoval" After="PrepareAgentRemoval" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="ConfigureRecovery" After="InstallServices" Condition="NOT REMOVE" />
-      <Custom Action="ConfigureAgent" Before="StartServices" Condition="NOT Installed AND NOT REMOVE" />
-      <Custom Action="CleanupHosts" After="StopServices" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="RollbackAgentSetup" Before="PrepareAgentSetup" Condition="NOT REMOVE" />
+      <Custom Action="PrepareAgentSetup" Before="StartServices" Condition="NOT REMOVE" />
+      <Custom Action="CommitAgentSetup" After="PrepareAgentSetup" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
   </Package>
 </Wix>

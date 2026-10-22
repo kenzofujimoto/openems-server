@@ -57,6 +57,25 @@ impl Authority {
         verify_authority_file(path)?;
         Self::load_or_create(path)
     }
+    /// Exact managed root without decrypting the private key or requiring an unexpired issuer.
+    pub(crate) fn managed_root(path: &Path) -> Result<Option<Vec<u8>>> {
+        require_system()?;
+        check_path(path)?;
+        if !path.try_exists()? {
+            return Ok(None);
+        }
+        verify_authority_file(path)?;
+        if fs::metadata(path)?.len() > 65536 {
+            return Err(failure());
+        }
+        let saved: Saved = serde_json::from_slice(&fs::read(path)?).map_err(|_| failure())?;
+        use x509_parser::prelude::FromDer;
+        let (rest, cert) = x509_parser::certificate::X509Certificate::from_der(&saved.root).map_err(|_| failure())?;
+        if saved.version != 1 || !rest.is_empty() || !cert.is_ca() {
+            return Err(failure());
+        }
+        Ok(Some(saved.root))
+    }
     /// Removes only the exact root recorded in the protected authority file.
     /// Expired roots and unreadable private keys remain removable.
     pub fn remove_managed_trust(path: &Path, store: &mut impl TrustStore) -> Result<()> {
@@ -234,7 +253,7 @@ struct Saved {
     root: Vec<u8>,
     protected_key: Vec<u8>,
 }
-fn check_path(path: &Path) -> Result<()> {
+pub(crate) fn check_path(path: &Path) -> Result<()> {
     for ancestor in path.ancestors() {
         if let Ok(meta) = fs::symlink_metadata(ancestor) {
             if meta.file_type().is_symlink() {
@@ -260,7 +279,7 @@ fn unprotect(_: &[u8]) -> Result<Vec<u8>> {
     Err(failure())
 }
 #[cfg(not(windows))]
-fn secure_authority_file(path: &Path) -> Result<()> {
+pub(crate) fn secure_authority_file(path: &Path) -> Result<()> {
     crate::fsutil::secure_file(path)
 }
 #[cfg(windows)]
@@ -310,7 +329,7 @@ fn crypt(data: &[u8], encrypt: bool) -> Result<Vec<u8>> {
     }
 }
 #[cfg(windows)]
-fn secure_authority_file(path: &Path) -> Result<()> {
+pub(crate) fn secure_authority_file(path: &Path) -> Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::{
         Foundation::LocalFree,
@@ -461,15 +480,15 @@ impl TrustStore for WindowsTrustStore {
 }
 
 #[cfg(not(windows))]
-fn require_system() -> Result<()> {
+pub(crate) fn require_system() -> Result<()> {
     Err(AgentError::Local("persistent local authority requires Windows SYSTEM".into()))
 }
 #[cfg(not(windows))]
-fn verify_authority_file(_: &Path) -> Result<()> {
+pub(crate) fn verify_authority_file(_: &Path) -> Result<()> {
     Err(failure())
 }
 #[cfg(windows)]
-fn require_system() -> Result<()> {
+pub(crate) fn require_system() -> Result<()> {
     use windows_sys::Win32::Security::*;
     let mut buffer = [0usize; 128];
     let mut length = 0;
@@ -494,7 +513,7 @@ fn require_system() -> Result<()> {
     Ok(())
 }
 #[cfg(windows)]
-fn verify_authority_file(path: &Path) -> Result<()> {
+pub(crate) fn verify_authority_file(path: &Path) -> Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::{
         Foundation::LocalFree,

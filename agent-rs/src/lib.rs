@@ -10,9 +10,11 @@ pub mod error;
 pub mod fsutil;
 pub mod hosts;
 pub mod https_blockpage;
+pub mod installer;
 pub mod logging;
 pub mod policy;
 pub mod processes;
+pub mod provisioning;
 pub mod runtime;
 #[cfg(windows)]
 pub mod service;
