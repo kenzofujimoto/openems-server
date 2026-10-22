@@ -76,6 +76,44 @@ pub fn secure_file(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Lock the service data folder: Administrators own it, SYSTEM and Administrators
+/// write, users only read. Requires elevation; used for the default location.
+#[cfg(windows)]
+pub fn secure_directory(path: &Path) -> Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Foundation::{HLOCAL, LocalFree};
+    use windows_sys::Win32::Security::Authorization::ConvertStringSecurityDescriptorToSecurityDescriptorW;
+    use windows_sys::Win32::Security::{PSECURITY_DESCRIPTOR, SetFileSecurityW};
+
+    let sddl: Vec<u16> =
+        "O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)".encode_utf16().chain([0]).collect();
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
+    let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
+    // SAFETY: NUL-terminated buffers outlive the calls; LocalFree releases the descriptor.
+    unsafe {
+        if ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl.as_ptr(), 1, &mut descriptor, std::ptr::null_mut())
+            == 0
+        {
+            return Err(std::io::Error::last_os_error().into());
+        }
+        // OWNER | DACL | PROTECTED_DACL
+        let applied = SetFileSecurityW(wide.as_ptr(), 0x8000_0005, descriptor);
+        let error = std::io::Error::last_os_error();
+        LocalFree(descriptor as HLOCAL);
+        if applied == 0 {
+            return Err(error.into());
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+pub fn secure_directory(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
+    Ok(())
+}
+
 #[cfg(unix)]
 pub fn secure_file(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;

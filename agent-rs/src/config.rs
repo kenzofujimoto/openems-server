@@ -156,6 +156,11 @@ impl AgentConfig {
     pub fn write_file(&self, path: &Path) -> Result<()> {
         let encoded =
             serde_json::to_vec_pretty(&self.to_json()).map_err(|error| AgentError::Local(error.to_string()))?;
+        if path.parent() == Some(data_dir().as_path()) {
+            // The service location may predate this install; take it over before writing secrets.
+            std::fs::create_dir_all(data_dir())?;
+            crate::fsutil::secure_directory(&data_dir())?;
+        }
         crate::fsutil::atomic_write(path, &encoded, None, true)
     }
 }

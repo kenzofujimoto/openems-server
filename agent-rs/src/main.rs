@@ -148,7 +148,9 @@ fn configure(args: ConfigureArgs) -> Result<PathBuf> {
     config.block_page = args.block_page;
     config.block_page_port = args.block_page_port;
     config.allow_insecure_http = args.allow_insecure_http;
-    config.invitation = args.invitation.or_else(|| non_empty_env("OPENEMS_INVITATION"));
+    // msiexec passes an empty property when no invitation was given.
+    config.invitation =
+        args.invitation.filter(|value| !value.is_empty()).or_else(|| non_empty_env("OPENEMS_INVITATION"));
     config.validate()?;
     config.write_file(&path)?;
     Ok(path)
