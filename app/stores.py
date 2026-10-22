@@ -208,21 +208,34 @@ class PostgresStore:
 class ProfileStore(Protocol):
     def get(self, vdom: str) -> Profile | None: ...
     def put(self, profile: Profile) -> None: ...
+    def publish(self, vdom: str, body: dict[str, object]) -> Profile: ...
     def all(self) -> list[Profile]: ...
 
 
 class InMemoryProfileStore:
     def __init__(self) -> None:
         self._by_vdom: dict[str, Profile] = {}
+        self._lock = RLock()
 
     def get(self, vdom: str) -> Profile | None:
-        return self._by_vdom.get(vdom)
+        with self._lock:
+            return deepcopy(self._by_vdom.get(vdom))
 
     def put(self, profile: Profile) -> None:
-        self._by_vdom[profile.vdom] = profile
+        with self._lock:
+            self._by_vdom[profile.vdom] = deepcopy(profile)
+
+    def publish(self, vdom: str, body: dict[str, object]) -> Profile:
+        with self._lock:
+            previous = self._by_vdom.get(vdom)
+            profile = Profile(vdom=vdom, version=previous.version + 1 if previous else 1,
+                              body=deepcopy(body))
+            self._by_vdom[vdom] = profile
+            return deepcopy(profile)
 
     def all(self) -> list[Profile]:
-        return list(self._by_vdom.values())
+        with self._lock:
+            return deepcopy(list(self._by_vdom.values()))
 
 
 PROFILE_SCHEMA = """
@@ -271,6 +284,18 @@ class PostgresProfileStore:
                 """,
                 (profile.vdom, profile.version, self._Jsonb(profile.body), profile.updated_at),
             )
+
+    def publish(self, vdom: str, body: dict[str, object]) -> Profile:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO profiles (vdom, version, body)
+                VALUES (%s, 1, %s)
+                ON CONFLICT (vdom) DO UPDATE SET version = profiles.version + 1,
+                body = EXCLUDED.body, updated_at = clock_timestamp()
+                RETURNING vdom, version, body, updated_at""",
+                (vdom, self._Jsonb(body)),
+            )
+            return self._row(cur.fetchone())
 
     def all(self) -> list[Profile]:
         with self._conn.cursor() as cur:

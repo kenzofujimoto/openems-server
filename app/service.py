@@ -196,13 +196,8 @@ class EmsService:
         registered endpoint in that vdom; endpoints pull it and then fetch the
         profile via get_profile().
         """
-        previous = self._profile_store.get(vdom)
-        profile = Profile(
-            vdom=vdom,
-            version=(previous.version + 1) if previous else 1,
-            body=validate_policy(body),
-        )
-        self._profile_store.put(profile)
+        # The store assigns the version atomically so concurrent workers never collide.
+        profile = self._profile_store.publish(vdom, validate_policy(body))
         for endpoint in self._store.all():
             if self.effective_vdom(endpoint) == vdom:
                 self._queue.push(
