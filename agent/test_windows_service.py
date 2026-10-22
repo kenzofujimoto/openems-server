@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import traceback
+import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -241,3 +242,55 @@ def test_service_log_rotates_and_preserves_recent_messages(tmp_path, monkeypatch
     service.log("recent event")
     assert "recent event" in path.read_text(encoding="utf-8")
     assert path.with_name("agent.log.1").exists()
+
+
+def test_local_block_page_serves_http_and_escapes_host_header():
+    with blockpage.create_server(0) as listener:
+        worker = threading.Thread(target=listener.serve_forever, daemon=True)
+        worker.start()
+        try:
+            address = f"http://127.0.0.1:{listener.server_address[1]}/blocked/path"
+            request = urllib.request.Request(address, headers={"Host": "<script>alert(1)</script>.test"})
+            with urllib.request.urlopen(request, timeout=3) as response:
+                body = response.read().decode("utf-8")
+                assert response.status == 200
+                assert response.headers["Cache-Control"] == "no-store"
+                assert response.headers["Content-Type"] == "text/html; charset=utf-8"
+                assert "&lt;script&gt;" in body
+                assert "<script>" not in body
+        finally:
+            listener.shutdown()
+            worker.join(timeout=3)
+        assert not worker.is_alive()
+
+
+@pytest.mark.windows_only
+@pytest.mark.skipif(os.name != "nt" or shutil.which("pwsh") is None, reason="Windows ACL API harness")
+def test_python_acl_accepts_read_only_users_and_rejects_untrusted_writes():
+    path = Path(service.__file__).with_name("install_service.ps1")
+    script = r'''
+    $errors = $null
+    $ast = [Management.Automation.Language.Parser]::ParseFile($args[0], [ref]$null, [ref]$errors)
+    $function = $ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Assert-ProtectedPath'}, $true)
+    Invoke-Expression $function.Extent.Text
+    function Get-Item { param($LiteralPath, $ErrorAction) [PSCustomObject]@{Attributes = [IO.FileAttributes]::Normal} }
+    $script:access = [Security.AccessControl.FileSystemRights]::ReadAndExecute
+    function Get-Acl {
+        param($LiteralPath)
+        $result = [PSCustomObject]@{Access = @([PSCustomObject]@{
+            IdentityReference = [Security.Principal.SecurityIdentifier]::new('S-1-5-32-545')
+            AccessControlType = 'Allow'; FileSystemRights = $script:access
+        })}
+        $result | Add-Member ScriptMethod GetOwner { param($target) [Security.Principal.SecurityIdentifier]::new('S-1-5-32-544') }
+        return $result
+    }
+    Assert-ProtectedPath 'fake-path'
+    $script:access = [Security.AccessControl.FileSystemRights]::Modify
+    try { Assert-ProtectedPath 'fake-path'; throw 'Untrusted writes were accepted' }
+    catch { if ($_.Exception.Message -notmatch 'only be writable') { throw } }
+    '''
+    result = subprocess.run(
+        [shutil.which("pwsh"), "-NoProfile", "-Command", "& {" + script + "}", str(path)],
+        text=True, capture_output=True, timeout=20, check=False,
+    )
+    assert result.returncode == 0, result.stderr
