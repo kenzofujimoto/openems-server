@@ -1,8 +1,11 @@
 name: CI
 
+# Feature branches run CI through their pull request; main runs on push.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
