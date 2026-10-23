@@ -165,3 +165,18 @@ pub fn uninstall(config: Option<PathBuf>) -> Result<()> {
     drop(service);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stop_request_is_reported_as_pending_with_room_for_cleanup() {
+        // Stop-Service fails if a stopping service still reports Running after its 2 s poll.
+        let pending = stop_pending_status();
+        assert_eq!(pending.current_state, ServiceState::StopPending);
+        assert!(pending.controls_accepted.is_empty());
+        assert!(pending.wait_hint >= Duration::from_secs(30));
+        assert!(pending.checkpoint > 0);
+    }
+}
