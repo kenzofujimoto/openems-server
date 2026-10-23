@@ -13,6 +13,22 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 - Evidência em `validation/host-chrome-https-2026-10-22.json`. O estado instalado foi mantido para o teste solicitado; não confundir com as validações anteriores sem alteração no host.
 - Próximo recorte proposto: `PLAN-installer-blockpage.md` (F1/F2: opções no MSI, preservação de upgrade, transação de CA e pacote para a segunda máquina). Ainda precisa de aprovação específica do plano antes de alterar implementação em vários arquivos. Firefox permanece pendente; cada máquina deve gerar e proteger sua própria CA.
 
+### Continuação — F2 SafeSearch e horários (branch `feature/dns-safesearch-schedules`, `dns-safesearch-schedules.md` aprovado em 2026-10-23)
+
+- Feito com TDD:
+  - Referência Python: `safe_search` (google, bing, youtube, duckduckgo; YouTube `strict` ou `moderate`), `timezone` IANA obrigatório com `scheduled`, janelas `{blocked, days, from, to}` com fim exclusivo, `allowed` vencendo tudo. Domínios do Google tirados de https://www.google.com/supported_domains (187). `tzdata==2026.5` fixado.
+  - Vetores compartilhados de validação, decisões em horários fixos, alvos de SafeSearch e lista do Google.
+  - Rust (`WebFilter`): fuso pela base IANA embutida (`jiff`, `tzdb-bundle-always`), independente do fuso do Windows; o executável passou de 4,28 para 4,88 MB.
+  - Resolvedor: A/AAAA de buscador ativado → CNAME para o host seguro mais os registros dele no upstream. O nome original do buscador nunca é encaminhado. Os outros tipos recebem NODATA, e qualquer falha no upstream vira SERVFAIL. Bloqueio vence; `allowed` mantém o SafeSearch.
+  - Serviço: horários avaliados a cada consulta; o `hosts` é reescrito pelas janelas abertas em cada ciclo. No modo DNS, o cache do Windows é limpo quando a política ou as janelas abertas mudam. Isso corrigiu uma promessa do recorte 1: a limpeza só acontecia quando o `hosts` mudava, e um nome recém-bloqueado ficava no cache até o TTL. Nova tag `web-filter:v2`.
+  - Referência Python: itens não textuais em `engines` e `days` passaram a ser erro de validação (antes, `TypeError` → 500).
+- Suíte: **535 Python aprovados, 41 ignorados, 5 deselecionados; 92 Rust**.
+- Aceite `deploy/test-safesearch-sandbox.ps1` (contratos em `tests/test_safesearch_sandbox.py`): monta as políticas pelo horário UTC atual (uma janela aberta, outra fechada) e calcula o digest em PowerShell, conferido com o Python em três horários.
+  - Verifica bloqueio e liberação por horário, os CNAMEs dos quatro buscadores e o SafeSearch travado no Google pelo Edge, confirmado pelo operador.
+  - Verifica que uma política nova limpa o cache, consultando sem limpar o cache, e a desinstalação.
+  - Recusa rodar entre 23:40 e 00:00 UTC, e também se o host já filtrar os nomes ou já forçar SafeSearch.
+- Pacote: `.venv/sandbox-acceptance/safesearch-input/` (MSI de produção sha256 `72af9b37…`) e `safesearch.wsb`, com rede. Iniciar com Win+R → `C:\openems-input\RUN-SAFESEARCH-TEST.cmd`; relatório em `results/safesearch-result.json`. **Aceite real ainda não executado.**
+
 ### Continuação — F2 resolvedor DNS (branch `feature/dns-resolver`, `dns-resolver.md` aprovado em 2026-10-23)
 
 - Feito, com TDD (testes vermelhos commitados antes de cada unidade):
