@@ -15,8 +15,15 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
 
-from policy import (domain_blocked, hosts_names, normalize_domain, normalize_domain_rule, normalize_process,
-                    policy_digest, validate_policy)
+from policy import (
+    domain_blocked,
+    hosts_names,
+    normalize_domain,
+    normalize_domain_rule,
+    normalize_process,
+    policy_digest,
+    validate_policy,
+)
 
 OUTPUT = ROOT / "contract" / "policy-vectors.json"
 

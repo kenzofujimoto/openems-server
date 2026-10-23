@@ -13,7 +13,8 @@ import pytest
 @pytest.mark.parametrize(
     "domain",
     [
-        "*.example.com",
+        "*.com",
+        "a.*.example.com",
         "https://example.com",
         "127.0.0.1",
         "bad.test\n1.2.3.4 injected.test",

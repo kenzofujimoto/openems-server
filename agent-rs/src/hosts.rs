@@ -2,7 +2,7 @@
 
 use crate::error::{AgentError, Result};
 use crate::fsutil::atomic_write;
-use crate::policy::normalize_domain;
+use crate::policy::WebRules;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -16,24 +16,11 @@ pub const DEFAULT_HOSTS: &str = r"C:\Windows\System32\drivers\etc\hosts";
 #[cfg(not(windows))]
 pub const DEFAULT_HOSTS: &str = "/etc/hosts";
 
-pub fn render_hosts_block(domains: &[String], ip: &str) -> Result<String> {
+pub fn render_hosts_block(rules: &WebRules, ip: &str) -> Result<String> {
     if ip != "0.0.0.0" && ip != "127.0.0.1" {
         return Err(AgentError::Local("unsupported hosts target".into()));
     }
-    let mut names: Vec<String> = Vec::new();
-    let mut push = |name: String| {
-        if !names.contains(&name) {
-            names.push(name);
-        }
-    };
-    for value in domains {
-        let domain = normalize_domain(value)?;
-        let www = (!domain.starts_with("www.")).then(|| format!("www.{domain}"));
-        push(domain);
-        if let Some(www) = www {
-            push(www);
-        }
-    }
+    let names = rules.hosts_names();
     let mut lines = vec![HOSTS_BEGIN.to_owned()];
     lines.extend(names.iter().map(|name| format!("{ip} {name}")));
     lines.push(HOSTS_END.to_owned());
@@ -140,8 +127,8 @@ fn read_or_empty(path: &Path) -> Result<Vec<u8>> {
     }
 }
 
-pub fn apply_hosts(domains: &[String], path: &Path, ip: &str) -> Result<bool> {
-    let block = render_hosts_block(domains, ip)?;
+pub fn apply_hosts(rules: &WebRules, path: &Path, ip: &str) -> Result<bool> {
+    let block = render_hosts_block(rules, ip)?;
     let previous = read_or_empty(path)?;
     let updated = replace_managed_block(&previous, block.as_bytes())?;
     write_hosts(path, &previous, &updated)
@@ -169,8 +156,8 @@ pub fn clear_hosts(path: &Path) -> Result<bool> {
 mod tests {
     use super::*;
 
-    fn domains(values: &[&str]) -> Vec<String> {
-        values.iter().map(|value| (*value).to_owned()).collect()
+    fn domains(values: &[&str]) -> WebRules {
+        WebRules::new(&values.iter().map(|value| (*value).to_owned()).collect::<Vec<_>>(), &[]).unwrap()
     }
 
     #[test]

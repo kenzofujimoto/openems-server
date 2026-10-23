@@ -84,13 +84,14 @@ pub struct Runtime {
 
 pub fn enforce(cfg: &AgentConfig, assignment: &Assignment, log: &Logger) -> Result<Enforcement> {
     let (sites, apps) = assignment.blocked_lists()?;
+    let rules = assignment.web_rules()?;
     let release = assignment.unassigned && assignment.body.is_none();
     if cfg.dry_run {
         log(&format!("[dry-run] would apply {} domain block(s) and {} process rule(s)", sites.len(), apps.len()));
     } else if release {
         clear_hosts(&cfg.hosts_path)?;
     } else {
-        apply_hosts(&sites, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })?;
+        apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })?;
     }
     let killed = if apps.is_empty() { Vec::new() } else { processes_to_kill(&list_processes()?, &apps)? };
     for name in &killed {
@@ -130,7 +131,7 @@ impl Runtime {
         if !cfg.dry_run
             && let Some(profile) = &inner.profile
         {
-            blocked_domains.replace(&profile.blocked_lists()?.0)?;
+            blocked_domains.replace(profile.web_rules()?);
         }
         Ok(Runtime { cfg, api, inner: Mutex::new(inner), log, stop, blocked_domains })
     }
@@ -200,9 +201,9 @@ impl Runtime {
             Ok(assignment) => {
                 // Revocation follows the newest validated policy immediately, not the next enforcement tick.
                 if !self.cfg.dry_run {
-                    let sites = assignment.blocked_lists().map(|lists| lists.0).unwrap_or_default();
-                    if self.blocked_domains.replace(&sites).is_err() {
-                        return false;
+                    match assignment.web_rules() {
+                        Ok(rules) => self.blocked_domains.replace(rules),
+                        Err(_) => return false,
                     }
                 }
                 inner.profile = Some(assignment);

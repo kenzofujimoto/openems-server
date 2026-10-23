@@ -31,14 +31,14 @@ from typing import Any
 
 try:
     from .policy import (
-        normalize_domain,
+        hosts_names,
         normalize_process,
         policy_digest,
         validate_policy,
     )
 except ImportError:
     from policy import (
-        normalize_domain,
+        hosts_names,
         normalize_process,
         policy_digest,
         validate_policy,
@@ -63,15 +63,12 @@ DEFAULT_STATE = (
 )
 
 
-def render_hosts_block(domains: list[str], ip: str = "0.0.0.0") -> str:
+def render_hosts_block(
+    domains: list[str], ip: str = "0.0.0.0", allowed: list[str] | tuple[str, ...] = ()
+) -> str:
     if ip not in ("0.0.0.0", "127.0.0.1"):
         raise ValueError("unsupported hosts target")
-    names: dict[str, None] = {}
-    for value in domains:
-        domain = normalize_domain(value)
-        names[domain] = None
-        if not domain.startswith("www."):
-            names["www." + domain] = None
+    names = hosts_names(domains, list(allowed))
     return (
         "\n".join([HOSTS_BEGIN, *(f"{ip} {name}" for name in names), HOSTS_END]) + "\n"
     )
@@ -188,8 +185,13 @@ def _write_hosts(path: Path, previous: bytes, updated: bytes) -> bool:
     return True
 
 
-def apply_hosts(domains: list[str], hosts_path: str, ip: str = "0.0.0.0") -> bool:
-    block = render_hosts_block(domains, ip)
+def apply_hosts(
+    domains: list[str],
+    hosts_path: str,
+    ip: str = "0.0.0.0",
+    allowed: list[str] | tuple[str, ...] = (),
+) -> bool:
+    block = render_hosts_block(domains, ip, allowed)
     path = Path(hosts_path)
     previous = path.read_bytes() if path.exists() else b""
     updated = replace_managed_block(
@@ -352,6 +354,7 @@ def enforce(
     release = profile.get("unassigned") is True and profile.get("body") is None
     body = validate_policy({} if release else profile.get("body"))
     sites = body.get("web_filter", {}).get("blocked", [])
+    allowed = body.get("web_filter", {}).get("allowed", [])
     apps = body.get("app_control", {}).get("blocked", [])
     if cfg.dry_run:
         log(
@@ -360,7 +363,9 @@ def enforce(
     elif release:
         clear_hosts(cfg.hosts_path)
     else:
-        apply_hosts(sites, cfg.hosts_path, "127.0.0.1" if cfg.block_page else "0.0.0.0")
+        apply_hosts(
+            sites, cfg.hosts_path, "127.0.0.1" if cfg.block_page else "0.0.0.0", allowed
+        )
     killed = processes_to_kill(list_processes(), apps) if apps else []
     for name in killed:
         if not cfg.dry_run:

@@ -55,6 +55,65 @@ pub fn normalize_domain(value: &str) -> Result<String> {
     Ok(domain)
 }
 
+/// Exact domain, or a leading wildcard covering the domain and every subdomain.
+pub fn normalize_domain_rule(value: &str) -> Result<String> {
+    match value.strip_prefix("*.") {
+        Some(rest) => Ok(format!("*.{}", normalize_domain(rest)?)),
+        None => normalize_domain(value),
+    }
+}
+
+fn rule_matches(rule: &str, name: &str) -> bool {
+    match rule.strip_prefix("*.") {
+        Some(base) => name == base || name.strip_suffix(base).is_some_and(|prefix| prefix.ends_with('.')),
+        None => name == rule || (!rule.starts_with("www.") && name.strip_prefix("www.") == Some(rule)),
+    }
+}
+
+/// Normalized blocking and allow rules; the resolver and the block page share this decision.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct WebRules {
+    blocked: Vec<String>,
+    allowed: Vec<String>,
+}
+
+impl WebRules {
+    pub fn new(blocked: &[String], allowed: &[String]) -> Result<Self> {
+        let normalize = |rules: &[String]| rules.iter().map(|rule| normalize_domain_rule(rule)).collect::<Result<_>>();
+        Ok(WebRules { blocked: normalize(blocked)?, allowed: normalize(allowed)? })
+    }
+
+    pub fn blocked(&self) -> &[String] {
+        &self.blocked
+    }
+
+    /// Allowed rules win; names that are not valid hostnames are never blocked.
+    pub fn blocks(&self, name: &str) -> bool {
+        let Ok(domain) = normalize_domain(name) else { return false };
+        self.blocked.iter().any(|rule| rule_matches(rule, &domain))
+            && !self.allowed.iter().any(|rule| rule_matches(rule, &domain))
+    }
+
+    /// Names a hosts file can hold: wildcards degrade to the domain and its www name.
+    pub fn hosts_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        for rule in &self.blocked {
+            let base = rule.strip_prefix("*.").unwrap_or(rule);
+            let candidates = if base.starts_with("www.") {
+                vec![base.to_owned()]
+            } else {
+                vec![base.to_owned(), format!("www.{base}")]
+            };
+            for name in candidates {
+                if self.blocks(&name) && !names.contains(&name) {
+                    names.push(name);
+                }
+            }
+        }
+        names
+    }
+}
+
 pub fn normalize_process(value: &str) -> Result<String> {
     let bytes = value.as_bytes();
     let first_ok = bytes.first().is_some_and(|byte| byte.is_ascii_alphanumeric() || *byte == b'_');
@@ -74,16 +133,22 @@ pub fn validate_policy(body: &Value) -> Result<Value> {
         return Err(invalid("policy body must be an object"));
     };
     let mut normalized = object.clone();
-    let sections: [(&str, Normalizer); 2] = [("web_filter", normalize_domain), ("app_control", normalize_process)];
-    for (section, normalize) in sections {
+    let sections: [(&str, &str, Normalizer); 3] = [
+        ("web_filter", "blocked", normalize_domain_rule),
+        ("web_filter", "allowed", normalize_domain_rule),
+        ("app_control", "blocked", normalize_process),
+    ];
+    for (section, key, normalize) in sections {
         let Some(settings) = normalized.get_mut(section) else { continue };
         let Some(settings) = settings.as_object_mut() else {
-            return Err(AgentError::Policy(format!("{section}.blocked must be a list")));
+            return Err(AgentError::Policy(format!("{section}.{key} must be a list")));
         };
-        let entries = match settings.get("blocked") {
+        let entries = match settings.get(key) {
+            // "blocked" is always materialized; "allowed" only when the policy sets it.
+            None if key != "blocked" => continue,
             None => Vec::new(),
             Some(Value::Array(items)) => items.clone(),
-            Some(_) => return Err(AgentError::Policy(format!("{section}.blocked must be a list"))),
+            Some(_) => return Err(AgentError::Policy(format!("{section}.{key} must be a list"))),
         };
         if entries.len() > MAX_ENTRIES {
             return Err(invalid("policy list exceeds 10000 entries"));
@@ -98,7 +163,7 @@ pub fn validate_policy(body: &Value) -> Result<Value> {
                 unique.push(value);
             }
         }
-        settings.insert("blocked".to_owned(), Value::Array(unique));
+        settings.insert(key.to_owned(), Value::Array(unique));
     }
     Ok(Value::Object(normalized))
 }
@@ -120,21 +185,32 @@ impl Assignment {
         (self.vdom.clone(), self.version, self.digest.clone())
     }
 
+    fn effective_body(&self) -> Result<Value> {
+        match &self.body {
+            Some(body) if !self.unassigned => validate_policy(&Value::Object(body.clone())),
+            _ => Ok(Value::Object(Map::new())),
+        }
+    }
+
     /// Effective blocking lists; a release enforces an empty policy.
     pub fn blocked_lists(&self) -> Result<(Vec<String>, Vec<String>)> {
-        let body = match &self.body {
-            Some(body) if !self.unassigned => validate_policy(&Value::Object(body.clone()))?,
-            _ => Value::Object(Map::new()),
-        };
-        let list = |section: &str| -> Vec<String> {
-            body.get(section)
-                .and_then(|settings| settings.get("blocked"))
-                .and_then(Value::as_array)
-                .map(|items| items.iter().filter_map(Value::as_str).map(str::to_owned).collect())
-                .unwrap_or_default()
-        };
-        Ok((list("web_filter"), list("app_control")))
+        let body = self.effective_body()?;
+        Ok((string_list(&body, "web_filter", "blocked"), string_list(&body, "app_control", "blocked")))
     }
+
+    /// Web filter rules including the allow list; a release yields no rules.
+    pub fn web_rules(&self) -> Result<WebRules> {
+        let body = self.effective_body()?;
+        WebRules::new(&string_list(&body, "web_filter", "blocked"), &string_list(&body, "web_filter", "allowed"))
+    }
+}
+
+fn string_list(body: &Value, section: &str, key: &str) -> Vec<String> {
+    body.get(section)
+        .and_then(|settings| settings.get(key))
+        .and_then(Value::as_array)
+        .map(|items| items.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .unwrap_or_default()
 }
 
 /// Port of `_validated_profile`: reject anything whose digest does not match its body.

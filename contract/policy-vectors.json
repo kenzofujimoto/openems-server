@@ -212,6 +212,267 @@
       "error": true
     }
   ],
+  "domain_rules": [
+    {
+      "input": "example.com",
+      "normalized": "example.com"
+    },
+    {
+      "input": "*.Example.COM",
+      "normalized": "*.example.com"
+    },
+    {
+      "input": "*.bücher.de",
+      "normalized": "*.xn--bcher-kva.de"
+    },
+    {
+      "input": "*.sub.example.co.uk",
+      "normalized": "*.sub.example.co.uk"
+    },
+    {
+      "input": "*",
+      "error": true
+    },
+    {
+      "input": "*.",
+      "error": true
+    },
+    {
+      "input": "*.com",
+      "error": true
+    },
+    {
+      "input": "a.*.com",
+      "error": true
+    },
+    {
+      "input": "**.example.com",
+      "error": true
+    },
+    {
+      "input": "*example.com",
+      "error": true
+    },
+    {
+      "input": "*.example.com.",
+      "error": true
+    },
+    {
+      "input": "*.1.2.3.4",
+      "error": true
+    },
+    {
+      "input": ".example.com",
+      "error": true
+    },
+    {
+      "input": "*.*.example.com",
+      "error": true
+    },
+    {
+      "input": "",
+      "error": true
+    }
+  ],
+  "matches": [
+    {
+      "name": "example.com",
+      "blocked": [
+        "example.com"
+      ],
+      "allowed": [],
+      "result": true
+    },
+    {
+      "name": "WWW.Example.com",
+      "blocked": [
+        "example.com"
+      ],
+      "allowed": [],
+      "result": true
+    },
+    {
+      "name": "sub.example.com",
+      "blocked": [
+        "example.com"
+      ],
+      "allowed": [],
+      "result": false
+    },
+    {
+      "name": "example.com",
+      "blocked": [
+        "*.example.com"
+      ],
+      "allowed": [],
+      "result": true
+    },
+    {
+      "name": "a.b.example.com",
+      "blocked": [
+        "*.example.com"
+      ],
+      "allowed": [],
+      "result": true
+    },
+    {
+      "name": "example.com.br",
+      "blocked": [
+        "*.example.com"
+      ],
+      "allowed": [],
+      "result": false
+    },
+    {
+      "name": "notexample.com",
+      "blocked": [
+        "*.example.com"
+      ],
+      "allowed": [],
+      "result": false
+    },
+    {
+      "name": "docs.google.com",
+      "blocked": [
+        "*.google.com"
+      ],
+      "allowed": [
+        "mail.google.com"
+      ],
+      "result": true
+    },
+    {
+      "name": "mail.google.com",
+      "blocked": [
+        "*.google.com"
+      ],
+      "allowed": [
+        "mail.google.com"
+      ],
+      "result": false
+    },
+    {
+      "name": "www.mail.google.com",
+      "blocked": [
+        "*.google.com"
+      ],
+      "allowed": [
+        "mail.google.com"
+      ],
+      "result": false
+    },
+    {
+      "name": "a.mail.google.com",
+      "blocked": [
+        "*.google.com"
+      ],
+      "allowed": [
+        "mail.google.com"
+      ],
+      "result": true
+    },
+    {
+      "name": "x.example.com",
+      "blocked": [
+        "*.example.com"
+      ],
+      "allowed": [
+        "*.example.com"
+      ],
+      "result": false
+    },
+    {
+      "name": "www.example.com",
+      "blocked": [
+        "www.example.com"
+      ],
+      "allowed": [],
+      "result": true
+    },
+    {
+      "name": "www.www.example.com",
+      "blocked": [
+        "www.example.com"
+      ],
+      "allowed": [],
+      "result": false
+    },
+    {
+      "name": "bücher.de",
+      "blocked": [
+        "*.xn--bcher-kva.de"
+      ],
+      "allowed": [],
+      "result": true
+    },
+    {
+      "name": "not a name",
+      "blocked": [
+        "*.example.com"
+      ],
+      "allowed": [],
+      "result": false
+    },
+    {
+      "name": "127.0.0.1",
+      "blocked": [
+        "example.com"
+      ],
+      "allowed": [],
+      "result": false
+    }
+  ],
+  "hosts_names": [
+    {
+      "blocked": [
+        "*.example.com",
+        "other.org"
+      ],
+      "allowed": [],
+      "names": [
+        "example.com",
+        "www.example.com",
+        "other.org",
+        "www.other.org"
+      ]
+    },
+    {
+      "blocked": [
+        "example.com"
+      ],
+      "allowed": [
+        "www.example.com"
+      ],
+      "names": [
+        "example.com"
+      ]
+    },
+    {
+      "blocked": [
+        "www.example.com",
+        "*.example.com"
+      ],
+      "allowed": [],
+      "names": [
+        "www.example.com",
+        "example.com"
+      ]
+    },
+    {
+      "blocked": [
+        "*.google.com"
+      ],
+      "allowed": [
+        "*.google.com"
+      ],
+      "names": []
+    },
+    {
+      "blocked": [],
+      "allowed": [],
+      "names": []
+    }
+  ],
   "processes": [
     {
       "input": "chrome.exe",
@@ -332,6 +593,57 @@
         "app_control": {
           "blocked": [
             "../x.exe"
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked": [
+            "*.Example.com",
+            "*.example.com"
+          ],
+          "allowed": [
+            "Mail.example.com"
+          ]
+        }
+      },
+      "normalized": {
+        "web_filter": {
+          "blocked": [
+            "*.example.com"
+          ],
+          "allowed": [
+            "mail.example.com"
+          ]
+        }
+      }
+    },
+    {
+      "input": {
+        "web_filter": {
+          "allowed": "x.com"
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "allowed": [
+            "*.com"
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked": [
+            "a.*.com"
           ]
         }
       },

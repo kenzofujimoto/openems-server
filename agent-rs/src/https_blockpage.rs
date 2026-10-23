@@ -1,36 +1,28 @@
 //! Loopback TLS responder. It never forwards traffic and signs only active blocked names.
 use crate::authority::Authority;
 use crate::error::{AgentError, Result};
-use crate::policy::normalize_domain;
+use crate::policy::{WebRules, normalize_domain};
 use crate::runtime::StopSignal;
 use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign::CertifiedKey;
-use std::collections::HashSet;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+/// Active web rules for SNI and Host authorization; shared with DNS answers.
 #[derive(Default)]
-pub struct BlockedDomains(RwLock<HashSet<String>>);
+pub struct BlockedDomains(RwLock<WebRules>);
 
 impl BlockedDomains {
-    pub fn replace(&self, sites: &[String]) -> Result<()> {
-        let mut next = HashSet::new();
-        for value in sites {
-            let domain = normalize_domain(value)?;
-            if !domain.starts_with("www.") {
-                next.insert(format!("www.{domain}"));
-            }
-            next.insert(domain);
-        }
-        *self.0.write().map_err(|_| AgentError::Local("blocked snapshot unavailable".into()))? = next;
-        Ok(())
+    pub fn replace(&self, rules: WebRules) {
+        // A poisoned lock still holds a consistent snapshot; the writer only swaps whole values.
+        *self.0.write().unwrap_or_else(|poison| poison.into_inner()) = rules;
     }
 
     pub fn contains(&self, name: &str) -> bool {
-        normalize_domain(name).ok().is_some_and(|domain| self.0.read().is_ok_and(|names| names.contains(&domain)))
+        self.0.read().unwrap_or_else(|poison| poison.into_inner()).blocks(name)
     }
 }
 
