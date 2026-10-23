@@ -93,10 +93,16 @@ fn malformed_and_unsupported_messages_never_forward() {
     assert!(matches!(dns::decide(&response.to_vec().unwrap(), &rules, true), Decision::Drop));
     let mut update = Message::new(7, MessageType::Query, OpCode::Update);
     update.add_query(Query::query(Name::from_ascii("example.org.").unwrap(), RecordType::A));
-    assert_eq!(answer(dns::decide(&update.to_vec().unwrap(), &rules, true)).metadata.response_code, ResponseCode::NotImp);
+    assert_eq!(
+        answer(dns::decide(&update.to_vec().unwrap(), &rules, true)).metadata.response_code,
+        ResponseCode::NotImp
+    );
     let mut double = Message::from_vec(&query("example.org.", RecordType::A)).unwrap();
     double.add_query(Query::query(Name::from_ascii("example.com.").unwrap(), RecordType::A));
-    assert_eq!(answer(dns::decide(&double.to_vec().unwrap(), &rules, true)).metadata.response_code, ResponseCode::FormErr);
+    assert_eq!(
+        answer(dns::decide(&double.to_vec().unwrap(), &rules, true)).metadata.response_code,
+        ResponseCode::FormErr
+    );
 }
 
 /// Fake upstream answering every query with UPSTREAM_IP; optionally sends a spoofed reply first.
@@ -123,7 +129,11 @@ fn fake_upstream(spoof_first: bool, silent: bool) -> (SocketAddr, Arc<StopSignal
                 let mut forged = reply.clone();
                 forged.metadata.id = request.metadata.id.wrapping_add(1);
                 forged.answers.clear();
-                forged.add_answer(Record::from_rdata(request.queries[0].name().clone(), 300, RData::A(A(Ipv4Addr::new(6, 6, 6, 6)))));
+                forged.add_answer(Record::from_rdata(
+                    request.queries[0].name().clone(),
+                    300,
+                    RData::A(A(Ipv4Addr::new(6, 6, 6, 6))),
+                ));
                 socket.send_to(&forged.to_vec().unwrap(), peer).unwrap();
                 impostor.send_to(&forged.to_vec().unwrap(), peer).unwrap();
             }
@@ -133,7 +143,10 @@ fn fake_upstream(spoof_first: bool, silent: bool) -> (SocketAddr, Arc<StopSignal
     (address, stop, worker)
 }
 
-fn start_resolver(rules: Arc<BlockedDomains>, upstream: SocketAddr) -> (SocketAddr, Arc<StopSignal>, std::thread::JoinHandle<()>) {
+fn start_resolver(
+    rules: Arc<BlockedDomains>,
+    upstream: SocketAddr,
+) -> (SocketAddr, Arc<StopSignal>, std::thread::JoinHandle<()>) {
     let stop = Arc::new(StopSignal::default());
     let upstreams = Arc::new(StaticUpstreams(vec![upstream]));
     let (bound, worker) =
