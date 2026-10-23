@@ -12,11 +12,14 @@ $comment = 'openems-agent managed DNS filter'
 $operationTimeout = 240
 $totalTimeout = 1500
 $policies = @(
-    [ordered]@{ vdom='Default'; version=1; digest='78c4c3e9cf0bdf19665cb9dc057488c125ca36a0202165431fce9e9271ae95ca'
-                body=[ordered]@{ web_filter=[ordered]@{ blocked=@('*.example.com'); allowed=@('www.example.com') } } },
+    [ordered]@{ vdom='Default'; version=1; digest='f62e2cdf1c57d70bdd6691035c96d1c37c1a5365dd9448e8f656e521f8b0ce12'
+                body=[ordered]@{ web_filter=[ordered]@{ blocked=@('*.iana.org'); allowed=@('www.iana.org') } } },
     [ordered]@{ vdom='Default'; version=2; digest='765805980fc1774ec8111af60b424549ed6e49cdeee5f1fb945bc2ef133a160f'
                 body=[ordered]@{ web_filter=[ordered]@{ blocked=@('example.net') } } }
 )
+# The Sandbox DNS proxy resolves through the host, whose own filter (for example an openems agent
+# blocking example.com) would leak into answers; these names must resolve upstream before install.
+$forwardedNames = @('www.iana.org', 'example.org', 'iana.org', 'example.net')
 $scenarios = @('production install with DNSFILTER routes system DNS through the managed NRPT rule',
                'wildcard blocks apex and subdomains while allowed and unlisted names resolve upstream',
                'trusted HTTPS block page for a wildcard subdomain',
@@ -27,7 +30,7 @@ $scenarios = @('production install with DNSFILTER routes system DNS through the 
                'removal restores NRPT rules, trust and hosts')
 if ($Plan) {
     @{ package=$package; origin=$origin; report=$report; timeout_seconds=$totalTimeout; operation_timeout_seconds=$operationTimeout
-       policies=$policies; scenarios=$scenarios } | ConvertTo-Json -Depth 8
+       policies=$policies; forwarded_names=$forwardedNames; scenarios=$scenarios } | ConvertTo-Json -Depth 8
     exit 0
 }
 $executionService = Get-Service -Name CExecSvc -ErrorAction SilentlyContinue
@@ -68,8 +71,8 @@ if (-not $SystemPhase) {
             if ([DateTime]::UtcNow -ge $deadline) { throw 'DNS acceptance timed out. Close the Sandbox to discard changes.' }
             if ((Test-Path -LiteralPath $ready) -and -not (Test-Path -LiteralPath $answer)) {
                 $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'
-                Start-Process -FilePath $edge -ArgumentList @('--inprivate', 'https://a.b.example.com/')
-                Write-Host 'Edge opened https://a.b.example.com/. Wait until the page finishes loading.'
+                Start-Process -FilePath $edge -ArgumentList @('--inprivate', 'https://a.b.iana.org/')
+                Write-Host 'Edge opened https://a.b.iana.org/. Wait until the page finishes loading.'
                 $reply = Read-Host 'Does Edge show the RSM block page without a certificate warning? Type YES or NO, then Enter'
                 Set-Content -LiteralPath $answer -Value $reply.Trim().ToUpperInvariant()
             }
@@ -242,7 +245,11 @@ try {
     $endpoint = New-Object Net.IPEndPoint([Net.IPAddress]::Loopback, 53)
     $udp = New-Object Net.Sockets.UdpClient -ArgumentList $endpoint
     $udp.Dispose()
-    if (-not (Test-Upstream 'example.org')) { throw 'No upstream DNS before installation; open the Sandbox with networking enabled.' }
+    foreach ($name in $forwardedNames) {
+        if (-not (Test-Upstream $name)) {
+            throw ('Host DNS already filters or cannot resolve ' + $name + '; enable Sandbox networking and remove host filtering for it.')
+        }
+    }
     Assert-ProductionPackage ([string](Join-Path $work $package))
     $baselineRoots = Get-Roots
     $baselineHosts = (Get-FileHash -LiteralPath $hosts).Hash
@@ -251,13 +258,13 @@ try {
     $backend = Start-Backend
 
     Invoke-Msi $false @('SERVER=' + $origin, 'BLOCKPAGEHTTPS=1', 'DNSFILTER=1')
-    Wait-Until { (Get-ServiceProcess) -gt 0 -and @(Get-ManagedRules).Count -eq 1 -and (Test-Blocked 'a.b.example.com') } 120 'Service did not route system DNS to the local resolver.'
+    Wait-Until { (Get-ServiceProcess) -gt 0 -and @(Get-ManagedRules).Count -eq 1 -and (Test-Blocked 'a.b.iana.org') } 120 'Service did not route system DNS to the local resolver.'
     Assert-ManagedRule
     $result.checks += $scenarios[0]
 
-    if (-not (Test-Blocked 'example.com')) { throw 'Wildcard did not block the apex domain.' }
-    if (-not (Test-Blocked 'a.b.example.com' 'AAAA')) { throw 'Blocked AAAA did not return ::1.' }
-    if (-not (Test-Upstream 'www.example.com')) { throw 'Allowed name did not resolve upstream.' }
+    if (-not (Test-Blocked 'iana.org')) { throw 'Wildcard did not block the apex domain.' }
+    if (-not (Test-Blocked 'a.b.iana.org' 'AAAA')) { throw 'Blocked AAAA did not return ::1.' }
+    if (-not (Test-Upstream 'www.iana.org')) { throw 'Allowed name did not resolve upstream.' }
     if (-not (Test-Upstream 'example.org')) { throw 'Unlisted name did not resolve upstream.' }
     if ((Get-Content -LiteralPath $hosts -Raw).Contains('openems managed block')) { throw 'DNS mode must not write the hosts block.' }
     $result.checks += $scenarios[1]
@@ -265,7 +272,7 @@ try {
     $managedRoot = Get-ManagedRoot
     if ($managedRoot -in $baselineRoots) { throw 'Managed root was already trusted before installation.' }
     Assert-Trust $managedRoot $baselineRoots $true
-    Wait-Until { Test-TlsPage 'a.b.example.com' } 30 'HTTPS block page was not trusted for the wildcard subdomain.'
+    Wait-Until { Test-TlsPage 'a.b.iana.org' } 30 'HTTPS block page was not trusted for the wildcard subdomain.'
     $result.checks += $scenarios[2]
 
     Set-Content -LiteralPath (Join-Path $work 'edge-ready') -Value ready
@@ -278,13 +285,13 @@ try {
     Stop-Process -Id $processId -Force
     Wait-Until { $null -eq (Get-Process -Id $processId -ErrorAction SilentlyContinue) } 10 'Killed agent process did not exit.'
     Assert-ManagedRule
-    Wait-Until { $current = Get-ServiceProcess; $current -gt 0 -and $current -ne $processId -and (Test-Blocked 'a.b.example.com') } 90 'Service recovery did not restore resolution.'
+    Wait-Until { $current = Get-ServiceProcess; $current -gt 0 -and $current -ne $processId -and (Test-Blocked 'a.b.iana.org') } 90 'Service recovery did not restore resolution.'
     Assert-ManagedRule
     $result.checks += $scenarios[4]
 
     $processId = Get-ServiceProcess
     Set-Policy $policies[1]
-    Wait-Until { (Test-Blocked 'example.net') -and (Test-Upstream 'example.com') } 150 'Policy change did not reach DNS answers.'
+    Wait-Until { (Test-Blocked 'example.net') -and (Test-Upstream 'iana.org') } 150 'Policy change did not reach DNS answers.'
     if ((Get-ServiceProcess) -ne $processId) { throw 'Policy change restarted the service.' }
     $result.checks += $scenarios[5]
 
