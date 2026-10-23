@@ -408,6 +408,12 @@ pub fn prepare_removal(config_path: &Path) -> Result<()> {
     if config.dns_filter {
         crate::nrpt::remove()?;
     }
+    // Browser policies stay while the agent is installed; removal restores what was there before.
+    #[cfg(windows)]
+    if config.anti_bypass {
+        let originals = config.state_path.with_file_name("browser-policies.json");
+        crate::browser_policy::restore(&mut crate::browser_policy::WindowsRegistry, &originals)?;
+    }
     Ok(())
 }
 

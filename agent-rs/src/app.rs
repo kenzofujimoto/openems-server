@@ -7,6 +7,8 @@ use crate::{blockpage, dns, nrpt};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 use std::thread::JoinHandle;
+#[cfg(windows)]
+use std::time::Duration;
 
 /// One synchronize-enforce-report cycle. Ok(false) means enforcement failed.
 pub fn run_once(config: AgentConfig, log: Logger) -> Result<bool> {
@@ -23,12 +25,39 @@ fn abort(stop: &StopSignal, workers: Vec<JoinHandle<()>>, error: AgentError) -> 
     error
 }
 
+/// Apply browser DoH policies now, then re-check every minute so a rewrite by anyone is undone.
+#[cfg(windows)]
+fn guard_browser_policies(config: &AgentConfig, log: &Logger, stop: &Arc<StopSignal>) -> Result<JoinHandle<()>> {
+    use crate::browser_policy::{WindowsRegistry, ensure};
+    let originals = config.state_path.with_file_name("browser-policies.json");
+    let report = |log: &Logger, changed: Vec<String>| {
+        if !changed.is_empty() {
+            log(&format!("browser policy applied: {}", changed.join(", ")));
+        }
+    };
+    report(log, ensure(&mut WindowsRegistry, &originals)?);
+    let (log, stop) = (Arc::clone(log), Arc::clone(stop));
+    Ok(std::thread::Builder::new().name("openems-browser-policy".into()).spawn(move || {
+        while !stop.wait(Duration::from_secs(60)) {
+            match ensure(&mut WindowsRegistry, &originals) {
+                Ok(changed) => report(&log, changed),
+                Err(error) => log(&format!("browser policy check failed ({})", error.kind())),
+            }
+        }
+    })?)
+}
+
 /// Run until `stop` is signalled; listeners live as long as the loop.
 pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()> {
     let runtime = Arc::new(Runtime::new(config.clone(), Arc::clone(&log), Arc::clone(&stop))?);
     runtime.blocked_domains.set_doh_blocking(config.dns_filter && config.anti_bypass);
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
     let mut routed = false;
+    // Before any listener or NRPT change, so a failure here leaves nothing to undo.
+    #[cfg(windows)]
+    if config.anti_bypass {
+        workers.push(guard_browser_policies(&config, &log, &stop)?);
+    }
     if config.block_page_https {
         let started = crate::authority::Authority::load_or_create(&config.authority_path).and_then(|authority| {
             crate::https_blockpage::start(

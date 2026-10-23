@@ -106,3 +106,15 @@ fn originals_are_saved_before_the_first_write() {
     browser_policy::restore(&mut registry, &originals).unwrap();
     assert_eq!(value(&registry, CHROME, "DnsOverHttpsMode"), Some(RegValue::Text("automatic".into())));
 }
+
+/// Read-only probe of the real registry: missing keys are absent and REG_SZ values decode.
+#[cfg(windows)]
+#[test]
+fn machine_registry_reads_without_writing() {
+    let mut registry = browser_policy::WindowsRegistry;
+    assert_eq!(registry.get(r"SOFTWARE\openems-agent-test-missing", "Value").unwrap(), None);
+    let build = registry.get(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentBuild").unwrap();
+    assert!(
+        matches!(build, Some(RegValue::Text(text)) if text.chars().all(|c| c.is_ascii_digit()) && !text.is_empty())
+    );
+}

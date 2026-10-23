@@ -4,6 +4,7 @@ pub mod api;
 pub mod app;
 pub mod authority;
 pub mod blockpage;
+pub mod browser_policy;
 pub mod canonical;
 pub mod config;
 pub mod dns;
