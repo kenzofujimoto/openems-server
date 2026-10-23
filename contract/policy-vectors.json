@@ -899,6 +899,123 @@
     "google.co.zw",
     "google.cat"
   ],
+  "categories": {
+    "taxonomy": [
+      "adult",
+      "dating",
+      "gambling",
+      "malware",
+      "phishing",
+      "hacking",
+      "proxy",
+      "drugs",
+      "violence",
+      "weapons",
+      "warez",
+      "games",
+      "streaming",
+      "filehosting",
+      "social",
+      "chat",
+      "webmail",
+      "shopping",
+      "sports",
+      "press",
+      "ads"
+    ],
+    "hashes": [
+      {
+        "domain": "steampowered.com",
+        "hash": "fdf0f7ace5f74465"
+      },
+      {
+        "domain": "Example.COM",
+        "hash": "a379a6f6eeafb9a5"
+      },
+      {
+        "domain": "bücher.de",
+        "hash": "dfb7cbaef73d9812"
+      }
+    ],
+    "file": {
+      "hex": "4f454d534341543100000003b8e7453371a024dae8d39256ad2eb523fdf0f7ace5f74465",
+      "sha256": "ab5815c5a3f254a941938ccf74fad325cd96f308d588dbccf22ea6323edd734e",
+      "hashes": [
+        "b8e7453371a024da",
+        "e8d39256ad2eb523",
+        "fdf0f7ace5f74465"
+      ]
+    },
+    "decisions": {
+      "web_filter": {
+        "blocked_categories": [
+          "games"
+        ],
+        "allowed": [
+          "store.steampowered.com"
+        ],
+        "timezone": "UTC",
+        "scheduled": [
+          {
+            "blocked_categories": [
+              "social"
+            ],
+            "days": [
+              "mon"
+            ],
+            "from": "08:00",
+            "to": "18:00"
+          }
+        ]
+      },
+      "sets": {
+        "games": [
+          "steampowered.com",
+          "steamcommunity.com"
+        ],
+        "social": [
+          "facebook.com"
+        ]
+      },
+      "cases": [
+        {
+          "name": "api.steampowered.com",
+          "when": "2026-10-26T19:00:00",
+          "result": true
+        },
+        {
+          "name": "store.steampowered.com",
+          "when": "2026-10-26T19:00:00",
+          "result": false
+        },
+        {
+          "name": "steamcommunity.com",
+          "when": "2026-10-25T03:00:00",
+          "result": true
+        },
+        {
+          "name": "notsteampowered.com",
+          "when": "2026-10-26T19:00:00",
+          "result": false
+        },
+        {
+          "name": "www.facebook.com",
+          "when": "2026-10-26T12:00:00",
+          "result": true
+        },
+        {
+          "name": "www.facebook.com",
+          "when": "2026-10-26T19:00:00",
+          "result": false
+        },
+        {
+          "name": "example.org",
+          "when": "2026-10-26T12:00:00",
+          "result": false
+        }
+      ]
+    }
+  },
   "hosts_names": [
     {
       "blocked": [
@@ -1121,6 +1238,113 @@
         "web_filter": {
           "blocked": [
             "a.*.com"
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked_categories": [
+            "games"
+          ],
+          "allowed": [
+            "store.steampowered.com"
+          ],
+          "timezone": "UTC",
+          "scheduled": [
+            {
+              "blocked_categories": [
+                "social"
+              ],
+              "days": [
+                "mon"
+              ],
+              "from": "08:00",
+              "to": "18:00"
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "web_filter": {
+          "blocked_categories": [
+            "games"
+          ],
+          "allowed": [
+            "store.steampowered.com"
+          ],
+          "timezone": "UTC",
+          "scheduled": [
+            {
+              "blocked_categories": [
+                "social"
+              ],
+              "days": [
+                "mon"
+              ],
+              "from": "08:00",
+              "to": "18:00"
+            }
+          ],
+          "blocked": []
+        }
+      }
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked_categories": [
+            "altavista"
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked_categories": [
+            "games",
+            "games"
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "timezone": "UTC",
+          "scheduled": [
+            {
+              "days": [
+                "mon"
+              ],
+              "from": "08:00",
+              "to": "18:00"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "timezone": "UTC",
+          "scheduled": [
+            {
+              "blocked_categories": [
+                1
+              ],
+              "days": [
+                "mon"
+              ],
+              "from": "08:00",
+              "to": "18:00"
+            }
           ]
         }
       },

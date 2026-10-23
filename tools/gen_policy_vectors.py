@@ -7,6 +7,7 @@ Regenerate only when policy.py changes on purpose: python tools/gen_policy_vecto
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from datetime import UTC, datetime
@@ -16,10 +17,13 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
 
+from categories import build_category_file, parse_category_file
 from policy import (
+    CATEGORIES,
     GOOGLE_DOMAINS,
     domain_blocked,
     domain_blocked_at,
+    domain_hash,
     hosts_names,
     normalize_domain,
     normalize_domain_rule,
@@ -95,6 +99,17 @@ SAFE_SEARCH_CASES = [
     ("www.google.com", {"safe_search": {"engines": ["youtube"]}}), ("www.google.com", {}),
 ]
 
+CATEGORY_FILE_DOMAINS = ["b.example", "a.example", "A.example", "not a domain", "*.bad", "steampowered.com"]
+CATEGORY_SETS = {"games": ["steampowered.com", "steamcommunity.com"], "social": ["facebook.com"]}
+CATEGORY_FILTER = {"blocked_categories": ["games"], "allowed": ["store.steampowered.com"], "timezone": "UTC",
+                   "scheduled": [{"blocked_categories": ["social"], "days": ["mon"], "from": "08:00", "to": "18:00"}]}
+CATEGORY_CASES = [
+    ("api.steampowered.com", "2026-10-26T19:00:00"), ("store.steampowered.com", "2026-10-26T19:00:00"),
+    ("steamcommunity.com", "2026-10-25T03:00:00"), ("notsteampowered.com", "2026-10-26T19:00:00"),
+    ("www.facebook.com", "2026-10-26T12:00:00"), ("www.facebook.com", "2026-10-26T19:00:00"),
+    ("example.org", "2026-10-26T12:00:00"),
+]
+
 PROCESSES = [
     "chrome.exe", "Chrome.EXE", "my app.exe", "utorrent", "a_b-c.exe", "../evil.exe", " lead.exe",
     "trail.exe ", "dot.", "", "a/b.exe", "a\\b.exe", "-dash.exe", "x" * 255, "x" * 254,
@@ -110,6 +125,11 @@ VALIDATE: list[Any] = [
     {"web_filter": {"allowed": "x.com"}},
     {"web_filter": {"allowed": ["*.com"]}},
     {"web_filter": {"blocked": ["a.*.com"]}},
+    {"web_filter": CATEGORY_FILTER},
+    {"web_filter": {"blocked_categories": ["altavista"]}},
+    {"web_filter": {"blocked_categories": ["games", "games"]}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"days": ["mon"], "from": "08:00", "to": "18:00"}]}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked_categories": [1], "days": ["mon"], "from": "08:00", "to": "18:00"}]}},
     {"web_filter": SCHEDULED},
     {"web_filter": {"safe_search": {"engines": ["google", "youtube"], "youtube": "moderate"}}},
     {"web_filter": {"safe_search": {"engines": ["altavista"]}}},
@@ -131,6 +151,23 @@ def _outcome(function: Any, value: Any) -> dict[str, Any]:
         return {"input": value, "normalized": function(value)}
     except ValueError:
         return {"input": value, "error": True}
+
+
+def _categories() -> dict[str, Any]:
+    data = build_category_file(CATEGORY_FILE_DOMAINS)
+    web_filter = validate_policy({"web_filter": CATEGORY_FILTER})["web_filter"]
+    sets = {category: parse_category_file(build_category_file(domains)) for category, domains in CATEGORY_SETS.items()}
+    return {
+        "taxonomy": list(CATEGORIES),
+        "hashes": [{"domain": domain, "hash": f"{domain_hash(domain):016x}"} for domain in ("steampowered.com", "Example.COM", "bücher.de")],
+        "file": {"hex": data.hex(), "sha256": hashlib.sha256(data).hexdigest(),
+                 "hashes": [f"{value:016x}" for value in parse_category_file(data)]},
+        "decisions": {
+            "web_filter": CATEGORY_FILTER, "sets": CATEGORY_SETS,
+            "cases": [{"name": name, "when": when, "result": domain_blocked_at(
+                name, web_filter, datetime.fromisoformat(when).replace(tzinfo=UTC), sets)} for name, when in CATEGORY_CASES],
+        },
+    }
 
 
 def build() -> dict[str, Any]:
@@ -157,6 +194,7 @@ def build() -> dict[str, Any]:
         "safe_search": [{"name": name, "web_filter": web, "target": safe_search_target(
             name, validate_policy({"web_filter": web})["web_filter"])} for name, web in SAFE_SEARCH_CASES],
         "google_domains": list(GOOGLE_DOMAINS),
+        "categories": _categories(),
         "hosts_names": [{"blocked": blocked, "allowed": allowed, "names": hosts_names(blocked, allowed)}
                         for blocked, allowed in HOSTS],
         "processes": [_outcome(normalize_process, value) for value in PROCESSES],

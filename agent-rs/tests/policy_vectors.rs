@@ -150,3 +150,44 @@ fn embedded_google_domains_match_published_list() {
     let vectors = vectors();
     assert_eq!(GOOGLE_DOMAINS.to_vec(), strings(&vectors["google_domains"]));
 }
+
+#[test]
+fn category_taxonomy_hashes_and_files_match_python() {
+    use openems_agent::categories::{CategorySet, domain_hash, file_digest};
+    let vectors = vectors();
+    let categories = &vectors["categories"];
+    assert_eq!(openems_agent::policy::CATEGORY_IDS.to_vec(), strings(&categories["taxonomy"]));
+    for case in categories["hashes"].as_array().unwrap() {
+        let expected = u64::from_str_radix(case["hash"].as_str().unwrap(), 16).unwrap();
+        assert_eq!(domain_hash(case["domain"].as_str().unwrap()), Some(expected), "{case}");
+    }
+    let bytes = hex::decode(categories["file"]["hex"].as_str().unwrap()).unwrap();
+    assert_eq!(file_digest(&bytes), categories["file"]["sha256"].as_str().unwrap());
+    let expected: Vec<u64> =
+        strings(&categories["file"]["hashes"]).iter().map(|value| u64::from_str_radix(value, 16).unwrap()).collect();
+    assert_eq!(CategorySet::parse(&bytes).unwrap().hashes(), expected.as_slice());
+    let mut corrupt = bytes.clone();
+    corrupt.truncate(bytes.len() - 1);
+    assert!(CategorySet::parse(&corrupt).is_err());
+}
+
+#[test]
+fn category_decisions_match_python() {
+    use openems_agent::categories::{CategorySet, CategoryStore};
+    let vectors = vectors();
+    let decisions = &vectors["categories"]["decisions"];
+    let filter = web_filter(&decisions["web_filter"]);
+    let store = CategoryStore::default();
+    for (category, domains) in decisions["sets"].as_object().unwrap() {
+        store.insert(category, CategorySet::from_domains(&strings(domains)));
+    }
+    for case in decisions["cases"].as_array().unwrap() {
+        let when: jiff::Timestamp = format!("{}Z", case["when"].as_str().unwrap()).parse().unwrap();
+        let name = case["name"].as_str().unwrap();
+        assert_eq!(filter.blocks_at_with(name, when, &store), case["result"].as_bool().unwrap(), "category {case}");
+    }
+    // Without category data nothing is blocked by categories.
+    let empty = CategoryStore::default();
+    let monday_night: jiff::Timestamp = "2026-10-26T19:00:00Z".parse().unwrap();
+    assert!(!filter.blocks_at_with("api.steampowered.com", monday_night, &empty));
+}
