@@ -3,7 +3,8 @@
 
 use openems_agent::canonical::canonical_json;
 use openems_agent::policy::{
-    WebRules, normalize_domain, normalize_domain_rule, normalize_process, policy_digest, validate_policy,
+    GOOGLE_DOMAINS, WebFilter, WebRules, normalize_domain, normalize_domain_rule, normalize_process, policy_digest,
+    validate_policy,
 };
 use serde_json::Value;
 
@@ -116,4 +117,36 @@ fn oversized_allow_lists_are_rejected() {
     let allowed: Vec<Value> = (0..10_001).map(|index| Value::String(format!("site{index}.example.com"))).collect();
     let body = serde_json::json!({ "web_filter": { "allowed": allowed } });
     assert!(validate_policy(&body).is_err());
+}
+
+fn web_filter(raw: &Value) -> WebFilter {
+    let body = validate_policy(&serde_json::json!({ "web_filter": raw })).unwrap();
+    WebFilter::from_settings(&body["web_filter"]).unwrap()
+}
+
+#[test]
+fn scheduled_decisions_match_python() {
+    let vectors = vectors();
+    let filter = web_filter(&vectors["schedule"]["web_filter"]);
+    for case in vectors["schedule"]["cases"].as_array().unwrap() {
+        let when: jiff::Timestamp = format!("{}Z", case["when"].as_str().unwrap()).parse().unwrap();
+        let name = case["name"].as_str().unwrap();
+        assert_eq!(filter.blocks_at(name, when), case["result"].as_bool().unwrap(), "schedule {case}");
+    }
+}
+
+#[test]
+fn safe_search_targets_match_python() {
+    let vectors = vectors();
+    for case in cases(&vectors, "safe_search") {
+        let filter = web_filter(&case["web_filter"]);
+        let name = case["name"].as_str().unwrap();
+        assert_eq!(filter.safe_search_target(name), case["target"].as_str(), "safe search {case}");
+    }
+}
+
+#[test]
+fn embedded_google_domains_match_published_list() {
+    let vectors = vectors();
+    assert_eq!(GOOGLE_DOMAINS.to_vec(), strings(&vectors["google_domains"]));
 }

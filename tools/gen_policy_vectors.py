@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,12 +17,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
 
 from policy import (
+    GOOGLE_DOMAINS,
     domain_blocked,
+    domain_blocked_at,
     hosts_names,
     normalize_domain,
     normalize_domain_rule,
     normalize_process,
     policy_digest,
+    safe_search_target,
     validate_policy,
 )
 
@@ -69,6 +73,28 @@ HOSTS = [
     (["www.example.com", "*.example.com"], []), (["*.google.com"], ["*.google.com"]), ([], []),
 ]
 
+WORKDAYS = ["mon", "tue", "wed", "thu", "fri"]
+SCHEDULED = {"blocked": ["*.example.com"], "allowed": ["m.example.com"], "timezone": "America/Sao_Paulo",
+             "scheduled": [{"blocked": ["*.facebook.com"], "days": WORKDAYS, "from": "08:00", "to": "18:00"},
+                           {"blocked": ["games.example.org"], "days": ["sat", "sun"], "from": "00:00", "to": "23:59"}]}
+# (name, UTC instant) evaluated against SCHEDULED; 2026-10-26 is a Monday, Sao Paulo is UTC-3.
+SCHEDULE_CASES = [
+    ("www.facebook.com", "2026-10-26T10:59:00"), ("www.facebook.com", "2026-10-26T11:00:00"),
+    ("www.facebook.com", "2026-10-26T20:59:00"), ("www.facebook.com", "2026-10-26T21:00:00"),
+    ("www.facebook.com", "2026-10-25T14:00:00"), ("games.example.org", "2026-10-25T14:00:00"),
+    ("games.example.org", "2026-10-26T14:00:00"), ("games.example.org", "2026-10-26T02:30:00"),
+    ("m.example.com", "2026-10-26T14:00:00"), ("a.example.com", "2026-10-25T03:00:00"),
+]
+SAFE_SEARCH = {"safe_search": {"engines": ["google", "bing", "youtube", "duckduckgo"]}}
+SAFE_SEARCH_CASES = [
+    ("www.google.com", SAFE_SEARCH), ("Google.com.BR", SAFE_SEARCH), ("www.google.co.uk", SAFE_SEARCH),
+    ("mail.google.com", SAFE_SEARCH), ("forcesafesearch.google.com", SAFE_SEARCH), ("www.youtube.com", SAFE_SEARCH),
+    ("youtubei.googleapis.com", SAFE_SEARCH), ("www.bing.com", SAFE_SEARCH), ("bing.com", SAFE_SEARCH),
+    ("duckduckgo.com", SAFE_SEARCH), ("example.org", SAFE_SEARCH), ("not a name", SAFE_SEARCH),
+    ("m.youtube.com", {"safe_search": {"engines": ["youtube"], "youtube": "moderate"}}),
+    ("www.google.com", {"safe_search": {"engines": ["youtube"]}}), ("www.google.com", {}),
+]
+
 PROCESSES = [
     "chrome.exe", "Chrome.EXE", "my app.exe", "utorrent", "a_b-c.exe", "../evil.exe", " lead.exe",
     "trail.exe ", "dot.", "", "a/b.exe", "a\\b.exe", "-dash.exe", "x" * 255, "x" * 254,
@@ -84,6 +110,19 @@ VALIDATE: list[Any] = [
     {"web_filter": {"allowed": "x.com"}},
     {"web_filter": {"allowed": ["*.com"]}},
     {"web_filter": {"blocked": ["a.*.com"]}},
+    {"web_filter": SCHEDULED},
+    {"web_filter": {"safe_search": {"engines": ["google", "youtube"], "youtube": "moderate"}}},
+    {"web_filter": {"safe_search": {"engines": ["altavista"]}}},
+    {"web_filter": {"safe_search": {"engines": ["google", "google"]}}},
+    {"web_filter": {"safe_search": {"engines": ["google"], "youtube": "lenient"}}},
+    {"web_filter": {"scheduled": SCHEDULED["scheduled"]}},
+    {"web_filter": {"timezone": "Mars/Olympus"}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": ["mon"], "from": "18:00", "to": "08:00"}]}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": ["mon", "mon"], "from": "08:00", "to": "09:00"}]}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": ["mon"], "from": "8:00", "to": "09:00"}]}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": ["mon"], "from": "08:00", "to": "24:00"}]}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": [], "from": "08:00", "to": "09:00"}]}},
+    {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": ["mon"], "from": "08:00", "to": "09:00", "x": 1}]}},
 ]
 
 
@@ -109,6 +148,15 @@ def build() -> dict[str, Any]:
         "domain_rules": [_outcome(normalize_domain_rule, value) for value in DOMAIN_RULES],
         "matches": [{"name": name, "blocked": blocked, "allowed": allowed, "result": domain_blocked(name, blocked, allowed)}
                     for name, blocked, allowed in MATCHES],
+        "schedule": {
+            "web_filter": SCHEDULED,
+            "cases": [{"name": name, "when": when, "result": domain_blocked_at(
+                name, validate_policy({"web_filter": SCHEDULED})["web_filter"], datetime.fromisoformat(when).replace(tzinfo=UTC))}
+                for name, when in SCHEDULE_CASES],
+        },
+        "safe_search": [{"name": name, "web_filter": web, "target": safe_search_target(
+            name, validate_policy({"web_filter": web})["web_filter"])} for name, web in SAFE_SEARCH_CASES],
+        "google_domains": list(GOOGLE_DOMAINS),
         "hosts_names": [{"blocked": blocked, "allowed": allowed, "names": hosts_names(blocked, allowed)}
                         for blocked, allowed in HOSTS],
         "processes": [_outcome(normalize_process, value) for value in PROCESSES],
