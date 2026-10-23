@@ -101,10 +101,11 @@ function Invoke-Msi([bool]$Remove, [string[]]$Properties) {
         if ($process.ExitCode -ne 0) { throw ('Unexpected MSI exit code: ' + $process.ExitCode + '. Log: ' + $log) }
     } finally { $process.Dispose() }
 }
-function Assert-ProductionPackage {
+function Assert-ProductionPackage([string]$Path) {
     # The test-only FaultInjection build adds these actions; the production package must not contain them.
+    # COM late binding rejects PSObject-wrapped strings (DISP_E_TYPEMISMATCH), so $Path stays a plain string.
     $installer = New-Object -ComObject WindowsInstaller.Installer
-    $database = $installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $installer, @((Join-Path $stateDirectory $package), 0))
+    $database = $installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $installer, @($Path, 0))
     $query = "SELECT Action FROM CustomAction WHERE Action='InjectSetupFailure' OR Action='InjectRemovalFailure'"
     $view = $database.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $database, @($query))
     try {
@@ -226,7 +227,7 @@ try {
             $probe = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $port)
             try { $probe.Start() } finally { $probe.Stop() }
         }
-        Assert-ProductionPackage
+        Assert-ProductionPackage ([string](Join-Path $stateDirectory $package))
         $baselineRoots = Get-Roots
         $baselineHosts = (Get-FileHash -LiteralPath $hosts).Hash
         $backend = Start-Backend
