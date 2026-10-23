@@ -1,0 +1,46 @@
+{
+  "environment": "Windows Sandbox with networking disabled, run as SYSTEM, restarted from inside between phases",
+  "date": "2026-10-23",
+  "scope": "Production MSI service resilience: crash recovery, backend outage, reboot with backend offline, removal",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-resilience-sandbox.ps1 at 713125c",
+  "package": {
+    "build": "tools/build-msi-fixtures.ps1 -Production (no defines), WiX 5.0.2, version 0.3.0, agent and installer source at 81b8778",
+    "openems-agent.msi": "c2142af872744d1967c919db4d92ed8d3c9959101090c552356acf88cfc7da1d",
+    "fault_injection_actions": "absent (CustomAction table checked inside Sandbox before install)"
+  },
+  "phase1": {
+    "checks": [
+      "production install without fault-injection actions serves trusted HTTPS",
+      "killed agent process is restarted by service recovery",
+      "offline backend keeps cached enforcement and agent resynchronizes after return"
+    ],
+    "durations": ["/i openems-agent.msi: 124 s"],
+    "unrelated_roots_added": [],
+    "error": null
+  },
+  "phase2": {
+    "checks": [
+      "after reboot the service starts and enforces cached policy with backend offline",
+      "production removal restores original trust and hosts"
+    ],
+    "durations": ["/x openems-agent.msi: 2 s"],
+    "unrelated_roots_added": [],
+    "error": null
+  },
+  "cleanup_errors": [],
+  "notes": [
+    "Backend outage lasted 60 s; resynchronization was confirmed by a new config/assigned request after the backend returned",
+    "Phase 2 required a later boot time than phase 1 and no listener on the backend port",
+    "Windows Sandbox on this host preserves installed state across a restart from inside the Sandbox",
+    "An earlier phase 1 attempt failed before installing on a harness defect (COM type mismatch); its report is kept locally"
+  ],
+  "not_validated": [
+    "Physical endpoint or long-running soak",
+    "Real management server end-to-end policy changes",
+    "Code signing",
+    "Second-machine package with Chrome and Firefox acceptance",
+    "User-session component and tamper protection"
+  ]
+}

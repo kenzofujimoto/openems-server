@@ -17,8 +17,9 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 
 - Roteiro `deploy/test-resilience-sandbox.ps1` em duas fases, com contratos em `tests/test_resilience_sandbox.py`, verificados vermelhos antes da implementação. **Fase 1** (Sandbox novo): instala o **MSI de produção**, confirmando na tabela CustomAction que não há ações de injeção de falha, com `BLOCKPAGEHTTPS=1`. Depois verifica: TLS confiável servido pelo próprio serviço; processo morto reiniciado pela recuperação do serviço; backend fora do ar por 60 s sem perder bloqueio/página nem trocar de processo; nova sincronização (`config/assigned`) em até 360 s após o retorno. Termina com o backend parado e o marcador `C:\openems-resilience\phase1.json`. **Fase 2** (após reiniciar o Sandbox por dentro): exige boot posterior, backend ausente e serviço automático servindo TLS com a política em cache; depois desinstala e confere raízes e hosts originais.
 - `tools/build-msi-fixtures.ps1 -Production` gera `openems-agent.msi` 0.3.0 sem defines. Pacote local em `.venv/sandbox-acceptance/resilience-input/` (MSI, roteiro, `RUN-RESILIENCE-TEST.cmd`, `diagnose.ps1`) e perfil `resilience.wsb` (sem rede, sem clipboard, sem LogonCommand). Relatórios: `results/resilience-phase1.json` e `results/resilience-result.json`.
-- Risco em aberto: não confirmado se o Windows Sandbox desta máquina preserva o estado ao reiniciar por dentro. Se `C:\openems-resilience` sumir depois do reinício, o teste de reboot vai para uma VM.
-- Suíte local: **470 aprovados, 41 ignorados, 5 deselecionados**. Aceite real ainda não executado.
+- Suíte local: **471 aprovados, 41 ignorados, 5 deselecionados**.
+- Primeira tentativa (10:47) falhou antes de instalar: `Join-Path` passava um caminho embrulhado em PSObject ao COM do Windows Installer (`DISP_E_TYPEMISMATCH`). Reproduzido no host somente leitura, teste de regressão antes da correção (`713125c`).
+- **Aceite real concluído em 2026-10-23:** fase 1 (10:56) e fase 2 (11:05) com `passed: true`, sem erros de limpeza e sem raízes não relacionadas. O Windows Sandbox desta máquina **preserva o estado ao reiniciar por dentro**, então reboot pode ser testado nele. Evidência em `validation/sandbox-resilience-2026-10-23.json` (hash do MSI de produção 0.3.0). Fica fora: endpoint físico/soak longo, servidor real, assinatura, segunda máquina e componente de sessão/antiadulteração.
 
 ### Continuação — transação MSI (`PLAN-installer-blockpage.md`, passos 1–6)
 
@@ -72,7 +73,7 @@ Estado em 2026-10-22. O plano completo de cada fase, com critérios de aceite, e
 
 | Fase | Estado | O que falta |
 |---|---|---|
-| F1 — Agente nativo (Windows) | Quase pronta. Agente Rust em `agent-rs/` com paridade do agente Python (testes de contrato em `tests/test_native_agent.py`), serviço com recuperação, MSI (WiX 5) testado em runner Windows real. | Componente da sessão do usuário (tarefa no logon, notificações). Assinatura de código (depende de certificado da RSM). MSI sem propriedade para ligar a página de bloqueio (hoje: `openems-agent.exe configure --block-page`). |
+| F1 — Agente nativo (Windows) | Quase pronta. Agente Rust em `agent-rs/` com paridade do agente Python (testes de contrato em `tests/test_native_agent.py`). MSI transacional com `BLOCKPAGE`/`BLOCKPAGEHTTPS` aceito em Sandbox (instalação, upgrade, rollback, remoção). Resiliência aceita em Sandbox com MSI de produção: recuperação após crash, servidor fora do ar, reboot sem servidor. | Componente da sessão do usuário (tarefa no logon, notificações). Assinatura de código (depende de certificado da RSM). Segunda máquina física (Chrome/Firefox). |
 | F2 — Filtro web completo | Parcial na branch `feature/https-blockpage`: núcleo HTTPS local implementado; ver continuação acima. | Validar confiança/remoção em Windows descartável e navegadores; DNS local, curingas, categorias, horários, SafeSearch e políticas de navegador. |
 | F3 — Controle de aplicativos | Não iniciada. Hoje só encerra o processo pelo nome. | Tudo. |
 | F4 — USB | Não iniciada. | Tudo. |
