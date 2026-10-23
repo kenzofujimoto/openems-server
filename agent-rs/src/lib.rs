@@ -24,3 +24,4 @@ pub mod runtime;
 pub mod service;
 pub mod state;
 pub mod trust;
+pub mod wfp;

@@ -53,6 +53,8 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
     runtime.blocked_domains.set_doh_blocking(config.dns_filter && config.anti_bypass);
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
     let mut routed = false;
+    #[cfg(windows)]
+    let mut filtered = false;
     // Before any listener or NRPT change, so a failure here leaves nothing to undo.
     #[cfg(windows)]
     if config.anti_bypass {
@@ -109,11 +111,28 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
             }
             routed = true;
             log("system DNS routed to the local resolver");
+            #[cfg(windows)]
+            if config.anti_bypass {
+                if let Err(error) = crate::wfp::install(crate::doh::addresses()) {
+                    // Hand DNS back before failing so the machine is not left without a resolver.
+                    if let Err(cleanup) = nrpt::remove() {
+                        log(&format!("NRPT rule not removed after filter failure: {cleanup}"));
+                    }
+                    return Err(abort(&stop, workers, error));
+                }
+                filtered = true;
+                log("direct DNS, DoT and known DoH endpoints blocked for other programs");
+            }
         }
     }
     log(&format!("openems-agent {} started for {}", env!("CARGO_PKG_VERSION"), config.devid));
     let result = runtime.run();
     // Graceful stop (including upgrade and shutdown) hands DNS back; a crash never reaches here.
+    // Filters go first: without the rule, blocked port 53 would leave other programs without DNS.
+    #[cfg(windows)]
+    if filtered && let Err(error) = crate::wfp::remove() {
+        log(&format!("anti-bypass filters not removed: {error}"));
+    }
     if routed && let Err(error) = nrpt::remove() {
         log(&format!("NRPT rule not removed: {error}"));
     }
