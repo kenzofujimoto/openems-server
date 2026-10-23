@@ -1,0 +1,71 @@
+"""DNS filter CLI and service contracts on ephemeral loopback ports; system DNS is never changed."""
+
+import json
+import os
+import socket
+import struct
+import subprocess
+import time
+
+from tests.test_native_agent import run_agent
+
+
+def free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
+        udp.bind(("127.0.0.1", 0))
+        return udp.getsockname()[1]
+
+
+def dns_query(name: str, query_id: int = 0x4242) -> bytes:
+    labels = b"".join(bytes([len(part)]) + part.encode("ascii") for part in name.split("."))
+    return struct.pack(">HHHHHH", query_id, 0x0100, 1, 0, 0, 0) + labels + b"\x00" + struct.pack(">HH", 1, 1)
+
+
+def test_dns_configuration_is_opt_in_and_serializes(native, tmp_path):
+    config = tmp_path / "agent.json"
+    result = run_agent(native, "configure", "--config-path", str(config), "--server", "http://127.0.0.1:1",
+                       "--devid", "dns-test", "--dns-filter", "--dns-port", "15353", invitation=None)
+    assert result.returncode == 0, result.stderr
+    settings = json.loads(config.read_text())
+    assert settings["dns_filter"] is True and settings["dns_port"] == 15353
+    plain = tmp_path / "plain.json"
+    assert run_agent(native, "configure", "--config-path", str(plain), "--server", "http://127.0.0.1:1",
+                     "--devid", "dns-test", invitation=None).returncode == 0
+    assert json.loads(plain.read_text())["dns_filter"] is False
+
+
+def test_run_once_cannot_claim_dns_enforcement_without_resolver(native, tmp_path):
+    hosts = tmp_path / "hosts"
+    hosts.write_bytes(b"# original\n")
+    result = run_agent(native, "run-once", "--server", "http://127.0.0.1:1", "--devid", "dns-test", "--dns-filter",
+                       "--hosts-file", str(hosts), "--state-path", str(tmp_path / "state.json"), invitation=None)
+    assert result.returncode != 0
+    assert "continuous" in result.stderr.lower()
+    assert hosts.read_bytes() == b"# original\n"
+
+
+def test_continuous_run_serves_dns_on_configured_loopback_port(native, tmp_path):
+    port = free_port()
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("OPENEMS_")}
+    process = subprocess.Popen(
+        [str(native), "run", "--server", "http://127.0.0.1:1", "--devid", "dns-test", "--dns-filter",
+         "--dns-port", str(port), "--hosts-file", str(tmp_path / "hosts"), "--state-path", str(tmp_path / "state.json")],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment,
+    )
+    try:
+        reply = None
+        deadline = time.monotonic() + 15
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client:
+            client.settimeout(0.5)
+            while reply is None and time.monotonic() < deadline and process.poll() is None:
+                client.sendto(dns_query("use-application-dns.net"), ("127.0.0.1", port))
+                try:
+                    reply = client.recv(512)
+                except TimeoutError:
+                    continue
+        assert reply is not None, process.stderr.read1().decode(errors="replace") if process.poll() is not None else "no reply"
+        assert reply[:2] == b"\x42\x42" and reply[2] & 0x80
+        assert reply[3] & 0x0F == 3, "Firefox canary must be NXDOMAIN"
+    finally:
+        process.terminate()
+        process.wait(timeout=15)
