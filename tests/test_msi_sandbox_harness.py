@@ -78,3 +78,10 @@ def test_msi_harness_runs_once_per_sandbox():
     text = SCRIPT.read_text(encoding='utf-8')
     assert "'CreateNew'" in text and 'already started in this Sandbox' in text
     assert text.index('requires Windows Sandbox') < text.index("'CreateNew'")
+
+def test_msi_reads_registration_from_state_not_config():
+    # agent.json never serializes device_token; registration lives in state.json.
+    text = SCRIPT.read_text(encoding='utf-8')
+    assert "@('devid','device_token'" not in text
+    assert "openems\state.json" in text
+    assert "@('client_id','device_token')" in text
