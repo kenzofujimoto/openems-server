@@ -131,6 +131,11 @@ struct ConfigureArgs {
     block_page_https_port: u16,
     #[arg(long)]
     authority_path: Option<PathBuf>,
+    /// Serve DNS on loopback instead of writing the hosts file.
+    #[arg(long)]
+    dns_filter: bool,
+    #[arg(long, default_value_t = 53)]
+    dns_port: u16,
     #[arg(long)]
     allow_insecure_http: bool,
     /// One-time enrollment invitation; OPENEMS_INVITATION is used when omitted.
@@ -167,6 +172,11 @@ struct RunArgs {
     block_page_https_port: u16,
     #[arg(long)]
     authority_path: Option<PathBuf>,
+    /// Serve DNS on loopback instead of writing the hosts file.
+    #[arg(long)]
+    dns_filter: bool,
+    #[arg(long, default_value_t = 53)]
+    dns_port: u16,
     #[arg(long)]
     allow_insecure_http: bool,
 }
@@ -194,6 +204,8 @@ fn resolve(args: RunArgs) -> Result<AgentConfig> {
     config.block_page_https_port = args.block_page_https_port;
     config.authority_path =
         args.authority_path.unwrap_or_else(|| config.state_path.with_file_name("https").join("authority.json"));
+    config.dns_filter = args.dns_filter;
+    config.dns_port = args.dns_port;
     config.allow_insecure_http = args.allow_insecure_http;
     config.invitation = non_empty_env("OPENEMS_INVITATION");
     config.device_token = non_empty_env("OPENEMS_DEVICE_TOKEN");
@@ -214,6 +226,8 @@ fn configure(args: ConfigureArgs) -> Result<PathBuf> {
     config.block_page_https = args.block_page_https;
     config.block_page_https_port = args.block_page_https_port;
     config.authority_path = args.authority_path.unwrap_or_else(|| path.with_file_name("https").join("authority.json"));
+    config.dns_filter = args.dns_filter;
+    config.dns_port = args.dns_port;
     config.allow_insecure_http = args.allow_insecure_http;
     // msiexec passes an empty property when no invitation was given.
     config.invitation =
@@ -229,6 +243,9 @@ fn execute(command: Command) -> Result<ExitCode> {
             let config = resolve(args)?;
             if config.block_page_https {
                 return Err(AgentError::Config("HTTPS block page requires continuous run".into()));
+            }
+            if config.dns_filter {
+                return Err(AgentError::Config("DNS filter requires continuous run".into()));
             }
             let enforced = app::run_once(config, stderr_logger())?;
             Ok(if enforced { ExitCode::SUCCESS } else { ExitCode::FAILURE })

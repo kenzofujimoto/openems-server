@@ -49,7 +49,8 @@ fn dns_mode_removes_the_managed_hosts_block_instead_of_writing_it() {
     config.dns_filter = true;
     let body = json!({"web_filter": {"blocked": ["*.example.com"]}});
     let digest = policy_digest(body.as_object().unwrap());
-    let assignment = validate_assignment(&json!({"vdom": "Default", "version": 3, "digest": digest, "body": body})).unwrap();
+    let assignment =
+        validate_assignment(&json!({"vdom": "Default", "version": 3, "digest": digest, "body": body})).unwrap();
     let log: Logger = Arc::new(|_: &str| {});
     let enforcement = enforce(&config, &assignment, &log).unwrap();
     assert_eq!(enforcement.sites, vec!["*.example.com".to_owned()]);

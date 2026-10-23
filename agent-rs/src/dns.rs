@@ -395,6 +395,21 @@ fn serve_tcp(listener: &TcpListener, shared: &Arc<Shared>, stop: &StopSignal) {
     }
 }
 
+/// UDP and TCP on one port. For port 0, retry: Windows may reserve a free UDP port for TCP
+/// (Hyper-V and WinNAT exclusion ranges), which fails the TCP bind with WSAEACCES.
+fn bind_pair(address: SocketAddr) -> std::io::Result<(UdpSocket, TcpListener)> {
+    let attempts = if address.port() == 0 { 32 } else { 1 };
+    let mut last = None;
+    for _ in 0..attempts {
+        let socket = UdpSocket::bind(address)?;
+        match TcpListener::bind(socket.local_addr()?) {
+            Ok(listener) => return Ok((socket, listener)),
+            Err(error) => last = Some(error),
+        }
+    }
+    Err(last.unwrap_or_else(|| std::io::Error::other("no port available for UDP and TCP")))
+}
+
 /// Bind UDP and TCP on every address synchronously; callers must not redirect DNS if this fails.
 pub fn start(
     addresses: &[SocketAddr],
@@ -406,10 +421,8 @@ pub fn start(
     let mut sockets = Vec::new();
     let mut listeners = Vec::new();
     for address in addresses {
-        let socket = UdpSocket::bind(address)?;
-        let bound = socket.local_addr()?;
+        let (socket, listener) = bind_pair(*address)?;
         socket.set_read_timeout(Some(Duration::from_millis(200)))?;
-        let listener = TcpListener::bind(bound)?;
         listener.set_nonblocking(true)?;
         sockets.push(socket);
         listeners.push(listener);

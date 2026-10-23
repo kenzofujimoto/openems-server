@@ -88,7 +88,8 @@ pub fn enforce(cfg: &AgentConfig, assignment: &Assignment, log: &Logger) -> Resu
     let release = assignment.unassigned && assignment.body.is_none();
     if cfg.dry_run {
         log(&format!("[dry-run] would apply {} domain block(s) and {} process rule(s)", sites.len(), apps.len()));
-    } else if release {
+    } else if release || cfg.dns_filter {
+        // In DNS mode the resolver enforces the rules; a hosts block would be a second source.
         clear_hosts(&cfg.hosts_path)?;
     } else {
         apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })?;

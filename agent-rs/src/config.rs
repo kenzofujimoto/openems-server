@@ -20,6 +20,9 @@ pub struct AgentConfig {
     pub block_page_https: bool,
     pub block_page_https_port: u16,
     pub authority_path: PathBuf,
+    /// Serve DNS on loopback instead of writing the hosts file (Windows routes it via NRPT).
+    pub dns_filter: bool,
+    pub dns_port: u16,
     pub invitation: Option<String>,
     pub device_token: Option<String>,
     pub state_path: PathBuf,
@@ -54,6 +57,8 @@ impl AgentConfig {
             block_page_https: false,
             block_page_https_port: 443,
             authority_path: data_dir().join("https").join("authority.json"),
+            dns_filter: false,
+            dns_port: 53,
             invitation: None,
             device_token: None,
             state_path: data_dir().join("state.json"),
@@ -72,8 +77,8 @@ impl AgentConfig {
         };
         const TEXT: [&str; 8] =
             ["server", "devid", "vdom", "hosts_path", "state_path", "invitation", "device_token", "authority_path"];
-        const FLAGS: [&str; 4] = ["block_page", "dry_run", "allow_insecure_http", "block_page_https"];
-        const NUMBERS: [&str; 3] = ["interval", "block_page_port", "block_page_https_port"];
+        const FLAGS: [&str; 5] = ["block_page", "dry_run", "allow_insecure_http", "block_page_https", "dns_filter"];
+        const NUMBERS: [&str; 4] = ["interval", "block_page_port", "block_page_https_port", "dns_port"];
         if data.keys().any(|key| {
             !TEXT.contains(&key.as_str()) && !FLAGS.contains(&key.as_str()) && !NUMBERS.contains(&key.as_str())
         }) {
@@ -119,6 +124,11 @@ impl AgentConfig {
             .ok()
             .filter(|port| *port > 0)
             .ok_or_else(|| AgentError::Config("HTTPS block page port is out of range".into()))?;
+        config.dns_filter = flag("dns_filter")?;
+        config.dns_port = u16::try_from(number("dns_port", 53)?)
+            .ok()
+            .filter(|port| *port > 0)
+            .ok_or_else(|| AgentError::Config("DNS port is out of range".into()))?;
         config.dry_run = flag("dry_run")?;
         config.allow_insecure_http = flag("allow_insecure_http")?;
         config.block_page_port = u16::try_from(port)
@@ -150,6 +160,9 @@ impl AgentConfig {
                 "HTTPS block page requires block_page, distinct ports and enforcement mode".into(),
             ));
         }
+        if self.dns_filter && (self.dry_run || self.dns_port == 0) {
+            return Err(AgentError::Config("DNS filter requires enforcement mode and a nonzero port".into()));
+        }
         if self.devid.trim().is_empty() {
             return Err(AgentError::Config("devid is required".into()));
         }
@@ -171,6 +184,8 @@ impl AgentConfig {
             "block_page_https": self.block_page_https,
             "block_page_https_port": self.block_page_https_port,
             "authority_path": self.authority_path.to_string_lossy(),
+            "dns_filter": self.dns_filter,
+            "dns_port": self.dns_port,
             "allow_insecure_http": self.allow_insecure_http,
         });
         if let Some(invitation) = &self.invitation {
