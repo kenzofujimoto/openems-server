@@ -1,0 +1,42 @@
+{
+  "environment": "Windows Sandbox with networking disabled, run as SYSTEM",
+  "date": "2026-10-23",
+  "scope": "MSI transactional setup, upgrade, injected-failure rollback and removal with HTTPS block page",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-msi-sandbox.ps1 at 574a610",
+  "fixtures": {
+    "build": "tools/build-msi-fixtures.ps1 with -d FaultInjection=1, WiX 5.0.2, agent and installer source at 81b8778",
+    "openems-agent-0.2.0.msi": "47f63bf2a92003f40749c2af393ec4accf40b3a02483b08103b558a083f39459",
+    "openems-agent-0.2.1.msi": "56547ad6af3289dccdcd78b17ce42f5a176c4365aca9f36212676fda8e651181",
+    "openems-agent-0.2.2.msi": "c84f23a0f3abe739be1086e42d01bd599d38d296d121ffdf3cdd6ad286eaddbe"
+  },
+  "checks": [
+    "fresh HTTPS install trusts its own managed root and serves TLS from the running service",
+    "upgrade without SERVER preserves identity, trust, hosts and running service",
+    "failed upgrade restores existing service and trust",
+    "failed removal restores private authority, trust, hosts and running service",
+    "successful removal restores original trust and hosts and removes service"
+  ],
+  "durations": [
+    "/i openems-agent-0.2.0.msi: 122 s",
+    "/i openems-agent-0.2.1.msi: 123 s",
+    "/i openems-agent-0.2.2.msi: 125 s",
+    "/x openems-agent-0.2.1.msi: 3 s",
+    "/x openems-agent-0.2.1.msi: 2 s"
+  ],
+  "unrelated_roots_added": [],
+  "error": null,
+  "cleanup_errors": [],
+  "notes": [
+    "Each install waits about 2 minutes in Windows Installer software restriction policy checks of the unsigned fixtures; the install itself takes about 2 seconds",
+    "Four earlier attempts failed on harness defects (process wait, timeouts, root counting, identity source), not on agent or installer behaviour; their reports are kept locally in .venv/sandbox-acceptance/results"
+  ],
+  "not_validated": [
+    "Production MSI without fault injection installed on a real endpoint",
+    "Code signing",
+    "Second-machine package with Chrome and Firefox acceptance",
+    "Real management server end-to-end policy changes",
+    "Service recovery and reboot"
+  ]
+}
