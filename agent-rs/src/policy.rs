@@ -6,6 +6,208 @@ use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
 const MAX_ENTRIES: usize = 10_000;
+const MAX_WINDOWS: usize = 50;
+const SAFE_SEARCH_ENGINES: [&str; 4] = ["google", "bing", "youtube", "duckduckgo"];
+const DAYS: [&str; 7] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const ZONE_PUNCTUATION: &str = "_+-";
+const YOUTUBE_NAMES: [&str; 5] = [
+    "www.youtube.com",
+    "m.youtube.com",
+    "youtubei.googleapis.com",
+    "youtube.googleapis.com",
+    "www.youtube-nocookie.com",
+];
+
+/// Published at https://www.google.com/supported_domains (187 entries, read 2026-10-23); vectors pin it to Python.
+pub const GOOGLE_DOMAINS: &[&str] = &[
+    "google.com",
+    "google.ad",
+    "google.ae",
+    "google.com.af",
+    "google.com.ag",
+    "google.al",
+    "google.am",
+    "google.co.ao",
+    "google.com.ar",
+    "google.as",
+    "google.at",
+    "google.com.au",
+    "google.az",
+    "google.ba",
+    "google.com.bd",
+    "google.be",
+    "google.bf",
+    "google.bg",
+    "google.com.bh",
+    "google.bi",
+    "google.bj",
+    "google.com.bn",
+    "google.com.bo",
+    "google.com.br",
+    "google.bs",
+    "google.bt",
+    "google.co.bw",
+    "google.by",
+    "google.com.bz",
+    "google.ca",
+    "google.cd",
+    "google.cf",
+    "google.cg",
+    "google.ch",
+    "google.ci",
+    "google.co.ck",
+    "google.cl",
+    "google.cm",
+    "google.cn",
+    "google.com.co",
+    "google.co.cr",
+    "google.com.cu",
+    "google.cv",
+    "google.com.cy",
+    "google.cz",
+    "google.de",
+    "google.dj",
+    "google.dk",
+    "google.dm",
+    "google.com.do",
+    "google.dz",
+    "google.com.ec",
+    "google.ee",
+    "google.com.eg",
+    "google.es",
+    "google.com.et",
+    "google.fi",
+    "google.com.fj",
+    "google.fm",
+    "google.fr",
+    "google.ga",
+    "google.ge",
+    "google.gg",
+    "google.com.gh",
+    "google.com.gi",
+    "google.gl",
+    "google.gm",
+    "google.gr",
+    "google.com.gt",
+    "google.gy",
+    "google.com.hk",
+    "google.hn",
+    "google.hr",
+    "google.ht",
+    "google.hu",
+    "google.co.id",
+    "google.ie",
+    "google.co.il",
+    "google.im",
+    "google.co.in",
+    "google.iq",
+    "google.is",
+    "google.it",
+    "google.je",
+    "google.com.jm",
+    "google.jo",
+    "google.co.jp",
+    "google.co.ke",
+    "google.com.kh",
+    "google.ki",
+    "google.kg",
+    "google.co.kr",
+    "google.com.kw",
+    "google.kz",
+    "google.la",
+    "google.com.lb",
+    "google.li",
+    "google.lk",
+    "google.co.ls",
+    "google.lt",
+    "google.lu",
+    "google.lv",
+    "google.com.ly",
+    "google.co.ma",
+    "google.md",
+    "google.me",
+    "google.mg",
+    "google.mk",
+    "google.ml",
+    "google.com.mm",
+    "google.mn",
+    "google.com.mt",
+    "google.mu",
+    "google.mv",
+    "google.mw",
+    "google.com.mx",
+    "google.com.my",
+    "google.co.mz",
+    "google.com.na",
+    "google.com.ng",
+    "google.com.ni",
+    "google.ne",
+    "google.nl",
+    "google.no",
+    "google.com.np",
+    "google.nr",
+    "google.nu",
+    "google.co.nz",
+    "google.com.om",
+    "google.com.pa",
+    "google.com.pe",
+    "google.com.pg",
+    "google.com.ph",
+    "google.com.pk",
+    "google.pl",
+    "google.pn",
+    "google.com.pr",
+    "google.ps",
+    "google.pt",
+    "google.com.py",
+    "google.com.qa",
+    "google.ro",
+    "google.ru",
+    "google.rw",
+    "google.com.sa",
+    "google.com.sb",
+    "google.sc",
+    "google.se",
+    "google.com.sg",
+    "google.sh",
+    "google.si",
+    "google.sk",
+    "google.com.sl",
+    "google.sn",
+    "google.so",
+    "google.sm",
+    "google.sr",
+    "google.st",
+    "google.com.sv",
+    "google.td",
+    "google.tg",
+    "google.co.th",
+    "google.com.tj",
+    "google.tl",
+    "google.tm",
+    "google.tn",
+    "google.to",
+    "google.com.tr",
+    "google.tt",
+    "google.com.tw",
+    "google.co.tz",
+    "google.com.ua",
+    "google.co.ug",
+    "google.co.uk",
+    "google.com.uy",
+    "google.co.uz",
+    "google.com.vc",
+    "google.co.ve",
+    "google.co.vi",
+    "google.com.vn",
+    "google.vu",
+    "google.ws",
+    "google.rs",
+    "google.co.za",
+    "google.co.zm",
+    "google.co.zw",
+    "google.cat",
+];
 
 type Normalizer = fn(&str) -> Result<String>;
 
@@ -165,7 +367,229 @@ pub fn validate_policy(body: &Value) -> Result<Value> {
         }
         settings.insert(key.to_owned(), Value::Array(unique));
     }
+    if let Some(Value::Object(settings)) = normalized.get_mut("web_filter") {
+        validate_web_extensions(settings)?;
+    }
     Ok(Value::Object(normalized))
+}
+
+/// Minutes since midnight for a strict `HH:MM` value.
+fn clock_minutes(value: &Value) -> Option<u16> {
+    let text = value.as_str()?;
+    let bytes = text.as_bytes();
+    let digits = [0, 1, 3, 4].iter().all(|index| bytes.get(*index).is_some_and(u8::is_ascii_digit));
+    if bytes.len() != 5 || bytes[2] != b':' || !digits {
+        return None;
+    }
+    let (hours, minutes) = (text[..2].parse::<u16>().ok()?, text[3..].parse::<u16>().ok()?);
+    (hours < 24 && minutes < 60).then_some(hours * 60 + minutes)
+}
+
+fn zone_part(part: &str) -> bool {
+    !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || ZONE_PUNCTUATION.contains(c))
+}
+
+fn valid_zone_name(name: &str) -> bool {
+    name.chars().next().is_some_and(|c| c.is_ascii_alphabetic()) && name.split('/').all(zone_part)
+}
+
+fn time_zone(value: &Value) -> Result<jiff::tz::TimeZone> {
+    let name = value
+        .as_str()
+        .filter(|name| valid_zone_name(name))
+        .ok_or_else(|| invalid("timezone must be an IANA zone name"))?;
+    jiff::tz::db().get(name).map_err(|_| invalid("unknown timezone"))
+}
+
+fn distinct_members(value: &Value, allowed: &[&str], nonempty: bool) -> Option<Vec<String>> {
+    let items = value.as_array()?;
+    let mut seen: Vec<String> = Vec::with_capacity(items.len());
+    for item in items {
+        let text = item.as_str().filter(|text| allowed.contains(text))?;
+        if seen.iter().any(|known| known == text) {
+            return None;
+        }
+        seen.push(text.to_owned());
+    }
+    (!nonempty || !seen.is_empty()).then_some(seen)
+}
+
+fn normalized_rules(rules: &[Value]) -> Result<Vec<Value>> {
+    let mut unique: Vec<Value> = Vec::with_capacity(rules.len());
+    for rule in rules {
+        let text = rule.as_str().ok_or_else(|| invalid("policy entries must be strings"))?;
+        let value = Value::String(normalize_domain_rule(text)?);
+        if !unique.contains(&value) {
+            unique.push(value);
+        }
+    }
+    Ok(unique)
+}
+
+/// Port of `_validate_web_extensions`: safe_search, timezone and scheduled windows.
+fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
+    if let Some(value) = settings.get("safe_search") {
+        let Some(safe) = value.as_object().filter(|safe| safe.keys().all(|key| key == "engines" || key == "youtube"))
+        else {
+            return Err(invalid("safe_search must be an object with engines and youtube"));
+        };
+        let engines = safe.get("engines").cloned().unwrap_or(Value::Array(Vec::new()));
+        if distinct_members(&engines, &SAFE_SEARCH_ENGINES, false).is_none() {
+            return Err(invalid("safe_search.engines must list distinct supported engines"));
+        }
+        if !matches!(safe.get("youtube").map(Value::as_str), None | Some(Some("strict" | "moderate"))) {
+            return Err(invalid("safe_search.youtube must be strict or moderate"));
+        }
+    }
+    if let Some(value) = settings.get("timezone") {
+        time_zone(value)?;
+    }
+    let Some(windows) = settings.get("scheduled").cloned() else { return Ok(()) };
+    let Some(windows) = windows.as_array().filter(|windows| windows.len() <= MAX_WINDOWS) else {
+        return Err(invalid("scheduled must be a list of at most 50 windows"));
+    };
+    if !windows.is_empty() && !settings.contains_key("timezone") {
+        return Err(invalid("scheduled rules require a timezone"));
+    }
+    let mut normalized = Vec::with_capacity(windows.len());
+    for window in windows {
+        let keys = ["blocked", "days", "from", "to"];
+        let Some(mut window) = window
+            .as_object()
+            .cloned()
+            .filter(|window| window.len() == 4 && keys.iter().all(|key| window.contains_key(*key)))
+        else {
+            return Err(invalid("schedule window needs exactly blocked, days, from and to"));
+        };
+        let Some(rules) = window["blocked"].as_array().filter(|rules| rules.len() <= MAX_ENTRIES).cloned() else {
+            return Err(invalid("schedule window blocked must be a list of at most 10000 rules"));
+        };
+        if distinct_members(&window["days"], &DAYS, true).is_none() {
+            return Err(invalid("schedule window days must list distinct weekdays"));
+        }
+        let (Some(start), Some(end)) = (clock_minutes(&window["from"]), clock_minutes(&window["to"])) else {
+            return Err(invalid("schedule window times must be HH:MM"));
+        };
+        if start >= end {
+            return Err(invalid("schedule window must start before it ends; split windows across midnight"));
+        }
+        window.insert("blocked".to_owned(), Value::Array(normalized_rules(&rules)?));
+        normalized.push(Value::Object(window));
+    }
+    settings.insert("scheduled".to_owned(), Value::Array(normalized));
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct Window {
+    blocked: Vec<String>,
+    days: [bool; 7],
+    from: u16,
+    to: u16,
+}
+
+/// Validated web filter: unscheduled rules, scheduled windows in the policy timezone and SafeSearch.
+#[derive(Debug, Clone, Default)]
+pub struct WebFilter {
+    blocked: Vec<String>,
+    allowed: Vec<String>,
+    windows: Vec<Window>,
+    timezone: Option<jiff::tz::TimeZone>,
+    engines: Vec<String>,
+    youtube_moderate: bool,
+}
+
+impl From<WebRules> for WebFilter {
+    fn from(rules: WebRules) -> Self {
+        WebFilter { blocked: rules.blocked, allowed: rules.allowed, ..WebFilter::default() }
+    }
+}
+
+fn text_list(value: Option<&Value>) -> Vec<String> {
+    value
+        .and_then(Value::as_array)
+        .map(|items| items.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .unwrap_or_default()
+}
+
+impl WebFilter {
+    /// Build from a `web_filter` object that already passed `validate_policy` (or null).
+    pub fn from_settings(settings: &Value) -> Result<Self> {
+        let rules = WebRules::new(&text_list(settings.get("blocked")), &text_list(settings.get("allowed")))?;
+        let mut windows = Vec::new();
+        for window in settings.get("scheduled").and_then(Value::as_array).into_iter().flatten() {
+            let mut days = [false; 7];
+            for day in text_list(window.get("days")) {
+                if let Some(index) = DAYS.iter().position(|known| *known == day) {
+                    days[index] = true;
+                }
+            }
+            let bound =
+                |key: &str| window.get(key).and_then(clock_minutes).ok_or_else(|| invalid("invalid schedule window"));
+            windows.push(Window {
+                blocked: WebRules::new(&text_list(window.get("blocked")), &[])?.blocked,
+                days,
+                from: bound("from")?,
+                to: bound("to")?,
+            });
+        }
+        let safe = settings.get("safe_search");
+        Ok(WebFilter {
+            blocked: rules.blocked,
+            allowed: rules.allowed,
+            windows,
+            timezone: settings.get("timezone").map(time_zone).transpose()?,
+            engines: text_list(safe.and_then(|safe| safe.get("engines"))),
+            youtube_moderate: safe.and_then(|safe| safe.get("youtube")).and_then(Value::as_str) == Some("moderate"),
+        })
+    }
+
+    /// Which windows are open at `when`; a change in this mask is a schedule edge.
+    pub fn active_windows(&self, when: jiff::Timestamp) -> Vec<bool> {
+        let Some(zone) = &self.timezone else { return vec![false; self.windows.len()] };
+        let local = when.to_zoned(zone.clone());
+        let day = local.weekday().to_monday_zero_offset() as usize;
+        let minute = local.hour() as u16 * 60 + local.minute() as u16;
+        self.windows.iter().map(|window| window.days[day] && window.from <= minute && minute < window.to).collect()
+    }
+
+    /// Unscheduled rules plus every window open at `when`, with the allow list.
+    pub fn rules_at(&self, when: jiff::Timestamp) -> WebRules {
+        let mut blocked = self.blocked.clone();
+        for (window, open) in self.windows.iter().zip(self.active_windows(when)) {
+            if open {
+                blocked.extend(window.blocked.iter().cloned());
+            }
+        }
+        WebRules { blocked, allowed: self.allowed.clone() }
+    }
+
+    pub fn blocks_at(&self, name: &str, when: jiff::Timestamp) -> bool {
+        self.rules_at(when).blocks(name)
+    }
+
+    pub fn has_schedule(&self) -> bool {
+        !self.windows.is_empty()
+    }
+
+    /// Enforced SafeSearch host for a search engine name, or None.
+    pub fn safe_search_target(&self, name: &str) -> Option<&'static str> {
+        let domain = normalize_domain(name).ok()?;
+        let enabled = |engine: &str| self.engines.iter().any(|known| known == engine);
+        if enabled("google") && GOOGLE_DOMAINS.contains(&domain.strip_prefix("www.").unwrap_or(&domain)) {
+            return Some("forcesafesearch.google.com");
+        }
+        if enabled("youtube") && YOUTUBE_NAMES.contains(&domain.as_str()) {
+            return Some(if self.youtube_moderate { "restrictmoderate.youtube.com" } else { "restrict.youtube.com" });
+        }
+        if enabled("bing") && domain == "www.bing.com" {
+            return Some("strict.bing.com");
+        }
+        if enabled("duckduckgo") && (domain == "duckduckgo.com" || domain == "www.duckduckgo.com") {
+            return Some("safe.duckduckgo.com");
+        }
+        None
+    }
 }
 
 /// Server assignment: either a signed policy or an explicit release (version 0).
@@ -196,6 +620,12 @@ impl Assignment {
     pub fn blocked_lists(&self) -> Result<(Vec<String>, Vec<String>)> {
         let body = self.effective_body()?;
         Ok((string_list(&body, "web_filter", "blocked"), string_list(&body, "app_control", "blocked")))
+    }
+
+    /// Full web filter (schedules, SafeSearch); a release yields an empty filter.
+    pub fn web_filter(&self) -> Result<WebFilter> {
+        let body = self.effective_body()?;
+        WebFilter::from_settings(body.get("web_filter").unwrap_or(&Value::Null))
     }
 
     /// Web filter rules including the allow list; a release yields no rules.
