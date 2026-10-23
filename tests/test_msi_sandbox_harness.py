@@ -65,3 +65,16 @@ def test_msi_backend_stays_interruptible_and_reports_durations():
     text = SCRIPT.read_text(encoding='utf-8')
     assert 'GetContextAsync()' in text and '.GetContext()' not in text
     assert 'durations' in text
+
+def test_msi_tracks_exact_managed_root_instead_of_counting():
+    # Windows may add its own roots during a run; only the agent root is ours.
+    text = SCRIPT.read_text(encoding='utf-8')
+    assert 'Installation must add one root' not in text
+    assert 'function Get-ManagedRoot' in text and 'X509Certificate2' in text
+    assert 'unrelated_roots_added' in text
+
+def test_msi_harness_runs_once_per_sandbox():
+    # Sandbox can repeat LogonCommand; a second run collides with the first run's ports.
+    text = SCRIPT.read_text(encoding='utf-8')
+    assert "'CreateNew'" in text and 'already started in this Sandbox' in text
+    assert text.index('requires Windows Sandbox') < text.index("'CreateNew'")
