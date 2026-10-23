@@ -1,0 +1,44 @@
+{
+  "environment": "Windows Sandbox with networking enabled, run as SYSTEM, Edge confirmed by the operator",
+  "date": "2026-10-23",
+  "scope": "F2 slice 1: local DNS resolver through a service-owned NRPT rule, wildcard and allow rules, HTTPS block page",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-dns-sandbox.ps1 at d468da4",
+  "package": {
+    "build": "tools/build-msi-fixtures.ps1 -Production (no defines), WiX 5.0.2, version 0.3.0, agent and installer source at 48bef1c",
+    "openems-agent.msi": "6c06ef85147f0a71597b2229a22d0da0488f4441798294037ac64c6f528bf70a",
+    "properties": ["SERVER=http://127.0.0.1:18013", "BLOCKPAGEHTTPS=1", "DNSFILTER=1"],
+    "fault_injection_actions": "absent (CustomAction table checked inside Sandbox before install)"
+  },
+  "policies": [
+    {"version": 1, "web_filter": {"blocked": ["*.iana.org"], "allowed": ["www.iana.org"]}},
+    {"version": 2, "web_filter": {"blocked": ["example.net"]}}
+  ],
+  "checks": [
+    "production install with DNSFILTER routes system DNS through the managed NRPT rule",
+    "wildcard blocks apex and subdomains while allowed and unlisted names resolve upstream",
+    "trusted HTTPS block page for a wildcard subdomain",
+    "Edge shows the block page for a wildcard subdomain, confirmed by the operator",
+    "killed process keeps the NRPT rule and service recovery restores resolution",
+    "policy change applies to DNS without restarting the service",
+    "graceful stop removes the rule and start restores it",
+    "removal restores NRPT rules, trust and hosts"
+  ],
+  "durations": ["/i openems-agent.msi: 123 s", "/x openems-agent.msi: 11 s"],
+  "unrelated_roots_added": [],
+  "error": null,
+  "cleanup_errors": [],
+  "notes": [
+    "System resolution was checked with Resolve-DnsName without -Server, so answers came through the NRPT rule",
+    "Earlier attempts: the first failed because the Sandbox DNS proxy resolves through the host, whose own openems agent blocks example.com (fixtures moved to iana.org with a preflight); the second exposed that the service did not report StopPending while removing the rule, which made Stop-Service fail (fixed in 48bef1c)",
+    "Each install waits about 2 minutes on Windows Installer signature checks of the unsigned package"
+  ],
+  "not_validated": [
+    "Physical endpoint, VPN clients with their own NRPT rules and captive portals",
+    "Chrome and Firefox (second machine)",
+    "Real management server end-to-end policy changes",
+    "DNS over HTTPS configured in browsers and other bypasses (F2 slice 3)",
+    "Code signing"
+  ]
+}

@@ -39,7 +39,10 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - parada normal devolvendo o DNS e início recriando a regra;
   - desinstalação restaurando as regras NRPT, a confiança e o `hosts`.
 - Pacote local em `.venv/sandbox-acceptance/dns-input/` e perfil `dns.wsb`, **com rede**, necessária para o upstream real. Iniciar com Win+R → `C:\openems-input\RUN-DNS-TEST.cmd`; relatório em `results/dns-result.json`.
-- Aceite real ainda não executado. Depois, categorias da F2, recorte 4: taxonomia no estilo FortiGuard com listas abertas, sem a base da Fortinet.
+- **Aceite real concluído em 2026-10-23, 14:52:** 8 de 8 cenários, `passed: true`, Edge confirmado pelo operador. Evidência em `validation/sandbox-dns-2026-10-23.json` (hash do MSI de produção).
+  - Tentativas anteriores: na primeira, o proxy DNS do Sandbox resolve pelo host, e o agente openems do host bloqueia `example.com`. Corrigido trocando os nomes de teste para `iana.org` e conferindo antes de instalar (`d468da4`).
+  - Na segunda, o serviço não informava `STOP_PENDING` enquanto removia a regra, e o `Stop-Service` falhava. Corrigido no serviço (`48bef1c`); um administrador num computador real teria o mesmo erro.
+- Fora do aceite: máquina física com VPN e portal cativo, Chrome/Firefox, servidor real, DoH configurado no navegador (recorte 3) e assinatura. Depois, categorias da F2, recorte 4: taxonomia no estilo FortiGuard com listas abertas, sem a base da Fortinet.
 
 ### Continuação — resiliência do serviço (branch `feature/native-resilience`, plano A aprovado em 2026-10-23)
 
@@ -102,7 +105,7 @@ Estado em 2026-10-22. O plano completo de cada fase, com critérios de aceite, e
 | Fase | Estado | O que falta |
 |---|---|---|
 | F1 — Agente nativo (Windows) | Quase pronta. Agente Rust em `agent-rs/` com paridade do agente Python (testes de contrato em `tests/test_native_agent.py`). MSI transacional com `BLOCKPAGE`/`BLOCKPAGEHTTPS` aceito em Sandbox (instalação, upgrade, rollback, remoção). Resiliência aceita em Sandbox com MSI de produção: recuperação após crash, servidor fora do ar, reboot sem servidor. | Componente da sessão do usuário (tarefa no logon, notificações). Assinatura de código (depende de certificado da RSM). Segunda máquina física (Chrome/Firefox). |
-| F2 — Filtro web completo | Parcial na branch `feature/https-blockpage`: núcleo HTTPS local implementado; ver continuação acima. | Validar confiança/remoção em Windows descartável e navegadores; DNS local, curingas, categorias, horários, SafeSearch e políticas de navegador. |
+| F2 — Filtro web completo | Parcial. HTTPS local aceito em Sandbox (Edge). Recorte 1 aceito em Sandbox: resolvedor DNS com NRPT do serviço, curingas e `allowed` (branch `feature/dns-resolver`). | SafeSearch e horários (recorte 2); antiburla, políticas de navegador e firewall 53/853 (recorte 3); categorias no estilo FortiGuard com listas abertas e registro de bloqueios (recorte 4); aviso no painel para agentes sem `web-filter:dns`; Chrome/Firefox na segunda máquina. |
 | F3 — Controle de aplicativos | Não iniciada. Hoje só encerra o processo pelo nome. | Tudo. |
 | F4 — USB | Não iniciada. | Tudo. |
 | F5 — Antiadulteração | Parcial: serviço automático no boot com reinício após falha. | ACL do serviço, watchdog, código de desinstalação, componente no logon. |
