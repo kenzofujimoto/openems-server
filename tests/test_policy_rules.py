@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from agent.policy import domain_blocked, hosts_names, normalize_domain_rule, validate_policy
+from agent.policy import (
+    domain_blocked,
+    hosts_names,
+    normalize_domain_rule,
+    validate_policy,
+)
 
 
 @pytest.mark.parametrize(("value", "expected"), [
