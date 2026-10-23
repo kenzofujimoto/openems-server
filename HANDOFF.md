@@ -13,6 +13,13 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 - Evidência em `validation/host-chrome-https-2026-10-22.json`. O estado instalado foi mantido para o teste solicitado; não confundir com as validações anteriores sem alteração no host.
 - Próximo recorte proposto: `PLAN-installer-blockpage.md` (F1/F2: opções no MSI, preservação de upgrade, transação de CA e pacote para a segunda máquina). Ainda precisa de aprovação específica do plano antes de alterar implementação em vários arquivos. Firefox permanece pendente; cada máquina deve gerar e proteger sua própria CA.
 
+### Continuação — resiliência do serviço (branch `feature/native-resilience`, plano A aprovado em 2026-10-23)
+
+- Roteiro `deploy/test-resilience-sandbox.ps1` em duas fases, com contratos em `tests/test_resilience_sandbox.py`, verificados vermelhos antes da implementação. **Fase 1** (Sandbox novo): instala o **MSI de produção**, confirmando na tabela CustomAction que não há ações de injeção de falha, com `BLOCKPAGEHTTPS=1`. Depois verifica: TLS confiável servido pelo próprio serviço; processo morto reiniciado pela recuperação do serviço; backend fora do ar por 60 s sem perder bloqueio/página nem trocar de processo; nova sincronização (`config/assigned`) em até 360 s após o retorno. Termina com o backend parado e o marcador `C:\openems-resilience\phase1.json`. **Fase 2** (após reiniciar o Sandbox por dentro): exige boot posterior, backend ausente e serviço automático servindo TLS com a política em cache; depois desinstala e confere raízes e hosts originais.
+- `tools/build-msi-fixtures.ps1 -Production` gera `openems-agent.msi` 0.3.0 sem defines. Pacote local em `.venv/sandbox-acceptance/resilience-input/` (MSI, roteiro, `RUN-RESILIENCE-TEST.cmd`, `diagnose.ps1`) e perfil `resilience.wsb` (sem rede, sem clipboard, sem LogonCommand). Relatórios: `results/resilience-phase1.json` e `results/resilience-result.json`.
+- Risco em aberto: não confirmado se o Windows Sandbox desta máquina preserva o estado ao reiniciar por dentro. Se `C:\openems-resilience` sumir depois do reinício, o teste de reboot vai para uma VM.
+- Suíte local: **470 aprovados, 41 ignorados, 5 deselecionados**. Aceite real ainda não executado.
+
 ### Continuação — transação MSI (`PLAN-installer-blockpage.md`, passos 1–6)
 
 - MSI com `BLOCKPAGE=1` / `BLOCKPAGEHTTPS=1` (opt-in; HTTPS implica HTTP; outro valor aborta). Upgrade sem `SERVER` preserva cadastro/configuração (`MajorUpgrade` em `afterInstallInitialize`).
