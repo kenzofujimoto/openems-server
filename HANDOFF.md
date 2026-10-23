@@ -21,9 +21,13 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - `agent-rs/src/dns.rs`: respostas locais para nomes bloqueados (127.0.0.1/::1 com a página, 0.0.0.0/:: sem ela, TTL 30 s, NODATA para os outros tipos), NXDOMAIN para `use-application-dns.net`, encaminhamento por UDP conectado com checagem de ID e pergunta, nova tentativa por TCP quando a resposta vem truncada, SERVFAIL ao estourar o orçamento, limites de concorrência.
   - Upstream: lido das placas ativas por `GetAdaptersAddresses`, com cache de 5 s. Testado no host só em leitura; encontrou o DNS da rede local.
   - Configuração `dns_filter`/`dns_port` e `--dns-filter`/`--dns-port`; `run-once` recusa o modo DNS. O serviço escuta em 127.0.0.1 e, se houver, em [::1], e no modo DNS remove o bloco gerenciado do `hosts`.
-- Nada altera o DNS do sistema ainda: não há regra NRPT, propriedade MSI nem tag de capacidade. Suíte: **496 Python aprovados, 41 ignorados, 5 deselecionados; 73 Rust**.
-- Achado de teste: no Windows, uma porta UDP livre pode estar reservada para TCP (faixas de exclusão do Hyper-V/WinNAT, erro 10013). `dns::start` tenta de novo quando a porta é 0, e o helper Python escolhe uma porta livre nos dois protocolos.
-- Pendente: decidir quem é dono da regra NRPT (serviço ou instalador); depois NRPT, MSI `DNSFILTER=1`, tag `web-filter:dns` e o aceite em Sandbox.
+- Regra NRPT, decisão aprovada em 2026-10-23: o serviço é o dono (`agent-rs/src/nrpt.rs`).
+  - Ele cria a regra para o namespace `.` apontando para o loopback só depois de escutar na porta 53 e a remove ao parar normalmente; um travamento deixa a regra.
+  - Antes de criar, remove somente sobras com o mesmo comentário, namespace e servidores de loopback. Os scripts vão por `-EncodedCommand`, e um teste verifica a sintaxe no parser do PowerShell sem executar.
+- MSI `DNSFILTER=1` e `installer-prepare --dns-filter`: opt-in, reservam a porta 53 (UDP e TCP) antes de qualquer mudança e preservam o cadastro, gravando a chave `dns_filter` só quando ela é ligada. Na desinstalação, o instalador remove uma sobra de NRPT.
+- Tag `web-filter:dns` enviada quando o modo DNS está ativo.
+- Suíte: **498 Python aprovados, 41 ignorados, 5 deselecionados; 80 Rust**. O WXS compila. **Nada foi executado no DNS desta máquina**: a regra NRPT real só será criada no Sandbox.
+- Próximo: roteiro de aceite em Sandbox (unidade 7). Depois, categorias da F2, recorte 4: taxonomia no estilo FortiGuard com listas abertas, sem a base da Fortinet.
 
 ### Continuação — resiliência do serviço (branch `feature/native-resilience`, plano A aprovado em 2026-10-23)
 
