@@ -15,7 +15,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
 
-from policy import normalize_domain, normalize_process, policy_digest, validate_policy
+from policy import (domain_blocked, hosts_names, normalize_domain, normalize_domain_rule, normalize_process,
+                    policy_digest, validate_policy)
 
 OUTPUT = ROOT / "contract" / "policy-vectors.json"
 
@@ -39,6 +40,28 @@ DOMAINS = [
     "a" * 64 + ".com", ".".join(["a" * 63] * 4) + ".com", "x%20.com", "ex\\ample.com",
 ]
 
+DOMAIN_RULES = [
+    "example.com", "*.Example.COM", "*.bücher.de", "*.sub.example.co.uk", "*", "*.", "*.com", "a.*.com",
+    "**.example.com", "*example.com", "*.example.com.", "*.1.2.3.4", ".example.com", "*.*.example.com", "",
+]
+
+# (name, blocked rules, allowed rules): the resolver and the HTTPS page share this decision.
+MATCHES = [
+    ("example.com", ["example.com"], []), ("WWW.Example.com", ["example.com"], []),
+    ("sub.example.com", ["example.com"], []), ("example.com", ["*.example.com"], []),
+    ("a.b.example.com", ["*.example.com"], []), ("example.com.br", ["*.example.com"], []),
+    ("notexample.com", ["*.example.com"], []), ("docs.google.com", ["*.google.com"], ["mail.google.com"]),
+    ("mail.google.com", ["*.google.com"], ["mail.google.com"]), ("www.mail.google.com", ["*.google.com"], ["mail.google.com"]),
+    ("a.mail.google.com", ["*.google.com"], ["mail.google.com"]), ("x.example.com", ["*.example.com"], ["*.example.com"]),
+    ("www.example.com", ["www.example.com"], []), ("www.www.example.com", ["www.example.com"], []),
+    ("bücher.de", ["*.xn--bcher-kva.de"], []), ("not a name", ["*.example.com"], []), ("127.0.0.1", ["example.com"], []),
+]
+
+HOSTS = [
+    (["*.example.com", "other.org"], []), (["example.com"], ["www.example.com"]),
+    (["www.example.com", "*.example.com"], []), (["*.google.com"], ["*.google.com"]), ([], []),
+]
+
 PROCESSES = [
     "chrome.exe", "Chrome.EXE", "my app.exe", "utorrent", "a_b-c.exe", "../evil.exe", " lead.exe",
     "trail.exe ", "dot.", "", "a/b.exe", "a\\b.exe", "-dash.exe", "x" * 255, "x" * 254,
@@ -50,6 +73,10 @@ VALIDATE: list[Any] = [
     {"web_filter": {"blocked": "example.com"}},
     {"web_filter": ["example.com"]},
     {"app_control": {"blocked": ["../x.exe"]}},
+    {"web_filter": {"blocked": ["*.Example.com", "*.example.com"], "allowed": ["Mail.example.com"]}},
+    {"web_filter": {"allowed": "x.com"}},
+    {"web_filter": {"allowed": ["*.com"]}},
+    {"web_filter": {"blocked": ["a.*.com"]}},
 ]
 
 
@@ -72,6 +99,11 @@ def build() -> dict[str, Any]:
             for body in BODIES
         ],
         "domains": [_outcome(normalize_domain, value) for value in DOMAINS],
+        "domain_rules": [_outcome(normalize_domain_rule, value) for value in DOMAIN_RULES],
+        "matches": [{"name": name, "blocked": blocked, "allowed": allowed, "result": domain_blocked(name, blocked, allowed)}
+                    for name, blocked, allowed in MATCHES],
+        "hosts_names": [{"blocked": blocked, "allowed": allowed, "names": hosts_names(blocked, allowed)}
+                        for blocked, allowed in HOSTS],
         "processes": [_outcome(normalize_process, value) for value in PROCESSES],
         "validate": [_outcome(validate_policy, value) for value in VALIDATE],
     }

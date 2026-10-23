@@ -22,8 +22,14 @@ def test_committed_vectors_match_policy_module():
 
 def test_vectors_cover_valid_and_invalid_cases():
     vectors = _generator().build()
-    for section in ("domains", "processes", "validate"):
+    for section in ("domains", "domain_rules", "processes", "validate"):
         outcomes = vectors[section]
         assert any("error" in item for item in outcomes)
         assert any("normalized" in item for item in outcomes)
     assert len({item["digest"] for item in vectors["policies"]}) == len(vectors["policies"])
+
+
+def test_vectors_cover_rule_matching_both_ways():
+    vectors = _generator().build()
+    assert {item["result"] for item in vectors["matches"]} == {True, False}
+    assert any(item["allowed"] for item in vectors["hosts_names"])

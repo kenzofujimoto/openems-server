@@ -171,7 +171,7 @@ def test_cookie_login_has_csrf_and_logout_revokes_session(secured):
 
 def test_invalid_payload_and_oversize_requests_rejected(secured):
     client, _, admin = secured
-    for body in ({"web_filter": {"blocked": "example.com"}}, {"web_filter": {"blocked": ["*.example.com"]}}, {"app_control": {"blocked": ["../app.exe"]}}):
+    for body in ({"web_filter": {"blocked": "example.com"}}, {"web_filter": {"blocked": ["*.com"]}}, {"app_control": {"blocked": ["../app.exe"]}}):
         assert client.post("/api/v1/profiles/Default", headers=admin, json=body).status_code == 422
     assert client.post("/api/v1/assignment_rules", headers=admin, json={"id": "r", "target_vdom": "x", "conditions": [{"field": "unknown", "op": "equals", "value": "a"}]}).status_code == 422
     assert client.post("/fct/api/public/v1/register/", json={"devid": "x" * 2_000_000}).status_code == 413
