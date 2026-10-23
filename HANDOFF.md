@@ -13,6 +13,18 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 - Evidência em `validation/host-chrome-https-2026-10-22.json`. O estado instalado foi mantido para o teste solicitado; não confundir com as validações anteriores sem alteração no host.
 - Próximo recorte proposto: `PLAN-installer-blockpage.md` (F1/F2: opções no MSI, preservação de upgrade, transação de CA e pacote para a segunda máquina). Ainda precisa de aprovação específica do plano antes de alterar implementação em vários arquivos. Firefox permanece pendente; cada máquina deve gerar e proteger sua própria CA.
 
+### Continuação — F2 resolvedor DNS (branch `feature/dns-resolver`, `dns-resolver.md` aprovado em 2026-10-23)
+
+- Feito, com TDD (testes vermelhos commitados antes de cada unidade):
+  - Política: `*.dominio` cobre o domínio e todos os subdomínios. `web_filter.allowed` vence o bloqueio. Python (`agent/policy.py`) é a referência, com `normalize_domain_rule`, `domain_blocked` e `hosts_names`. Os vetores novos `domain_rules`, `matches` e `hosts_names` em `contract/policy-vectors.json` são lidos pelo Rust (`WebRules`).
+  - No modo `hosts`, o curinga vira só o domínio e o `www.` (melhor esforço). A página HTTPS autoriza SNI e Host pela mesma regra. O agente Python também respeita `allowed`.
+  - `agent-rs/src/dns.rs`: respostas locais para nomes bloqueados (127.0.0.1/::1 com a página, 0.0.0.0/:: sem ela, TTL 30 s, NODATA para os outros tipos), NXDOMAIN para `use-application-dns.net`, encaminhamento por UDP conectado com checagem de ID e pergunta, nova tentativa por TCP quando a resposta vem truncada, SERVFAIL ao estourar o orçamento, limites de concorrência.
+  - Upstream: lido das placas ativas por `GetAdaptersAddresses`, com cache de 5 s. Testado no host só em leitura; encontrou o DNS da rede local.
+  - Configuração `dns_filter`/`dns_port` e `--dns-filter`/`--dns-port`; `run-once` recusa o modo DNS. O serviço escuta em 127.0.0.1 e, se houver, em [::1], e no modo DNS remove o bloco gerenciado do `hosts`.
+- Nada altera o DNS do sistema ainda: não há regra NRPT, propriedade MSI nem tag de capacidade. Suíte: **496 Python aprovados, 41 ignorados, 5 deselecionados; 73 Rust**.
+- Achado de teste: no Windows, uma porta UDP livre pode estar reservada para TCP (faixas de exclusão do Hyper-V/WinNAT, erro 10013). `dns::start` tenta de novo quando a porta é 0, e o helper Python escolhe uma porta livre nos dois protocolos.
+- Pendente: decidir quem é dono da regra NRPT (serviço ou instalador); depois NRPT, MSI `DNSFILTER=1`, tag `web-filter:dns` e o aceite em Sandbox.
+
 ### Continuação — resiliência do serviço (branch `feature/native-resilience`, plano A aprovado em 2026-10-23)
 
 - Roteiro `deploy/test-resilience-sandbox.ps1` em duas fases, com contratos em `tests/test_resilience_sandbox.py`, verificados vermelhos antes da implementação. **Fase 1** (Sandbox novo): instala o **MSI de produção**, confirmando na tabela CustomAction que não há ações de injeção de falha, com `BLOCKPAGEHTTPS=1`. Depois verifica: TLS confiável servido pelo próprio serviço; processo morto reiniciado pela recuperação do serviço; backend fora do ar por 60 s sem perder bloqueio/página nem trocar de processo; nova sincronização (`config/assigned`) em até 360 s após o retorno. Termina com o backend parado e o marcador `C:\openems-resilience\phase1.json`. **Fase 2** (após reiniciar o Sandbox por dentro): exige boot posterior, backend ausente e serviço automático servindo TLS com a política em cache; depois desinstala e confere raízes e hosts originais.
