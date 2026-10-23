@@ -23,6 +23,8 @@ pub struct AgentConfig {
     /// Serve DNS on loopback instead of writing the hosts file (Windows routes it via NRPT).
     pub dns_filter: bool,
     pub dns_port: u16,
+    /// Block direct DNS, DoT and known DoH endpoints and set browser DoH policies; needs dns_filter.
+    pub anti_bypass: bool,
     pub invitation: Option<String>,
     pub device_token: Option<String>,
     pub state_path: PathBuf,
@@ -59,6 +61,7 @@ impl AgentConfig {
             authority_path: data_dir().join("https").join("authority.json"),
             dns_filter: false,
             dns_port: 53,
+            anti_bypass: false,
             invitation: None,
             device_token: None,
             state_path: data_dir().join("state.json"),
@@ -77,7 +80,8 @@ impl AgentConfig {
         };
         const TEXT: [&str; 8] =
             ["server", "devid", "vdom", "hosts_path", "state_path", "invitation", "device_token", "authority_path"];
-        const FLAGS: [&str; 5] = ["block_page", "dry_run", "allow_insecure_http", "block_page_https", "dns_filter"];
+        const FLAGS: [&str; 6] =
+            ["block_page", "dry_run", "allow_insecure_http", "block_page_https", "dns_filter", "anti_bypass"];
         const NUMBERS: [&str; 4] = ["interval", "block_page_port", "block_page_https_port", "dns_port"];
         if data.keys().any(|key| {
             !TEXT.contains(&key.as_str()) && !FLAGS.contains(&key.as_str()) && !NUMBERS.contains(&key.as_str())
@@ -125,6 +129,7 @@ impl AgentConfig {
             .filter(|port| *port > 0)
             .ok_or_else(|| AgentError::Config("HTTPS block page port is out of range".into()))?;
         config.dns_filter = flag("dns_filter")?;
+        config.anti_bypass = flag("anti_bypass")?;
         config.dns_port = u16::try_from(number("dns_port", 53)?)
             .ok()
             .filter(|port| *port > 0)
@@ -163,6 +168,9 @@ impl AgentConfig {
         if self.dns_filter && (self.dry_run || self.dns_port == 0) {
             return Err(AgentError::Config("DNS filter requires enforcement mode and a nonzero port".into()));
         }
+        if self.anti_bypass && !self.dns_filter {
+            return Err(AgentError::Config("anti-bypass requires the DNS filter".into()));
+        }
         if self.devid.trim().is_empty() {
             return Err(AgentError::Config("devid is required".into()));
         }
@@ -186,6 +194,7 @@ impl AgentConfig {
             "authority_path": self.authority_path.to_string_lossy(),
             "dns_filter": self.dns_filter,
             "dns_port": self.dns_port,
+            "anti_bypass": self.anti_bypass,
             "allow_insecure_http": self.allow_insecure_http,
         });
         if let Some(invitation) = &self.invitation {

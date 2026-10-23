@@ -283,6 +283,7 @@ pub fn prepare(
     enable_http: bool,
     enable_https: bool,
     enable_dns: bool,
+    enable_anti_bypass: bool,
 ) -> Result<()> {
     authority::require_system()?;
     if !config_path.is_absolute() {
@@ -302,6 +303,9 @@ pub fn prepare(
     target.block_page |= enable_http || enable_https;
     target.block_page_https |= enable_https;
     target.dns_filter |= enable_dns;
+    target.anti_bypass |= enable_anti_bypass;
+    // Reject impossible combinations (anti-bypass without DNS) before reserving ports or journaling.
+    target.clone().validate()?;
     // Bind all requested listeners before touching config or trust. Handles remain reserved through preparation.
     let mut listeners = Vec::new();
     for (enabled, port) in
@@ -334,6 +338,9 @@ pub fn prepare(
             if target.dns_filter {
                 value["dns_filter"] = true.into();
             }
+            if target.anti_bypass {
+                value["anti_bypass"] = true.into();
+            }
             serde_json::to_vec_pretty(&value).map_err(|_| failure("cannot encode planned configuration"))?
         }
         None => {
@@ -342,7 +349,14 @@ pub fn prepare(
     };
     allow_bytes(&mut saved, config_path, Some(&desired_config))?;
     save(&directory, &saved)?;
-    crate::provisioning::configure_install(config_path, bootstrap, enable_http, enable_https, enable_dns)?;
+    crate::provisioning::configure_install(
+        config_path,
+        bootstrap,
+        enable_http,
+        enable_https,
+        enable_dns,
+        enable_anti_bypass,
+    )?;
     if target.block_page_https {
         let authority = Authority::load_or_create(&target.authority_path)?;
         saved.root_active = Some(authority.root_der().as_ref().to_vec());

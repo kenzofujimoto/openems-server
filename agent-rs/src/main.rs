@@ -101,7 +101,9 @@ struct InstallerArgs {
     block_page_https: bool,
     #[arg(long)]
     dns_filter: bool,
-    #[arg(long, conflicts_with_all = ["server", "devid", "hosts_file", "invitation", "block_page", "block_page_https", "dns_filter"])]
+    #[arg(long)]
+    anti_bypass: bool,
+    #[arg(long, conflicts_with_all = ["server", "devid", "hosts_file", "invitation", "block_page", "block_page_https", "dns_filter", "anti_bypass"])]
     remove: bool,
 }
 
@@ -138,6 +140,9 @@ struct ConfigureArgs {
     dns_filter: bool,
     #[arg(long, default_value_t = 53)]
     dns_port: u16,
+    /// Block direct DNS, DoT and known DoH endpoints; requires --dns-filter.
+    #[arg(long)]
+    anti_bypass: bool,
     #[arg(long)]
     allow_insecure_http: bool,
     /// One-time enrollment invitation; OPENEMS_INVITATION is used when omitted.
@@ -179,6 +184,9 @@ struct RunArgs {
     dns_filter: bool,
     #[arg(long, default_value_t = 53)]
     dns_port: u16,
+    /// Block direct DNS, DoT and known DoH endpoints; requires --dns-filter.
+    #[arg(long)]
+    anti_bypass: bool,
     #[arg(long)]
     allow_insecure_http: bool,
 }
@@ -208,6 +216,7 @@ fn resolve(args: RunArgs) -> Result<AgentConfig> {
         args.authority_path.unwrap_or_else(|| config.state_path.with_file_name("https").join("authority.json"));
     config.dns_filter = args.dns_filter;
     config.dns_port = args.dns_port;
+    config.anti_bypass = args.anti_bypass;
     config.allow_insecure_http = args.allow_insecure_http;
     config.invitation = non_empty_env("OPENEMS_INVITATION");
     config.device_token = non_empty_env("OPENEMS_DEVICE_TOKEN");
@@ -230,6 +239,7 @@ fn configure(args: ConfigureArgs) -> Result<PathBuf> {
     config.authority_path = args.authority_path.unwrap_or_else(|| path.with_file_name("https").join("authority.json"));
     config.dns_filter = args.dns_filter;
     config.dns_port = args.dns_port;
+    config.anti_bypass = args.anti_bypass;
     config.allow_insecure_http = args.allow_insecure_http;
     // msiexec passes an empty property when no invitation was given.
     config.invitation =
@@ -296,6 +306,7 @@ fn execute(command: Command) -> Result<ExitCode> {
                     args.block_page,
                     args.block_page_https,
                     args.dns_filter,
+                    args.anti_bypass,
                 )?;
             }
             println!("installer transaction prepared");

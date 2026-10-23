@@ -145,6 +145,9 @@ pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enfor
     if cfg.dns_filter {
         tags.push("web-filter:dns".into());
     }
+    if cfg.anti_bypass {
+        tags.push("web-filter:anti-bypass".into());
+    }
     tags.push(format!("vdom:{}", assignment.vdom));
     tags
 }

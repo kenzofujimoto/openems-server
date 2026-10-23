@@ -26,6 +26,7 @@ fn abort(stop: &StopSignal, workers: Vec<JoinHandle<()>>, error: AgentError) -> 
 /// Run until `stop` is signalled; listeners live as long as the loop.
 pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()> {
     let runtime = Arc::new(Runtime::new(config.clone(), Arc::clone(&log), Arc::clone(&stop))?);
+    runtime.blocked_domains.set_doh_blocking(config.dns_filter && config.anti_bypass);
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
     let mut routed = false;
     if config.block_page_https {

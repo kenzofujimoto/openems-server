@@ -25,17 +25,20 @@
     <Property Id="BLOCKPAGE" Secure="yes" />
     <Property Id="BLOCKPAGEHTTPS" Secure="yes" />
     <Property Id="DNSFILTER" Secure="yes" />
+    <Property Id="ANTIBYPASS" Secure="yes" />
     <SetProperty Id="DEVID" Value="[ComputerName]" Before="CostFinalize" Sequence="execute" Condition="NOT DEVID" />
     <SetProperty Id="HOSTSFILE" Value="[System64Folder]drivers\etc\hosts" Before="CostFinalize" Sequence="execute" Condition="NOT HOSTSFILE" />
     <SetProperty Id="BlockPageArguments" Value="--block-page" Before="CostFinalize" Sequence="execute" Condition="BLOCKPAGE=&quot;1&quot; OR BLOCKPAGEHTTPS=&quot;1&quot;" />
     <SetProperty Id="HttpsBlockPageArguments" Value="--block-page-https" Before="CostFinalize" Sequence="execute" Condition="BLOCKPAGEHTTPS=&quot;1&quot;" />
     <SetProperty Id="DnsFilterArguments" Value="--dns-filter" Before="CostFinalize" Sequence="execute" Condition="DNSFILTER=&quot;1&quot;" />
+    <SetProperty Id="AntiBypassArguments" Value="--anti-bypass" Before="CostFinalize" Sequence="execute" Condition="ANTIBYPASS=&quot;1&quot;" />
 
     <Launch Condition="Installed OR WIX_UPGRADE_DETECTED OR SERVER" Message="Pass SERVER=https://your-ems-server on the msiexec command line." />
     <Launch Condition="Privileged" Message="The openems agent must be installed by an administrator." />
     <Launch Condition="NOT BLOCKPAGE OR BLOCKPAGE=&quot;1&quot;" Message="BLOCKPAGE accepts only 1 or omission. Omit it to preserve an existing setting." />
     <Launch Condition="NOT BLOCKPAGEHTTPS OR BLOCKPAGEHTTPS=&quot;1&quot;" Message="BLOCKPAGEHTTPS accepts only 1 or omission. HTTPS also enables the HTTP page." />
     <Launch Condition="NOT DNSFILTER OR DNSFILTER=&quot;1&quot;" Message="DNSFILTER accepts only 1 or omission. Omit it to preserve an existing setting." />
+    <Launch Condition="NOT ANTIBYPASS OR ANTIBYPASS=&quot;1&quot;" Message="ANTIBYPASS accepts only 1 or omission and requires DNS filtering (DNSFILTER=1 now or already enabled)." />
 
     <!-- Embedded executable remains available during rollback and uninstall commit. -->
     <Binary Id="AgentActions" SourceFile="$(var.AgentExe)" />
@@ -54,7 +57,7 @@
 
     <!-- Runs as LocalSystem before the service starts; writes the protected agent.json. -->
     <CustomAction Id="PrepareAgentSetup" BinaryRef="AgentActions" Execute="deferred" Impersonate="no" Return="check" HideTarget="yes"
-                  ExeCommand="installer-prepare --server &quot;[SERVER]&quot; --devid &quot;[DEVID]&quot; --vdom &quot;[VDOM]&quot; --hosts-file &quot;[HOSTSFILE]&quot; --invitation &quot;[INVITATION]&quot; [BlockPageArguments] [HttpsBlockPageArguments] [DnsFilterArguments]" />
+                  ExeCommand="installer-prepare --server &quot;[SERVER]&quot; --devid &quot;[DEVID]&quot; --vdom &quot;[VDOM]&quot; --hosts-file &quot;[HOSTSFILE]&quot; --invitation &quot;[INVITATION]&quot; [BlockPageArguments] [HttpsBlockPageArguments] [DnsFilterArguments] [AntiBypassArguments]" />
     <CustomAction Id="RollbackAgentSetup" BinaryRef="AgentActions" Execute="rollback" Impersonate="no" Return="check"
                   ExeCommand="installer-rollback" />
     <CustomAction Id="CommitAgentSetup" BinaryRef="AgentActions" Execute="commit" Impersonate="no" Return="check"

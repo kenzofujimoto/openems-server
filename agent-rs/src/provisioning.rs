@@ -12,6 +12,7 @@ pub fn configure_install(
     enable_http: bool,
     enable_https: bool,
     enable_dns: bool,
+    enable_anti_bypass: bool,
 ) -> Result<AgentConfig> {
     let original = match std::fs::read(path) {
         Ok(bytes) => Some(bytes),
@@ -35,10 +36,12 @@ pub fn configure_install(
     }
     let changed = (enable_http || enable_https) && !config.block_page
         || enable_https && !config.block_page_https
-        || enable_dns && !config.dns_filter;
+        || enable_dns && !config.dns_filter
+        || enable_anti_bypass && !config.anti_bypass;
     config.block_page |= enable_http || enable_https;
     config.block_page_https |= enable_https;
     config.dns_filter |= enable_dns;
+    config.anti_bypass |= enable_anti_bypass;
     config.validate()?;
     match original {
         Some(bytes) if changed => {
@@ -51,6 +54,9 @@ pub fn configure_install(
             // Untouched options stay absent so upgrades change only what was requested.
             if config.dns_filter {
                 value["dns_filter"] = true.into();
+            }
+            if config.anti_bypass {
+                value["anti_bypass"] = true.into();
             }
             let encoded = serde_json::to_vec_pretty(&value).map_err(|error| AgentError::Local(error.to_string()))?;
             atomic_write(path, &encoded, Some(&bytes), true)?;
