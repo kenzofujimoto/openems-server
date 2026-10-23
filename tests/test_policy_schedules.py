@@ -100,3 +100,12 @@ def test_google_domain_list_is_the_published_one():
     assert len(GOOGLE_DOMAINS) == 187
     assert GOOGLE_DOMAINS[0] == "google.com" and "google.com.br" in GOOGLE_DOMAINS
     assert all(domain.startswith("google.") for domain in GOOGLE_DOMAINS)
+
+
+@pytest.mark.parametrize("settings", [
+    {"safe_search": {"engines": [{"name": "google"}]}},
+    {"timezone": "UTC", "scheduled": [{**SOCIAL, "days": [["mon"]]}]},
+])
+def test_unhashable_entries_are_validation_errors_not_crashes(settings):
+    with pytest.raises(ValueError):
+        validate_policy({"web_filter": settings})
