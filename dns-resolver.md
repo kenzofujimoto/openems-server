@@ -48,7 +48,12 @@ Ficam para os próximos recortes da F2, nesta ordem:
 ## Configuração, instalação e transação
 
 - Nova opção `dns_filter` no `agent.json`, desligada por padrão, e nova propriedade `DNSFILTER=1` no MSI. Com o DNS ligado, o agente remove o bloco gerenciado do `hosts`, para não haver duas fontes de bloqueio. Sem ele, o comportamento atual continua igual.
-- O journal do instalador passa a registrar se a regra NRPT já existia e qual é exatamente. O rollback só remove a regra criada pela transação, e a desinstalação remove a regra do agente.
+- **Ajuste aprovado em 2026-10-23:** quem cuida da regra NRPT é o serviço, não o instalador.
+  - O serviço cria a regra só depois que o resolvedor está escutando na porta 53 e a remove ao parar normalmente, inclusive no upgrade e no desligamento.
+  - Se o processo for morto ou travar, a regra fica e o DNS para até a recuperação reiniciar o serviço (5 s), de modo que matar o processo não desliga o filtro.
+  - Parar o serviço normalmente é ação de administrador e desliga o filtro.
+  - A regra é identificada exatamente pelo comentário do agente, pelo namespace `.` e pelos servidores de loopback. Antes de criar, o serviço remove apenas sobras com essa mesma identidade.
+  - O instalador remove, na desinstalação, uma sobra deixada por um travamento. Rollbacks são cobertos pela parada normal do serviço.
 - Tudo continua exigindo SYSTEM e opt-in explícito: nenhum upgrade liga o DNS sozinho.
 
 ## Testes
