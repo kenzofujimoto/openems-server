@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import bisect
 import hashlib
 import ipaddress
 import json
@@ -56,6 +57,32 @@ YOUTUBE_NAMES = (
     "youtube.googleapis.com", "www.youtube-nocookie.com",
 )
 SAFE_SEARCH_ENGINES = ("google", "bing", "youtube", "duckduckgo")
+# FortiGuard-style taxonomy over the Universite Toulouse Capitole (UT1) lists; each UT1 list feeds one id.
+CATEGORIES: dict[str, dict[str, Any]] = {
+    "adult": {"label": "Conteúdo adulto", "group": "Adulto", "sources": ["adult", "mixed_adult", "lingerie"]},
+    "dating": {"label": "Relacionamentos", "group": "Adulto", "sources": ["dating"]},
+    "gambling": {"label": "Jogos de azar", "group": "Adulto", "sources": ["gambling", "arjel"]},
+    "malware": {"label": "Malware", "group": "Segurança", "sources": ["malware", "cryptojacking", "stalkerware"]},
+    "phishing": {"label": "Phishing", "group": "Segurança", "sources": ["phishing"]},
+    "hacking": {"label": "Hacking", "group": "Segurança", "sources": ["hacking", "ddos"]},
+    "proxy": {"label": "VPN e proxies", "group": "Segurança",
+              "sources": ["vpn", "residential-proxies", "redirector", "strict_redirector", "strong_redirector"]},
+    "drugs": {"label": "Drogas", "group": "Potencialmente ofensivo", "sources": ["drogue"]},
+    "violence": {"label": "Violência e ódio", "group": "Potencialmente ofensivo", "sources": ["agressif"]},
+    "weapons": {"label": "Materiais perigosos", "group": "Potencialmente ofensivo", "sources": ["dangerous_material"]},
+    "warez": {"label": "Pirataria", "group": "Potencialmente ofensivo", "sources": ["warez"]},
+    "games": {"label": "Jogos", "group": "Consumo de banda e lazer", "sources": ["games"]},
+    "streaming": {"label": "Áudio e vídeo", "group": "Consumo de banda e lazer", "sources": ["audio-video", "radio"]},
+    "filehosting": {"label": "Armazenamento e download de arquivos", "group": "Consumo de banda e lazer",
+                    "sources": ["filehosting", "download"]},
+    "social": {"label": "Redes sociais", "group": "Interesse geral", "sources": ["social_networks"]},
+    "chat": {"label": "Chat e mensageiros", "group": "Interesse geral", "sources": ["chat"]},
+    "webmail": {"label": "Webmail", "group": "Interesse geral", "sources": ["webmail"]},
+    "shopping": {"label": "Compras", "group": "Interesse geral", "sources": ["shopping"]},
+    "sports": {"label": "Esportes", "group": "Interesse geral", "sources": ["sports"]},
+    "press": {"label": "Notícias", "group": "Interesse geral", "sources": ["press"]},
+    "ads": {"label": "Publicidade", "group": "Interesse geral", "sources": ["publicite", "marketingware"]},
+}
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 _CLOCK = re.compile(r"([01][0-9]|2[0-3]):[0-5][0-9]")
 _ZONE = re.compile(r"[A-Za-z][A-Za-z0-9_+-]*(?:/[A-Za-z0-9_+-]+)*")
@@ -165,10 +192,27 @@ def _validate_timezone(value: object) -> str:
     return value
 
 
+def _validate_categories(value: object) -> list[str]:
+    # Membership before set(): unhashable entries must be validation errors, not crashes.
+    if (
+        not isinstance(value, list)
+        or any(not isinstance(item, str) or item not in CATEGORIES for item in value)
+        or len(set(value)) != len(value)
+    ):
+        raise ValueError("blocked_categories must list distinct known categories")
+    return value
+
+
 def _validate_window(value: object) -> dict[str, Any]:
-    if not isinstance(value, dict) or set(value) != {"blocked", "days", "from", "to"}:
-        raise ValueError("schedule window needs exactly blocked, days, from and to")
-    blocked, days = value["blocked"], value["days"]
+    keys = {"blocked", "blocked_categories", "days", "from", "to"}
+    if (
+        not isinstance(value, dict)
+        or set(value) - keys
+        or not {"days", "from", "to"} <= set(value)
+        or not {"blocked", "blocked_categories"} & set(value)
+    ):
+        raise ValueError("schedule window needs days, from, to and blocked rules or categories")
+    blocked, days = value.get("blocked", []), value["days"]
     if not isinstance(blocked, list) or len(blocked) > 10000:
         raise ValueError("schedule window blocked must be a list of at most 10000 rules")
     if (
@@ -183,11 +227,16 @@ def _validate_window(value: object) -> dict[str, Any]:
         raise ValueError("schedule window times must be HH:MM")
     if _minutes(start) >= _minutes(end):
         raise ValueError("schedule window must start before it ends; split windows across midnight")
-    value["blocked"] = list(dict.fromkeys(normalize_domain_rule(rule) for rule in blocked))
+    if "blocked" in value:
+        value["blocked"] = list(dict.fromkeys(normalize_domain_rule(rule) for rule in blocked))
+    if "blocked_categories" in value:
+        _validate_categories(value["blocked_categories"])
     return value
 
 
 def _validate_web_extensions(settings: dict[str, Any]) -> None:
+    if "blocked_categories" in settings:
+        _validate_categories(settings["blocked_categories"])
     if "safe_search" in settings:
         _validate_safe_search(settings["safe_search"])
     if "timezone" in settings:
@@ -201,22 +250,66 @@ def _validate_web_extensions(settings: dict[str, Any]) -> None:
         settings["scheduled"] = [_validate_window(window) for window in windows]
 
 
+def _open_windows(web_filter: dict[str, Any], when: datetime) -> list[dict[str, Any]]:
+    windows = web_filter.get("scheduled", [])
+    if not windows:
+        return []
+    local = when.astimezone(ZoneInfo(web_filter["timezone"]))
+    day, minute = DAYS[local.weekday()], local.hour * 60 + local.minute
+    return [window for window in windows
+            if day in window["days"] and _minutes(window["from"]) <= minute < _minutes(window["to"])]
+
+
 def active_rules(web_filter: dict[str, Any], when: datetime) -> list[str]:
     """Unscheduled rules plus every window active at `when` in the policy timezone."""
     rules = list(web_filter.get("blocked", []))
-    windows = web_filter.get("scheduled", [])
-    if windows:
-        local = when.astimezone(ZoneInfo(web_filter["timezone"]))
-        day, minute = DAYS[local.weekday()], local.hour * 60 + local.minute
-        for window in windows:
-            if day in window["days"] and _minutes(window["from"]) <= minute < _minutes(window["to"]):
-                rules.extend(window["blocked"])
+    for window in _open_windows(web_filter, when):
+        rules.extend(window.get("blocked", []))
     return rules
 
 
-def domain_blocked_at(name: object, web_filter: dict[str, Any], when: datetime) -> bool:
-    """Decision at an aware instant; `web_filter` comes from validate_policy."""
-    return domain_blocked(name, active_rules(web_filter, when), web_filter.get("allowed", []))
+def active_categories(web_filter: dict[str, Any], when: datetime) -> list[str]:
+    categories = list(web_filter.get("blocked_categories", []))
+    for window in _open_windows(web_filter, when):
+        categories.extend(window.get("blocked_categories", []))
+    return list(dict.fromkeys(categories))
+
+
+def domain_hash(name: object) -> int:
+    """First eight bytes of SHA-256 of the normalized name, big-endian; category files store these."""
+    return int.from_bytes(hashlib.sha256(normalize_domain(name).encode("ascii")).digest()[:8], "big")
+
+
+def in_category(name: object, hashes: list[int]) -> bool:
+    """The name or any parent domain (two labels or more) is in the sorted hash list."""
+    try:
+        labels = normalize_domain(name).split(".")
+    except ValueError:
+        return False
+    for start in range(len(labels) - 1):
+        value = domain_hash(".".join(labels[start:]))
+        index = bisect.bisect_left(hashes, value)
+        if index < len(hashes) and hashes[index] == value:
+            return True
+    return False
+
+
+def domain_blocked_at(name: object, web_filter: dict[str, Any], when: datetime,
+                      categories: dict[str, list[int]] | None = None) -> bool:
+    """Decision at an aware instant; `web_filter` comes from validate_policy.
+
+    `categories` maps category ids to sorted hash lists; a category without data never blocks.
+    """
+    if domain_blocked(name, active_rules(web_filter, when), web_filter.get("allowed", [])):
+        return True
+    data = categories or {}
+    if not any(in_category(name, data[category]) for category in active_categories(web_filter, when) if category in data):
+        return False
+    try:
+        domain = normalize_domain(name)
+    except ValueError:
+        return False
+    return not any(_rule_matches(normalize_domain_rule(rule), domain) for rule in web_filter.get("allowed", []))
 
 
 def hosts_names_at(web_filter: dict[str, Any], when: datetime) -> list[str]:
