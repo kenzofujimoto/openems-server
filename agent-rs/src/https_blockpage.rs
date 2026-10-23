@@ -7,6 +7,7 @@ use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign::CertifiedKey;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -14,12 +15,16 @@ use std::time::{Duration, Instant};
 /// Active web filter for SNI and Host authorization; shared with DNS answers.
 /// Scheduled windows are evaluated at each lookup, so no timer is needed to apply them.
 #[derive(Default)]
-pub struct BlockedDomains(RwLock<WebFilter>);
+pub struct BlockedDomains {
+    filter: RwLock<WebFilter>,
+    /// Anti-bypass: public DoH endpoint names get NXDOMAIN from the resolver.
+    block_doh: AtomicBool,
+}
 
 impl BlockedDomains {
     pub fn replace(&self, filter: impl Into<WebFilter>) {
         // A poisoned lock still holds a consistent snapshot; the writer only swaps whole values.
-        *self.0.write().unwrap_or_else(|poison| poison.into_inner()) = filter.into();
+        *self.filter.write().unwrap_or_else(|poison| poison.into_inner()) = filter.into();
     }
 
     pub fn contains(&self, name: &str) -> bool {
@@ -27,11 +32,19 @@ impl BlockedDomains {
     }
 
     pub fn contains_at(&self, name: &str, when: jiff::Timestamp) -> bool {
-        self.0.read().unwrap_or_else(|poison| poison.into_inner()).blocks_at(name, when)
+        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).blocks_at(name, when)
     }
 
     pub fn safe_search_target(&self, name: &str) -> Option<&'static str> {
-        self.0.read().unwrap_or_else(|poison| poison.into_inner()).safe_search_target(name)
+        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).safe_search_target(name)
+    }
+
+    pub fn set_doh_blocking(&self, enabled: bool) {
+        self.block_doh.store(enabled, Ordering::Relaxed);
+    }
+
+    pub fn blocks_doh(&self, name: &str) -> bool {
+        self.block_doh.load(Ordering::Relaxed) && crate::doh::is_doh_host(name)
     }
 }
 

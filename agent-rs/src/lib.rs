@@ -7,6 +7,7 @@ pub mod blockpage;
 pub mod canonical;
 pub mod config;
 pub mod dns;
+pub mod doh;
 pub mod error;
 pub mod fsutil;
 pub mod hosts;

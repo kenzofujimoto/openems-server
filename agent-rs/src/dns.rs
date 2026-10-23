@@ -194,7 +194,7 @@ pub fn decide(bytes: &[u8], blocked: &BlockedDomains, redirect: bool) -> Decisio
         return encode(reply(&request, ResponseCode::FormErr));
     };
     let name = question.name().to_ascii().trim_end_matches('.').to_ascii_lowercase();
-    if name == DOH_CANARY {
+    if name == DOH_CANARY || blocked.blocks_doh(&name) {
         return encode(reply(&request, ResponseCode::NXDomain));
     }
     if !blocked.contains(&name) {
