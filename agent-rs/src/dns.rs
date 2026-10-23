@@ -3,9 +3,9 @@
 use crate::error::Result;
 use crate::https_blockpage::BlockedDomains;
 use crate::runtime::StopSignal;
-use hickory_proto::op::{Message, MessageType, OpCode, ResponseCode};
-use hickory_proto::rr::rdata::{A, AAAA};
-use hickory_proto::rr::{RData, Record, RecordType};
+use hickory_proto::op::{Message, MessageType, OpCode, Query, ResponseCode};
+use hickory_proto::rr::rdata::{A, AAAA, CNAME};
+use hickory_proto::rr::{Name, RData, Record, RecordType};
 use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6, TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -14,6 +14,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 const BLOCKED_TTL: u32 = 30;
+const SAFE_SEARCH_TTL: u32 = 300;
 const MAX_MESSAGE: usize = 4096;
 const SERVER_TIMEOUT: Duration = Duration::from_secs(2);
 const QUERY_BUDGET: Duration = Duration::from_secs(3);
@@ -29,6 +30,8 @@ const DOH_CANARY: &str = "use-application-dns.net";
 pub enum Decision {
     Answer(Vec<u8>),
     Forward,
+    /// Answer with a CNAME to this enforced SafeSearch host plus its upstream addresses.
+    SafeSearch(&'static str),
     Drop,
 }
 
@@ -195,7 +198,14 @@ pub fn decide(bytes: &[u8], blocked: &BlockedDomains, redirect: bool) -> Decisio
         return encode(reply(&request, ResponseCode::NXDomain));
     }
     if !blocked.contains(&name) {
-        return Decision::Forward;
+        // Allowed engines keep SafeSearch: "allowed" means not blocked, not unfiltered.
+        return match blocked.safe_search_target(&name) {
+            Some(target) if matches!(question.query_type(), RecordType::A | RecordType::AAAA) => {
+                Decision::SafeSearch(target)
+            }
+            Some(_) => encode(reply(&request, ResponseCode::NoError)),
+            None => Decision::Forward,
+        };
     }
     let mut message = reply(&request, ResponseCode::NoError);
     let data = match question.query_type() {
@@ -255,6 +265,43 @@ fn forward_udp(bytes: &[u8], servers: &[SocketAddr], own: &[SocketAddr]) -> Opti
         }
     }
     None
+}
+
+fn forward(bytes: &[u8], servers: &[SocketAddr], own: &[SocketAddr]) -> Option<Vec<u8>> {
+    let reply = forward_udp(bytes, servers, own);
+    if reply.as_deref().is_some_and(truncated) {
+        return forward_tcp(bytes, servers, own).or(reply);
+    }
+    reply
+}
+
+/// CNAME to the SafeSearch host plus its upstream records. The engine's own name is never
+/// forwarded; any upstream failure yields None, which callers turn into SERVFAIL.
+fn safe_search_reply(bytes: &[u8], target: &str, servers: &[SocketAddr], own: &[SocketAddr]) -> Option<Vec<u8>> {
+    let request = Message::from_vec(bytes).ok()?;
+    let question = request.queries.first()?;
+    let target_name = Name::from_ascii(format!("{target}.")).ok()?;
+    let mut lookup = Message::query();
+    lookup.metadata.recursion_desired = true;
+    lookup.add_query(Query::query(target_name.clone(), question.query_type()));
+    let upstream = Message::from_vec(&forward(&lookup.to_vec().ok()?, servers, own)?).ok()?;
+    if upstream.metadata.response_code != ResponseCode::NoError {
+        return None;
+    }
+    let mut message = reply(&request, ResponseCode::NoError);
+    message.add_answer(Record::from_rdata(question.name().clone(), SAFE_SEARCH_TTL, RData::CNAME(CNAME(target_name))));
+    message.add_answers(upstream.answers);
+    message.to_vec().ok()
+}
+
+/// Reply for a query that leaves this machine: forwarded unchanged, or rewritten for SafeSearch.
+fn remote_reply(query: &[u8], target: Option<&str>, shared: &Shared) -> Option<Vec<u8>> {
+    let servers = shared.upstreams.servers();
+    let reply = match target {
+        Some(target) => safe_search_reply(query, target, &servers, &shared.own),
+        None => forward(query, &servers, &shared.own),
+    };
+    reply.or_else(|| servfail(query))
 }
 
 fn read_frame(stream: &mut TcpStream) -> Option<Vec<u8>> {
@@ -334,16 +381,13 @@ fn serve_udp(socket: &UdpSocket, shared: &Arc<Shared>, stop: &StopSignal) {
                 let _ = socket.send_to(&bytes, peer);
             }
             Decision::Drop => {}
-            Decision::Forward => {
+            decision @ (Decision::Forward | Decision::SafeSearch(_)) => {
+                let target = if let Decision::SafeSearch(target) = decision { Some(target) } else { None };
                 let Some(slot) = Slot::take(&shared.in_flight, MAX_IN_FLIGHT) else { continue };
                 let (Ok(sender), shared) = (socket.try_clone(), Arc::clone(shared)) else { continue };
                 let _ = std::thread::Builder::new().name("openems-dns-forward".into()).spawn(move || {
                     let _slot = slot;
-                    let mut reply = forward_udp(&query, &shared.upstreams.servers(), &shared.own);
-                    if reply.is_none() {
-                        reply = servfail(&query);
-                    }
-                    if let Some(reply) = reply {
+                    if let Some(reply) = remote_reply(&query, target, &shared) {
                         let _ = sender.send_to(&reply, peer);
                     }
                 });
@@ -361,14 +405,8 @@ fn serve_tcp_connection(mut stream: TcpStream, shared: &Shared) {
         let reply = match decide(&query, &shared.blocked, shared.redirect) {
             Decision::Answer(bytes) => Some(bytes),
             Decision::Drop => return,
-            Decision::Forward => {
-                let servers = shared.upstreams.servers();
-                let mut reply = forward_udp(&query, &servers, &shared.own);
-                if reply.as_deref().is_some_and(truncated) {
-                    reply = forward_tcp(&query, &servers, &shared.own).or(reply);
-                }
-                reply.or_else(|| servfail(&query))
-            }
+            Decision::Forward => remote_reply(&query, None, shared),
+            Decision::SafeSearch(target) => remote_reply(&query, Some(target), shared),
         };
         match reply {
             Some(reply) if write_frame(&mut stream, &reply).is_ok() => {}

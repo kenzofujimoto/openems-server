@@ -1,7 +1,7 @@
 //! Loopback TLS responder. It never forwards traffic and signs only active blocked names.
 use crate::authority::Authority;
 use crate::error::{AgentError, Result};
-use crate::policy::{WebRules, normalize_domain};
+use crate::policy::{WebFilter, normalize_domain};
 use crate::runtime::StopSignal;
 use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign::CertifiedKey;
@@ -11,18 +11,27 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-/// Active web rules for SNI and Host authorization; shared with DNS answers.
+/// Active web filter for SNI and Host authorization; shared with DNS answers.
+/// Scheduled windows are evaluated at each lookup, so no timer is needed to apply them.
 #[derive(Default)]
-pub struct BlockedDomains(RwLock<WebRules>);
+pub struct BlockedDomains(RwLock<WebFilter>);
 
 impl BlockedDomains {
-    pub fn replace(&self, rules: WebRules) {
+    pub fn replace(&self, filter: impl Into<WebFilter>) {
         // A poisoned lock still holds a consistent snapshot; the writer only swaps whole values.
-        *self.0.write().unwrap_or_else(|poison| poison.into_inner()) = rules;
+        *self.0.write().unwrap_or_else(|poison| poison.into_inner()) = filter.into();
     }
 
     pub fn contains(&self, name: &str) -> bool {
-        self.0.read().unwrap_or_else(|poison| poison.into_inner()).blocks(name)
+        self.contains_at(name, jiff::Timestamp::now())
+    }
+
+    pub fn contains_at(&self, name: &str, when: jiff::Timestamp) -> bool {
+        self.0.read().unwrap_or_else(|poison| poison.into_inner()).blocks_at(name, when)
+    }
+
+    pub fn safe_search_target(&self, name: &str) -> Option<&'static str> {
+        self.0.read().unwrap_or_else(|poison| poison.into_inner()).safe_search_target(name)
     }
 }
 

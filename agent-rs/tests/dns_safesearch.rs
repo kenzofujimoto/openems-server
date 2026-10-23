@@ -80,10 +80,11 @@ fn schedule_decisions_follow_the_injected_clock() {
     assert!(!rules.contains_at("www.facebook.com", at("2026-10-26T21:00:00Z")));
 }
 
+/// Address, stop signal, worker and the names the fake upstream was asked for.
+type Upstream = (SocketAddr, Arc<StopSignal>, std::thread::JoinHandle<()>, Arc<Mutex<Vec<String>>>);
+
 /// Answers every query with SAFE_IP and records the names it was asked for.
-fn logging_upstream(
-    silent: bool,
-) -> (SocketAddr, Arc<StopSignal>, std::thread::JoinHandle<()>, Arc<Mutex<Vec<String>>>) {
+fn logging_upstream(silent: bool) -> Upstream {
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
     socket.set_read_timeout(Some(Duration::from_millis(50))).unwrap();
     let address = socket.local_addr().unwrap();
