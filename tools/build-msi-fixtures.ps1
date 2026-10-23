@@ -1,10 +1,17 @@
-param([string]$OutputDirectory, [string]$Wix = 'wix', [string]$AgentExe, [switch]$Plan)
-# Builds the fault-injection MSIs consumed by deploy/test-msi-sandbox.ps1. Never ship these packages.
+param([string]$OutputDirectory, [string]$Wix = 'wix', [string]$AgentExe, [switch]$Production, [switch]$Plan)
+# Builds the MSIs consumed by the Sandbox harnesses. Fault-injection fixtures must never ship;
+# -Production builds the package without any test-only define.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$versions = @('0.2.0', '0.2.1', '0.2.2')
-$fixtures = @($versions | ForEach-Object { "openems-agent-$_.msi" })
-$defines = @('FaultInjection=1')
+if ($Production) {
+    $versions = @('0.3.0')
+    $fixtures = @('openems-agent.msi')
+    $defines = @()
+} else {
+    $versions = @('0.2.0', '0.2.1', '0.2.2')
+    $fixtures = @($versions | ForEach-Object { "openems-agent-$_.msi" })
+    $defines = @('FaultInjection=1')
+}
 if ($Plan) {
     @{ fixtures=$fixtures; defines=$defines } | ConvertTo-Json -Depth 3
     exit 0
@@ -22,4 +29,4 @@ for ($index = 0; $index -lt $versions.Count; $index++) {
     & $Wix @arguments
     if ($LASTEXITCODE -ne 0) { throw ('wix build failed for ' + $fixtures[$index] + ' with exit code ' + $LASTEXITCODE) }
 }
-Write-Output ('Built ' + $fixtures.Count + ' fault-injection fixtures in ' + $OutputDirectory)
+Write-Output ('Built ' + $fixtures.Count + ' package(s) in ' + $OutputDirectory)
