@@ -7,9 +7,9 @@ use hickory_proto::op::{Message, MessageType, OpCode, ResponseCode};
 use hickory_proto::rr::rdata::{A, AAAA};
 use hickory_proto::rr::{RData, Record, RecordType};
 use std::io::{Read, Write};
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, UdpSocket};
-use std::sync::Arc;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6, TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -20,6 +20,8 @@ const QUERY_BUDGET: Duration = Duration::from_secs(3);
 const MAX_IN_FLIGHT: usize = 128;
 const MAX_TCP_CONNECTIONS: usize = 32;
 const MAX_TCP_QUERIES: usize = 16;
+/// Adapter servers are re-read at most this often; network changes apply within it.
+const UPSTREAM_REFRESH: Duration = Duration::from_secs(5);
 /// Standard signal that makes Firefox turn off automatic DNS over HTTPS.
 const DOH_CANARY: &str = "use-application-dns.net";
 
@@ -41,6 +43,127 @@ impl Upstreams for StaticUpstreams {
     fn servers(&self) -> Vec<SocketAddr> {
         self.0.clone()
     }
+}
+
+/// Keep order; drop loopback, unspecified, multicast, the deprecated fec0::/10 defaults
+/// and link-local IPv6 servers without a scope.
+fn filter_upstreams(candidates: Vec<(IpAddr, u32)>) -> Vec<SocketAddr> {
+    let mut servers: Vec<SocketAddr> = Vec::new();
+    for (ip, scope) in candidates {
+        let server = match ip {
+            IpAddr::V4(v4) if !(v4.is_loopback() || v4.is_unspecified() || v4.is_multicast() || v4.is_broadcast()) => {
+                SocketAddr::from((v4, 53))
+            }
+            IpAddr::V6(v6) => {
+                let prefix = v6.segments()[0] & 0xffc0;
+                let link_local = prefix == 0xfe80;
+                if v6.is_loopback()
+                    || v6.is_unspecified()
+                    || v6.is_multicast()
+                    || prefix == 0xfec0
+                    || (link_local && scope == 0)
+                {
+                    continue;
+                }
+                SocketAddr::V6(SocketAddrV6::new(v6, 53, 0, if link_local { scope } else { 0 }))
+            }
+            IpAddr::V4(_) => continue,
+        };
+        if !servers.contains(&server) {
+            servers.push(server);
+        }
+    }
+    servers
+}
+
+/// DNS servers of the active network adapters, which the NRPT rule leaves untouched.
+#[derive(Default)]
+pub struct AdapterUpstreams {
+    cache: Mutex<Option<(Instant, Vec<SocketAddr>)>>,
+}
+
+impl Upstreams for AdapterUpstreams {
+    fn servers(&self) -> Vec<SocketAddr> {
+        let mut cache = self.cache.lock().unwrap_or_else(|poison| poison.into_inner());
+        if let Some((read, servers)) = cache.as_ref()
+            && read.elapsed() < UPSTREAM_REFRESH
+        {
+            return servers.clone();
+        }
+        // A failed read keeps the previous list instead of failing every allowed query.
+        let servers = adapter_dns_servers()
+            .unwrap_or_else(|_| cache.as_ref().map(|(_, servers)| servers.clone()).unwrap_or_default());
+        *cache = Some((Instant::now(), servers.clone()));
+        servers
+    }
+}
+
+#[cfg(windows)]
+fn adapter_dns_servers() -> Result<Vec<SocketAddr>> {
+    use windows_sys::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, NO_ERROR};
+    use windows_sys::Win32::NetworkManagement::IpHelper::{
+        GAA_FLAG_SKIP_ANYCAST, GAA_FLAG_SKIP_FRIENDLY_NAME, GAA_FLAG_SKIP_MULTICAST, GAA_FLAG_SKIP_UNICAST,
+        GetAdaptersAddresses, IP_ADAPTER_ADDRESSES_LH, IP_ADAPTER_DNS_SERVER_ADDRESS_XP,
+    };
+    use windows_sys::Win32::NetworkManagement::Ndis::IfOperStatusUp;
+    use windows_sys::Win32::Networking::WinSock::{AF_INET, AF_INET6, AF_UNSPEC, SOCKADDR_IN, SOCKADDR_IN6};
+    let flags = GAA_FLAG_SKIP_UNICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_FRIENDLY_NAME;
+    let mut size: u32 = 16 * 1024;
+    for _ in 0..4 {
+        // u64 storage keeps the adapter structures aligned.
+        let mut buffer = vec![0u64; (size as usize).div_ceil(8)];
+        let first = buffer.as_mut_ptr().cast::<IP_ADAPTER_ADDRESSES_LH>();
+        // SAFETY: `size` describes `buffer`; the API writes a linked list inside it.
+        let status = unsafe { GetAdaptersAddresses(u32::from(AF_UNSPEC), flags, std::ptr::null(), first, &mut size) };
+        if status == ERROR_BUFFER_OVERFLOW {
+            continue;
+        }
+        if status != NO_ERROR {
+            return Err(crate::error::AgentError::Local("cannot read adapter DNS servers".into()));
+        }
+        let mut candidates = Vec::new();
+        let mut adapter = first.cast_const();
+        // SAFETY: every pointer comes from the list written into `buffer`, alive in this scope.
+        unsafe {
+            while !adapter.is_null() {
+                if (*adapter).OperStatus == IfOperStatusUp {
+                    let mut server = (*adapter).FirstDnsServerAddress.cast_const();
+                    while !server.is_null() {
+                        let address = (*server).Address.lpSockaddr;
+                        if !address.is_null() {
+                            match (*address).sa_family {
+                                AF_INET => {
+                                    let v4 = &*address.cast::<SOCKADDR_IN>();
+                                    candidates.push((IpAddr::from(v4.sin_addr.S_un.S_addr.to_ne_bytes()), 0));
+                                }
+                                AF_INET6 => {
+                                    let v6 = &*address.cast::<SOCKADDR_IN6>();
+                                    candidates.push((IpAddr::from(v6.sin6_addr.u.Byte), v6.Anonymous.sin6_scope_id));
+                                }
+                                _ => {}
+                            }
+                        }
+                        server = (*server).Next.cast_const() as *const IP_ADAPTER_DNS_SERVER_ADDRESS_XP;
+                    }
+                }
+                adapter = (*adapter).Next.cast_const();
+            }
+        }
+        return Ok(filter_upstreams(candidates));
+    }
+    Err(crate::error::AgentError::Local("adapter list keeps growing; retry later".into()))
+}
+
+#[cfg(not(windows))]
+fn adapter_dns_servers() -> Result<Vec<SocketAddr>> {
+    let text = std::fs::read_to_string("/etc/resolv.conf")?;
+    let candidates = text
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("nameserver"))
+        .filter_map(|value| value.trim().parse::<IpAddr>().ok())
+        .map(|ip| (ip, 0))
+        .collect();
+    Ok(filter_upstreams(candidates))
 }
 
 fn encode(message: Message) -> Decision {

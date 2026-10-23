@@ -37,7 +37,7 @@ Ficam para os próximos recortes da F2, nesta ordem:
   - sem a página, responde `0.0.0.0` e `::`;
   - para os demais tipos, incluindo `HTTPS`/`SVCB`, responde sem dados (NODATA);
   - TTL curto, de 30 s.
-- **Nome permitido:** a consulta é encaminhada aos servidores DNS das próprias placas de rede, lidos a cada consulta, com timeout de 2 s e fila limitada.
+- **Nome permitido:** a consulta é encaminhada aos servidores DNS das próprias placas de rede, relidos no máximo a cada 5 s (uma troca de rede vale em até 5 s), com timeout de 2 s e fila limitada.
   - Uma resposta que vier de um endereço diferente do servidor consultado, ou com outro ID, é descartada.
   - O resolvedor nunca encaminha consultas para si mesmo (loopback).
 - `use-application-dns.net` responde NXDOMAIN, que é o sinal padrão para o Firefox desligar o DoH automático. Não substitui o recorte de antiburla.
