@@ -72,6 +72,8 @@ struct Inner {
     pending: Option<Pending>,
     generation: u64,
     dns_state: Option<DnsCacheState>,
+    /// Digest of each loaded category, to skip downloads that would not change anything.
+    category_digests: std::collections::HashMap<String, String>,
 }
 
 pub struct Runtime {
@@ -140,6 +142,7 @@ pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enfor
         format!("web-filter:{}-blocked", enforcement.sites.len()),
         // Understands safe_search and scheduled windows; the panel warns before publishing them otherwise.
         "web-filter:v2".into(),
+        "web-filter:categories".into(),
     ];
     // Lets the panel warn before publishing wildcards to groups whose agents only use hosts.
     if cfg.dns_filter {
@@ -172,6 +175,14 @@ impl Runtime {
             && let Some(profile) = &inner.profile
         {
             blocked_domains.replace(profile.web_filter()?);
+            // Offline start: categories downloaded earlier keep blocking before the server answers.
+            let directory = crate::categories::cache_dir(&cfg.state_path);
+            for id in blocked_domains.referenced_categories() {
+                if let Some((digest, set)) = crate::categories::load_cached(&directory, &id, None) {
+                    blocked_domains.categories().insert(&id, set);
+                    inner.category_digests.insert(id, digest);
+                }
+            }
         }
         Ok(Runtime { cfg, api, inner: Mutex::new(inner), log, stop, blocked_domains })
     }
@@ -249,6 +260,10 @@ impl Runtime {
                 inner.profile = Some(assignment);
                 inner.failures = 0;
                 inner.next_sync = now + self.cfg.interval as f64;
+                drop(inner);
+                if !self.cfg.dry_run {
+                    self.sync_categories(client_id.as_deref().unwrap_or_default(), token.as_deref());
+                }
                 true
             }
             Err(error) => {
@@ -263,6 +278,69 @@ impl Runtime {
                 drop(inner);
                 (self.log)(&format!("synchronization failed ({}); cached enforcement continues", error.summary()));
                 false
+            }
+        }
+    }
+
+    /// Download the categories the policy uses, verify them against the manifest and cache them.
+    /// Failures are logged and retried next cycle; a category without data never blocks.
+    fn sync_categories(&self, client_id: &str, token: Option<&str>) {
+        use crate::categories::{
+            CategorySet, MAX_FILE_SIZE, cache_dir, file_digest, load_cached, store_cached, valid_digest,
+        };
+        let referenced = self.blocked_domains.referenced_categories();
+        self.blocked_domains.categories().retain(&referenced);
+        self.lock().category_digests.retain(|id, _| referenced.contains(id));
+        if referenced.is_empty() {
+            return;
+        }
+        let manifest = match self.api.get("categories", &[("client_id", client_id)], token) {
+            Ok(manifest) => manifest,
+            Err(error) => {
+                (self.log)(&format!("category manifest unavailable ({}); cached categories continue", error.summary()));
+                return;
+            }
+        };
+        let directory = cache_dir(&self.cfg.state_path);
+        for id in &referenced {
+            let entry = manifest["categories"]
+                .as_array()
+                .and_then(|entries| entries.iter().find(|entry| entry["id"].as_str() == Some(id.as_str())));
+            let Some((digest, size)) =
+                entry.and_then(|entry| Some((entry["digest"].as_str()?, entry["size"].as_u64()?)))
+            else {
+                (self.log)(&format!("category {id} is not published by the server; it does not block yet"));
+                continue;
+            };
+            if !valid_digest(digest) || size > MAX_FILE_SIZE {
+                (self.log)(&format!("category {id} has an invalid manifest entry"));
+                continue;
+            }
+            if self.lock().category_digests.get(id).map(String::as_str) == Some(digest) {
+                continue;
+            }
+            let fetched = (|| -> Result<CategorySet> {
+                if let Some((_, set)) = load_cached(&directory, id, Some(digest)) {
+                    return Ok(set);
+                }
+                let query = [("client_id", client_id), ("id", id.as_str()), ("digest", digest)];
+                // ureq rejects a body that reaches its limit, so allow one byte more and check the size here.
+                let bytes = self.api.get_bytes("categories/file", &query, token, size + 1)?;
+                if bytes.len() as u64 != size || file_digest(&bytes) != digest {
+                    return Err(AgentError::Policy("category file does not match its digest".into()));
+                }
+                let set = CategorySet::parse(&bytes)?;
+                store_cached(&directory, id, digest, &bytes)?;
+                Ok(set)
+            })();
+            match fetched {
+                Ok(set) => {
+                    let count = set.len();
+                    self.blocked_domains.categories().insert(id, set);
+                    self.lock().category_digests.insert(id.clone(), digest.to_owned());
+                    (self.log)(&format!("category {id} loaded ({count} domains)"));
+                }
+                Err(error) => (self.log)(&format!("category {id} not updated ({})", error.summary())),
             }
         }
     }
@@ -426,6 +504,7 @@ mod tests {
                 "app-control:clean".to_owned(),
                 "web-filter:1-blocked".into(),
                 "web-filter:v2".into(),
+                "web-filter:categories".into(),
                 "vdom:Empty".into()
             ]
         );

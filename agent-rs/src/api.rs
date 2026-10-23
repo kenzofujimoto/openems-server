@@ -87,6 +87,29 @@ impl ApiClient {
         Self::finish(request.call())
     }
 
+    /// Binary download with its own deadline: category files can be tens of megabytes.
+    pub fn get_bytes(&self, path: &str, query: &[(&str, &str)], token: Option<&str>, limit: u64) -> Result<Vec<u8>> {
+        let mut request =
+            self.agent.get(&self.url(path)).config().timeout_global(Some(Duration::from_secs(300))).build();
+        for (key, value) in query {
+            request = request.query(*key, *value);
+        }
+        if let Some(token) = token {
+            request = request.header("Authorization", &format!("Bearer {token}"));
+        }
+        let mut response = request.call().map_err(|error| AgentError::Transport(error.to_string()))?;
+        let status = response.status().as_u16();
+        if !(200..300).contains(&status) {
+            return Err(AgentError::Status { code: status, detail: Self::reason(&mut response) });
+        }
+        response
+            .body_mut()
+            .with_config()
+            .limit(limit)
+            .read_to_vec()
+            .map_err(|_| AgentError::Transport("invalid or oversized download".into()))
+    }
+
     pub fn register(
         &self,
         devid: &str,

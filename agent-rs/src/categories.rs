@@ -4,10 +4,57 @@ use crate::error::{AgentError, Result};
 use crate::policy::normalize_domain;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 const MAGIC: &[u8; 8] = b"OEMSCAT1";
 const MAX_ENTRIES: usize = 20_000_000;
+/// Largest file a manifest may announce: header plus MAX_ENTRIES hashes.
+pub const MAX_FILE_SIZE: u64 = 12 + 8 * MAX_ENTRIES as u64;
+
+pub fn valid_digest(digest: &str) -> bool {
+    digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+/// Downloaded categories live next to the endpoint state, in the protected data directory.
+pub fn cache_dir(state_path: &Path) -> PathBuf {
+    state_path.with_file_name("categories")
+}
+
+fn cached_digest<'a>(id: &str, file_name: &'a str) -> Option<&'a str> {
+    file_name.strip_prefix(id)?.strip_prefix('-')?.strip_suffix(".bin").filter(|digest| valid_digest(digest))
+}
+
+/// A cached file for `id` whose content still matches the digest in its name.
+pub fn load_cached(directory: &Path, id: &str, digest: Option<&str>) -> Option<(String, CategorySet)> {
+    for entry in std::fs::read_dir(directory).ok()?.flatten() {
+        let name = entry.file_name();
+        let Some(found) = name.to_str().and_then(|name| cached_digest(id, name)) else { continue };
+        if digest.is_some_and(|wanted| wanted != found) {
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(entry.path()) else { continue };
+        if file_digest(&bytes) == found
+            && let Ok(set) = CategorySet::parse(&bytes)
+        {
+            return Some((found.to_owned(), set));
+        }
+    }
+    None
+}
+
+/// Write the verified file, then drop older versions of the same category.
+pub fn store_cached(directory: &Path, id: &str, digest: &str, bytes: &[u8]) -> Result<()> {
+    std::fs::create_dir_all(directory)?;
+    crate::fsutil::atomic_write(&directory.join(format!("{id}-{digest}.bin")), bytes, None, true)?;
+    for entry in std::fs::read_dir(directory)?.flatten() {
+        let name = entry.file_name();
+        if name.to_str().and_then(|name| cached_digest(id, name)).is_some_and(|found| found != digest) {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+    Ok(())
+}
 
 fn hash_normalized(domain: &str) -> u64 {
     let digest = Sha256::digest(domain.as_bytes());

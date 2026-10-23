@@ -57,9 +57,11 @@ def wait_for(condition, seconds: float) -> bool:
     return False
 
 
-def stop(process: subprocess.Popen) -> None:
+def stop(process: subprocess.Popen) -> str:
+    """Stop the agent and return the end of its log for failure messages."""
     process.terminate()
-    process.wait(timeout=15)
+    _, stderr = process.communicate(timeout=15)
+    return stderr.decode(errors="replace")[-2000:]
 
 
 def test_agent_downloads_blocks_respects_allowed_and_keeps_categories_offline(native, tmp_path):
@@ -71,7 +73,8 @@ def test_agent_downloads_blocks_respects_allowed_and_keeps_categories_offline(na
         assert client.post("/api/v1/profiles/Default", json=policy).status_code == 200
         agent = start_agent(native, origin, tmp_path, port)
         try:
-            assert wait_for(lambda: blocked(port, "api.steampowered.com"), 30), "category did not reach DNS answers"
+            if not wait_for(lambda: blocked(port, "api.steampowered.com"), 30):
+                raise AssertionError("category did not reach DNS answers:\n" + stop(agent))
             assert blocked(port, "steamcommunity.com")
             assert not blocked(port, "store.steampowered.com"), "allowed wins over the category"
             assert not blocked(port, "example.org")
@@ -79,8 +82,9 @@ def test_agent_downloads_blocks_respects_allowed_and_keeps_categories_offline(na
             assert len(cached) == 1 and cached[0].read_bytes() == next(categories.glob("games-*.bin")).read_bytes()
         finally:
             stop(agent)
-    # Server gone: the cached category keeps blocking after a restart.
-    offline = start_agent(native, "http://127.0.0.1:1", tmp_path, port)
+    # Same server address, now gone: the cached category keeps blocking after a restart.
+    # (State belongs to one server, so a different address would correctly start from scratch.)
+    offline = start_agent(native, origin, tmp_path, port)
     try:
         assert wait_for(lambda: blocked(port, "api.steampowered.com"), 20), "cached category was not used offline"
     finally:
