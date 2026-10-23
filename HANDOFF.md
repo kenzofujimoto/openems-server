@@ -13,6 +13,23 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 - Evidência em `validation/host-chrome-https-2026-10-22.json`. O estado instalado foi mantido para o teste solicitado; não confundir com as validações anteriores sem alteração no host.
 - Próximo recorte proposto: `PLAN-installer-blockpage.md` (F1/F2: opções no MSI, preservação de upgrade, transação de CA e pacote para a segunda máquina). Ainda precisa de aprovação específica do plano antes de alterar implementação em vários arquivos. Firefox permanece pendente; cada máquina deve gerar e proteger sua própria CA.
 
+### Continuação — F2 antiburla (branch `feature/dns-anti-bypass`, `dns-anti-bypass.md` aprovado em 2026-10-23)
+
+- Feito com TDD:
+  - `contract/doh-endpoints.json`: lista de melhor esforço de hosts e IPs de DoH/DoT públicos, validada por `tests/test_doh_endpoints.py`. O resolvedor responde NXDOMAIN para esses nomes e os subdomínios.
+  - Opção `anti_bypass`, que exige `dns_filter`: CLI `--anti-bypass`, MSI `ANTIBYPASS=1`, preservada em upgrade e gravada só quando ligada. Tag `web-filter:anti-bypass`.
+  - Políticas de navegador em HKLM (`browser_policy.rs`): Chrome e Edge com `DnsOverHttpsMode=off`; Firefox com `DNSOverHTTPS` desligado e travado e `ImportEnterpriseRoots=1`.
+    - O serviço grava antes de abrir qualquer listener e confere a cada 60 s.
+    - Os valores originais são salvos uma vez, antes da primeira escrita, em `browser-policies.json` ao lado do `state.json`, e a desinstalação os restaura. Testado com registro simulado e uma leitura do registro real.
+  - Filtros WFP (`wfp.rs`): provedor e subcamada próprios. A permissão de loopback (peso 15) e a do executável do agente nas portas 53/853 (peso 14) vencem os bloqueios dos IPs de DoH nas portas 443/853 (peso 12) e das portas 53/853 (peso 10).
+    - Os filtros não são persistentes nem presos à sessão, então um travamento os mantém e um reinício os apaga.
+    - Na parada normal, saem antes da regra NRPT; se a criação falhar, o agente devolve o DNS; a desinstalação remove sobras.
+    - O plano e a arbitragem são testados como dados. As chamadas reais ao WFP só rodam no Sandbox.
+- Suíte: **543 Python aprovados, 41 ignorados, 5 deselecionados; 108 Rust**. A compilação para Linux (CI) não foi verificada localmente: só o alvo Windows está instalado.
+- Aceite `deploy/test-antibypass-sandbox.ps1` (contratos em `tests/test_antibypass_sandbox.py`). As sondagens partem de um processo que não é o agente: DNS cru para o primeiro DNS da placa que responde, TCP 443/853 para `1.1.1.1` e NXDOMAIN para nomes de DoH, cada uma comprovada antes da instalação.
+  - Também verifica: HKLM; Edge (DNS seguro desligado e gerenciado, e página de bloqueio) confirmado pelo operador; processo morto e parada normal; desinstalação.
+- Pacote: `.venv/sandbox-acceptance/antibypass-input/` (MSI sha256 `ffdec33d…`) e `antibypass.wsb`, com rede. Win+R → `C:\openems-input\RUN-ANTIBYPASS-TEST.cmd`; relatório em `results/antibypass-result.json`. **Aceite real ainda não executado.**
+
 ### Continuação — F2 SafeSearch e horários (branch `feature/dns-safesearch-schedules`, `dns-safesearch-schedules.md` aprovado em 2026-10-23)
 
 - Feito com TDD:
