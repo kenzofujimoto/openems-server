@@ -143,10 +143,11 @@ def _validate_safe_search(value: object) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) - {"engines", "youtube"}:
         raise ValueError("safe_search must be an object with engines and youtube")
     engines = value.get("engines", [])
+    # Membership before set(): unhashable entries must be validation errors, not crashes.
     if (
         not isinstance(engines, list)
-        or len(set(engines)) != len(engines)
         or any(engine not in SAFE_SEARCH_ENGINES for engine in engines)
+        or len(set(engines)) != len(engines)
     ):
         raise ValueError("safe_search.engines must list distinct supported engines")
     if value.get("youtube", "strict") not in ("strict", "moderate"):
@@ -173,8 +174,8 @@ def _validate_window(value: object) -> dict[str, Any]:
     if (
         not isinstance(days, list)
         or not days
-        or len(set(days)) != len(days)
         or any(day not in DAYS for day in days)
+        or len(set(days)) != len(days)
     ):
         raise ValueError("schedule window days must list distinct weekdays")
     start, end = value["from"], value["to"]
