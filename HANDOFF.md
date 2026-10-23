@@ -27,7 +27,19 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 - MSI `DNSFILTER=1` e `installer-prepare --dns-filter`: opt-in, reservam a porta 53 (UDP e TCP) antes de qualquer mudança e preservam o cadastro, gravando a chave `dns_filter` só quando ela é ligada. Na desinstalação, o instalador remove uma sobra de NRPT.
 - Tag `web-filter:dns` enviada quando o modo DNS está ativo.
 - Suíte: **498 Python aprovados, 41 ignorados, 5 deselecionados; 80 Rust**. O WXS compila. **Nada foi executado no DNS desta máquina**: a regra NRPT real só será criada no Sandbox.
-- Próximo: roteiro de aceite em Sandbox (unidade 7). Depois, categorias da F2, recorte 4: taxonomia no estilo FortiGuard com listas abertas, sem a base da Fortinet.
+- Roteiro de aceite `deploy/test-dns-sandbox.ps1`, com contratos em `tests/test_dns_sandbox.py`. Usa o MSI de produção com `BLOCKPAGEHTTPS=1 DNSFILTER=1` e verifica sempre pelo caminho do sistema (sem `-Server`):
+  - regra NRPT exata;
+  - curinga bloqueando o domínio e os subdomínios, em A e AAAA;
+  - nomes permitidos e não listados resolvendo pelo upstream;
+  - `hosts` sem bloco gerenciado;
+  - página HTTPS confiável para um subdomínio do curinga;
+  - Edge confirmado pelo operador;
+  - processo morto mantendo a regra e recuperação;
+  - política nova sem reiniciar;
+  - parada normal devolvendo o DNS e início recriando a regra;
+  - desinstalação restaurando as regras NRPT, a confiança e o `hosts`.
+- Pacote local em `.venv/sandbox-acceptance/dns-input/` e perfil `dns.wsb`, **com rede**, necessária para o upstream real. Iniciar com Win+R → `C:\openems-input\RUN-DNS-TEST.cmd`; relatório em `results/dns-result.json`.
+- Aceite real ainda não executado. Depois, categorias da F2, recorte 4: taxonomia no estilo FortiGuard com listas abertas, sem a base da Fortinet.
 
 ### Continuação — resiliência do serviço (branch `feature/native-resilience`, plano A aprovado em 2026-10-23)
 
