@@ -6,6 +6,8 @@ import socket
 import struct
 import subprocess
 import time
+from pathlib import Path
+from xml.etree import ElementTree as ET
 
 from tests.test_native_agent import run_agent
 
@@ -79,3 +81,24 @@ def test_continuous_run_serves_dns_on_configured_loopback_port(native, tmp_path)
     finally:
         process.terminate()
         process.wait(timeout=15)
+
+
+def test_installer_accepts_dns_option_only_for_setup(native, tmp_path):
+    help_text = run_agent(native, "installer-prepare", "--help", invitation=None)
+    assert help_text.returncode == 0 and "--dns-filter" in help_text.stdout
+    result = run_agent(native, "installer-prepare", "--remove", "--dns-filter", "--config", str(tmp_path / "agent.json"), invitation=None)
+    assert result.returncode != 0 and "cannot be used with" in result.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_msi_dns_property_is_opt_in_and_validated():
+    root = ET.parse(Path(__file__).resolve().parents[1] / "agent-rs/installer/openems-agent.wxs").getroot()
+    ns = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
+    prop = root.find(".//w:Property[@Id='DNSFILTER']", ns)
+    assert prop is not None and prop.attrib["Secure"] == "yes" and prop.attrib.get("Value") != "1"
+    assert any("DNSFILTER" in launch.attrib["Condition"] and '"1"' in launch.attrib["Condition"]
+               for launch in root.findall(".//w:Launch", ns))
+    setter = root.find(".//w:SetProperty[@Id='DnsFilterArguments']", ns)
+    assert setter is not None and setter.attrib["Value"] == "--dns-filter" and "DNSFILTER" in setter.attrib["Condition"]
+    setup = root.find(".//w:CustomAction[@Id='PrepareAgentSetup']", ns)
+    assert "[DnsFilterArguments]" in setup.attrib["ExeCommand"]

@@ -56,3 +56,16 @@ fn dns_mode_removes_the_managed_hosts_block_instead_of_writing_it() {
     assert_eq!(enforcement.sites, vec!["*.example.com".to_owned()]);
     assert_eq!(std::fs::read_to_string(&hosts).unwrap(), "# original\n");
 }
+
+#[test]
+fn dns_mode_reports_capability_tag() {
+    let body = json!({"web_filter": {"blocked": ["*.example.com"]}});
+    let digest = policy_digest(body.as_object().unwrap());
+    let assignment =
+        validate_assignment(&json!({"vdom": "Default", "version": 3, "digest": digest, "body": body})).unwrap();
+    let enforcement = openems_agent::runtime::Enforcement { sites: vec!["*.example.com".into()], killed: vec![] };
+    let mut config = AgentConfig::new("http://127.0.0.1:8000", "test");
+    assert!(!openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned()));
+    config.dns_filter = true;
+    assert!(openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned()));
+}
