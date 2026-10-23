@@ -51,3 +51,9 @@ def test_resilience_runs_once_per_boot_and_detects_reboot():
     assert "'CreateNew'" in text and 'already started in this Sandbox' in text
     assert text.index('requires Windows Sandbox') < text.index("'CreateNew'")
     assert 'LastBootUpTime' in text
+
+def test_package_check_passes_plain_strings_to_com():
+    # A PSObject-wrapped Join-Path result makes WindowsInstaller.OpenDatabase fail with DISP_E_TYPEMISMATCH.
+    text = SCRIPT.read_text(encoding='utf-8')
+    assert 'function Assert-ProductionPackage([string]$Path)' in text
+    assert 'Assert-ProductionPackage ([string](Join-Path $stateDirectory $package))' in text
