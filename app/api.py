@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService, LoginRateLimited
+from .categories import CategoryRepository
 from .limits import RequestSizeLimitMiddleware
 from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
@@ -65,7 +66,8 @@ def _bearer(request: Request) -> str:
 def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                record_path: str | None = None, admin_service: AdminService | None = None,
                audit_log: AuditLog | None = None, *, lab_mode: bool = False,
-               close_resources: list[Any] | None = None, panel_dir: Path | None = None) -> FastAPI:
+               close_resources: list[Any] | None = None, panel_dir: Path | None = None,
+               category_dir: Path | None = None) -> FastAPI:
     svc = service or EmsService(require_invitation=not lab_mode)
     saml = saml_sp or SamlSp('http://localhost:8013')
     admin = admin_service or AdminService()
@@ -229,6 +231,20 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     @app.post('/fct/api/public/v1/update_client_id/')
     def update_client_id(payload: ClientPayload):
         return {'client_id': svc.update_client_id(payload.client_id).client_id}
+
+    categories = CategoryRepository(category_dir) if category_dir else None
+
+    # Device routes: the middleware has already checked client_id and the device token.
+    @app.get('/fct/api/public/v1/categories/')
+    def category_manifest():
+        return categories.manifest() if categories else {'version': None, 'attribution': '', 'categories': []}
+
+    @app.get('/fct/api/public/v1/categories/file/')
+    def category_file(id: str = Query(max_length=32), digest: str = Query(pattern=r'^[0-9a-f]{64}$')):
+        data = categories.file(id, digest) if categories else None
+        if data is None:
+            raise HTTPException(status_code=404, detail='category file not published')
+        return Response(content=data, media_type='application/octet-stream')
 
     @app.post('/fct/api/public/v1/host_tags/')
     def report_host_tags(payload: TagsPayload):
@@ -469,5 +485,7 @@ def build() -> FastAPI:
     saml = SamlSp(base_url, replay_cache=replay, pending_store=pending, idp_store=idp_store)
     if queue:
         resources.append(queue)
+    category_dir = os.environ.get('OPENEMS_CATEGORIES_DIR')
     return create_app(svc, saml_sp=saml, admin_service=admin, audit_log=audit_log,
-                      lab_mode=lab_mode, close_resources=resources)
+                      lab_mode=lab_mode, close_resources=resources,
+                      category_dir=Path(category_dir) if category_dir else None)
