@@ -19,7 +19,8 @@ def test_msi_plan_declares_all_transaction_scenarios():
     assert plan['origin'] == 'http://127.0.0.1:18013'
     assert plan['report'] == 'msi-result.json'
     assert len(plan['scenarios']) == 5
-    assert plan['timeout_seconds'] == 480
+    assert plan['timeout_seconds'] == 1500
+    assert plan['operation_timeout_seconds'] == 240
 
 def test_msi_refuses_host_before_any_writes(tmp_path):
     result = run('-OutputDirectory', str(tmp_path))
@@ -58,3 +59,9 @@ def test_msi_wait_keeps_process_handle():
     text = SCRIPT.read_text(encoding='utf-8')
     assert 'Start-Process -FilePath msiexec' not in text
     assert 'UseShellExecute = $false' in text
+
+def test_msi_backend_stays_interruptible_and_reports_durations():
+    # A blocking GetContext() kept Stop-Job waiting until the agent's first request.
+    text = SCRIPT.read_text(encoding='utf-8')
+    assert 'GetContextAsync()' in text and '.GetContext()' not in text
+    assert 'durations' in text
