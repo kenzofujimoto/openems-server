@@ -259,7 +259,7 @@ function Test-Tcp([string]$Address, [int]$Port) {
 }
 # First adapter DNS server that answers a raw query from this process; some adapters list dead ones.
 function Get-AdapterResolver {
-     = @(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object { $_.ServerAddresses } |
+    $servers = @(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object { $_.ServerAddresses } |
         ForEach-Object ServerAddresses | Where-Object { $_ -notlike '127.*' })
     foreach ($server in $servers) {
         if ((Send-RawDns ([string]$server) 'example.org') -eq 0) { return [string]$server }
