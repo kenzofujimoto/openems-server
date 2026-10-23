@@ -3,8 +3,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $fixtures = @('openems-agent-0.2.0.msi', 'openems-agent-0.2.1.msi', 'openems-agent-0.2.2.msi')
 $origin = 'http://127.0.0.1:18013'
+# Unsigned fixtures can wait ~2 min on signature checks when the Sandbox has no network.
+$operationTimeout = 240
+$totalTimeout = 1500
 if ($Plan) {
-    @{ fixtures=$fixtures; origin=$origin; report='msi-result.json'; timeout_seconds=480
+    @{ fixtures=$fixtures; origin=$origin; report='msi-result.json'; timeout_seconds=$totalTimeout; operation_timeout_seconds=$operationTimeout
        scenarios=@('fresh HTTPS installation', 'identity-preserving upgrade', 'failed upgrade rollback', 'failed removal rollback', 'successful removal') } | ConvertTo-Json -Depth 5
     exit 0
 }
@@ -36,7 +39,7 @@ if (-not $SystemPhase) {
         Register-ScheduledTask -TaskName $task -Action $action -User SYSTEM -RunLevel Highest | Out-Null
         Start-ScheduledTask -TaskName $task
         $report = Join-Path $work 'msi-result.json'
-        $deadline = [DateTime]::UtcNow.AddSeconds(480)
+        $deadline = [DateTime]::UtcNow.AddSeconds($totalTimeout)
         while (-not (Test-Path -LiteralPath $report)) {
             if ([DateTime]::UtcNow -ge $deadline) { throw 'MSI acceptance timed out. Close the Sandbox to discard changes.' }
             Start-Sleep -Milliseconds 500
@@ -50,7 +53,7 @@ if (-not $SystemPhase) {
     exit 0
 }
 if ($identity.User.Value -ne 'S-1-5-18') { throw 'SystemPhase requires SYSTEM.' }
-$result = [ordered]@{ passed=$false; checks=@(); error=$null; cleanup_errors=@() }
+$result = [ordered]@{ passed=$false; checks=@(); durations=@(); error=$null; cleanup_errors=@() }
 $backend = $null
 $config = 'C:\ProgramData\openems\agent.json'
 $authority = 'C:\ProgramData\openems\https\authority.json'
@@ -65,9 +68,12 @@ function Invoke-Msi([string]$Package, [bool]$Remove, [string[]]$Properties, [int
     $start.Arguments = $arguments -join ' '
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
+    $started = [DateTime]::UtcNow
     $process = [Diagnostics.Process]::Start($start)
     try {
-        if (-not $process.WaitForExit(75000)) { throw ('MSI operation timed out; close Sandbox. Log: ' + $log) }
+        $finished = $process.WaitForExit($operationTimeout * 1000)
+        $result.durations += ('{0} {1}: {2:N0} s' -f $operation, $Package, ([DateTime]::UtcNow - $started).TotalSeconds)
+        if (-not $finished) { throw ('MSI operation timed out; close Sandbox. Log: ' + $log) }
         if ($process.ExitCode -ne $Expected) { throw ('Unexpected MSI exit code: ' + $process.ExitCode + '; expected ' + $Expected + '. Log: ' + $log) }
     } finally { $process.Dispose() }
 }
@@ -118,7 +124,10 @@ try {
             $listener.Start()
             Set-Content -LiteralPath (Join-Path $Work 'backend-ready') -Value ready
             while ($true) {
-                $context=$listener.GetContext()
+                # Short waits keep Stop-Job effective; a blocking GetContext delays cleanup.
+                $pending=$listener.GetContextAsync()
+                while (-not $pending.Wait(500)) { }
+                $context=$pending.Result
                 $payload=@{}; $context.Response.StatusCode=200
                 switch ($context.Request.Url.AbsolutePath) {
                     '/fct/api/public/v1/register/' { $payload=@{client_id='sandbox-msi';device_token='sandbox-fixture-only'} }
