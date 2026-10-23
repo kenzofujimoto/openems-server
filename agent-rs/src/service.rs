@@ -8,7 +8,7 @@ use crate::logging::file_logger;
 use crate::runtime::StopSignal;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use windows_service::service::{
     ServiceAccess, ServiceAction, ServiceActionType, ServiceControl, ServiceControlAccept, ServiceErrorControl,
@@ -53,6 +53,16 @@ fn status(state: ServiceState, exit_code: ServiceExitCode) -> ServiceStatus {
     }
 }
 
+/// Reported as soon as a stop is requested: cleanup (NRPT removal, listener joins) can take a few
+/// seconds, and Stop-Service treats a stopping service that still reports Running as failed.
+fn stop_pending_status() -> ServiceStatus {
+    ServiceStatus {
+        checkpoint: 1,
+        wait_hint: Duration::from_secs(30),
+        ..status(ServiceState::StopPending, ServiceExitCode::Win32(0))
+    }
+}
+
 fn service_main(_arguments: Vec<OsString>) {
     let stop = Arc::new(StopSignal::default());
     let handler_stop = Arc::clone(&stop);
@@ -67,6 +77,17 @@ fn service_main(_arguments: Vec<OsString>) {
         return;
     };
     let _ = handle.set_service_status(status(ServiceState::Running, ServiceExitCode::Win32(0)));
+    // The lock orders the pending report before the final Stopped report, never after it.
+    let finished = Arc::new(Mutex::new(false));
+    let watcher = {
+        let (stop, finished) = (Arc::clone(&stop), Arc::clone(&finished));
+        std::thread::spawn(move || {
+            while !stop.wait(Duration::from_secs(3600)) {}
+            if !*finished.lock().unwrap_or_else(|poison| poison.into_inner()) {
+                let _ = handle.set_service_status(stop_pending_status());
+            }
+        })
+    };
     let config_path = CONFIG_PATH.get().cloned().unwrap_or_else(default_config_path);
     let outcome = file_logger(&data_dir().join("agent.log")).and_then(|log| {
         let config = AgentConfig::from_file(&config_path);
@@ -81,7 +102,14 @@ fn service_main(_arguments: Vec<OsString>) {
     });
     // A non-zero exit lets the configured failure actions restart the agent.
     let exit = if outcome.is_ok() { ServiceExitCode::Win32(0) } else { ServiceExitCode::ServiceSpecific(1) };
-    let _ = handle.set_service_status(status(ServiceState::Stopped, exit));
+    {
+        let mut done = finished.lock().unwrap_or_else(|poison| poison.into_inner());
+        *done = true;
+        let _ = handle.set_service_status(status(ServiceState::Stopped, exit));
+    }
+    // Wakes the watcher when the agent ended on its own (an error), so the thread exits.
+    stop.stop();
+    let _ = watcher.join();
 }
 
 /// Register the running executable as an auto-start LocalSystem service that restarts on failure.
