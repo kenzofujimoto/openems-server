@@ -1,0 +1,43 @@
+{
+  "environment": "Windows Sandbox with networking enabled, run as SYSTEM, Edge confirmed by the operator",
+  "date": "2026-10-23",
+  "scope": "F2 slice 3: WFP filters for direct DNS, DoT and known DoH addresses, DoH name NXDOMAIN, HKLM browser DoH policies",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-antibypass-sandbox.ps1 at 1c05b59 (the Edge prompt wording was corrected afterwards; checks unchanged)",
+  "package": {
+    "build": "tools/build-msi-fixtures.ps1 -Production (no defines), WiX 5.0.2, version 0.3.0, agent and installer source at a9cbccc",
+    "openems-agent.msi": "ffdec33df3d0c0785e6c7847032e4fa0cdee31a1e8a2d59d489a1ec847547333",
+    "properties": ["SERVER=http://127.0.0.1:18013", "BLOCKPAGEHTTPS=1", "DNSFILTER=1", "ANTIBYPASS=1"],
+    "fault_injection_actions": "absent (CustomAction table checked inside Sandbox before install)"
+  },
+  "checks": [
+    "production install with ANTIBYPASS keeps system DNS working through the agent",
+    "direct DNS from other programs to the adapter resolver is blocked",
+    "DoT and DoH by address are blocked while ordinary HTTPS works",
+    "DoH service names get NXDOMAIN from the local resolver",
+    "browser DoH policies are written to HKLM",
+    "Edge shows secure DNS managed off and the block page, confirmed by the operator",
+    "killed process keeps the filters and service recovery restores resolution",
+    "graceful stop removes filters and the NRPT rule; start restores them",
+    "removal restores filters, NRPT, browser policies, trust and hosts"
+  ],
+  "operator_observation": "Edge showed the RSM block page for https://a.b.iana.org/ and, in edge://settings/privacy opened by hand, secure DNS off and managed by the organization",
+  "durations": ["/i openems-agent.msi: 123 s", "/x openems-agent.msi: 10 s"],
+  "unrelated_roots_added": [],
+  "error": null,
+  "cleanup_errors": [],
+  "notes": [
+    "Probes ran from the harness PowerShell process, not the agent, and each was shown to work before installation: raw UDP DNS to the first answering adapter resolver, TCP 1.1.1.1:443 and :853, dns.google and example.org resolution",
+    "An earlier attempt failed before installing on a harness defect (a shell-expanded variable); a guard test now scans every Sandbox harness",
+    "Edge ignores edge:// URLs on its command line; the operator opened the settings page manually"
+  ],
+  "not_validated": [
+    "Firefox and Chrome policies in a running browser (only the HKLM values were checked)",
+    "Physical endpoint, especially VPN clients such as FortiClient that may send DNS from their own process",
+    "Private or unlisted DoH services, which the embedded list cannot cover",
+    "Real management server and panel warnings",
+    "Linux build of the native agent (CI), not compiled locally",
+    "Code signing"
+  ]
+}
