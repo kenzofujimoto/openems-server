@@ -73,3 +73,57 @@ fn dns_mode_reports_capability_tag() {
         openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned())
     );
 }
+
+fn scheduled_assignment(version: i64) -> openems_agent::policy::Assignment {
+    let body = json!({"web_filter": {
+        "blocked": ["other.org"], "timezone": "UTC",
+        "scheduled": [{"blocked": ["*.facebook.com"], "days": ["mon"], "from": "08:00", "to": "18:00"}]
+    }});
+    let digest = policy_digest(body.as_object().unwrap());
+    validate_assignment(&json!({"vdom": "Default", "version": version, "digest": digest, "body": body})).unwrap()
+}
+
+#[test]
+fn hosts_mode_follows_schedule_windows_at_the_given_instant() {
+    let directory = tempfile::tempdir().unwrap();
+    let hosts = directory.path().join("hosts");
+    std::fs::write(&hosts, "# original\n").unwrap();
+    let mut config = AgentConfig::new("http://127.0.0.1:8000", "test");
+    config.hosts_path = hosts.clone();
+    let log: Logger = Arc::new(|_: &str| {});
+    let assignment = scheduled_assignment(1);
+    let monday_noon: jiff::Timestamp = "2026-10-26T12:00:00Z".parse().unwrap();
+    let monday_night: jiff::Timestamp = "2026-10-26T19:00:00Z".parse().unwrap();
+    openems_agent::runtime::enforce_at(&config, &assignment, &log, monday_noon).unwrap();
+    assert!(std::fs::read_to_string(&hosts).unwrap().contains("0.0.0.0 www.facebook.com"));
+    let enforcement = openems_agent::runtime::enforce_at(&config, &assignment, &log, monday_night).unwrap();
+    let written = std::fs::read_to_string(&hosts).unwrap();
+    assert!(!written.contains("facebook") && written.contains("0.0.0.0 other.org"));
+    assert_eq!(enforcement.sites, vec!["other.org".to_owned()]);
+}
+
+#[test]
+fn dns_cache_is_flushed_only_when_policy_or_open_windows_change() {
+    use openems_agent::runtime::{dns_cache_flush_needed, dns_cache_state};
+    let monday_noon: jiff::Timestamp = "2026-10-26T12:00:00Z".parse().unwrap();
+    let later_noon: jiff::Timestamp = "2026-10-26T12:30:00Z".parse().unwrap();
+    let monday_night: jiff::Timestamp = "2026-10-26T19:00:00Z".parse().unwrap();
+    let first = dns_cache_state(&scheduled_assignment(1), monday_noon).unwrap();
+    assert!(!dns_cache_flush_needed(None, &first), "the NRPT install already cleared the cache at start");
+    assert!(!dns_cache_flush_needed(Some(&first), &dns_cache_state(&scheduled_assignment(1), later_noon).unwrap()));
+    assert!(dns_cache_flush_needed(Some(&first), &dns_cache_state(&scheduled_assignment(1), monday_night).unwrap()));
+    assert!(dns_cache_flush_needed(Some(&first), &dns_cache_state(&scheduled_assignment(2), monday_noon).unwrap()));
+}
+
+#[test]
+fn agents_report_web_filter_v2_capability_and_keep_vdom_last() {
+    let assignment = scheduled_assignment(1);
+    let enforcement = openems_agent::runtime::Enforcement { sites: vec![], killed: vec![] };
+    let tags = openems_agent::runtime::host_tags(
+        &AgentConfig::new("http://127.0.0.1:8000", "test"),
+        &assignment,
+        &enforcement,
+    );
+    assert!(tags.contains(&"web-filter:v2".to_owned()));
+    assert_eq!(tags.last().unwrap(), "vdom:Default");
+}
