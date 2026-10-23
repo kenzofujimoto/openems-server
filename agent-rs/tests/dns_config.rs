@@ -127,3 +127,22 @@ fn agents_report_web_filter_v2_capability_and_keep_vdom_last() {
     assert!(tags.contains(&"web-filter:v2".to_owned()));
     assert_eq!(tags.last().unwrap(), "vdom:Default");
 }
+
+#[test]
+fn anti_bypass_is_opt_in_requires_dns_filter_and_reports_a_tag() {
+    let mut config = AgentConfig::new("http://127.0.0.1:8000", "test");
+    assert!(!config.anti_bypass);
+    config.anti_bypass = true;
+    assert!(config.validate().is_err(), "anti-bypass needs the resolver");
+    config.dns_filter = true;
+    assert!(config.validate().is_ok());
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.json");
+    config.write_file(&path).unwrap();
+    assert_eq!(AgentConfig::from_file(&path).unwrap(), config);
+    let assignment = scheduled_assignment(1);
+    let enforcement = openems_agent::runtime::Enforcement { sites: vec![], killed: vec![] };
+    let tags = openems_agent::runtime::host_tags(&config, &assignment, &enforcement);
+    assert!(tags.contains(&"web-filter:anti-bypass".to_owned()));
+    assert_eq!(tags.last().unwrap(), "vdom:Default");
+}

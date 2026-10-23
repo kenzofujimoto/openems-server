@@ -102,3 +102,30 @@ def test_msi_dns_property_is_opt_in_and_validated():
     assert setter is not None and setter.attrib["Value"] == "--dns-filter" and "DNSFILTER" in setter.attrib["Condition"]
     setup = root.find(".//w:CustomAction[@Id='PrepareAgentSetup']", ns)
     assert "[DnsFilterArguments]" in setup.attrib["ExeCommand"]
+
+
+def test_anti_bypass_configuration_requires_dns_filter(native, tmp_path):
+    config = tmp_path / "agent.json"
+    rejected = run_agent(native, "configure", "--config-path", str(config), "--server", "http://127.0.0.1:1",
+                         "--devid", "dns-test", "--anti-bypass", invitation=None)
+    assert rejected.returncode != 0 and not config.exists()
+    accepted = run_agent(native, "configure", "--config-path", str(config), "--server", "http://127.0.0.1:1",
+                         "--devid", "dns-test", "--dns-filter", "--anti-bypass", invitation=None)
+    assert accepted.returncode == 0, accepted.stderr
+    assert json.loads(config.read_text())["anti_bypass"] is True
+
+
+def test_installer_and_msi_expose_anti_bypass_opt_in(native, tmp_path):
+    help_text = run_agent(native, "installer-prepare", "--help", invitation=None)
+    assert help_text.returncode == 0 and "--anti-bypass" in help_text.stdout
+    result = run_agent(native, "installer-prepare", "--remove", "--anti-bypass", "--config", str(tmp_path / "agent.json"), invitation=None)
+    assert result.returncode != 0 and "cannot be used with" in result.stderr
+    root = ET.parse(Path(__file__).resolve().parents[1] / "agent-rs/installer/openems-agent.wxs").getroot()
+    ns = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
+    prop = root.find(".//w:Property[@Id='ANTIBYPASS']", ns)
+    assert prop is not None and prop.attrib["Secure"] == "yes" and prop.attrib.get("Value") != "1"
+    assert any("ANTIBYPASS" in launch.attrib["Condition"] and '"1"' in launch.attrib["Condition"]
+               for launch in root.findall(".//w:Launch", ns))
+    setter = root.find(".//w:SetProperty[@Id='AntiBypassArguments']", ns)
+    assert setter is not None and setter.attrib["Value"] == "--anti-bypass"
+    assert "[AntiBypassArguments]" in root.find(".//w:CustomAction[@Id='PrepareAgentSetup']", ns).attrib["ExeCommand"]
