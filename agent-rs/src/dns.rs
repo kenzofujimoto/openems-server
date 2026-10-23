@@ -314,3 +314,40 @@ pub fn start(
     })?;
     Ok((own, worker))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{IpAddr, SocketAddrV6};
+
+    #[test]
+    fn upstream_candidates_skip_loopback_placeholders_and_duplicates() {
+        let candidates: Vec<(IpAddr, u32)> = vec![
+            ("192.168.1.1".parse().unwrap(), 0),
+            ("127.0.0.1".parse().unwrap(), 0),
+            ("::1".parse().unwrap(), 0),
+            ("0.0.0.0".parse().unwrap(), 0),
+            ("fec0:0:0:ffff::1".parse().unwrap(), 0),
+            ("224.0.0.251".parse().unwrap(), 0),
+            ("192.168.1.1".parse().unwrap(), 0),
+            ("2001:4860:4860::8888".parse().unwrap(), 0),
+            ("fe80::1".parse().unwrap(), 7),
+            ("fe80::2".parse().unwrap(), 0),
+        ];
+        assert_eq!(
+            filter_upstreams(candidates),
+            vec![
+                "192.168.1.1:53".parse::<SocketAddr>().unwrap(),
+                "[2001:4860:4860::8888]:53".parse().unwrap(),
+                SocketAddr::V6(SocketAddrV6::new("fe80::1".parse().unwrap(), 53, 0, 7)),
+            ]
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn adapter_discovery_reads_without_changing_anything() {
+        let servers = AdapterUpstreams::default().servers();
+        assert!(servers.iter().all(|server| !server.ip().is_loopback() && server.port() == 53));
+    }
+}
