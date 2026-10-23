@@ -24,6 +24,9 @@ function Write-Report([string]$Path, $Value) {
     Move-Item -LiteralPath $temporary -Destination $Path -Force
 }
 if (-not $SystemPhase) {
+    # Sandbox can repeat LogonCommand; a second run would collide with the first run's ports.
+    try { [IO.File]::Open('C:\openems-msi-acceptance.lock', 'CreateNew', 'Write', 'None').Dispose() }
+    catch { throw 'An MSI acceptance run already started in this Sandbox; wait for its result or use a fresh Sandbox.' }
     $work = Join-Path 'C:\' ('openems-msi-' + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $work | Out-Null
     $acl = New-Object Security.AccessControl.DirectorySecurity
@@ -53,8 +56,10 @@ if (-not $SystemPhase) {
     exit 0
 }
 if ($identity.User.Value -ne 'S-1-5-18') { throw 'SystemPhase requires SYSTEM.' }
-$result = [ordered]@{ passed=$false; checks=@(); durations=@(); error=$null; cleanup_errors=@() }
+$result = [ordered]@{ passed=$false; checks=@(); durations=@(); unrelated_roots_added=@(); error=$null; cleanup_errors=@() }
 $backend = $null
+$baselineRoots = $null
+$managedRoot = $null
 $config = 'C:\ProgramData\openems\agent.json'
 $authority = 'C:\ProgramData\openems\https\authority.json'
 $hosts = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
@@ -78,8 +83,17 @@ function Invoke-Msi([string]$Package, [bool]$Remove, [string[]]$Properties, [int
     } finally { $process.Dispose() }
 }
 function Get-Roots { return @(Get-ChildItem Cert:\LocalMachine\Root | ForEach-Object Thumbprint | Sort-Object) }
-function Assert-Roots($Expected) {
-    if (@(Compare-Object @($Expected) @(Get-Roots)).Count) { throw 'Trust roots differ from expected baseline.' }
+function Get-ManagedRoot {
+    # authority.json keeps the root DER as a byte array; the private key stays DPAPI-protected.
+    $saved = Get-Content -LiteralPath $authority -Raw | ConvertFrom-Json
+    $certificate = New-Object Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList (,[byte[]]$saved.root)
+    try { return $certificate.Thumbprint } finally { $certificate.Dispose() }
+}
+# Windows may add its own roots during a run, so only the managed root and the baseline are asserted.
+function Assert-Trust([string]$Managed, $Baseline, [bool]$Trusted) {
+    $current = Get-Roots
+    if (@($Baseline | Where-Object { $_ -notin $current }).Count) { throw 'A pre-existing trust root was removed.' }
+    if (($Managed -in $current) -ne $Trusted) { throw ('Managed root trusted state should be ' + $Trusted + '.') }
 }
 function Wait-Healthy {
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
@@ -153,37 +167,41 @@ try {
     Wait-Healthy
     $savedConfig=Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
     if (-not ($savedConfig.block_page -and $savedConfig.block_page_https)) { throw 'HTTPS did not imply HTTP.' }
-    $savedRoots=Get-Roots
-    if (@($savedRoots | Where-Object {$_ -notin $baselineRoots}).Count -ne 1) { throw 'Installation must add one root.' }
+    $managedRoot=Get-ManagedRoot
+    if ($managedRoot -in $baselineRoots) { throw 'Managed root was already trusted before installation.' }
+    Assert-Trust $managedRoot $baselineRoots $true
     $authorityHash=(Get-FileHash -LiteralPath $authority).Hash
-    $result.checks+='fresh HTTPS install trusts one root and serves TLS from the running service'
+    $result.checks+='fresh HTTPS install trusts its own managed root and serves TLS from the running service'
     Invoke-Msi $fixtures[1] $false @() 0
     Wait-Healthy
     $upgradeConfig=Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
     foreach ($field in @('devid','device_token','server','block_page','block_page_https')) {
         if ($savedConfig.$field -ne $upgradeConfig.$field) {throw 'Upgrade changed registration or configuration.'}
     }
-    Assert-Roots $savedRoots
+    Assert-Trust $managedRoot $baselineRoots $true
     if ((Get-FileHash -LiteralPath $authority).Hash -ne $authorityHash) {throw 'Upgrade replaced private authority.'}
     $result.checks+='upgrade without SERVER preserves identity, trust, hosts and running service'
     Invoke-Msi $fixtures[2] $false @('FAIL_SETUP=1') 1603
     Wait-Healthy
-    Assert-Roots $savedRoots
+    Assert-Trust $managedRoot $baselineRoots $true
     if ((Get-FileHash -LiteralPath $authority).Hash -ne $authorityHash) {throw 'Failed upgrade changed authority.'}
     $result.checks+='failed upgrade restores existing service and trust'
     Invoke-Msi $fixtures[1] $true @('FAIL_REMOVAL=1') 1603
     Wait-Healthy
-    Assert-Roots $savedRoots
+    Assert-Trust $managedRoot $baselineRoots $true
     if ((Get-FileHash -LiteralPath $authority).Hash -ne $authorityHash) {throw 'Failed removal changed authority.'}
     $result.checks+='failed removal restores private authority, trust, hosts and running service'
     Invoke-Msi $fixtures[1] $true @() 0
     if ($null -ne (Get-Service openems-agent -ErrorAction SilentlyContinue)) {throw 'Uninstalled service still exists.'}
-    Assert-Roots $baselineRoots
+    Assert-Trust $managedRoot $baselineRoots $false
     if ((Get-FileHash -LiteralPath $hosts).Hash -ne $baselineHosts) {throw 'Uninstall did not restore hosts.'}
     $result.checks+='successful removal restores original trust and hosts and removes service'
     $result.passed=$true
 } catch { $result.error=$_.Exception.Message }
 finally {
+    if ($null -ne $baselineRoots) {
+        $result.unrelated_roots_added=@(Get-Roots | Where-Object { $_ -notin $baselineRoots -and $_ -ne $managedRoot })
+    }
     if ($null -ne $backend) { Stop-Job $backend -ErrorAction Continue; Remove-Job $backend -Force -ErrorAction Continue }
     Write-Report (Join-Path $OutputDirectory 'msi-result.json') $result
 }
