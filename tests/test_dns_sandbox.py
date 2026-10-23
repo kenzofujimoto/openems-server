@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows harness')
 
 
 def run(*args):
-    return subprocess.run(['powershell.exe', '-NoProfile', '-File', str(SCRIPT), *args], capture_output=True, text=True, timeout=30)
+    return subprocess.run(['powershell.exe', '-NoProfile', '-File', str(SCRIPT), *args], capture_output=True, text=True, timeout=30, check=False)
 
 
 def test_dns_plan_uses_valid_signed_policies_and_declares_scenarios():
@@ -42,7 +42,7 @@ def test_dns_harness_refuses_host_before_any_writes(tmp_path):
 
 def test_dns_harness_parses():
     command = '$t=$null;$e=$null;[System.Management.Automation.Language.Parser]::ParseFile($env:HARNESS,[ref]$t,[ref]$e)|Out-Null;if($e.Count){$e|Out-String|Write-Error;exit 1}'
-    result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', command], env={**os.environ, 'HARNESS': str(SCRIPT)}, capture_output=True, text=True, timeout=30)
+    result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', command], env={**os.environ, 'HARNESS': str(SCRIPT)}, capture_output=True, text=True, timeout=30, check=False)
     assert SCRIPT.exists()
     assert result.returncode == 0, result.stderr
 
