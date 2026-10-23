@@ -1,4 +1,5 @@
 use openems_agent::https_blockpage::BlockedDomains;
+use openems_agent::policy::WebRules;
 use openems_agent::{authority::Authority, https_blockpage, runtime::StopSignal};
 use std::{
     io::{Read, Write},
@@ -35,6 +36,11 @@ fn client_with_sni(
     rustls::StreamOwned::new(connection, socket)
 }
 
+fn rules(blocked: &[&str], allowed: &[&str]) -> WebRules {
+    let owned = |items: &[&str]| items.iter().map(|item| (*item).to_owned()).collect::<Vec<_>>();
+    WebRules::new(&owned(blocked), &owned(allowed)).unwrap()
+}
+
 fn response(
     mut client: rustls::StreamOwned<rustls::ClientConnection, TcpStream>,
     host: &str,
@@ -50,7 +56,7 @@ fn real_tls_requires_correct_authority_blocked_sni_and_matching_host() {
     let authority = Authority::ephemeral().unwrap();
     let root = authority.root_der();
     let allowed = Arc::new(BlockedDomains::default());
-    allowed.replace(&["example.com".into()]).unwrap();
+    allowed.replace(rules(&["example.com"], &[]));
     let stop = Arc::new(StopSignal::default());
     let (address, worker) = https_blockpage::start(0, authority, Arc::clone(&allowed), Arc::clone(&stop)).unwrap();
     let page = response(client(address, root.clone(), "example.com"), "example.com").unwrap();
@@ -68,7 +74,7 @@ fn real_tls_requires_correct_authority_blocked_sni_and_matching_host() {
     // An already established connection must also lose access after policy release.
     let mut established = client(address, root.clone(), "example.com");
     established.conn.complete_io(&mut established.sock).unwrap();
-    allowed.replace(&[]).unwrap();
+    allowed.replace(WebRules::default());
     assert!(response(established, "example.com").unwrap().starts_with("HTTP/1.1 421"));
     assert!(response(client(address, root, "example.com"), "example.com").is_err());
     stop.stop();
@@ -97,17 +103,37 @@ fn port_conflict_fails_before_start_and_idle_peers_drain_on_stop() {
 }
 
 #[test]
-fn certificates_are_limited_to_exact_redirected_domains_and_release_revokes() {
+fn certificates_follow_shared_rules_and_release_revokes() {
     let domains = BlockedDomains::default();
     assert!(!domains.contains("example.com"));
-    domains.replace(&["example.com".into()]).unwrap();
+    domains.replace(rules(&["example.com"], &[]));
     assert!(domains.contains("example.com"));
     assert!(domains.contains("www.example.com"));
     for name in ["allowed.com", "sub.example.com", "127.0.0.1", "example.com.", "https://example.com"] {
         assert!(!domains.contains(name), "{name}");
     }
-    assert!(domains.replace(&["*.example.com".into()]).is_err());
-    assert!(domains.contains("example.com"));
-    domains.replace(&[]).unwrap();
+    domains.replace(rules(&["*.example.com"], &["mail.example.com"]));
+    for name in ["example.com", "a.b.example.com", "WWW.example.com"] {
+        assert!(domains.contains(name), "{name}");
+    }
+    for name in ["mail.example.com", "www.mail.example.com", "example.com.br"] {
+        assert!(!domains.contains(name), "{name}");
+    }
+    domains.replace(WebRules::default());
     assert!(!domains.contains("example.com"));
+}
+
+#[test]
+fn wildcard_subdomain_gets_trusted_page_and_allowed_name_gets_no_certificate() {
+    let authority = Authority::ephemeral().unwrap();
+    let root = authority.root_der();
+    let blocked = Arc::new(BlockedDomains::default());
+    blocked.replace(rules(&["*.example.com"], &["mail.example.com"]));
+    let stop = Arc::new(StopSignal::default());
+    let (address, worker) = https_blockpage::start(0, authority, Arc::clone(&blocked), Arc::clone(&stop)).unwrap();
+    let page = response(client(address, root.clone(), "a.b.example.com"), "a.b.example.com").unwrap();
+    assert!(page.starts_with("HTTP/1.1 200 OK"));
+    assert!(response(client(address, root, "mail.example.com"), "mail.example.com").is_err());
+    stop.stop();
+    worker.join().unwrap();
 }
