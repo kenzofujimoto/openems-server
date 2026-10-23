@@ -27,7 +27,9 @@ def test_dns_plan_uses_valid_signed_policies_and_declares_scenarios():
     first, second = plan['policies']
     for policy in (first, second):
         assert policy['digest'] == policy_digest(validate_policy(policy['body']))
-    assert first['body']['web_filter'] == {'blocked': ['*.example.com'], 'allowed': ['www.example.com']}
+    # The Sandbox DNS proxy resolves through the host, whose own agent may block example.com.
+    assert first['body']['web_filter'] == {'blocked': ['*.iana.org'], 'allowed': ['www.iana.org']}
+    assert set(plan['forwarded_names']) >= {'www.iana.org', 'example.org', 'iana.org', 'example.net'}
     assert second['version'] > first['version']
     assert len(plan['scenarios']) >= 6
     assert plan['timeout_seconds'] >= 900
@@ -56,3 +58,9 @@ def test_dns_harness_checks_the_system_path_and_exact_rule():
     assert 'Assert-ProductionPackage ([string](Join-Path' in text
     assert "'CreateNew'" in text and 'already started in this Sandbox' in text
     assert text.index('requires Windows Sandbox') < text.index("'CreateNew'")
+
+
+def test_dns_harness_refuses_hosts_that_already_filter_forwarded_names():
+    text = SCRIPT.read_text(encoding='utf-8')
+    assert 'Host DNS already filters' in text
+    assert text.index('Host DNS already filters') < text.index("Invoke-Msi $false")
