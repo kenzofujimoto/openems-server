@@ -62,6 +62,7 @@ $baselineRoots = $null
 $managedRoot = $null
 $config = 'C:\ProgramData\openems\agent.json'
 $authority = 'C:\ProgramData\openems\https\authority.json'
+$state = 'C:\ProgramData\openems\state.json'
 $hosts = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
 function Invoke-Msi([string]$Package, [bool]$Remove, [string[]]$Properties, [int]$Expected) {
     $operation = if ($Remove) { '/x' } else { '/i' }
@@ -83,6 +84,26 @@ function Invoke-Msi([string]$Package, [bool]$Remove, [string[]]$Properties, [int
     } finally { $process.Dispose() }
 }
 function Get-Roots { return @(Get-ChildItem Cert:\LocalMachine\Root | ForEach-Object Thumbprint | Sort-Object) }
+function Get-Field($Object, [string]$Name, [string]$Source) {
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property -or $null -eq $property.Value) { throw ($Source + ' is missing ' + $Name + '.') }
+    return $property.Value
+}
+# Settings live in agent.json and registration in state.json; values never enter the report.
+function Get-Identity {
+    $identity = @{}
+    $settings = Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
+    foreach ($field in @('devid','server','block_page','block_page_https')) { $identity[$field] = Get-Field $settings $field 'agent.json' }
+    $saved = Get-Content -LiteralPath $state -Raw | ConvertFrom-Json
+    foreach ($field in @('client_id','device_token')) { $identity[$field] = Get-Field $saved $field 'state.json' }
+    return $identity
+}
+function Assert-Identity($Expected, [string]$Scenario) {
+    $current = Get-Identity
+    foreach ($field in $Expected.Keys) {
+        if ($Expected[$field] -ne $current[$field]) { throw ($Scenario + ' changed ' + $field + '.') }
+    }
+}
 function Get-ManagedRoot {
     # authority.json keeps the root DER as a byte array; the private key stays DPAPI-protected.
     $saved = Get-Content -LiteralPath $authority -Raw | ConvertFrom-Json
@@ -165,8 +186,8 @@ try {
     }
     Invoke-Msi $fixtures[0] $false @('SERVER=http://127.0.0.1:18013','BLOCKPAGEHTTPS=1') 0
     Wait-Healthy
-    $savedConfig=Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
-    if (-not ($savedConfig.block_page -and $savedConfig.block_page_https)) { throw 'HTTPS did not imply HTTP.' }
+    $savedIdentity=Get-Identity
+    if (-not ($savedIdentity.block_page -and $savedIdentity.block_page_https)) { throw 'HTTPS did not imply HTTP.' }
     $managedRoot=Get-ManagedRoot
     if ($managedRoot -in $baselineRoots) { throw 'Managed root was already trusted before installation.' }
     Assert-Trust $managedRoot $baselineRoots $true
@@ -174,10 +195,7 @@ try {
     $result.checks+='fresh HTTPS install trusts its own managed root and serves TLS from the running service'
     Invoke-Msi $fixtures[1] $false @() 0
     Wait-Healthy
-    $upgradeConfig=Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
-    foreach ($field in @('devid','device_token','server','block_page','block_page_https')) {
-        if ($savedConfig.$field -ne $upgradeConfig.$field) {throw 'Upgrade changed registration or configuration.'}
-    }
+    Assert-Identity $savedIdentity 'Upgrade'
     Assert-Trust $managedRoot $baselineRoots $true
     if ((Get-FileHash -LiteralPath $authority).Hash -ne $authorityHash) {throw 'Upgrade replaced private authority.'}
     $result.checks+='upgrade without SERVER preserves identity, trust, hosts and running service'
@@ -185,11 +203,13 @@ try {
     Wait-Healthy
     Assert-Trust $managedRoot $baselineRoots $true
     if ((Get-FileHash -LiteralPath $authority).Hash -ne $authorityHash) {throw 'Failed upgrade changed authority.'}
+    Assert-Identity $savedIdentity 'Failed upgrade'
     $result.checks+='failed upgrade restores existing service and trust'
     Invoke-Msi $fixtures[1] $true @('FAIL_REMOVAL=1') 1603
     Wait-Healthy
     Assert-Trust $managedRoot $baselineRoots $true
     if ((Get-FileHash -LiteralPath $authority).Hash -ne $authorityHash) {throw 'Failed removal changed authority.'}
+    Assert-Identity $savedIdentity 'Failed removal'
     $result.checks+='failed removal restores private authority, trust, hosts and running service'
     Invoke-Msi $fixtures[1] $true @() 0
     if ($null -ne (Get-Service openems-agent -ErrorAction SilentlyContinue)) {throw 'Uninstalled service still exists.'}

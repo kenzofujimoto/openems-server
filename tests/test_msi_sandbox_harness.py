@@ -83,5 +83,5 @@ def test_msi_reads_registration_from_state_not_config():
     # agent.json never serializes device_token; registration lives in state.json.
     text = SCRIPT.read_text(encoding='utf-8')
     assert "@('devid','device_token'" not in text
-    assert "openems\state.json" in text
+    assert r"openems\state.json" in text
     assert "@('client_id','device_token')" in text
