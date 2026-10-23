@@ -26,11 +26,13 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 try:
     from .policy import (
+        active_rules,
         hosts_names,
         normalize_process,
         policy_digest,
@@ -38,6 +40,7 @@ try:
     )
 except ImportError:
     from policy import (
+        active_rules,
         hosts_names,
         normalize_process,
         policy_digest,
@@ -353,7 +356,8 @@ def enforce(
         return {"sites": [], "killed": []}
     release = profile.get("unassigned") is True and profile.get("body") is None
     body = validate_policy({} if release else profile.get("body"))
-    sites = body.get("web_filter", {}).get("blocked", [])
+    # Scheduled windows are evaluated now; the next cycle rewrites hosts when one opens or closes.
+    sites = active_rules(body.get("web_filter", {}), datetime.now(UTC))
     allowed = body.get("web_filter", {}).get("allowed", [])
     apps = body.get("app_control", {}).get("blocked", [])
     if cfg.dry_run:

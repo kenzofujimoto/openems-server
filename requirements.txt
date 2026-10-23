@@ -5,6 +5,7 @@ python-multipart==0.0.20   # SAML ACS form POST
 psycopg[binary]==3.3.6     # PostgresStore
 redis==7.2.1               # RedisQueue
 signxml==5.2.0             # SAML XML-DSig verification (pulls lxml + cryptography)
+tzdata==2026.5             # IANA zones for policy schedules (Windows has no system database)
 
 # Dev / test
 pytest==9.0.2
