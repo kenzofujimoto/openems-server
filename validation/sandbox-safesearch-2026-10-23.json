@@ -1,0 +1,40 @@
+{
+  "environment": "Windows Sandbox with networking enabled, run as SYSTEM, Google SafeSearch confirmed in Edge by the operator",
+  "date": "2026-10-23",
+  "scope": "F2 slice 2: forced SafeSearch through DNS CNAMEs, scheduled rules in the policy timezone, DNS cache flush on policy change",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-safesearch-sandbox.ps1 at 62b01c5",
+  "package": {
+    "build": "tools/build-msi-fixtures.ps1 -Production (no defines), WiX 5.0.2, version 0.3.0, agent and installer source at df4e212",
+    "openems-agent.msi": "72af9b37ff9e0cf5367c9412823a7f0c9e4853df5693644b9665aaa24d503e1f",
+    "properties": ["SERVER=http://127.0.0.1:18013", "BLOCKPAGEHTTPS=1", "DNSFILTER=1"],
+    "fault_injection_actions": "absent (CustomAction table checked inside Sandbox before install)"
+  },
+  "policies": "Built at run time relative to UTC: version 1 with SafeSearch for google, bing, youtube and duckduckgo, timezone UTC, *.iana.org in a window open all of today and example.net in a window only on tomorrow's weekday; version 2 moves example.net into the open window. Digests are computed in PowerShell and checked against agent/policy.py by tests/test_safesearch_sandbox.py",
+  "checks": [
+    "open schedule window blocks through system DNS while a closed one does not",
+    "search engines resolve through a CNAME to their enforced SafeSearch host",
+    "Google search in Edge shows SafeSearch locked on, confirmed by the operator",
+    "policy change flushes cached answers without restarting the service",
+    "removal restores NRPT rules, trust and hosts"
+  ],
+  "operator_observation": "Google SafeSearch settings page showed 'Filtro ativado' with a lock and stated the setting cannot be changed because an administrator controls the network",
+  "durations": ["/i openems-agent.msi: 122 s", "/x openems-agent.msi: 11 s"],
+  "unrelated_roots_added": [],
+  "error": null,
+  "cleanup_errors": [],
+  "notes": [
+    "The cache-flush check resolved example.net without clearing the DNS client cache, so the blocked answer after version 2 proves the agent flushed the stale upstream answer",
+    "Preflight confirmed the host neither filtered the fixture names nor enforced SafeSearch, so the CNAMEs came from the agent",
+    "Window edges at a real clock boundary are covered by unit tests with an injected clock, not by waiting in Sandbox"
+  ],
+  "not_validated": [
+    "YouTube, Bing and DuckDuckGo restricted modes in a browser (only their DNS CNAMEs were checked)",
+    "Physical endpoint, VPN clients and captive portals",
+    "Chrome and Firefox (second machine)",
+    "DNS over HTTPS configured in browsers and other bypasses (F2 slice 3)",
+    "Real management server and panel warnings for agents without web-filter:v2",
+    "Code signing"
+  ]
+}

@@ -27,7 +27,8 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - Verifica bloqueio e liberação por horário, os CNAMEs dos quatro buscadores e o SafeSearch travado no Google pelo Edge, confirmado pelo operador.
   - Verifica que uma política nova limpa o cache, consultando sem limpar o cache, e a desinstalação.
   - Recusa rodar entre 23:40 e 00:00 UTC, e também se o host já filtrar os nomes ou já forçar SafeSearch.
-- Pacote: `.venv/sandbox-acceptance/safesearch-input/` (MSI de produção sha256 `72af9b37…`) e `safesearch.wsb`, com rede. Iniciar com Win+R → `C:\openems-input\RUN-SAFESEARCH-TEST.cmd`; relatório em `results/safesearch-result.json`. **Aceite real ainda não executado.**
+- Pacote: `.venv/sandbox-acceptance/safesearch-input/` (MSI de produção sha256 `72af9b37…`) e `safesearch.wsb`, com rede. Iniciar com Win+R → `C:\openems-input\RUN-SAFESEARCH-TEST.cmd`; relatório em `results/safesearch-result.json`. - **Aceite real concluído em 2026-10-23, 15:38:** 5 de 5 cenários, `passed: true`, na primeira tentativa. SafeSearch do Google travado confirmado no Edge ("Filtro ativado" com cadeado e aviso de que o administrador controla a rede). Evidência em `validation/sandbox-safesearch-2026-10-23.json`.
+- Fora do aceite: modos restritos de YouTube, Bing e DuckDuckGo no navegador (só os CNAMEs foram verificados), máquina física, Chrome/Firefox, DoH (recorte 3), servidor real, aviso no painel e assinatura.
 
 ### Continuação — F2 resolvedor DNS (branch `feature/dns-resolver`, `dns-resolver.md` aprovado em 2026-10-23)
 
@@ -121,7 +122,7 @@ Estado em 2026-10-22. O plano completo de cada fase, com critérios de aceite, e
 | Fase | Estado | O que falta |
 |---|---|---|
 | F1 — Agente nativo (Windows) | Quase pronta. Agente Rust em `agent-rs/` com paridade do agente Python (testes de contrato em `tests/test_native_agent.py`). MSI transacional com `BLOCKPAGE`/`BLOCKPAGEHTTPS` aceito em Sandbox (instalação, upgrade, rollback, remoção). Resiliência aceita em Sandbox com MSI de produção: recuperação após crash, servidor fora do ar, reboot sem servidor. | Componente da sessão do usuário (tarefa no logon, notificações). Assinatura de código (depende de certificado da RSM). Segunda máquina física (Chrome/Firefox). |
-| F2 — Filtro web completo | Parcial. HTTPS local aceito em Sandbox (Edge). Recorte 1 aceito em Sandbox: resolvedor DNS com NRPT do serviço, curingas e `allowed` (branch `feature/dns-resolver`). | SafeSearch e horários (recorte 2); antiburla, políticas de navegador e firewall 53/853 (recorte 3); categorias no estilo FortiGuard com listas abertas e registro de bloqueios (recorte 4); aviso no painel para agentes sem `web-filter:dns`; Chrome/Firefox na segunda máquina. |
+| F2 — Filtro web completo | Parcial. HTTPS local aceito em Sandbox (Edge). Recorte 1 aceito em Sandbox: resolvedor DNS com NRPT do serviço, curingas e `allowed` (branch `feature/dns-resolver`). Recorte 2 aceito em Sandbox: SafeSearch forçado e horários (branch `feature/dns-safesearch-schedules`). | Antiburla, políticas de navegador e firewall 53/853 (recorte 3); categorias no estilo FortiGuard com listas abertas e registro de bloqueios (recorte 4); aviso no painel para agentes sem `web-filter:dns`; Chrome/Firefox na segunda máquina. |
 | F3 — Controle de aplicativos | Não iniciada. Hoje só encerra o processo pelo nome. | Tudo. |
 | F4 — USB | Não iniciada. | Tudo. |
 | F5 — Antiadulteração | Parcial: serviço automático no boot com reinício após falha. | ACL do serviço, watchdog, código de desinstalação, componente no logon. |
