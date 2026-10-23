@@ -71,6 +71,7 @@ struct Inner {
     failures: u32,
     pending: Option<Pending>,
     generation: u64,
+    dns_state: Option<DnsCacheState>,
 }
 
 pub struct Runtime {
@@ -82,9 +83,37 @@ pub struct Runtime {
     pub blocked_domains: Arc<crate::https_blockpage::BlockedDomains>,
 }
 
+/// What the Windows DNS cache depends on in DNS mode: the policy and which windows are open.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DnsCacheState {
+    identity: (String, i64, String),
+    windows: Vec<bool>,
+}
+
+pub fn dns_cache_state(assignment: &Assignment, when: jiff::Timestamp) -> Result<DnsCacheState> {
+    Ok(DnsCacheState { identity: assignment.identity(), windows: assignment.web_filter()?.active_windows(when) })
+}
+
+/// Cached answers outlive a policy change or a window edge by their upstream TTL; flush then.
+/// The first observation needs no flush: installing the NRPT rule already cleared the cache.
+pub fn dns_cache_flush_needed(previous: Option<&DnsCacheState>, current: &DnsCacheState) -> bool {
+    previous.is_some_and(|previous| previous != current)
+}
+
 pub fn enforce(cfg: &AgentConfig, assignment: &Assignment, log: &Logger) -> Result<Enforcement> {
-    let (sites, apps) = assignment.blocked_lists()?;
-    let rules = assignment.web_rules()?;
+    enforce_at(cfg, assignment, log, jiff::Timestamp::now())
+}
+
+/// Enforcement as of `when`: scheduled windows open at that instant are part of the hosts block.
+pub fn enforce_at(
+    cfg: &AgentConfig,
+    assignment: &Assignment,
+    log: &Logger,
+    when: jiff::Timestamp,
+) -> Result<Enforcement> {
+    let (_, apps) = assignment.blocked_lists()?;
+    let rules = assignment.web_filter()?.rules_at(when);
+    let sites = rules.blocked().to_vec();
     let release = assignment.unassigned && assignment.body.is_none();
     if cfg.dry_run {
         log(&format!("[dry-run] would apply {} domain block(s) and {} process rule(s)", sites.len(), apps.len()));
@@ -109,6 +138,8 @@ pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enfor
         format!("os:{}", platform_name()),
         if enforcement.killed.is_empty() { "app-control:clean".into() } else { "app-control:enforced".into() },
         format!("web-filter:{}-blocked", enforcement.sites.len()),
+        // Understands safe_search and scheduled windows; the panel warns before publishing them otherwise.
+        "web-filter:v2".into(),
     ];
     // Lets the panel warn before publishing wildcards to groups whose agents only use hosts.
     if cfg.dns_filter {
@@ -137,7 +168,7 @@ impl Runtime {
         if !cfg.dry_run
             && let Some(profile) = &inner.profile
         {
-            blocked_domains.replace(profile.web_rules()?);
+            blocked_domains.replace(profile.web_filter()?);
         }
         Ok(Runtime { cfg, api, inner: Mutex::new(inner), log, stop, blocked_domains })
     }
@@ -207,7 +238,7 @@ impl Runtime {
             Ok(assignment) => {
                 // Revocation follows the newest validated policy immediately, not the next enforcement tick.
                 if !self.cfg.dry_run {
-                    match assignment.web_rules() {
+                    match assignment.web_filter() {
                         Ok(rules) => self.blocked_domains.replace(rules),
                         Err(_) => return false,
                     }
@@ -236,12 +267,16 @@ impl Runtime {
     /// Apply the last valid policy; returns false only when enforcement failed.
     pub fn enforce_local(&self) -> bool {
         let Some(assignment) = self.lock().profile.clone() else { return true };
-        let result = enforce(&self.cfg, &assignment, &self.log).and_then(|enforcement| {
+        let now = jiff::Timestamp::now();
+        let result = enforce_at(&self.cfg, &assignment, &self.log, now).and_then(|enforcement| {
             let mut inner = self.lock();
             inner.cached = Some(assignment.clone());
             self.save(&inner)?;
             Ok(enforcement)
         });
+        if result.is_ok() && self.cfg.dns_filter && !self.cfg.dry_run {
+            self.flush_on_dns_change(&assignment, now);
+        }
         let mut inner = self.lock();
         inner.generation += 1;
         let generation = inner.generation;
@@ -261,6 +296,19 @@ impl Runtime {
                 (self.log)(&format!("policy enforcement failed ({})", error.kind()));
                 false
             }
+        }
+    }
+
+    fn flush_on_dns_change(&self, assignment: &Assignment, now: jiff::Timestamp) {
+        let Ok(current) = dns_cache_state(assignment, now) else { return };
+        let stale = {
+            let mut inner = self.lock();
+            let stale = dns_cache_flush_needed(inner.dns_state.as_ref(), &current);
+            inner.dns_state = Some(current);
+            stale
+        };
+        if stale && let Err(error) = crate::hosts::flush_dns() {
+            (self.log)(&format!("DNS cache flush failed ({}); answers expire within their TTL", error.kind()));
         }
     }
 
@@ -369,6 +417,14 @@ mod tests {
         .unwrap();
         let config = AgentConfig::new("https://ems.example.com", "PC1");
         let tags = host_tags(&config, &assignment, &Enforcement { sites: vec!["a.com".into()], killed: vec![] });
-        assert_eq!(tags[1..], ["app-control:clean".to_owned(), "web-filter:1-blocked".into(), "vdom:Empty".into()]);
+        assert_eq!(
+            tags[1..],
+            [
+                "app-control:clean".to_owned(),
+                "web-filter:1-blocked".into(),
+                "web-filter:v2".into(),
+                "vdom:Empty".into()
+            ]
+        );
     }
 }
