@@ -3,8 +3,8 @@
 use crate::config::AgentConfig;
 use crate::error::{AgentError, Result};
 use crate::runtime::{Logger, Runtime, StopSignal};
-use crate::{blockpage, dns};
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use crate::{blockpage, dns, nrpt};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -27,6 +27,7 @@ fn abort(stop: &StopSignal, workers: Vec<JoinHandle<()>>, error: AgentError) -> 
 pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()> {
     let runtime = Arc::new(Runtime::new(config.clone(), Arc::clone(&log), Arc::clone(&stop))?);
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
+    let mut routed = false;
     if config.block_page_https {
         let started = crate::authority::Authority::load_or_create(&config.authority_path).and_then(|authority| {
             crate::https_blockpage::start(
@@ -62,14 +63,30 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
             Ok((_, worker)) => workers.push(worker),
             Err(error) => return Err(abort(&stop, workers, error)),
         }
+        let mut servers = vec![IpAddr::V4(Ipv4Addr::LOCALHOST)];
         // IPv6 loopback is optional: hosts with IPv6 disabled still resolve through 127.0.0.1.
         match resolver(SocketAddr::from((Ipv6Addr::LOCALHOST, config.dns_port))) {
-            Ok((_, worker)) => workers.push(worker),
+            Ok((_, worker)) => {
+                workers.push(worker);
+                servers.push(IpAddr::V6(Ipv6Addr::LOCALHOST));
+            }
             Err(error) => log(&format!("DNS resolver not listening on [::1]: {error}")),
+        }
+        // NRPT cannot name a port, so only the standard port routes system DNS; other ports are for tests.
+        if cfg!(windows) && config.dns_port == 53 {
+            if let Err(error) = nrpt::install(&servers) {
+                return Err(abort(&stop, workers, error));
+            }
+            routed = true;
+            log("system DNS routed to the local resolver");
         }
     }
     log(&format!("openems-agent {} started for {}", env!("CARGO_PKG_VERSION"), config.devid));
     let result = runtime.run();
+    // Graceful stop (including upgrade and shutdown) hands DNS back; a crash never reaches here.
+    if routed && let Err(error) = nrpt::remove() {
+        log(&format!("NRPT rule not removed: {error}"));
+    }
     stop.stop();
     for worker in workers {
         let _ = worker.join();

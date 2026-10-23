@@ -65,7 +65,11 @@ fn dns_mode_reports_capability_tag() {
         validate_assignment(&json!({"vdom": "Default", "version": 3, "digest": digest, "body": body})).unwrap();
     let enforcement = openems_agent::runtime::Enforcement { sites: vec!["*.example.com".into()], killed: vec![] };
     let mut config = AgentConfig::new("http://127.0.0.1:8000", "test");
-    assert!(!openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned()));
+    assert!(
+        !openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned())
+    );
     config.dns_filter = true;
-    assert!(openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned()));
+    assert!(
+        openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned())
+    );
 }

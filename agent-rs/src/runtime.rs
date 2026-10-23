@@ -104,13 +104,18 @@ pub fn enforce(cfg: &AgentConfig, assignment: &Assignment, log: &Logger) -> Resu
     Ok(Enforcement { sites, killed })
 }
 
-pub fn host_tags(assignment: &Assignment, enforcement: &Enforcement) -> Vec<String> {
-    vec![
+pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enforcement) -> Vec<String> {
+    let mut tags = vec![
         format!("os:{}", platform_name()),
         if enforcement.killed.is_empty() { "app-control:clean".into() } else { "app-control:enforced".into() },
         format!("web-filter:{}-blocked", enforcement.sites.len()),
-        format!("vdom:{}", assignment.vdom),
-    ]
+    ];
+    // Lets the panel warn before publishing wildcards to groups whose agents only use hosts.
+    if cfg.dns_filter {
+        tags.push("web-filter:dns".into());
+    }
+    tags.push(format!("vdom:{}", assignment.vdom));
+    tags
 }
 
 impl Runtime {
@@ -283,7 +288,7 @@ impl Runtime {
                 self.lock().last_ack = applied.then(|| identity.clone());
             }
             if let Outcome::Applied(enforcement) = &pending.outcome {
-                let tags = host_tags(&pending.assignment, enforcement);
+                let tags = host_tags(&self.cfg, &pending.assignment, enforcement);
                 self.api.post("host_tags", &json!({ "client_id": client_id, "tags": tags }), token.as_deref())?;
             }
             Ok(())
@@ -362,7 +367,8 @@ mod tests {
             &json!({"vdom": "Empty", "version": 0, "digest": "", "body": null, "unassigned": true}),
         )
         .unwrap();
-        let tags = host_tags(&assignment, &Enforcement { sites: vec!["a.com".into()], killed: vec![] });
+        let config = AgentConfig::new("https://ems.example.com", "PC1");
+        let tags = host_tags(&config, &assignment, &Enforcement { sites: vec!["a.com".into()], killed: vec![] });
         assert_eq!(tags[1..], ["app-control:clean".to_owned(), "web-filter:1-blocked".into(), "vdom:Empty".into()]);
     }
 }

@@ -6,7 +6,7 @@ use crate::error::{AgentError, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::net::{Ipv4Addr, TcpListener};
+use std::net::{Ipv4Addr, TcpListener, UdpSocket};
 use std::path::{Path, PathBuf};
 
 fn failure(message: &str) -> AgentError {
@@ -282,6 +282,7 @@ pub fn prepare(
     bootstrap: Option<AgentConfig>,
     enable_http: bool,
     enable_https: bool,
+    enable_dns: bool,
 ) -> Result<()> {
     authority::require_system()?;
     if !config_path.is_absolute() {
@@ -300,6 +301,7 @@ pub fn prepare(
     };
     target.block_page |= enable_http || enable_https;
     target.block_page_https |= enable_https;
+    target.dns_filter |= enable_dns;
     // Bind all requested listeners before touching config or trust. Handles remain reserved through preparation.
     let mut listeners = Vec::new();
     for (enabled, port) in
@@ -312,6 +314,13 @@ pub fn prepare(
             );
         }
     }
+    let mut resolvers = Vec::new();
+    if target.dns_filter {
+        let port = target.dns_port;
+        let unavailable = |_| failure(&format!("loopback DNS port {port} is unavailable"));
+        resolvers.push(UdpSocket::bind((Ipv4Addr::LOCALHOST, port)).map_err(unavailable)?);
+        listeners.push(TcpListener::bind((Ipv4Addr::LOCALHOST, port)).map_err(unavailable)?);
+    }
     let (directory, mut saved) = begin(config_path, &target)?;
     // Write-ahead expectation protects rollback against concurrent unrelated edits.
     let desired_config = match &saved.files[0].bytes {
@@ -321,6 +330,10 @@ pub fn prepare(
                 .map_err(|_| failure("invalid configuration JSON"))?;
             value["block_page"] = target.block_page.into();
             value["block_page_https"] = target.block_page_https.into();
+            // Must match provisioning byte for byte: the key appears only when enabled.
+            if target.dns_filter {
+                value["dns_filter"] = true.into();
+            }
             serde_json::to_vec_pretty(&value).map_err(|_| failure("cannot encode planned configuration"))?
         }
         None => {
@@ -329,7 +342,7 @@ pub fn prepare(
     };
     allow_bytes(&mut saved, config_path, Some(&desired_config))?;
     save(&directory, &saved)?;
-    crate::provisioning::configure_install(config_path, bootstrap, enable_http, enable_https)?;
+    crate::provisioning::configure_install(config_path, bootstrap, enable_http, enable_https, enable_dns)?;
     if target.block_page_https {
         let authority = Authority::load_or_create(&target.authority_path)?;
         saved.root_active = Some(authority.root_der().as_ref().to_vec());
@@ -342,6 +355,7 @@ pub fn prepare(
         }
     }
     drop(listeners);
+    drop(resolvers);
     Ok(())
 }
 
@@ -376,6 +390,10 @@ pub fn prepare_removal(config_path: &Path) -> Result<()> {
         fs::remove_file(&config.authority_path)?;
     }
     crate::hosts::clear_hosts(&config.hosts_path)?;
+    // A graceful stop already removed the rule; this clears one left by a crash.
+    if config.dns_filter {
+        crate::nrpt::remove()?;
+    }
     Ok(())
 }
 

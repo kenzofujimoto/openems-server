@@ -99,7 +99,9 @@ struct InstallerArgs {
     block_page: bool,
     #[arg(long)]
     block_page_https: bool,
-    #[arg(long, conflicts_with_all = ["server", "devid", "hosts_file", "invitation", "block_page", "block_page_https"])]
+    #[arg(long)]
+    dns_filter: bool,
+    #[arg(long, conflicts_with_all = ["server", "devid", "hosts_file", "invitation", "block_page", "block_page_https", "dns_filter"])]
     remove: bool,
 }
 
@@ -288,7 +290,13 @@ fn execute(command: Command) -> Result<ExitCode> {
                         .or_else(|| non_empty_env("OPENEMS_INVITATION"));
                     config
                 });
-                openems_agent::installer::prepare(&path, bootstrap, args.block_page, args.block_page_https)?;
+                openems_agent::installer::prepare(
+                    &path,
+                    bootstrap,
+                    args.block_page,
+                    args.block_page_https,
+                    args.dns_filter,
+                )?;
             }
             println!("installer transaction prepared");
             Ok(ExitCode::SUCCESS)

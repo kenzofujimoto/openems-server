@@ -13,6 +13,7 @@ pub mod hosts;
 pub mod https_blockpage;
 pub mod installer;
 pub mod logging;
+pub mod nrpt;
 pub mod policy;
 pub mod processes;
 pub mod provisioning;

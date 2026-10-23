@@ -42,3 +42,20 @@ fn scripts_are_passed_as_utf16_base64() {
     assert_eq!(encode_command("dir"), "ZABpAHIA");
     assert_eq!(encode_command("ab'c"), "YQBiACcAYwA=");
 }
+
+/// Parses (never runs) both scripts with the PowerShell language parser.
+#[cfg(windows)]
+#[test]
+fn scripts_parse_as_powershell() {
+    for script in [install_script(&loopbacks()).unwrap(), remove_script()] {
+        let check = format!(
+            "$e=$null; [System.Management.Automation.Language.Parser]::ParseInput([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('{}')),[ref]$null,[ref]$e) | Out-Null; if ($e.Count) {{ $e | Out-String | Write-Error; exit 1 }}",
+            encode_command(&script)
+        );
+        let output = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &check])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    }
+}

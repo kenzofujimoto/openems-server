@@ -46,7 +46,8 @@ fn corrupted_configuration_is_never_replaced() {
     for bytes in [b"not JSON".as_slice(), br#"{"server":"https://ems.example.com","devid":"PC","unexpected":true}"#] {
         std::fs::write(&path, bytes).unwrap();
         assert!(
-            configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "NEW")), true, true, false).is_err()
+            configure_install(&path, Some(AgentConfig::new("https://ems.example.com", "NEW")), true, true, false)
+                .is_err()
         );
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
     }
@@ -61,7 +62,8 @@ fn different_server_and_invalid_options_preserve_original_bytes() {
     original.write_file(&path).unwrap();
     let bytes = std::fs::read(&path).unwrap();
     assert!(
-        configure_install(&path, Some(AgentConfig::new("https://other.example.com", "NEW")), false, false, false).is_err()
+        configure_install(&path, Some(AgentConfig::new("https://other.example.com", "NEW")), false, false, false)
+            .is_err()
     );
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
     // A dry-run installation cannot enable HTTPS enforcement.

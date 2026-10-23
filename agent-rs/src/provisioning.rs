@@ -11,6 +11,7 @@ pub fn configure_install(
     bootstrap: Option<AgentConfig>,
     enable_http: bool,
     enable_https: bool,
+    enable_dns: bool,
 ) -> Result<AgentConfig> {
     let original = match std::fs::read(path) {
         Ok(bytes) => Some(bytes),
@@ -32,9 +33,12 @@ pub fn configure_install(
             return Err(AgentError::Config("installation cannot change the registered server origin".into()));
         }
     }
-    let changed = (enable_http || enable_https) && !config.block_page || enable_https && !config.block_page_https;
+    let changed = (enable_http || enable_https) && !config.block_page
+        || enable_https && !config.block_page_https
+        || enable_dns && !config.dns_filter;
     config.block_page |= enable_http || enable_https;
     config.block_page_https |= enable_https;
+    config.dns_filter |= enable_dns;
     config.validate()?;
     match original {
         Some(bytes) if changed => {
@@ -44,6 +48,10 @@ pub fn configure_install(
                 .map_err(|_| AgentError::Config("configuration is not valid JSON".into()))?;
             value["block_page"] = config.block_page.into();
             value["block_page_https"] = config.block_page_https.into();
+            // Untouched options stay absent so upgrades change only what was requested.
+            if config.dns_filter {
+                value["dns_filter"] = true.into();
+            }
             let encoded = serde_json::to_vec_pretty(&value).map_err(|error| AgentError::Local(error.to_string()))?;
             atomic_write(path, &encoded, Some(&bytes), true)?;
         }
