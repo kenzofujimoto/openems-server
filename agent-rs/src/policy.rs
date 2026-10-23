@@ -9,6 +9,30 @@ const MAX_ENTRIES: usize = 10_000;
 const MAX_WINDOWS: usize = 50;
 const SAFE_SEARCH_ENGINES: [&str; 4] = ["google", "bing", "youtube", "duckduckgo"];
 const DAYS: [&str; 7] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+/// Category ids of the reference taxonomy (agent/policy.py CATEGORIES), pinned by the vectors.
+pub const CATEGORY_IDS: [&str; 21] = [
+    "adult",
+    "dating",
+    "gambling",
+    "malware",
+    "phishing",
+    "hacking",
+    "proxy",
+    "drugs",
+    "violence",
+    "weapons",
+    "warez",
+    "games",
+    "streaming",
+    "filehosting",
+    "social",
+    "chat",
+    "webmail",
+    "shopping",
+    "sports",
+    "press",
+    "ads",
+];
 const ZONE_PUNCTUATION: &str = "_+-";
 const YOUTUBE_NAMES: [&str; 5] = [
     "www.youtube.com",
@@ -426,8 +450,17 @@ fn normalized_rules(rules: &[Value]) -> Result<Vec<Value>> {
     Ok(unique)
 }
 
-/// Port of `_validate_web_extensions`: safe_search, timezone and scheduled windows.
+fn validate_categories(value: &Value) -> Result<()> {
+    distinct_members(value, &CATEGORY_IDS, false)
+        .map(|_| ())
+        .ok_or_else(|| invalid("blocked_categories must list distinct known categories"))
+}
+
+/// Port of `_validate_web_extensions`: categories, safe_search, timezone and scheduled windows.
 fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
+    if let Some(value) = settings.get("blocked_categories") {
+        validate_categories(value)?;
+    }
     if let Some(value) = settings.get("safe_search") {
         let Some(safe) = value.as_object().filter(|safe| safe.keys().all(|key| key == "engines" || key == "youtube"))
         else {
@@ -453,15 +486,16 @@ fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
     }
     let mut normalized = Vec::with_capacity(windows.len());
     for window in windows {
-        let keys = ["blocked", "days", "from", "to"];
-        let Some(mut window) = window
-            .as_object()
-            .cloned()
-            .filter(|window| window.len() == 4 && keys.iter().all(|key| window.contains_key(*key)))
-        else {
-            return Err(invalid("schedule window needs exactly blocked, days, from and to"));
+        let allowed = ["blocked", "blocked_categories", "days", "from", "to"];
+        let Some(mut window) = window.as_object().cloned().filter(|window| {
+            window.keys().all(|key| allowed.contains(&key.as_str()))
+                && ["days", "from", "to"].iter().all(|key| window.contains_key(*key))
+                && (window.contains_key("blocked") || window.contains_key("blocked_categories"))
+        }) else {
+            return Err(invalid("schedule window needs days, from, to and blocked rules or categories"));
         };
-        let Some(rules) = window["blocked"].as_array().filter(|rules| rules.len() <= MAX_ENTRIES).cloned() else {
+        let rules = window.get("blocked").cloned().unwrap_or(Value::Array(Vec::new()));
+        let Some(rules) = rules.as_array().filter(|rules| rules.len() <= MAX_ENTRIES).cloned() else {
             return Err(invalid("schedule window blocked must be a list of at most 10000 rules"));
         };
         if distinct_members(&window["days"], &DAYS, true).is_none() {
@@ -473,7 +507,12 @@ fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
         if start >= end {
             return Err(invalid("schedule window must start before it ends; split windows across midnight"));
         }
-        window.insert("blocked".to_owned(), Value::Array(normalized_rules(&rules)?));
+        if window.contains_key("blocked") {
+            window.insert("blocked".to_owned(), Value::Array(normalized_rules(&rules)?));
+        }
+        if let Some(categories) = window.get("blocked_categories") {
+            validate_categories(categories)?;
+        }
         normalized.push(Value::Object(window));
     }
     settings.insert("scheduled".to_owned(), Value::Array(normalized));
@@ -483,6 +522,7 @@ fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
 #[derive(Debug, Clone)]
 struct Window {
     blocked: Vec<String>,
+    categories: Vec<String>,
     days: [bool; 7],
     from: u16,
     to: u16,
@@ -493,6 +533,7 @@ struct Window {
 pub struct WebFilter {
     blocked: Vec<String>,
     allowed: Vec<String>,
+    categories: Vec<String>,
     windows: Vec<Window>,
     timezone: Option<jiff::tz::TimeZone>,
     engines: Vec<String>,
@@ -528,6 +569,7 @@ impl WebFilter {
                 |key: &str| window.get(key).and_then(clock_minutes).ok_or_else(|| invalid("invalid schedule window"));
             windows.push(Window {
                 blocked: WebRules::new(&text_list(window.get("blocked")), &[])?.blocked,
+                categories: text_list(window.get("blocked_categories")),
                 days,
                 from: bound("from")?,
                 to: bound("to")?,
@@ -537,6 +579,7 @@ impl WebFilter {
         Ok(WebFilter {
             blocked: rules.blocked,
             allowed: rules.allowed,
+            categories: text_list(settings.get("blocked_categories")),
             windows,
             timezone: settings.get("timezone").map(time_zone).transpose()?,
             engines: text_list(safe.and_then(|safe| safe.get("engines"))),
@@ -565,7 +608,47 @@ impl WebFilter {
     }
 
     pub fn blocks_at(&self, name: &str, when: jiff::Timestamp) -> bool {
-        self.rules_at(when).blocks(name)
+        self.blocks_at_with(name, when, &crate::categories::NoCategories)
+    }
+
+    /// Categories blocked at `when`: unscheduled ones plus those of every open window.
+    pub fn active_categories(&self, when: jiff::Timestamp) -> Vec<String> {
+        let mut categories = self.categories.clone();
+        for (window, open) in self.windows.iter().zip(self.active_windows(when)) {
+            if open {
+                categories.extend(window.categories.iter().cloned());
+            }
+        }
+        categories.dedup();
+        categories
+    }
+
+    /// Every category the policy can use at any time; these are the ones to download.
+    pub fn referenced_categories(&self) -> Vec<String> {
+        let mut categories: Vec<String> = self
+            .categories
+            .iter()
+            .chain(self.windows.iter().flat_map(|window| window.categories.iter()))
+            .cloned()
+            .collect();
+        categories.sort();
+        categories.dedup();
+        categories
+    }
+
+    /// Rules, then categories; allowed rules win over both, and missing category data never blocks.
+    pub fn blocks_at_with(
+        &self,
+        name: &str,
+        when: jiff::Timestamp,
+        lookup: &dyn crate::categories::CategoryLookup,
+    ) -> bool {
+        if self.rules_at(when).blocks(name) {
+            return true;
+        }
+        let Ok(domain) = normalize_domain(name) else { return false };
+        self.active_categories(when).iter().any(|category| lookup.contains(category, &domain))
+            && !self.allowed.iter().any(|rule| rule_matches(rule, &domain))
     }
 
     pub fn has_schedule(&self) -> bool {

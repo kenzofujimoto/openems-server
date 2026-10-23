@@ -6,6 +6,7 @@ pub mod authority;
 pub mod blockpage;
 pub mod browser_policy;
 pub mod canonical;
+pub mod categories;
 pub mod config;
 pub mod dns;
 pub mod doh;

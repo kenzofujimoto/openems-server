@@ -17,6 +17,8 @@ use std::time::{Duration, Instant};
 #[derive(Default)]
 pub struct BlockedDomains {
     filter: RwLock<WebFilter>,
+    /// Downloaded category sets the filter consults for blocked_categories.
+    categories: crate::categories::CategoryStore,
     /// Anti-bypass: public DoH endpoint names get NXDOMAIN from the resolver.
     block_doh: AtomicBool,
 }
@@ -32,11 +34,20 @@ impl BlockedDomains {
     }
 
     pub fn contains_at(&self, name: &str, when: jiff::Timestamp) -> bool {
-        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).blocks_at(name, when)
+        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).blocks_at_with(name, when, &self.categories)
     }
 
     pub fn safe_search_target(&self, name: &str) -> Option<&'static str> {
         self.filter.read().unwrap_or_else(|poison| poison.into_inner()).safe_search_target(name)
+    }
+
+    pub fn categories(&self) -> &crate::categories::CategoryStore {
+        &self.categories
+    }
+
+    /// Categories the active policy can use, for downloading and pruning.
+    pub fn referenced_categories(&self) -> Vec<String> {
+        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).referenced_categories()
     }
 
     pub fn set_doh_blocking(&self, enabled: bool) {
