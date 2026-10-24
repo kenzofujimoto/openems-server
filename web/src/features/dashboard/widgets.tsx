@@ -72,7 +72,20 @@ const EVENT_STYLE: Record<EventKind, { icon: LucideIcon; label: string; tone: st
   policy_error: { icon: TriangleAlert, label: "Erro de política", tone: "bg-danger-soft text-danger" },
 };
 
+// Agents send fixed English details; the panel names known tamper kinds in Portuguese.
+const TAMPER_DETAIL: Record<string, string> = {
+  dns_rule_restored: "Regra de DNS do agente recriada",
+  wfp_restored: "Filtros de rede antiburla recriados",
+  browser_policy_restored: "Políticas de DNS do navegador reaplicadas",
+  hosts_restored: "Bloco gerenciado do hosts regravado",
+  service_config_restored: "Início, recuperação ou permissões do serviço restaurados",
+  watchdog_restored: "Tarefa agendada do watchdog recriada",
+  service_started_by_watchdog: "Serviço parado foi iniciado pelo watchdog",
+  unexpected_exit: "O agente terminou sem parada normal",
+};
+
 function eventDetail(event: FleetEvent): string {
+  if (event.kind === "tamper" && event.reason && TAMPER_DETAIL[event.reason]) return TAMPER_DETAIL[event.reason];
   const count = event.count !== undefined && event.count > 1 ? `${formatNumber(event.count)}×` : null;
   return [event.detail, event.category_label, count].filter(Boolean).join(" · ");
 }
