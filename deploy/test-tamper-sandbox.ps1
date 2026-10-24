@@ -65,13 +65,24 @@ function Test-Permissions([string]$Work) {
     New-Item -ItemType Directory -Path $probe | Out-Null
     $agentJson = 'C:\ProgramData\openems\agent.json'
     $before = (Get-FileHash -LiteralPath $agentJson).Hash
-    $commands = @('@echo off',
-                  'sc.exe stop openems-agent >nul 2>&1', 'echo user_stop=%errorlevel%>>"%~dp0result.txt"',
-                  'sc.exe config openems-agent start= disabled >nul 2>&1', 'echo user_config=%errorlevel%>>"%~dp0result.txt"',
-                  'sc.exe delete openems-agent >nul 2>&1', 'echo user_delete=%errorlevel%>>"%~dp0result.txt"',
-                  '(echo x)>>"C:\ProgramData\openems\agent.json" 2>nul', 'echo user_agent_json=%errorlevel%>>"%~dp0result.txt"',
-                  'copy /y nul "C:\Program Files\openems\probe.txt" >nul 2>&1', 'echo user_program_files=%errorlevel%>>"%~dp0result.txt"')
-    Set-Content -LiteralPath (Join-Path $probe 'probe.cmd') -Value $commands -Encoding ASCII
+    # Runs as the standard user. sc.exe exit codes (5 = denied); write probes open without writing,
+    # so a granted access changes nothing (1 = denied, 0 = allowed).
+    $probeScript = @'
+$lines = @()
+foreach ($check in @(@('user_stop', @('stop', 'openems-agent')),
+                     @('user_config', @('config', 'openems-agent', 'start=', 'disabled')),
+                     @('user_delete', @('delete', 'openems-agent')))) {
+    & (Join-Path $env:SystemRoot 'System32\sc.exe') @($check[1]) | Out-Null
+    $lines += ($check[0] + '=' + $LASTEXITCODE)
+}
+function Test-Write([string]$Path) {
+    try { [IO.File]::Open($Path, 'OpenOrCreate', 'Write', 'ReadWrite').Dispose(); return 0 } catch { return 1 }
+}
+$lines += ('user_agent_json=' + (Test-Write 'C:\ProgramData\openems\agent.json'))
+$lines += ('user_program_files=' + (Test-Write 'C:\Program Files\openems\probe.txt'))
+Set-Content -LiteralPath (Join-Path $PSScriptRoot 'result.txt') -Value $lines -Encoding ASCII
+'@
+    Set-Content -LiteralPath (Join-Path $probe 'probe.ps1') -Value $probeScript -Encoding ASCII
     New-LocalUser -Name $name -Password $secret -AccountNeverExpires -Description 'openems acceptance standard user' | Out-Null
     try {
         # BUILTIN\Users by its well-known SID: the name is localized (Usuários on Portuguese Windows).
@@ -81,7 +92,8 @@ function Test-Permissions([string]$Work) {
         $probeAcl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule((Get-LocalUser -Name $name).SID, 'Modify', 'ContainerInherit,ObjectInherit', 'None', 'Allow')))
         Set-Acl -LiteralPath $probe -AclObject $probeAcl
         $credential = New-Object Management.Automation.PSCredential(($env:COMPUTERNAME + '\' + $name), $secret)
-        Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\cmd.exe') -ArgumentList @('/c', ('"' + (Join-Path $probe 'probe.cmd') + '"')) `
+        $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        Start-Process -FilePath $powershell -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + (Join-Path $probe 'probe.ps1') + '"')) `
             -Credential $credential -WorkingDirectory $probe -WindowStyle Hidden -Wait
     } finally { Remove-LocalUser -Name $name -ErrorAction Continue }
     $resultFile = Join-Path $probe 'result.txt'
