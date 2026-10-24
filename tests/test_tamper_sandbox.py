@@ -85,8 +85,7 @@ def test_harness_tampers_like_an_attacker_and_waits_for_repair():
     assert "'/fct/api/public/v1/tamper/'" in text and 'tamper.log' in text
     # Windows PowerShell 5.1 turns redirected native stderr into a terminating error under 'Stop':
     # querying a deleted task must return false, not end the run.
-    task_probe = text.split('function Test-Task {', 1)[1].split('
-}', 1)[0]
+    task_probe = text.split('function Test-Task {', 1)[1].split('\n}', 1)[0]
     assert "$ErrorActionPreference = 'Continue'" in task_probe
 
 
