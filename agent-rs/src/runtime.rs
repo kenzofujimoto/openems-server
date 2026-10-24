@@ -74,6 +74,8 @@ struct Inner {
     dns_state: Option<DnsCacheState>,
     /// Digest of each loaded category, to skip downloads that would not change anything.
     category_digests: std::collections::HashMap<String, String>,
+    /// A new policy arrived: enforce (and persist it) now instead of at the next interval.
+    enforce_requested: bool,
 }
 
 pub struct Runtime {
@@ -260,6 +262,9 @@ impl Runtime {
                         Ok(rules) => self.blocked_domains.replace(rules),
                         Err(_) => return false,
                     }
+                }
+                if inner.profile.as_ref().map(Assignment::identity) != Some(assignment.identity()) {
+                    inner.enforce_requested = true;
                 }
                 inner.profile = Some(assignment);
                 inner.failures = 0;
@@ -465,8 +470,19 @@ impl Runtime {
         };
         while !self.stop.is_stopped() {
             self.enforce_local();
-            if self.stop.wait(Duration::from_secs(self.cfg.interval)) {
-                break;
+            // A new policy wakes the loop early, so a restart soon after it arrives cannot lose it.
+            let deadline = Instant::now() + Duration::from_secs(self.cfg.interval);
+            loop {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() || worker.is_finished() {
+                    break;
+                }
+                if self.stop.wait(remaining.min(Duration::from_millis(250))) {
+                    break;
+                }
+                if std::mem::take(&mut self.lock().enforce_requested) {
+                    break;
+                }
             }
             if worker.is_finished() {
                 break;
