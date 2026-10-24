@@ -28,6 +28,15 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - Verifica: bloqueio de `api.steampowered.com` e `steamcommunity.com`, `allowed` para `store.steampowered.com`, arquivo em cache com o digest, reinício do serviço offline ainda bloqueando, Edge em `steamcommunity.com` confirmado pelo operador, e desinstalação.
 - Pacote: `.venv/sandbox-acceptance/categories-input/` (MSI e `categories/`) e `categories.wsb`, com rede. Win+R → `C:\openems-input\RUN-CATEGORIES-TEST.cmd`; relatório em `results/categories-result.json`. O pré-teste espera até 60 s pela rede do Sandbox.
 - **Aceite em Sandbox aprovado em 2026-10-24 (6/6)**, Edge confirmado pelo operador: `validation/sandbox-categories-2026-10-24.json`.
+### Continuação — F5 parte 5a (branch `feature/tamper-protection`, criada a partir de `feature/block-log`; `tamper-protection.md` aprovado em 2026-10-24 com 7 decisões)
+
+- Feito com TDD:
+  - `agent-rs/src/hardening.rs`: DACL do serviço (`SERVICE_SDDL`: SYSTEM com controle total; Administradores consultam e iniciam; usuários autenticados só consultam), decisões do watchdog agendado (não age com o Windows Installer em execução), executor de verificações (repara, registra e desliga a verificação cujo reparo não se mantém) e marcador `running.marker`.
+  - `agent-rs/src/tamper.rs`: fila de eventos de adulteração (8 tipos, o mesmo tipo no máximo uma vez a cada 10 min, limite de 200) e o arquivo `tamper-pending.json`, que o watchdog agendado escreve e o serviço lê na partida.
+  - Agente: saída inesperada e bloco do `hosts` reescrito sem mudança de política viram eventos enviados para `POST /fct/api/public/v1/tamper/`. Contratos nativos em `tests/test_native_tamper.py`.
+  - Servidor: `TamperEvent`, migração `003_tamper_events.sql`, a mesma retenção do registro de bloqueios, e `/api/v1/events` mistura `web_block` e `tamper` por horário.
+- **Falta na 5a** (só Windows, a validar em Sandbox): aplicar `SERVICE_SDDL` em `configure-recovery`; o thread watchdog no serviço (regra NRPT pelo registro em `Dnscache\Parameters\DnsPolicyConfig`, filtros WFP pela contagem do provider, tipo de início, recuperação, DACL e tarefa agendada); o evento das políticas de navegador reaplicadas; o comando `openems-agent watchdog`, com a tarefa `openems-agent watchdog` no boot e a cada 5 min, criada pelo serviço e removida em `installer-prepare --remove`; a detecção do mutex `Global\_MSIExecute`; o painel mostrando o detalhe de `tamper`; e o roteiro `deploy/test-tamper-sandbox.ps1` com usuário comum, administrador, NRPT, política de navegador, serviço desativado e encerrado, upgrade e remoção.
+
 ### Continuação — F2 parte 4b (branch `feature/block-log`, `web-block-log.md` aprovado em 2026-10-24)
 
 - Feito com TDD:
