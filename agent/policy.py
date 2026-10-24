@@ -294,22 +294,33 @@ def in_category(name: object, hashes: list[int]) -> bool:
     return False
 
 
-def domain_blocked_at(name: object, web_filter: dict[str, Any], when: datetime,
-                      categories: dict[str, list[int]] | None = None) -> bool:
-    """Decision at an aware instant; `web_filter` comes from validate_policy.
+def block_reason(name: object, web_filter: dict[str, Any], when: datetime,
+                 categories: dict[str, list[int]] | None = None) -> dict[str, str] | None:
+    """Why `name` is blocked at `when`: a rule, else the first active category containing it; None if allowed.
 
-    `categories` maps category ids to sorted hash lists; a category without data never blocks.
+    `web_filter` comes from validate_policy. `categories` maps category ids to sorted hash lists;
+    a category without data never blocks.
     """
     if domain_blocked(name, active_rules(web_filter, when), web_filter.get("allowed", [])):
-        return True
+        return {"reason": "rule"}
     data = categories or {}
-    if not any(in_category(name, data[category]) for category in active_categories(web_filter, when) if category in data):
-        return False
+    category = next((category for category in active_categories(web_filter, when)
+                     if category in data and in_category(name, data[category])), None)
+    if category is None:
+        return None
     try:
         domain = normalize_domain(name)
     except ValueError:
-        return False
-    return not any(_rule_matches(normalize_domain_rule(rule), domain) for rule in web_filter.get("allowed", []))
+        return None
+    if any(_rule_matches(normalize_domain_rule(rule), domain) for rule in web_filter.get("allowed", [])):
+        return None
+    return {"reason": "category", "category": category}
+
+
+def domain_blocked_at(name: object, web_filter: dict[str, Any], when: datetime,
+                      categories: dict[str, list[int]] | None = None) -> bool:
+    """Decision at an aware instant; see block_reason."""
+    return block_reason(name, web_filter, when, categories) is not None
 
 
 def hosts_names_at(web_filter: dict[str, Any], when: datetime) -> list[str]:

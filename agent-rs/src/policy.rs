@@ -528,6 +528,23 @@ struct Window {
     to: u16,
 }
 
+/// Why a name is blocked, for the block log and the block page.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockReason {
+    Rule,
+    Category(String),
+}
+
+impl BlockReason {
+    /// Same shape as `block_reason` in agent/policy.py.
+    pub fn to_json(&self) -> Value {
+        match self {
+            BlockReason::Rule => serde_json::json!({"reason": "rule"}),
+            BlockReason::Category(id) => serde_json::json!({"reason": "category", "category": id}),
+        }
+    }
+}
+
 /// Validated web filter: unscheduled rules, scheduled windows in the policy timezone and SafeSearch.
 #[derive(Debug, Clone, Default)]
 pub struct WebFilter {
@@ -643,12 +660,25 @@ impl WebFilter {
         when: jiff::Timestamp,
         lookup: &dyn crate::categories::CategoryLookup,
     ) -> bool {
+        self.block_reason_at(name, when, lookup).is_some()
+    }
+
+    /// A rule, else the first active category containing the name; None when it is not blocked.
+    pub fn block_reason_at(
+        &self,
+        name: &str,
+        when: jiff::Timestamp,
+        lookup: &dyn crate::categories::CategoryLookup,
+    ) -> Option<BlockReason> {
         if self.rules_at(when).blocks(name) {
-            return true;
+            return Some(BlockReason::Rule);
         }
-        let Ok(domain) = normalize_domain(name) else { return false };
-        self.active_categories(when).iter().any(|category| lookup.contains(category, &domain))
-            && !self.allowed.iter().any(|rule| rule_matches(rule, &domain))
+        let domain = normalize_domain(name).ok()?;
+        let category = self.active_categories(when).into_iter().find(|category| lookup.contains(category, &domain))?;
+        if self.allowed.iter().any(|rule| rule_matches(rule, &domain)) {
+            return None;
+        }
+        Some(BlockReason::Category(category))
     }
 
     pub fn has_schedule(&self) -> bool {

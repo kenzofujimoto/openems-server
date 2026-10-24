@@ -948,6 +948,9 @@
     },
     "decisions": {
       "web_filter": {
+        "blocked": [
+          "steamcommunity.com"
+        ],
         "blocked_categories": [
           "games"
         ],
@@ -981,37 +984,52 @@
         {
           "name": "api.steampowered.com",
           "when": "2026-10-26T19:00:00",
-          "result": true
+          "result": true,
+          "reason": {
+            "reason": "category",
+            "category": "games"
+          }
         },
         {
           "name": "store.steampowered.com",
           "when": "2026-10-26T19:00:00",
-          "result": false
+          "result": false,
+          "reason": null
         },
         {
           "name": "steamcommunity.com",
           "when": "2026-10-25T03:00:00",
-          "result": true
+          "result": true,
+          "reason": {
+            "reason": "rule"
+          }
         },
         {
           "name": "notsteampowered.com",
           "when": "2026-10-26T19:00:00",
-          "result": false
+          "result": false,
+          "reason": null
         },
         {
           "name": "www.facebook.com",
           "when": "2026-10-26T12:00:00",
-          "result": true
+          "result": true,
+          "reason": {
+            "reason": "category",
+            "category": "social"
+          }
         },
         {
           "name": "www.facebook.com",
           "when": "2026-10-26T19:00:00",
-          "result": false
+          "result": false,
+          "reason": null
         },
         {
           "name": "example.org",
           "when": "2026-10-26T12:00:00",
-          "result": false
+          "result": false,
+          "reason": null
         }
       ]
     }
@@ -1246,6 +1264,9 @@
     {
       "input": {
         "web_filter": {
+          "blocked": [
+            "steamcommunity.com"
+          ],
           "blocked_categories": [
             "games"
           ],
@@ -1269,6 +1290,9 @@
       },
       "normalized": {
         "web_filter": {
+          "blocked": [
+            "steamcommunity.com"
+          ],
           "blocked_categories": [
             "games"
           ],
@@ -1287,8 +1311,7 @@
               "from": "08:00",
               "to": "18:00"
             }
-          ],
-          "blocked": []
+          ]
         }
       }
     },

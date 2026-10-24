@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "agent"))
 from categories import build_category_file, parse_category_file
 from policy import (
     CATEGORIES,
+    block_reason,
     GOOGLE_DOMAINS,
     domain_blocked,
     domain_blocked_at,
@@ -101,7 +102,8 @@ SAFE_SEARCH_CASES = [
 
 CATEGORY_FILE_DOMAINS = ["b.example", "a.example", "A.example", "not a domain", "*.bad", "steampowered.com"]
 CATEGORY_SETS = {"games": ["steampowered.com", "steamcommunity.com"], "social": ["facebook.com"]}
-CATEGORY_FILTER = {"blocked_categories": ["games"], "allowed": ["store.steampowered.com"], "timezone": "UTC",
+CATEGORY_FILTER = {"blocked": ["steamcommunity.com"], "blocked_categories": ["games"], "allowed": ["store.steampowered.com"],
+                   "timezone": "UTC",
                    "scheduled": [{"blocked_categories": ["social"], "days": ["mon"], "from": "08:00", "to": "18:00"}]}
 CATEGORY_CASES = [
     ("api.steampowered.com", "2026-10-26T19:00:00"), ("store.steampowered.com", "2026-10-26T19:00:00"),
@@ -164,8 +166,10 @@ def _categories() -> dict[str, Any]:
                  "hashes": [f"{value:016x}" for value in parse_category_file(data)]},
         "decisions": {
             "web_filter": CATEGORY_FILTER, "sets": CATEGORY_SETS,
-            "cases": [{"name": name, "when": when, "result": domain_blocked_at(
-                name, web_filter, datetime.fromisoformat(when).replace(tzinfo=UTC), sets)} for name, when in CATEGORY_CASES],
+            "cases": [{"name": name, "when": when,
+                       "result": domain_blocked_at(name, web_filter, datetime.fromisoformat(when).replace(tzinfo=UTC), sets),
+                       "reason": block_reason(name, web_filter, datetime.fromisoformat(when).replace(tzinfo=UTC), sets)}
+                      for name, when in CATEGORY_CASES],
         },
     }
 
