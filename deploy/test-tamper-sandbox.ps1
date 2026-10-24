@@ -74,7 +74,8 @@ function Test-Permissions([string]$Work) {
     Set-Content -LiteralPath (Join-Path $probe 'probe.cmd') -Value $commands -Encoding ASCII
     New-LocalUser -Name $name -Password $secret -AccountNeverExpires -Description 'openems acceptance standard user' | Out-Null
     try {
-        Add-LocalGroupMember -Group 'Users' -Member $name
+        # BUILTIN\Users by its well-known SID: the name is localized (Usuários on Portuguese Windows).
+        Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $name
         $credential = New-Object Management.Automation.PSCredential(($env:COMPUTERNAME + '\' + $name), $secret)
         Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\cmd.exe') -ArgumentList @('/c', ('"' + (Join-Path $probe 'probe.cmd') + '"')) `
             -Credential $credential -WorkingDirectory $probe -WindowStyle Hidden -Wait
@@ -233,9 +234,19 @@ function Test-Task {
     & (Join-Path $env:SystemRoot 'System32\schtasks.exe') '/Query' '/TN' $taskName 2>$null | Out-Null
     return ($LASTEXITCODE -eq 0)
 }
+# Restart actions from the SERVICE_FAILURE_ACTIONS blob in the registry; sc.exe output is localized.
 function Test-Recovery {
-    $text = (& (Join-Path $env:SystemRoot 'System32\sc.exe') qfailure openems-agent) -join "`n"
-    return ([regex]::Matches($text, 'RESTART').Count -ge 3)
+    $value = (Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\openems-agent' -Name FailureActions -ErrorAction SilentlyContinue)
+    if ($null -eq $value) { return $false }
+    [byte[]]$blob = $value.FailureActions
+    if ($blob.Length -lt 20) { return $false }
+    $count = [BitConverter]::ToUInt32($blob, 12)
+    $restarts = 0
+    for ($index = 0; $index -lt $count -and 20 + 8 * $index + 8 -le $blob.Length; $index++) {
+        # SC_ACTION { Type, Delay }; SC_ACTION_RESTART is 1.
+        if ([BitConverter]::ToUInt32($blob, 20 + 8 * $index) -eq 1) { $restarts++ }
+    }
+    return ($restarts -ge 3)
 }
 function Get-ReportedKinds {
     $log = Join-Path $work 'tamper.log'
