@@ -1,7 +1,7 @@
 //! Tamper protection (phase 5a): service permissions, watchdog decisions, repairs and tamper events.
 
 use openems_agent::hardening::{
-    Check, SERVICE_SDDL, ServiceSnapshot, WatchdogAction, Watchdog, begin_run, end_run, watchdog_actions,
+    Check, SERVICE_SDDL, ServiceSnapshot, Watchdog, WatchdogAction, begin_run, end_run, watchdog_actions,
 };
 use openems_agent::tamper::{TamperKind, TamperLog};
 use serde_json::json;
@@ -57,9 +57,10 @@ fn the_scheduled_watchdog_restores_a_disabled_or_stopped_service() {
         watchdog_actions(Some(ServiceSnapshot { automatic: false, running: false }), false),
         vec![WatchdogAction::MakeAutomatic, WatchdogAction::Start]
     );
-    assert_eq!(watchdog_actions(Some(ServiceSnapshot { automatic: true, running: false }), false), vec![
-        WatchdogAction::Start
-    ]);
+    assert_eq!(
+        watchdog_actions(Some(ServiceSnapshot { automatic: true, running: false }), false),
+        vec![WatchdogAction::Start]
+    );
     // Windows Installer is working (install, upgrade or removal): never interfere.
     assert!(watchdog_actions(Some(ServiceSnapshot { automatic: false, running: false }), true).is_empty());
     // Not installed: nothing to protect.
@@ -148,16 +149,19 @@ fn tamper_events_are_deduplicated_per_kind_and_bounded() {
 #[test]
 fn every_kind_has_the_wire_name_the_server_accepts() {
     let names: Vec<&str> = TamperKind::ALL.iter().map(|kind| kind.name()).collect();
-    assert_eq!(names, vec![
-        "dns_rule_restored",
-        "wfp_restored",
-        "browser_policy_restored",
-        "hosts_restored",
-        "service_config_restored",
-        "watchdog_restored",
-        "service_started_by_watchdog",
-        "unexpected_exit",
-    ]);
+    assert_eq!(
+        names,
+        vec![
+            "dns_rule_restored",
+            "wfp_restored",
+            "browser_policy_restored",
+            "hosts_restored",
+            "service_config_restored",
+            "watchdog_restored",
+            "service_started_by_watchdog",
+            "unexpected_exit",
+        ]
+    );
 }
 
 #[test]

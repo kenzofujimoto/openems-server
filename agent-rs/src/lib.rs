@@ -13,6 +13,7 @@ pub mod doh;
 pub mod error;
 pub mod events;
 pub mod fsutil;
+pub mod hardening;
 pub mod hosts;
 pub mod https_blockpage;
 pub mod installer;
@@ -25,5 +26,6 @@ pub mod runtime;
 #[cfg(windows)]
 pub mod service;
 pub mod state;
+pub mod tamper;
 pub mod trust;
 pub mod wfp;
