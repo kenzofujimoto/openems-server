@@ -22,11 +22,11 @@ def ut1(tmp_path: Path) -> Path:
     return source
 
 
-def start_agent(native: Path, origin: str, tmp_path: Path, port: int) -> subprocess.Popen:
+def start_agent(native: Path, origin: str, tmp_path: Path, port: int, interval: int = 1) -> subprocess.Popen:
     environment = {key: value for key, value in os.environ.items() if not key.startswith("OPENEMS_")}
     environment["OPENEMS_INVITATION"] = INVITATION
     return subprocess.Popen(
-        [str(native), "run", "--server", origin, "--devid", "category-pc", "--interval", "1", "--dns-filter",
+        [str(native), "run", "--server", origin, "--devid", "category-pc", "--interval", str(interval), "--dns-filter",
          "--dns-port", str(port), "--hosts-file", str(tmp_path / "hosts"), "--state-path", str(tmp_path / "state.json")],
         stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=environment,
     )
@@ -113,3 +113,21 @@ def test_agent_rejects_a_category_file_that_does_not_match_its_digest(native, tm
             assert not list((tmp_path / "categories").glob("games-*.bin"))
         finally:
             stop(agent)
+
+
+def test_new_policy_is_applied_and_persisted_without_waiting_for_the_next_cycle(native, tmp_path):
+    # A restart soon after a policy arrives must not lose it, even with a long enforcement interval.
+    categories = tmp_path / "published"
+    build_categories(ut1(tmp_path), categories, now=datetime(2026, 10, 23, tzinfo=UTC))
+    port = free_port()
+    with live_server(category_dir=categories) as (_, origin, client):
+        policy = {"web_filter": {"blocked_categories": ["games"]}}
+        assert client.post("/api/v1/profiles/Default", json=policy).status_code == 200
+        agent = start_agent(native, origin, tmp_path, port, interval=30)
+        state = tmp_path / "state.json"
+        try:
+            if not wait_for(lambda: state.exists() and "blocked_categories" in state.read_text(encoding="utf-8"), 10):
+                raise AssertionError("policy was not persisted promptly:\n" + stop(agent))
+        finally:
+            if agent.poll() is None:
+                stop(agent)
