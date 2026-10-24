@@ -157,6 +157,11 @@ fn category_taxonomy_hashes_and_files_match_python() {
     let vectors = vectors();
     let categories = &vectors["categories"];
     assert_eq!(openems_agent::policy::CATEGORY_IDS.to_vec(), strings(&categories["taxonomy"]));
+    // Labels shown on the block page, offline.
+    for (id, label) in categories["labels"].as_object().unwrap() {
+        assert_eq!(openems_agent::policy::category_label(id), label.as_str(), "{id}");
+    }
+    assert_eq!(openems_agent::policy::category_label("altavista"), None);
     for case in categories["hashes"].as_array().unwrap() {
         let expected = u64::from_str_radix(case["hash"].as_str().unwrap(), 16).unwrap();
         assert_eq!(domain_hash(case["domain"].as_str().unwrap()), Some(expected), "{case}");

@@ -923,6 +923,29 @@
       "press",
       "ads"
     ],
+    "labels": {
+      "adult": "Conteúdo adulto",
+      "dating": "Relacionamentos",
+      "gambling": "Jogos de azar",
+      "malware": "Malware",
+      "phishing": "Phishing",
+      "hacking": "Hacking",
+      "proxy": "VPN e proxies",
+      "drugs": "Drogas",
+      "violence": "Violência e ódio",
+      "weapons": "Materiais perigosos",
+      "warez": "Pirataria",
+      "games": "Jogos",
+      "streaming": "Áudio e vídeo",
+      "filehosting": "Armazenamento e download de arquivos",
+      "social": "Redes sociais",
+      "chat": "Chat e mensageiros",
+      "webmail": "Webmail",
+      "shopping": "Compras",
+      "sports": "Esportes",
+      "press": "Notícias",
+      "ads": "Publicidade"
+    },
     "hashes": [
       {
         "domain": "steampowered.com",

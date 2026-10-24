@@ -161,6 +161,7 @@ def _categories() -> dict[str, Any]:
     sets = {category: parse_category_file(build_category_file(domains)) for category, domains in CATEGORY_SETS.items()}
     return {
         "taxonomy": list(CATEGORIES),
+        "labels": {category: entry["label"] for category, entry in CATEGORIES.items()},
         "hashes": [{"domain": domain, "hash": f"{domain_hash(domain):016x}"} for domain in ("steampowered.com", "Example.COM", "bücher.de")],
         "file": {"hex": data.hex(), "sha256": hashlib.sha256(data).hexdigest(),
                  "hashes": [f"{value:016x}" for value in parse_category_file(data)]},
