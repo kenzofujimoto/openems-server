@@ -1,0 +1,45 @@
+{
+  "environment": "Windows Sandbox with networking enabled, run as SYSTEM, Edge confirmed by the operator",
+  "date": "2026-10-24",
+  "scope": "F2 slice 4b: block log uploaded by the agent with its category, and the category name on the block page, on top of the slice 4a category checks",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-categories-sandbox.ps1 at 9efa381",
+  "package": {
+    "build": "tools/build-msi-fixtures.ps1 -Production (no defines), WiX 5.0.2, version 0.3.0, agent and installer source at 260766a",
+    "openems-agent.msi": "723f990d486ad16cca3b444672f356ba37caf2a5c1356b8bb2d91d210de5f5b8",
+    "properties": ["SERVER=http://127.0.0.1:18013", "BLOCKPAGEHTTPS=1", "DNSFILTER=1"],
+    "fault_injection_actions": "absent (CustomAction table checked inside Sandbox before install)"
+  },
+  "categories": {
+    "build": "app/categories.py build_categories from a two-domain UT1-shaped games list (steampowered.com, steamcommunity.com)",
+    "games": "0033b3a0a6f68dff9d29cc49a369d5c5594c75e81c657883e2240b5151028490"
+  },
+  "checks": [
+    "production install downloads the games category and blocks it through system DNS",
+    "allowed exception and unlisted names resolve upstream",
+    "blocked answers reach the server block log with their category",
+    "the category is cached in the protected data directory with its published digest",
+    "with the backend offline, a service restart keeps blocking from the cache",
+    "Edge shows the block page naming the Jogos category for steamcommunity.com, confirmed by the operator",
+    "removal restores NRPT rules, trust and hosts"
+  ],
+  "operator_observation": "Edge showed the RSM block page for https://steamcommunity.com/ with \"Categoria: Jogos\" and no certificate warning",
+  "durations": ["/i openems-agent.msi: 122 s", "/x openems-agent.msi: 10 s"],
+  "unrelated_roots_added": [],
+  "error": null,
+  "cleanup_errors": [],
+  "notes": [
+    "The simulated backend recorded the agent's uploads; the check required an hourly row for api.steampowered.com with reason category and category games, and no row for the allowed store.steampowered.com or the unlisted example.org",
+    "The simulated backend does not implement the server's validation and retention; those are covered by tests/test_block_events.py against the real application"
+  ],
+  "not_validated": [
+    "Real management server, PostgreSQL migration 002_block_events.sql and the panel against real data",
+    "Docker image build and the opt-in compose categories job with a real UT1 download",
+    "UT1 license confirmation at the official source",
+    "LGPD review of the block log by the RSM legal team or DPO before production",
+    "Physical endpoint, Chrome and Firefox",
+    "Linux build of the native agent (CI), not compiled locally",
+    "Code signing"
+  ]
+}
