@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.categories import build_categories
+from app.events import InMemoryEventStore
 from tests.test_agent_integration import live_server
 from tests.test_native_agent import INVITATION
 from tests.test_native_dns_cli import dns_query, free_port
@@ -131,3 +132,30 @@ def test_new_policy_is_applied_and_persisted_without_waiting_for_the_next_cycle(
         finally:
             if agent.poll() is None:
                 stop(agent)
+
+
+def test_blocked_answers_reach_the_server_block_log(native, tmp_path):
+    categories = tmp_path / "published"
+    build_categories(ut1(tmp_path), categories, now=datetime(2026, 10, 23, tzinfo=UTC))
+    port = free_port()
+    store = InMemoryEventStore()
+    with live_server(category_dir=categories, event_store=store) as (_, origin, client):
+        policy = {"web_filter": {"blocked": ["example.com"], "blocked_categories": ["games"]}}
+        assert client.post("/api/v1/profiles/Default", json=policy).status_code == 200
+        agent = start_agent(native, origin, tmp_path, port)
+        try:
+            if not wait_for(lambda: blocked(port, "api.steampowered.com"), 30):
+                raise AssertionError("category did not reach DNS answers:\n" + stop(agent))
+            assert blocked(port, "www.example.com")
+            assert not blocked(port, "example.org")
+
+            def reported():
+                return {(event.domain, event.reason, event.category) for event in store.recent(50)}
+
+            expected = {("api.steampowered.com", "category", "games"), ("www.example.com", "rule", "")}
+            if not wait_for(lambda: expected <= reported(), 15):
+                raise AssertionError(f"block log did not reach the server: {reported()}\n" + stop(agent))
+            assert all(event.devid == "category-pc" for event in store.recent(50))
+            assert "example.org" not in {event.domain for event in store.recent(50)}
+        finally:
+            stop(agent)

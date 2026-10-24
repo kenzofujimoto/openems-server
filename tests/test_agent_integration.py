@@ -15,11 +15,11 @@ from app.service import EmsService
 
 
 @contextmanager
-def live_server(category_dir=None):
+def live_server(category_dir=None, event_store=None):
     service = EmsService(valid_invitations={"e2e-invitation"})
     admins = AdminService()
     admins.add_admin("operator", "e2e-test-password")
-    application = create_app(service, admin_service=admins, category_dir=category_dir)
+    application = create_app(service, admin_service=admins, category_dir=category_dir, event_store=event_store)
     listener = socket.socket()
     listener.bind(("127.0.0.1", 0))
     origin = f"http://127.0.0.1:{listener.getsockname()[1]}"
