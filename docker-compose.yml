@@ -28,6 +28,23 @@ services:
       - redisdata:/data
     restart: unless-stopped
 
+  categories:
+    # Daily UT1 refresh, opt-in with "docker compose --profile categories up" until the list
+    # address and its CC BY-SA 4.0 terms are confirmed at the official source. No default URL.
+    build: .
+    profiles: ["categories"]
+    command: ["python", "tools/update_categories.py", "--url", "${OPENEMS_UT1_URL:-}", "--every-hours", "24", "/var/lib/openems/categories"]
+    volumes:
+      - categories:/var/lib/openems/categories
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
   server:
     build: .
     depends_on:
@@ -44,6 +61,10 @@ services:
       OPENEMS_ENROLLMENT_VDOM: ${OPENEMS_ENROLLMENT_VDOM:-Default}
       OPENEMS_ENROLLMENT_USES: ${OPENEMS_ENROLLMENT_USES:-1}
       OPENEMS_BASE_URL: ${OPENEMS_BASE_URL:?Set public HTTPS base URL}
+      OPENEMS_CATEGORIES_DIR: /var/lib/openems/categories
+      OPENEMS_EVENT_RETENTION_DAYS: ${OPENEMS_EVENT_RETENTION_DAYS:-30}
+    volumes:
+      - categories:/var/lib/openems/categories:ro
     ports:
       - "127.0.0.1:8013:8013"
     read_only: true
@@ -58,3 +79,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  categories:

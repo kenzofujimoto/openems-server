@@ -15,9 +15,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY --from=panel /app/panel_dist ./app/panel_dist
-# Shared stdlib policy validation must be identical on server and endpoint.
+# Shared stdlib policy validation and category files must be identical on server and endpoint.
 COPY agent/policy.py ./agent/policy.py
-RUN useradd --system --uid 10001 --no-create-home openems
+COPY agent/categories.py ./agent/categories.py
+COPY tools/update_categories.py ./tools/update_categories.py
+# A new named volume copies this owner, so the daily job can publish as the unprivileged user.
+RUN useradd --system --uid 10001 --no-create-home openems \
+    && mkdir -p /var/lib/openems/categories && chown 10001:10001 /var/lib/openems/categories
 USER 10001:10001
 EXPOSE 8013
 CMD ["uvicorn", "--factory", "app.api:build", "--host", "0.0.0.0", "--port", "8013", "--no-access-log"]

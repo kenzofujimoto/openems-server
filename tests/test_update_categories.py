@@ -10,7 +10,12 @@ from pathlib import Path
 
 import pytest
 
-from tools.update_categories import extract_lists, fetch_archive, run_periodically, update
+from tools.update_categories import (
+    extract_lists,
+    fetch_archive,
+    run_periodically,
+    update,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -82,7 +87,8 @@ def test_periodic_job_survives_failures():
 
 def test_cli_refuses_a_plain_http_url(tmp_path):
     result = subprocess.run([sys.executable, str(ROOT / "tools" / "update_categories.py"), "--url",
-                             "http://example.org/b.tar.gz", str(tmp_path / "out")], capture_output=True, text=True)
+                             "http://example.org/b.tar.gz", str(tmp_path / "out")],
+                            capture_output=True, text=True, check=False)
     assert result.returncode != 0 and "https" in result.stderr
 
 
@@ -95,7 +101,9 @@ def test_image_and_compose_ship_the_daily_job():
     compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     job = compose.split("\n  categories:\n", 1)[1].split("\n  server:\n", 1)[0]
     assert 'profiles: ["categories"]' in job, "opt-in until the UT1 address and license are confirmed"
-    assert "${OPENEMS_UT1_URL:?" in job and "--every-hours" in job and "read_only: true" in job
+    # Compose interpolates every service, profiles included: an empty default keeps "up" working
+    # without the job, and the tool itself refuses an empty or non-HTTPS URL.
+    assert '"${OPENEMS_UT1_URL:-}"' in job and "--every-hours" in job and "read_only: true" in job
     assert "categories:/var/lib/openems/categories\n" in job
     server = compose.split("\n  server:\n", 1)[1]
     assert "OPENEMS_CATEGORIES_DIR: /var/lib/openems/categories" in server
