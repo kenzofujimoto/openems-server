@@ -47,6 +47,18 @@ class EventsPayload(ClientPayload):
     dropped: int = Field(default=0, ge=0, le=10_000_000)
 
 
+class TamperRowPayload(InputModel):
+    at: str = Field(min_length=1, max_length=40)
+    kind: Literal["dns_rule_restored", "wfp_restored", "browser_policy_restored", "hosts_restored",
+                  "service_config_restored", "watchdog_restored", "service_started_by_watchdog", "unexpected_exit"]
+    detail: str = Field(min_length=1, max_length=200)
+
+
+class TamperPayload(ClientPayload):
+    events: list[TamperRowPayload] = Field(default_factory=list, max_length=200)
+    dropped: int = Field(default=0, ge=0, le=1_000_000)
+
+
 class AckPayload(ClientPayload):
     vdom: str | None = Field(default=None, min_length=1, max_length=128)
     version: int = Field(ge=0)

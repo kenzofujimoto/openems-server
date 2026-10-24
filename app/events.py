@@ -16,6 +16,9 @@ from typing import Any, Protocol, runtime_checkable
 from agent.policy import CATEGORIES, normalize_domain
 
 REASONS = ("rule", "category", "doh")
+# Protections an agent found altered and restored (tamper-protection.md, decision 4).
+TAMPER_KINDS = ("dns_rule_restored", "wfp_restored", "browser_policy_restored", "hosts_restored",
+                "service_config_restored", "watchdog_restored", "service_started_by_watchdog", "unexpected_exit")
 DEFAULT_RETENTION_DAYS = 30
 # Agent clocks may run slightly ahead; anything later is refused.
 FUTURE_TOLERANCE = timedelta(hours=1)
@@ -29,6 +32,14 @@ class BlockEvent:
     reason: str            # rule | category | doh | dropped
     category: str          # empty unless reason == "category"
     count: int
+
+
+@dataclass(frozen=True, slots=True)
+class TamperEvent:
+    devid: str
+    at: datetime
+    kind: str              # one of TAMPER_KINDS, or "dropped"
+    detail: str
 
 
 def current_hour(now: datetime | None = None) -> datetime:
@@ -62,6 +73,20 @@ def parse_row(devid: str, row: Any, *, now: datetime, retention_days: int) -> Bl
     return BlockEvent(devid=devid, hour=hour, domain=domain, reason=row.reason, category=category, count=row.count)
 
 
+def parse_tamper(devid: str, row: Any, *, now: datetime, retention_days: int) -> TamperEvent | None:
+    """One uploaded tamper row as a stored event, or None when it must be skipped."""
+    try:
+        at = datetime.fromisoformat(row.at)
+    except ValueError:
+        return None
+    if at.tzinfo is None:
+        return None
+    at = at.astimezone(UTC)
+    if not now - timedelta(days=retention_days) <= at <= now + FUTURE_TOLERANCE:
+        return None
+    return TamperEvent(devid=devid, at=at, kind=row.kind, detail=row.detail)
+
+
 @runtime_checkable
 class EventStore(Protocol):
     def add(self, events: list[BlockEvent]) -> None: ...          # counts sum per (devid, hour, domain, reason, category)
@@ -69,6 +94,9 @@ class EventStore(Protocol):
     def recent(self, limit: int) -> list[BlockEvent]: ...         # newest hour first, then highest count
     def daily_totals(self, since: datetime) -> dict[date, int]: ...   # UTC days, dropped rows included
     def top_domains(self, since: datetime, limit: int) -> list[tuple[str, int]]: ...
+    def add_tamper(self, events: list[TamperEvent]) -> None: ...
+    def purge_tamper(self, before: datetime) -> int: ...
+    def recent_tamper(self, limit: int) -> list[TamperEvent]: ...    # newest first
 
 
 def _key(event: BlockEvent) -> tuple[str, datetime, str, str, str]:
@@ -78,7 +106,22 @@ def _key(event: BlockEvent) -> tuple[str, datetime, str, str, str]:
 class InMemoryEventStore:
     def __init__(self) -> None:
         self._counts: dict[tuple[str, datetime, str, str, str], int] = {}
+        self._tamper: list[TamperEvent] = []
         self._lock = threading.Lock()
+
+    def add_tamper(self, events: list[TamperEvent]) -> None:
+        with self._lock:
+            self._tamper.extend(events)
+
+    def purge_tamper(self, before: datetime) -> int:
+        with self._lock:
+            kept = [event for event in self._tamper if event.at >= before]
+            removed, self._tamper = len(self._tamper) - len(kept), kept
+            return removed
+
+    def recent_tamper(self, limit: int) -> list[TamperEvent]:
+        with self._lock:
+            return sorted(self._tamper, key=lambda event: event.at, reverse=True)[:limit]
 
     def add(self, events: list[BlockEvent]) -> None:
         with self._lock:
@@ -130,6 +173,17 @@ CREATE TABLE IF NOT EXISTS block_events (
 CREATE INDEX IF NOT EXISTS idx_block_events_hour ON block_events (hour);
 """
 
+TAMPER_SCHEMA = """
+CREATE TABLE IF NOT EXISTS tamper_events (
+    id     BIGSERIAL PRIMARY KEY,
+    devid  TEXT NOT NULL,
+    at     TIMESTAMPTZ NOT NULL,
+    kind   TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_tamper_events_at ON tamper_events (at);
+"""
+
 _COLUMNS = "devid, hour, domain, reason, category, count"
 
 
@@ -142,6 +196,7 @@ class PostgresEventStore:
     def init_schema(self) -> None:
         with self._conn.cursor() as cur:
             cur.execute(EVENTS_SCHEMA)
+            cur.execute(TAMPER_SCHEMA)
 
     def add(self, events: list[BlockEvent]) -> None:
         if not events:
@@ -176,6 +231,23 @@ class PostgresEventStore:
             cur.execute("SELECT domain, sum(count) AS total FROM block_events WHERE hour >= %s AND reason <> 'dropped' "
                         "GROUP BY domain ORDER BY total DESC, domain LIMIT %s", (since, limit))
             return [(row[0], int(row[1])) for row in cur.fetchall()]
+
+    def add_tamper(self, events: list[TamperEvent]) -> None:
+        if not events:
+            return
+        with self._conn.cursor() as cur:
+            cur.executemany("INSERT INTO tamper_events (devid, at, kind, detail) VALUES (%s, %s, %s, %s)",
+                            [(event.devid, event.at, event.kind, event.detail) for event in events])
+
+    def purge_tamper(self, before: datetime) -> int:
+        with self._conn.cursor() as cur:
+            cur.execute("DELETE FROM tamper_events WHERE at < %s", (before,))
+            return cur.rowcount
+
+    def recent_tamper(self, limit: int) -> list[TamperEvent]:
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT devid, at, kind, detail FROM tamper_events ORDER BY at DESC, id DESC LIMIT %s", (limit,))
+            return [TamperEvent(devid=r[0], at=r[1].astimezone(UTC), kind=r[2], detail=r[3]) for r in cur.fetchall()]
 
     def close(self) -> None:
         self._conn.close()

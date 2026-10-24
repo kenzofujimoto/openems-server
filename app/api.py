@@ -26,8 +26,10 @@ from .events import (
     BlockEvent,
     EventStore,
     InMemoryEventStore,
+    TamperEvent,
     current_hour,
     parse_row,
+    parse_tamper,
     validate_retention,
 )
 from .limits import RequestSizeLimitMiddleware
@@ -44,6 +46,7 @@ from .schemas import (
     RegisterPayload,
     RulePayload,
     TagsPayload,
+    TamperPayload,
     profile_response,
 )
 from .service import (
@@ -134,6 +137,12 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'reason': event.reason, 'category': category,
             'category_label': CATEGORIES[category]['label'] if category in CATEGORIES else None, 'count': event.count,
         }
+
+    def tamper_view(event: TamperEvent) -> dict[str, Any]:
+        identity = f'tamper|{event.devid}|{event.at.isoformat()}|{event.kind}'
+        return {'id': hashlib.sha256(identity.encode('utf-8')).hexdigest()[:16], 'at': event.at.isoformat(),
+                'devid': event.devid, 'kind': 'tamper', 'detail': event.detail, 'reason': event.kind,
+                'category': None, 'category_label': None}
 
     def endpoint_view(endpoint: Endpoint) -> dict[str, Any]:
         assigned = svc.effective_vdom(endpoint)
@@ -303,6 +312,20 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             events.add(accepted)
         return {'accepted': len(accepted), 'rejected': len(payload.events) - len(accepted)}
 
+    @app.post('/fct/api/public/v1/tamper/')
+    def report_tamper(payload: TamperPayload):
+        devid = svc.get_endpoint_by_client_id(payload.client_id).devid
+        now = datetime.now(UTC)
+        events.purge_tamper(now - timedelta(days=retention_days))
+        accepted = [event for row in payload.events
+                    if (event := parse_tamper(devid, row, now=now, retention_days=retention_days)) is not None]
+        if payload.dropped:
+            accepted.append(TamperEvent(devid=devid, at=now.replace(microsecond=0), kind='dropped',
+                                        detail=f'{payload.dropped} tamper events not recorded by the agent limit'))
+        events.add_tamper(accepted)
+        return {'accepted': len(accepted) - (1 if payload.dropped else 0),
+                'rejected': len(payload.events) - len(accepted) + (1 if payload.dropped else 0)}
+
     @app.post('/fct/api/public/v1/host_tags/')
     def report_host_tags(payload: TagsPayload):
         endpoint = svc.ingest_host_tags(payload.client_id, payload.tags)
@@ -424,7 +447,10 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     @app.get('/api/v1/events')
     def list_events(request: Request, limit: int = Query(default=50, ge=1, le=500)):
         record_view(request)
-        return [event_view(event) for event in events.recent(limit)]
+        rows = [(event.hour, event_view(event)) for event in events.recent(limit)]
+        rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(limit)]
+        rows.sort(key=lambda row: row[0], reverse=True)
+        return [view for _, view in rows[:limit]]
 
     @app.get('/api/v1/stats/overview')
     def overview(request: Request):
