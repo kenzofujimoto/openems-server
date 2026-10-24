@@ -53,5 +53,7 @@ def test_harness_serves_published_files_and_proves_offline_use():
     assert "'categories'" in text and 'manifest.json' in text
     assert 'Restart-Service' in text and 'Stop-Backend' in text
     assert 'Host DNS already filters' in text
+    # A freshly opened Sandbox may still be bringing its network up: retry before blaming the host.
+    assert 'Wait-Until { Test-Upstream $name } 60' in text
     assert 'Assert-ProductionPackage ([string](Join-Path' in text
     assert "'CreateNew'" in text and 'already started in this Sandbox' in text
