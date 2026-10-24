@@ -77,6 +77,8 @@ def test_overview_sums_seven_days_and_compares_with_the_week_before():
     # The server keeps no history of machine status: only blocks can be compared.
     assert overview["previous_period"] == {"blocks": 9}
     assert datetime.fromisoformat(overview["generated_at"]).tzinfo is not None
+    # The panel states how long the block log is kept next to the events.
+    assert overview["retention_days"] == 30
 
 
 def test_viewers_can_read_the_block_log_and_each_view_is_audited_once_per_hour():
