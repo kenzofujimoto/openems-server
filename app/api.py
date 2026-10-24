@@ -440,6 +440,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'top_domains': [{'domain': domain, 'count': count} for domain, count in events.top_domains(start, 5)],
             # No history of machine status is kept, so only blocks can be compared.
             'previous_period': {'blocks': previous},
+            'retention_days': retention_days,
         }
 
     @app.get('/api/v1/categories')
