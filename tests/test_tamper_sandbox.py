@@ -61,6 +61,10 @@ def test_harness_checks_permissions_from_unprivileged_and_administrator_sessions
     # sc.exe output is localized too: recovery actions are read from the registry, not parsed text.
     assert 'FailureActions' in text and 'qfailure' not in text
     assert '-Credential' in text
+    # The probe folder inherits read-only access for users: the test user needs to write its results.
+    assert 'FileSystemAccessRule' in text and "'Modify'" in text
+    # Missing answers are reported by name instead of failing on the absent property.
+    assert 'did not run' in text and '$result.permissions' in text
     for probe in ("'stop'", "'config'", "'delete'", 'agent.json', 'Program Files\\openems'):
         assert probe in text, probe
     assert 'Get-ServiceAces' in text and 'sdshow' in text
