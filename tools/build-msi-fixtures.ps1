@@ -1,19 +1,26 @@
-param([string]$OutputDirectory, [string]$Wix = 'wix', [string]$AgentExe, [switch]$Production, [switch]$Plan)
+param([string]$OutputDirectory, [string]$Wix = 'wix', [string]$AgentExe, [switch]$Production, [switch]$Next, [switch]$Plan)
 # Builds the MSIs consumed by the Sandbox harnesses. Fault-injection fixtures must never ship;
-# -Production builds the package without any test-only define.
+# -Production builds the package without any test-only define. -Production -Next builds the same
+# agent as a later version, so harnesses can upgrade from the current production package.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if ($Production) {
-    $versions = @('0.3.0')
+if ($Production -and $Next) {
+    $versions = @('0.4.1')
+    $fixtures = @('openems-agent-next.msi')
+    $defines = @()
+} elseif ($Production) {
+    $versions = @('0.4.0')
     $fixtures = @('openems-agent.msi')
     $defines = @()
+} elseif ($Next) {
+    throw '-Next requires -Production.'
 } else {
     $versions = @('0.2.0', '0.2.1', '0.2.2')
     $fixtures = @($versions | ForEach-Object { "openems-agent-$_.msi" })
     $defines = @('FaultInjection=1')
 }
 if ($Plan) {
-    @{ fixtures=$fixtures; defines=$defines } | ConvertTo-Json -Depth 3
+    @{ fixtures=$fixtures; defines=$defines; versions=$versions } | ConvertTo-Json -Depth 3
     exit 0
 }
 if (-not $OutputDirectory) { throw 'Pass -OutputDirectory for the Sandbox input folder.' }
