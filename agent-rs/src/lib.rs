@@ -11,6 +11,7 @@ pub mod config;
 pub mod dns;
 pub mod doh;
 pub mod error;
+pub mod events;
 pub mod fsutil;
 pub mod hosts;
 pub mod https_blockpage;

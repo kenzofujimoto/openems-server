@@ -194,10 +194,14 @@ pub fn decide(bytes: &[u8], blocked: &BlockedDomains, redirect: bool) -> Decisio
         return encode(reply(&request, ResponseCode::FormErr));
     };
     let name = question.name().to_ascii().trim_end_matches('.').to_ascii_lowercase();
-    if name == DOH_CANARY || blocked.blocks_doh(&name) {
+    if name == DOH_CANARY {
         return encode(reply(&request, ResponseCode::NXDomain));
     }
-    if !blocked.contains(&name) {
+    if blocked.blocks_doh(&name) {
+        blocked.block_log().record(&name, &crate::events::EventReason::Doh);
+        return encode(reply(&request, ResponseCode::NXDomain));
+    }
+    let Some(reason) = blocked.reason(&name) else {
         // Allowed engines keep SafeSearch: "allowed" means not blocked, not unfiltered.
         return match blocked.safe_search_target(&name) {
             Some(target) if matches!(question.query_type(), RecordType::A | RecordType::AAAA) => {
@@ -206,7 +210,8 @@ pub fn decide(bytes: &[u8], blocked: &BlockedDomains, redirect: bool) -> Decisio
             Some(_) => encode(reply(&request, ResponseCode::NoError)),
             None => Decision::Forward,
         };
-    }
+    };
+    blocked.block_log().record(&name, &reason.into());
     let mut message = reply(&request, ResponseCode::NoError);
     let data = match question.query_type() {
         RecordType::A => Some(RData::A(A(if redirect { Ipv4Addr::LOCALHOST } else { Ipv4Addr::UNSPECIFIED }))),

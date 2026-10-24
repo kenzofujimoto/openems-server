@@ -22,6 +22,7 @@
   h1 { margin:0; color:var(--ink); font-size:28px; font-weight:500; letter-spacing:-0.01em; }
   .host { display:inline-block; margin:16px 0 20px; padding:8px 14px; border-radius:10px; background:var(--canvas);
     border:1px solid var(--line); color:var(--blue-dark); font:15px/1.4 Consolas,"Courier New",monospace; word-break:break-all; }
+  .category { margin:-8px 0 20px; color:var(--ink); font-weight:500; }
   p { margin:0 auto; max-width:440px; }
   footer { padding:24px; text-align:center; font-size:13px; color:var(--gray); }
   footer strong { color:var(--blue-dark); font-weight:500; }
@@ -40,6 +41,7 @@
       </div>
       <h1>Acesso bloqueado</h1>
       <div class="host">{host}</div>
+      {category}
       <p>Este site foi bloqueado pela pol&iacute;tica de seguran&ccedil;a da sua organiza&ccedil;&atilde;o.
       Se voc&ecirc; acredita que isto &eacute; um engano, fale com o time de TI.</p>
     </div>

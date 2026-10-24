@@ -75,7 +75,7 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
         }
     }
     if config.block_page {
-        match blockpage::start(config.block_page_port, Arc::clone(&stop)) {
+        match blockpage::start(config.block_page_port, Arc::clone(&runtime.blocked_domains), Arc::clone(&stop)) {
             Ok(worker) => workers.push(worker),
             Err(error) => return Err(abort(&stop, workers, error)),
         }

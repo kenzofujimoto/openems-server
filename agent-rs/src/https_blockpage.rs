@@ -21,6 +21,8 @@ pub struct BlockedDomains {
     categories: crate::categories::CategoryStore,
     /// Anti-bypass: public DoH endpoint names get NXDOMAIN from the resolver.
     block_doh: AtomicBool,
+    /// Blocked DNS answers since the last upload.
+    log: crate::events::BlockLog,
 }
 
 impl BlockedDomains {
@@ -35,6 +37,26 @@ impl BlockedDomains {
 
     pub fn contains_at(&self, name: &str, when: jiff::Timestamp) -> bool {
         self.filter.read().unwrap_or_else(|poison| poison.into_inner()).blocks_at_with(name, when, &self.categories)
+    }
+
+    pub fn reason(&self, name: &str) -> Option<crate::policy::BlockReason> {
+        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).block_reason_at(
+            name,
+            jiff::Timestamp::now(),
+            &self.categories,
+        )
+    }
+
+    /// Display name of the category blocking `name`; None for rules and unblocked names.
+    pub fn category_label(&self, name: &str) -> Option<&'static str> {
+        match self.reason(name)? {
+            crate::policy::BlockReason::Category(id) => crate::policy::category_label(&id),
+            crate::policy::BlockReason::Rule => None,
+        }
+    }
+
+    pub fn block_log(&self) -> &crate::events::BlockLog {
+        &self.log
     }
 
     pub fn safe_search_target(&self, name: &str) -> Option<&'static str> {
@@ -158,8 +180,11 @@ fn serve(socket: TcpStream, config: Arc<rustls::ServerConfig>, allowed: &Blocked
         && request.ends_with(b"\r\n\r\n")
         && std::str::from_utf8(&request).ok().and_then(request_host).as_deref() == Some(name)
         && allowed.contains(name);
-    let (status, body) =
-        if valid { ("200 OK", crate::blockpage::render(name)) } else { ("421 Misdirected Request", String::new()) };
+    let (status, body) = if valid {
+        ("200 OK", crate::blockpage::render(name, allowed.category_label(name)))
+    } else {
+        ("421 Misdirected Request", String::new())
+    };
     stream.write_all(format!("HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes())?;
     stream.conn.send_close_notify();
     stream.flush()

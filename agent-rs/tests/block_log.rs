@@ -73,10 +73,13 @@ fn a_failed_upload_is_restored_within_the_limit() {
     let batch = log.take();
     let events = batch.to_json()["events"].clone();
     // a.example merges (1 + 1); b.example no longer fits and its count becomes dropped.
-    assert_eq!(events, json!([
-        {"hour": "2026-10-26T12:00:00Z", "domain": "a.example", "reason": "rule", "count": 2},
-        {"hour": "2026-10-26T12:00:00Z", "domain": "c.example", "reason": "rule", "count": 1},
-    ]));
+    assert_eq!(
+        events,
+        json!([
+            {"hour": "2026-10-26T12:00:00Z", "domain": "a.example", "reason": "rule", "count": 2},
+            {"hour": "2026-10-26T12:00:00Z", "domain": "c.example", "reason": "rule", "count": 1},
+        ])
+    );
     assert_eq!(batch.dropped, 1);
 }
 
@@ -89,7 +92,8 @@ fn query(name: &str, kind: RecordType) -> Vec<u8> {
 
 fn domains() -> BlockedDomains {
     let domains = BlockedDomains::default();
-    let settings = json!({"blocked": ["example.com"], "blocked_categories": ["games"], "allowed": ["store.steampowered.com"]});
+    let settings =
+        json!({"blocked": ["example.com"], "blocked_categories": ["games"], "allowed": ["store.steampowered.com"]});
     domains.replace(WebFilter::from_settings(&settings).unwrap());
     domains.categories().insert("games", CategorySet::from_domains(&["steampowered.com".to_owned()]));
     domains.set_doh_blocking(true);
@@ -100,10 +104,16 @@ fn domains() -> BlockedDomains {
 fn the_resolver_logs_blocked_answers_with_their_reason() {
     let domains = domains();
     assert!(matches!(dns::decide(&query("www.example.com.", RecordType::A), &domains, false), Decision::Answer(_)));
-    assert!(matches!(dns::decide(&query("api.steampowered.com.", RecordType::AAAA), &domains, false), Decision::Answer(_)));
+    assert!(matches!(
+        dns::decide(&query("api.steampowered.com.", RecordType::AAAA), &domains, false),
+        Decision::Answer(_)
+    ));
     assert!(matches!(dns::decide(&query("dns.google.", RecordType::A), &domains, false), Decision::Answer(_)));
     // Not logged: forwarded, allowed and the Firefox canary (a probe, not a block).
-    assert!(matches!(dns::decide(&query("store.steampowered.com.", RecordType::A), &domains, false), Decision::Forward));
+    assert!(matches!(
+        dns::decide(&query("store.steampowered.com.", RecordType::A), &domains, false),
+        Decision::Forward
+    ));
     assert!(matches!(dns::decide(&query("example.org.", RecordType::A), &domains, false), Decision::Forward));
     dns::decide(&query("use-application-dns.net.", RecordType::A), &domains, false);
     let events = domains.block_log().take().to_json()["events"].clone();
@@ -111,13 +121,22 @@ fn the_resolver_logs_blocked_answers_with_their_reason() {
         .as_array()
         .unwrap()
         .iter()
-        .map(|row| (row["domain"].as_str().unwrap().to_owned(), row["reason"].as_str().unwrap().to_owned(), row["category"].clone()))
+        .map(|row| {
+            (
+                row["domain"].as_str().unwrap().to_owned(),
+                row["reason"].as_str().unwrap().to_owned(),
+                row["category"].clone(),
+            )
+        })
         .collect();
-    assert_eq!(rows, vec![
-        ("api.steampowered.com".to_owned(), "category".to_owned(), json!("games")),
-        ("dns.google".to_owned(), "doh".to_owned(), Value::Null),
-        ("www.example.com".to_owned(), "rule".to_owned(), Value::Null),
-    ]);
+    assert_eq!(
+        rows,
+        vec![
+            ("api.steampowered.com".to_owned(), "category".to_owned(), json!("games")),
+            ("dns.google".to_owned(), "doh".to_owned(), Value::Null),
+            ("www.example.com".to_owned(), "rule".to_owned(), Value::Null),
+        ]
+    );
 }
 
 #[test]

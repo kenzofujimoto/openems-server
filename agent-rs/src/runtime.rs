@@ -85,6 +85,8 @@ pub struct Runtime {
     log: Logger,
     stop: Arc<StopSignal>,
     pub blocked_domains: Arc<crate::https_blockpage::BlockedDomains>,
+    /// Logged once: the server has no block log route.
+    block_log_unsupported: std::sync::atomic::AtomicBool,
 }
 
 /// What the Windows DNS cache depends on in DNS mode: the policy and which windows are open.
@@ -190,7 +192,15 @@ impl Runtime {
                 }
             }
         }
-        Ok(Runtime { cfg, api, inner: Mutex::new(inner), log, stop, blocked_domains })
+        Ok(Runtime {
+            cfg,
+            api,
+            inner: Mutex::new(inner),
+            log,
+            stop,
+            blocked_domains,
+            block_log_unsupported: std::sync::atomic::AtomicBool::new(false),
+        })
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -220,6 +230,30 @@ impl Runtime {
     }
 
     /// Register if needed, drain notifications and fetch the assigned policy.
+    /// Send the block log; a failed upload keeps its rows (within the limit) for the next cycle.
+    fn upload_block_log(&self, client_id: &str, token: Option<&str>) {
+        let log = self.blocked_domains.block_log();
+        let batch = log.take();
+        if batch.is_empty() {
+            return;
+        }
+        let mut payload = batch.to_json();
+        payload["client_id"] = json!(client_id);
+        match self.api.post("events", &payload, token) {
+            Ok(_) => {}
+            // A server without the block log would refuse these rows forever.
+            Err(AgentError::Status { code: 404 | 405, .. }) => {
+                if !self.block_log_unsupported.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                    (self.log)("server does not accept the block log; blocked answers are not reported");
+                }
+            }
+            Err(error) => {
+                log.restore(batch);
+                (self.log)(&format!("block log upload failed ({}); kept for the next cycle", error.summary()));
+            }
+        }
+    }
+
     pub fn synchronize(&self, now: f64) -> bool {
         let (mut client_id, mut token) = {
             let inner = self.lock();
@@ -272,6 +306,7 @@ impl Runtime {
                 drop(inner);
                 if !self.cfg.dry_run {
                     self.sync_categories(client_id.as_deref().unwrap_or_default(), token.as_deref());
+                    self.upload_block_log(client_id.as_deref().unwrap_or_default(), token.as_deref());
                 }
                 true
             }

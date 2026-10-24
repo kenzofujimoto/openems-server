@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use crate::https_blockpage::BlockedDomains;
 use crate::runtime::StopSignal;
 
 const LOGO: &[u8] = include_bytes!("../assets/rsm-logo.png");
@@ -45,9 +46,11 @@ fn escape_html(text: &str) -> String {
     })
 }
 
-pub fn render(host: &str) -> String {
+pub fn render(host: &str, category: Option<&str>) -> String {
     let host = if host.is_empty() { "este site".to_owned() } else { escape_html(host) };
-    PAGE.replace("{logo}", &base64(LOGO)).replace("{host}", &host)
+    let category = category
+        .map_or_else(String::new, |label| format!("<div class=\"category\">Categoria: {}</div>", escape_html(label)));
+    PAGE.replace("{logo}", &base64(LOGO)).replace("{host}", &host).replace("{category}", &category)
 }
 
 fn host_header(request: &str) -> String {
@@ -70,13 +73,14 @@ fn host_header(request: &str) -> String {
         .collect()
 }
 
-fn serve(mut stream: TcpStream) {
+fn serve(mut stream: TcpStream, blocked: &BlockedDomains) {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
     let mut buffer = [0u8; 8192];
     let length = stream.read(&mut buffer).unwrap_or(0);
     let request = String::from_utf8_lossy(&buffer[..length]);
-    let body = render(&host_header(&request));
+    let host = host_header(&request);
+    let body = render(&host, blocked.category_label(&host));
     let response = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n{body}",
         body.len()
@@ -85,7 +89,7 @@ fn serve(mut stream: TcpStream) {
 }
 
 /// Bind before returning so callers can report startup failures.
-pub fn start(port: u16, stop: Arc<StopSignal>) -> Result<JoinHandle<()>> {
+pub fn start(port: u16, blocked: Arc<BlockedDomains>, stop: Arc<StopSignal>) -> Result<JoinHandle<()>> {
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     listener.set_nonblocking(true)?;
     Ok(std::thread::Builder::new().name("openems-blockpage".into()).spawn(move || {
@@ -93,12 +97,13 @@ pub fn start(port: u16, stop: Arc<StopSignal>) -> Result<JoinHandle<()>> {
             for _ in 0..4 {
                 let listener = &listener;
                 let stop = &stop;
+                let blocked = &blocked;
                 scope.spawn(move || {
                     while !stop.is_stopped() {
                         match listener.accept() {
                             Ok((stream, _)) => {
                                 if stream.set_nonblocking(false).is_ok() {
-                                    serve(stream);
+                                    serve(stream, blocked);
                                 }
                             }
                             Err(_) => {
@@ -118,7 +123,7 @@ mod tests {
 
     #[test]
     fn page_is_branded_offline_and_escapes_hosts() {
-        let page = render("<script>alert(1)</script>");
+        let page = render("<script>alert(1)</script>", None);
         assert!(page.contains("Acesso bloqueado") && page.contains("#009cde") && page.contains("Prelo"));
         assert!(page.contains("data:image/png;base64,iVBORw0KGgo"));
         assert!(page.contains("&lt;script&gt;") && !page.contains("<script>"));
@@ -139,7 +144,7 @@ mod tests {
         let probe = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = probe.local_addr().unwrap().port();
         drop(probe);
-        let worker = start(port, Arc::clone(&stop)).unwrap();
+        let worker = start(port, Arc::new(BlockedDomains::default()), Arc::clone(&stop)).unwrap();
         let mut client = TcpStream::connect(("127.0.0.1", port)).unwrap();
         client.write_all(b"GET /x HTTP/1.1\r\nHost: blocked.example:80\r\n\r\n").unwrap();
         let mut response = String::new();

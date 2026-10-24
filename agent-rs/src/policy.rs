@@ -9,6 +9,35 @@ const MAX_ENTRIES: usize = 10_000;
 const MAX_WINDOWS: usize = 50;
 const SAFE_SEARCH_ENGINES: [&str; 4] = ["google", "bing", "youtube", "duckduckgo"];
 const DAYS: [&str; 7] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+/// Display names of the reference taxonomy, for the block page; pinned by the vectors.
+const CATEGORY_LABELS: [(&str, &str); 21] = [
+    ("adult", "Conteúdo adulto"),
+    ("dating", "Relacionamentos"),
+    ("gambling", "Jogos de azar"),
+    ("malware", "Malware"),
+    ("phishing", "Phishing"),
+    ("hacking", "Hacking"),
+    ("proxy", "VPN e proxies"),
+    ("drugs", "Drogas"),
+    ("violence", "Violência e ódio"),
+    ("weapons", "Materiais perigosos"),
+    ("warez", "Pirataria"),
+    ("games", "Jogos"),
+    ("streaming", "Áudio e vídeo"),
+    ("filehosting", "Armazenamento e download de arquivos"),
+    ("social", "Redes sociais"),
+    ("chat", "Chat e mensageiros"),
+    ("webmail", "Webmail"),
+    ("shopping", "Compras"),
+    ("sports", "Esportes"),
+    ("press", "Notícias"),
+    ("ads", "Publicidade"),
+];
+
+pub fn category_label(id: &str) -> Option<&'static str> {
+    CATEGORY_LABELS.iter().find(|(known, _)| *known == id).map(|(_, label)| *label)
+}
+
 /// Category ids of the reference taxonomy (agent/policy.py CATEGORIES), pinned by the vectors.
 pub const CATEGORY_IDS: [&str; 21] = [
     "adult",
