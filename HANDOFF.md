@@ -35,7 +35,14 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - `agent-rs/src/tamper.rs`: fila de eventos de adulteração (8 tipos, o mesmo tipo no máximo uma vez a cada 10 min, limite de 200) e o arquivo `tamper-pending.json`, que o watchdog agendado escreve e o serviço lê na partida.
   - Agente: saída inesperada e bloco do `hosts` reescrito sem mudança de política viram eventos enviados para `POST /fct/api/public/v1/tamper/`. Contratos nativos em `tests/test_native_tamper.py`.
   - Servidor: `TamperEvent`, migração `003_tamper_events.sql`, a mesma retenção do registro de bloqueios, e `/api/v1/events` mistura `web_block` e `tamper` por horário.
-- **Falta na 5a** (só Windows, a validar em Sandbox): aplicar `SERVICE_SDDL` em `configure-recovery`; o thread watchdog no serviço (regra NRPT pelo registro em `Dnscache\Parameters\DnsPolicyConfig`, filtros WFP pela contagem do provider, tipo de início, recuperação, DACL e tarefa agendada); o evento das políticas de navegador reaplicadas; o comando `openems-agent watchdog`, com a tarefa `openems-agent watchdog` no boot e a cada 5 min, criada pelo serviço e removida em `installer-prepare --remove`; a detecção do mutex `Global\_MSIExecute`; o painel mostrando o detalhe de `tamper`; e o roteiro `deploy/test-tamper-sandbox.ps1` com usuário comum, administrador, NRPT, política de navegador, serviço desativado e encerrado, upgrade e remoção.
+- Camada Windows (só compilada e testada em unidade neste host; **o aceite em Sandbox é a prova**):
+  - `configure-recovery` (MSI) e `install-service` aplicam `SERVICE_SDDL`. Consequência: `uninstall-service` pela linha de comando só funciona como SYSTEM; o caminho oficial é o MSI.
+  - O serviço roda um thread watchdog a cada 15 s: regra NRPT, lida no registro em `Dnscache\Parameters\DnsPolicyConfig` sem PowerShell; filtros WFP, pela contagem do provider; tipo de início, recuperação e DACL. A tarefa agendada é conferida a cada 4 ciclos. Política de navegador reaplicada gera evento.
+  - `openems-agent watchdog` é a tarefa SYSTEM `openems-agent watchdog`, no boot e a cada 5 min. Não age enquanto o mutex `Global\_MSIExecute` existe e grava os eventos em `tamper-pending.json`. É criada pelo serviço e removida por `installer-prepare --remove` e por `uninstall-service`.
+  - Painel: tipos de `tamper` em português.
+  - MSI de produção agora é 0.4.0, e `-Production -Next` gera o 0.4.1 para o teste de upgrade.
+- Suíte: **640 Python, 125 Rust, 35 Vitest**.
+- Aceite: `deploy/test-tamper-sandbox.ps1` (contratos em `tests/test_tamper_sandbox.py`). Pacote em `.venv/sandbox-acceptance/tamper-input`: anterior 0.3.0 (`723f990d…`), atual 0.4.0 (`271a195c…`) e próximo 0.4.1 (`e50b4099…`). Abrir `tamper.wsb` e rodar Win+R → `C:\openems-input\RUN-TAMPER-TEST.cmd`; leva uns 20 min, por causa da espera da tarefa de 5 min. **Aceite ainda não executado.**
 
 ### Continuação — F2 parte 4b (branch `feature/block-log`, `web-block-log.md` aprovado em 2026-10-24)
 
