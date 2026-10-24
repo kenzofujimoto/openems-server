@@ -35,13 +35,13 @@ export function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Endpoints online" value={formatNumber(summary.online)} icon={Monitor}
-          delta={previous ? formatDelta(summary.online, previous.online) : undefined} caption={CAPTION} />
+          delta={previous?.online !== undefined ? formatDelta(summary.online, previous.online) : undefined} caption={CAPTION} />
         <KpiCard label="Política aplicada" value={`${appliedPercent}%`} icon={ShieldCheck}
-          delta={previous ? formatDelta(summary.applied, previous.applied) : undefined} caption={CAPTION} />
+          delta={previous?.applied !== undefined ? formatDelta(summary.applied, previous.applied) : undefined} caption={CAPTION} />
         <KpiCard label="Bloqueios (7 dias)" value={blocks === undefined ? "—" : formatNumber(blocks)} icon={ShieldBan}
           delta={previous && blocks !== undefined ? formatDelta(blocks, previous.blocks) : undefined} caption={CAPTION} />
         <KpiCard label="Erros de aplicação" value={formatNumber(summary.error)} icon={TriangleAlert}
-          delta={previous ? formatDelta(summary.error, previous.errors) : undefined} caption={CAPTION} invertTone />
+          delta={previous?.errors !== undefined ? formatDelta(summary.error, previous.errors) : undefined} caption={CAPTION} invertTone />
       </div>
 
       {overview.isError ? <ErrorNotice message="Não foi possível carregar as estatísticas." onRetry={() => void overview.refetch()} /> : null}
@@ -51,7 +51,7 @@ export function DashboardPage() {
 
       <div className="grid gap-4 xl:grid-cols-3">
         {overview.data ? <BlocksChart overview={overview.data} /> : null}
-        <RecentEvents events={events.data ?? []} wide={!overview.data} />
+        <RecentEvents events={events.data ?? []} wide={!overview.data} retentionDays={overview.data?.retention_days} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

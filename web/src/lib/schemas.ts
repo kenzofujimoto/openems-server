@@ -29,6 +29,8 @@ export const endpointSchema = z.object({
   last_applied: z.string().nullable(),
   last_seen: z.string(),
   desired_profile: z.object({ vdom: z.string(), version: z.number().int(), digest: z.string() }).nullable(),
+  // Agent tags the effective policy needs but this agent does not report; older servers omit it.
+  missing_capabilities: z.array(z.string()).default([]),
 });
 export type Endpoint = z.infer<typeof endpointSchema>;
 
@@ -36,7 +38,14 @@ export const overviewSchema = z.object({
   generated_at: z.string(),
   blocks_by_day: z.array(z.object({ date: z.string(), web: z.number(), apps: z.number(), usb: z.number() })),
   top_domains: z.array(z.object({ domain: z.string(), count: z.number() })),
-  previous_period: z.object({ blocks: z.number(), online: z.number(), applied: z.number(), errors: z.number() }),
+  // The server keeps no history of machine status, so only blocks are always compared.
+  previous_period: z.object({
+    blocks: z.number(),
+    online: z.number().optional(),
+    applied: z.number().optional(),
+    errors: z.number().optional(),
+  }),
+  retention_days: z.number().int().optional(),
 });
 export type Overview = z.infer<typeof overviewSchema>;
 
@@ -49,5 +58,18 @@ export const eventSchema = z.object({
   devid: z.string(),
   kind: eventKindSchema,
   detail: z.string(),
+  reason: z.string().optional(),
+  category: z.string().nullable().optional(),
+  category_label: z.string().nullable().optional(),
+  count: z.number().int().optional(),
 });
 export type FleetEvent = z.infer<typeof eventSchema>;
+
+export const categorySchema = z.object({ id: z.string(), label: z.string(), group: z.string(), count: z.number().int() });
+export type Category = z.infer<typeof categorySchema>;
+
+export const categoriesSchema = z.object({
+  version: z.string().nullable(),
+  attribution: z.string(),
+  categories: z.array(categorySchema),
+});

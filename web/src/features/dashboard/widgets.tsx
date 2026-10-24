@@ -72,7 +72,12 @@ const EVENT_STYLE: Record<EventKind, { icon: LucideIcon; label: string; tone: st
   policy_error: { icon: TriangleAlert, label: "Erro de política", tone: "bg-danger-soft text-danger" },
 };
 
-export function RecentEvents({ events, wide = false }: { events: FleetEvent[]; wide?: boolean }) {
+function eventDetail(event: FleetEvent): string {
+  const count = event.count !== undefined && event.count > 1 ? `${formatNumber(event.count)}×` : null;
+  return [event.detail, event.category_label, count].filter(Boolean).join(" · ");
+}
+
+export function RecentEvents({ events, wide = false, retentionDays }: { events: FleetEvent[]; wide?: boolean; retentionDays?: number }) {
   return (
     <Card className={cn("col-span-full", !wide && "xl:col-span-1")}>
       <CardHeader title="Eventos recentes" description="Últimas ocorrências nos endpoints" />
@@ -87,13 +92,18 @@ export function RecentEvents({ events, wide = false }: { events: FleetEvent[]; w
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">{style.label}</p>
-                <p className="truncate text-[13px] text-ink-soft">{event.detail}</p>
+                <p className="truncate text-[13px] text-ink-soft">{eventDetail(event)}</p>
                 <p className="mt-0.5 text-xs text-ink-muted">{event.devid} · {relativeTime(event.at)}</p>
               </div>
             </li>
           );
         })}
       </ul>
+      {retentionDays !== undefined ? (
+        <p className="border-t border-line px-5 py-3 text-xs text-ink-muted">
+          O registro de bloqueios é dado pessoal de quem usa cada máquina e fica guardado por {retentionDays} dias.
+        </p>
+      ) : null}
     </Card>
   );
 }

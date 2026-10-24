@@ -129,7 +129,8 @@ describe("block log", () => {
   it("shows the category and count of web blocks next to the privacy notice", async () => {
     renderApp("/");
     expect(await screen.findByText("tiktok.com · Redes sociais · 12×")).toBeInTheDocument();
-    expect(screen.getByText("facebook.com")).toBeInTheDocument();
+    // Single-count rows show only the domain (it also appears in the ranking, hence the selector).
+    expect(screen.getByText("facebook.com", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByText(/dado pessoal/)).toHaveTextContent("30 dias");
   });
 
@@ -157,7 +158,8 @@ describe("block log", () => {
   });
 
   it("accepts endpoints from servers that do not report capabilities", async () => {
-    const { missing_capabilities: _omitted, ...older } = endpoints[0];
+    const older: Record<string, unknown> = { ...endpoints[0] };
+    delete older.missing_capabilities;
     server.use(http.get("*/api/v1/endpoints/index", () => HttpResponse.json([older])));
     renderApp("/endpoints");
     expect(await screen.findByRole("button", { name: "Abrir RSM-SP-001" })).toBeInTheDocument();

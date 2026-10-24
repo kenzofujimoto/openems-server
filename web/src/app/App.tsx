@@ -15,6 +15,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { EndpointsPage } from "@/features/endpoints/EndpointsPage";
 import { PLANNED, PlannedPage, type PlannedModule } from "@/features/placeholder/PlannedPage";
+import { WebFilterPage } from "@/features/webfilter/WebFilterPage";
 import { useSession } from "@/lib/queries";
 
 function Shell() {
@@ -53,7 +54,7 @@ function buildRouter(history?: RouterHistory) {
     createRoute({ getParentRoute: () => root, path: "/", component: DashboardPage }),
     createRoute({ getParentRoute: () => root, path: "/endpoints", component: EndpointsPage }),
     planned("/events", PLANNED.events),
-    planned("/policies/web", PLANNED.web),
+    createRoute({ getParentRoute: () => root, path: "/policies/web", component: WebFilterPage }),
     planned("/policies/apps", PLANNED.apps),
     planned("/policies/usb", PLANNED.usb),
     planned("/policies/locations", PLANNED.locations),

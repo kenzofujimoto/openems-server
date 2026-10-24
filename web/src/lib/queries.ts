@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { ApiError, apiFetch, setCsrfToken } from "./api";
-import { endpointSchema, eventSchema, overviewSchema, sessionSchema, type Session } from "./schemas";
+import { categoriesSchema, endpointSchema, eventSchema, overviewSchema, sessionSchema, type Session } from "./schemas";
 
 const SESSION_KEY = ["session"] as const;
 
@@ -80,5 +80,12 @@ export function useEvents(limit = 8) {
     queryKey: ["events", limit],
     queryFn: () => optional(apiFetch(`/api/v1/events?limit=${limit}`, z.array(eventSchema))),
     refetchInterval: REFRESH_MS,
+  });
+}
+
+export function useCategories() {
+  return useQuery({
+    queryKey: ["categories"],
+    queryFn: () => optional(apiFetch("/api/v1/categories", categoriesSchema)),
   });
 }
