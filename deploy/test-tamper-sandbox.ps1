@@ -76,6 +76,10 @@ function Test-Permissions([string]$Work) {
     try {
         # BUILTIN\Users by its well-known SID: the name is localized (Usuários on Portuguese Windows).
         Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $name
+        # The probe folder inherits read-only access for users; only this account may write its answers.
+        $probeAcl = Get-Acl -LiteralPath $probe
+        $probeAcl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule((Get-LocalUser -Name $name).SID, 'Modify', 'ContainerInherit,ObjectInherit', 'None', 'Allow')))
+        Set-Acl -LiteralPath $probe -AclObject $probeAcl
         $credential = New-Object Management.Automation.PSCredential(($env:COMPUTERNAME + '\' + $name), $secret)
         Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\cmd.exe') -ArgumentList @('/c', ('"' + (Join-Path $probe 'probe.cmd') + '"')) `
             -Credential $credential -WorkingDirectory $probe -WindowStyle Hidden -Wait
@@ -338,11 +342,15 @@ try {
     $permissionsFile = Join-Path $work 'permissions-result.json'
     Wait-Until { Test-Path -LiteralPath $permissionsFile } 300 'The operator session did not report the permission checks.'
     $permissions = Get-Content -LiteralPath $permissionsFile -Raw | ConvertFrom-Json
+    $result.permissions = $permissions
+    foreach ($key in @('user_stop', 'user_config', 'user_delete', 'user_agent_json', 'user_program_files')) {
+        if ($null -eq $permissions.PSObject.Properties[$key]) { throw ('The standard user check ' + $key + ' did not run; see permissions in the report.') }
+    }
     foreach ($key in @('user_stop', 'user_config', 'user_delete')) {
-        if ($null -eq $permissions.PSObject.Properties[$key] -or $permissions.$key -ne 5) { throw ('Standard user was not denied: ' + $key + '=' + $permissions.PSObject.Properties[$key].Value) }
+        if ($permissions.$key -ne 5) { throw ('Standard user was not denied: ' + $key + '=' + $permissions.$key) }
     }
     foreach ($key in @('user_agent_json', 'user_program_files')) {
-        if ($null -eq $permissions.PSObject.Properties[$key] -or $permissions.$key -eq 0) { throw ('Standard user write succeeded: ' + $key) }
+        if ($permissions.$key -eq 0) { throw ('Standard user write succeeded: ' + $key) }
     }
     if (-not $permissions.agent_json_unchanged -or -not $permissions.program_files_probe_absent) { throw 'A standard user changed the agent files.' }
     $result.checks += $scenarios[1]
