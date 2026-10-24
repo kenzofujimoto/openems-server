@@ -83,6 +83,11 @@ def test_harness_tampers_like_an_attacker_and_waits_for_repair():
     # The scheduled watchdog runs every 5 minutes: allow one full period plus margin.
     assert 'Wait-Until' in text and ' 420 ' in text
     assert "'/fct/api/public/v1/tamper/'" in text and 'tamper.log' in text
+    # Windows PowerShell 5.1 turns redirected native stderr into a terminating error under 'Stop':
+    # querying a deleted task must return false, not end the run.
+    task_probe = text.split('function Test-Task {', 1)[1].split('
+}', 1)[0]
+    assert "$ErrorActionPreference = 'Continue'" in task_probe
 
 
 def test_harness_uses_production_packages_and_one_run_per_sandbox():
