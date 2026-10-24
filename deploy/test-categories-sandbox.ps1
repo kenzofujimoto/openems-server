@@ -1,7 +1,8 @@
 param([string]$OutputDirectory = 'C:\openems-results', [switch]$SystemPhase, [switch]$Plan)
-# F2 slice 4a acceptance for the production MSI in Windows Sandbox with networking enabled. The
+# F2 slice 4 acceptance for the production MSI in Windows Sandbox with networking enabled. The
 # simulated backend publishes a "games" category built by app/categories.py (files in .\categories);
-# the agent must download it, block through system DNS, honour allowed, and keep blocking offline.
+# the agent must download it, block through system DNS, honour allowed, report blocks to the
+# block log, name the category on the block page, and keep blocking offline.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $package = 'openems-agent.msi'
@@ -18,9 +19,10 @@ $policy = [ordered]@{ vdom='Default'; version=1; digest='ae85c2efc6cb6934577f809
 $forwardedNames = @('api.steampowered.com', 'steamcommunity.com', 'store.steampowered.com', 'example.org')
 $scenarios = @('production install downloads the games category and blocks it through system DNS',
                'allowed exception and unlisted names resolve upstream',
+               'blocked answers reach the server block log with their category',
                'the category is cached in the protected data directory with its published digest',
                'with the backend offline, a service restart keeps blocking from the cache',
-               'Edge shows the block page for steamcommunity.com, confirmed by the operator',
+               'Edge shows the block page naming the Jogos category for steamcommunity.com, confirmed by the operator',
                'removal restores NRPT rules, trust and hosts')
 if ($Plan) {
     @{ package=$package; origin=$origin; report=$report; timeout_seconds=$totalTimeout; policy=$policy
@@ -68,7 +70,7 @@ if (-not $SystemPhase) {
                 $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'
                 Start-Process -FilePath $edge -ArgumentList @('--inprivate', 'https://steamcommunity.com/')
                 Write-Host 'Edge opened https://steamcommunity.com/ (category games). Wait until the page finishes loading.'
-                $reply = Read-Host 'Does Edge show the RSM block page without a certificate warning? Type YES or NO, then Enter'
+                $reply = Read-Host 'Does Edge show the RSM block page with "Categoria: Jogos" and no certificate warning? Type YES or NO, then Enter'
                 Set-Content -LiteralPath $answer -Value $reply.Trim().ToUpperInvariant()
             }
             Start-Sleep -Milliseconds 500
@@ -228,6 +230,13 @@ function Start-Backend {
                     '/fct/api/public/v1/refresh/' { }
                     '/fct/api/public/v1/config/ack/' { }
                     '/fct/api/public/v1/host_tags/' { }
+                    '/fct/api/public/v1/events/' {
+                        # One upload per line, for the block log checks.
+                        $reader = New-Object IO.StreamReader($context.Request.InputStream, [Text.Encoding]::UTF8)
+                        try { $upload = $reader.ReadToEnd() } finally { $reader.Dispose() }
+                        try { Add-Content -LiteralPath (Join-Path $Work 'events.log') -Value ($upload -replace "`r?`n", ' ') } catch { }
+                        $payload = @{ accepted=0; rejected=0 }
+                    }
                     default { $context.Response.StatusCode = 404 }
                 }
                 if ($null -eq $bytes) { $bytes = [Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json -Depth 8 -Compress)) }
@@ -251,6 +260,13 @@ function Stop-Backend($Job) {
         if ([DateTime]::UtcNow -ge $deadline) { throw 'Simulated backend is still listening after stop.' }
         Start-Sleep -Milliseconds 200
     }
+}
+function Get-ReportedRows {
+    $log = Join-Path $work 'events.log'
+    if (-not (Test-Path -LiteralPath $log)) { return @() }
+    $stream = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite')
+    try { $lines = (New-Object IO.StreamReader($stream)).ReadToEnd() -split "`r?`n" } finally { $stream.Dispose() }
+    return @($lines | Where-Object { $_ } | ForEach-Object { @(($_ | ConvertFrom-Json).events) })
 }
 function Get-RequestCount([string]$Path) {
     if (-not (Test-Path -LiteralPath $requests)) { return 0 }
@@ -294,10 +310,16 @@ try {
     if (-not (Test-Upstream 'example.org')) { throw 'An unlisted name did not resolve upstream.' }
     $result.checks += $scenarios[1]
 
+    Wait-Until { @(Get-ReportedRows | Where-Object { $_.domain -eq 'api.steampowered.com' -and $_.reason -eq 'category' -and $_.category -eq 'games' }).Count -gt 0 } 60 'The block log upload did not reach the backend.'
+    $reported = @(Get-ReportedRows)
+    if (@($reported | Where-Object { $_.domain -in @('store.steampowered.com', 'example.org') }).Count) { throw 'An allowed or unlisted name was reported as blocked.' }
+    if (@($reported | Where-Object { $_.count -lt 1 -or $_.hour -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:00:00Z$' }).Count) { throw 'A block log row is not an hourly aggregate.' }
+    $result.checks += $scenarios[2]
+
     $cached = 'C:\ProgramData\openems\categories\games-' + $gamesDigest + '.bin'
     if (-not (Test-Path -LiteralPath $cached)) { throw 'The category was not cached in the data directory.' }
     if ((Get-FileHash -LiteralPath $cached -Algorithm SHA256).Hash.ToLowerInvariant() -ne $gamesDigest) { throw 'The cached category does not match its digest.' }
-    $result.checks += $scenarios[2]
+    $result.checks += $scenarios[3]
 
     Stop-Backend $backend
     $backend = $null
@@ -305,13 +327,13 @@ try {
     Restart-Service -Name openems-agent
     Wait-Until { $current = Get-ServiceProcess; $current -gt 0 -and $current -ne $processId -and @(Get-ManagedRules).Count -eq 1 -and (Test-Blocked 'api.steampowered.com') } 90 'After an offline restart the cached category did not block.'
     if (@(Get-NetTCPConnection -State Listen -LocalPort 18013 -ErrorAction SilentlyContinue).Count) { throw 'The backend was not offline during the restart check.' }
-    $result.checks += $scenarios[3]
+    $result.checks += $scenarios[4]
 
     Set-Content -LiteralPath (Join-Path $work 'edge-ready') -Value ready
     $edgeAnswer = Join-Path $work 'edge-answer'
     Wait-Until { Test-Path -LiteralPath $edgeAnswer } 600 'Operator did not answer the Edge check.'
     if ((Get-Content -LiteralPath $edgeAnswer -Raw).Trim() -ne 'YES') { throw 'The block page for steamcommunity.com was not confirmed in Edge.' }
-    $result.checks += $scenarios[4]
+    $result.checks += $scenarios[5]
 
     Invoke-Msi $true @()
     if ($null -ne (Get-Service openems-agent -ErrorAction SilentlyContinue)) { throw 'Uninstalled service still exists.' }
@@ -320,7 +342,7 @@ try {
     Assert-Trust $managedRoot $baselineRoots $false
     if ((Get-FileHash -LiteralPath $hosts).Hash -ne $baselineHosts) { throw 'Uninstall did not restore hosts.' }
     if (-not (Test-Upstream 'steamcommunity.com')) { throw 'DNS did not work after removal.' }
-    $result.checks += $scenarios[5]
+    $result.checks += $scenarios[6]
     $result.passed = $true
 } catch { $result.error = $_.Exception.Message }
 finally {
