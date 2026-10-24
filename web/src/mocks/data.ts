@@ -21,6 +21,7 @@ export interface MockEndpoint {
   last_applied: string | null;
   last_seen: string;
   desired_profile: { vdom: string; version: number; digest: string } | null;
+  missing_capabilities: string[];
 }
 
 const DIGEST_DEFAULT = "1ff21ccf4803d8a83c72600aca58edae52d76066e632017bd918f1eda9aadb11";
@@ -75,6 +76,8 @@ export const endpoints: MockEndpoint[] = SEEDS.map((seed, index) => {
     last_applied: applied ? minutesAgo(seed.seen + 30) : null,
     last_seen: minutesAgo(seed.seen),
     desired_profile: { vdom: seed.vdom, version: 3, digest },
+    // An agent that predates categories and the local resolver.
+    missing_capabilities: seed.devid === "RSM-RJ-003" ? ["web-filter:categories", "web-filter:dns"] : [],
   };
 });
 
@@ -97,15 +100,18 @@ export const overview = {
     { domain: "bet365.com", count: 61 },
   ],
   previous_period: { blocks: 1920, online: 9, applied: 7, errors: 2 },
+  retention_days: 30,
 };
 
 export const events = [
   { id: "evt-6", at: minutesAgo(2), devid: "RSM-SP-002", kind: "policy_error", detail: "enforcement failed: PermissionError" },
-  { id: "evt-5", at: minutesAgo(9), devid: "RSM-SP-004", kind: "web_block", detail: "tiktok.com" },
+  { id: "evt-5", at: minutesAgo(9), devid: "RSM-SP-004", kind: "web_block", detail: "tiktok.com",
+    reason: "category", category: "social", category_label: "Redes sociais", count: 12 },
   { id: "evt-4", at: minutesAgo(18), devid: "RSM-SP-009", kind: "usb_block", detail: "SanDisk Ultra (VID 0781 / PID 5581)" },
   { id: "evt-3", at: minutesAgo(41), devid: "RSM-SP-001", kind: "app_block", detail: "utorrent.exe" },
   { id: "evt-2", at: minutesAgo(65), devid: "RSM-BH-006", kind: "tamper", detail: "DNS settings reverted" },
-  { id: "evt-1", at: minutesAgo(120), devid: "RSM-SP-005", kind: "web_block", detail: "facebook.com" },
+  { id: "evt-1", at: minutesAgo(120), devid: "RSM-SP-005", kind: "web_block", detail: "facebook.com",
+    reason: "rule", category: null, category_label: null, count: 1 },
 ];
 
 export const profiles = [
@@ -123,3 +129,13 @@ export const audit = [
 ];
 
 export const session = { username: "labadmin", role: "admin", csrf_token: "mock-csrf-token" } as const;
+
+export const categories = {
+  version: "2026-10-24T03:00:00Z",
+  attribution: "Category lists: Université Toulouse Capitole (UT1 blacklists, Fabrice Prigent), licensed CC BY-SA 4.0. Hashed and regrouped by openems.",
+  categories: [
+    { id: "adult", label: "Conteúdo adulto", group: "Adulto", count: 4012345 },
+    { id: "games", label: "Jogos", group: "Consumo de banda e lazer", count: 2104 },
+    { id: "social", label: "Redes sociais", group: "Interesse geral", count: 812 },
+  ],
+};

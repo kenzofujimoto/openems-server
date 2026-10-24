@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { audit, endpoints, events, overview, profiles, rules, session } from "./data";
+import { audit, categories, endpoints, events, overview, profiles, rules, session } from "./data";
 
 export const handlers = [
   http.get("*/api/v1/auth/session", () => HttpResponse.json(session)),
@@ -17,4 +17,5 @@ export const handlers = [
   http.get("*/api/v1/profiles", () => HttpResponse.json(profiles)),
   http.get("*/api/v1/assignment_rules", () => HttpResponse.json(rules)),
   http.get("*/api/v1/audit", () => HttpResponse.json(audit)),
+  http.get("*/api/v1/categories", () => HttpResponse.json(categories)),
 ];

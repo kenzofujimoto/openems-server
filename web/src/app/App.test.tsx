@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/node";
-import { endpoints } from "@/mocks/data";
+import { endpoints, overview } from "@/mocks/data";
 import { renderApp } from "@/test/render";
 
 describe("authentication", () => {
@@ -122,6 +122,61 @@ describe("endpoints", () => {
     renderApp("/endpoints");
     expect(await screen.findByText("<img src=x onerror=alert(1)>")).toBeInTheDocument();
     expect(document.querySelector("img[src='x']")).toBeNull();
+  });
+});
+
+describe("block log", () => {
+  it("shows the category and count of web blocks next to the privacy notice", async () => {
+    renderApp("/");
+    expect(await screen.findByText("tiktok.com · Redes sociais · 12×")).toBeInTheDocument();
+    expect(screen.getByText("facebook.com")).toBeInTheDocument();
+    expect(screen.getByText(/dado pessoal/)).toHaveTextContent("30 dias");
+  });
+
+  it("compares only what the server keeps history for", async () => {
+    server.use(http.get("*/api/v1/stats/overview", () => HttpResponse.json({ ...overview, previous_period: { blocks: 1920 } })));
+    renderApp("/");
+    const blocks = await screen.findByRole("group", { name: "Bloqueios (7 dias)" });
+    await waitFor(() => expect(blocks.querySelector("[data-tone]")).not.toBeNull());
+    expect(screen.getByRole("group", { name: "Endpoints online" }).querySelector("[data-tone]")).toBeNull();
+    expect(screen.getByRole("group", { name: "Erros de aplicação" }).querySelector("[data-tone]")).toBeNull();
+  });
+
+  it("warns when an agent cannot apply part of its policy", async () => {
+    const user = userEvent.setup();
+    renderApp("/endpoints");
+    await user.click(await screen.findByRole("button", { name: "Abrir RSM-RJ-003" }));
+    const dialog = await screen.findByRole("dialog", { name: "DT-RECEPCAO-02" });
+    expect(within(dialog).getByText("Este agente não aplica parte da política")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Categorias de sites/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/DNS local/)).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Abrir RSM-SP-001" }));
+    const current = await screen.findByRole("dialog", { name: "NB-FINANCEIRO-01" });
+    expect(within(current).queryByText("Este agente não aplica parte da política")).toBeNull();
+  });
+
+  it("accepts endpoints from servers that do not report capabilities", async () => {
+    const { missing_capabilities: _omitted, ...older } = endpoints[0];
+    server.use(http.get("*/api/v1/endpoints/index", () => HttpResponse.json([older])));
+    renderApp("/endpoints");
+    expect(await screen.findByRole("button", { name: "Abrir RSM-SP-001" })).toBeInTheDocument();
+  });
+
+  it("lists published categories by group with their attribution", async () => {
+    renderApp("/policies/web");
+    expect(await screen.findByRole("heading", { name: "Filtro web" })).toBeInTheDocument();
+    const games = await screen.findByRole("listitem", { name: "Jogos" });
+    expect(within(games).getByText("2.104 domínios")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Consumo de banda e lazer" })).toBeInTheDocument();
+    expect(screen.getByText(/CC BY-SA 4.0/)).toBeInTheDocument();
+    expect(screen.getByText(/F7/)).toBeInTheDocument();
+  });
+
+  it("explains when the server publishes no categories", async () => {
+    server.use(http.get("*/api/v1/categories", () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })));
+    renderApp("/policies/web");
+    expect(await screen.findByText("Nenhuma categoria publicada no servidor.")).toBeInTheDocument();
   });
 });
 
