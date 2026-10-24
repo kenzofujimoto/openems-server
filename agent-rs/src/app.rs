@@ -3,6 +3,7 @@
 use crate::config::AgentConfig;
 use crate::error::{AgentError, Result};
 use crate::runtime::{Logger, Runtime, StopSignal};
+use crate::tamper::TamperKind;
 use crate::{blockpage, dns, nrpt};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
@@ -50,6 +51,30 @@ fn guard_browser_policies(config: &AgentConfig, log: &Logger, stop: &Arc<StopSig
 /// Run until `stop` is signalled; listeners live as long as the loop.
 pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()> {
     let runtime = Arc::new(Runtime::new(config.clone(), Arc::clone(&log), Arc::clone(&stop))?);
+    // A marker left by the previous run means it never reached a graceful stop (killed or crashed).
+    let marker = config.state_path.with_file_name("running.marker");
+    if !config.dry_run {
+        match crate::hardening::begin_run(&marker) {
+            Ok(true) => runtime.tamper.record(TamperKind::UnexpectedExit, TamperKind::UnexpectedExit.detail()),
+            Ok(false) => {}
+            Err(error) => log(&format!("run marker not written ({})", error.kind())),
+        }
+        let pending = config.state_path.with_file_name("tamper-pending.json");
+        if let Err(error) = crate::tamper::drain_pending(&pending, &runtime.tamper) {
+            log(&format!("watchdog events not read ({})", error.kind()));
+        }
+    }
+    let result = serve(&config, &log, &stop, &runtime);
+    if !config.dry_run
+        && let Err(error) = crate::hardening::end_run(&marker)
+    {
+        log(&format!("run marker not removed ({})", error.kind()));
+    }
+    result
+}
+
+fn serve(config: &AgentConfig, log: &Logger, stop: &Arc<StopSignal>, runtime: &Arc<Runtime>) -> Result<()> {
+    let (config, log, stop) = (config.clone(), Arc::clone(log), Arc::clone(stop));
     runtime.blocked_domains.set_doh_blocking(config.dns_filter && config.anti_bypass);
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
     let mut routed = false;
@@ -126,7 +151,7 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
         }
     }
     log(&format!("openems-agent {} started for {}", env!("CARGO_PKG_VERSION"), config.devid));
-    let result = runtime.run();
+    let result = Arc::clone(runtime).run();
     // Graceful stop (including upgrade and shutdown) hands DNS back; a crash never reaches here.
     // Filters go first: without the rule, blocked port 53 would leave other programs without DNS.
     #[cfg(windows)]

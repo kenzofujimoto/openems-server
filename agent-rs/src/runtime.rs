@@ -41,10 +41,12 @@ impl StopSignal {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Enforcement {
     pub sites: Vec<String>,
     pub killed: Vec<String>,
+    /// The hosts file had to be rewritten.
+    pub hosts_changed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +74,8 @@ struct Inner {
     pending: Option<Pending>,
     generation: u64,
     dns_state: Option<DnsCacheState>,
+    /// Policy and open windows behind the last hosts write: a rewrite without a change here is tampering.
+    hosts_state: Option<DnsCacheState>,
     /// Digest of each loaded category, to skip downloads that would not change anything.
     category_digests: std::collections::HashMap<String, String>,
     /// A new policy arrived: enforce (and persist it) now instead of at the next interval.
@@ -87,6 +91,9 @@ pub struct Runtime {
     pub blocked_domains: Arc<crate::https_blockpage::BlockedDomains>,
     /// Logged once: the server has no block log route.
     block_log_unsupported: std::sync::atomic::AtomicBool,
+    /// Protections found altered and restored, uploaded with each synchronization.
+    pub tamper: Arc<crate::tamper::TamperLog>,
+    tamper_unsupported: std::sync::atomic::AtomicBool,
 }
 
 /// What the Windows DNS cache depends on in DNS mode: the policy and which windows are open.
@@ -123,12 +130,15 @@ pub fn enforce_at(
     let release = assignment.unassigned && assignment.body.is_none();
     if cfg.dry_run {
         log(&format!("[dry-run] would apply {} domain block(s) and {} process rule(s)", sites.len(), apps.len()));
+    }
+    let hosts_changed = if cfg.dry_run {
+        false
     } else if release || cfg.dns_filter {
         // In DNS mode the resolver enforces the rules; a hosts block would be a second source.
-        clear_hosts(&cfg.hosts_path)?;
+        clear_hosts(&cfg.hosts_path)?
     } else {
-        apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })?;
-    }
+        apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })?
+    };
     let killed = if apps.is_empty() { Vec::new() } else { processes_to_kill(&list_processes()?, &apps)? };
     for name in &killed {
         if !cfg.dry_run {
@@ -136,7 +146,7 @@ pub fn enforce_at(
         }
         log(&format!("{}{name}", if cfg.dry_run { "[dry-run] would terminate " } else { "terminated " }));
     }
-    Ok(Enforcement { sites, killed })
+    Ok(Enforcement { sites, killed, hosts_changed })
 }
 
 pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enforcement) -> Vec<String> {
@@ -200,6 +210,8 @@ impl Runtime {
             stop,
             blocked_domains,
             block_log_unsupported: std::sync::atomic::AtomicBool::new(false),
+            tamper: Arc::new(crate::tamper::TamperLog::default()),
+            tamper_unsupported: std::sync::atomic::AtomicBool::new(false),
         })
     }
 
@@ -229,7 +241,6 @@ impl Runtime {
         if self.stop.is_stopped() { Err(AgentError::Local("agent stopping".into())) } else { Ok(()) }
     }
 
-    /// Register if needed, drain notifications and fetch the assigned policy.
     /// Send the block log; a failed upload keeps its rows (within the limit) for the next cycle.
     fn upload_block_log(&self, client_id: &str, token: Option<&str>) {
         let log = self.blocked_domains.block_log();
@@ -254,6 +265,29 @@ impl Runtime {
         }
     }
 
+    /// Send tamper events; same retry and unsupported-server handling as the block log.
+    fn upload_tamper(&self, client_id: &str, token: Option<&str>) {
+        let batch = self.tamper.take();
+        if batch.is_empty() {
+            return;
+        }
+        let mut payload = batch.to_json();
+        payload["client_id"] = json!(client_id);
+        match self.api.post("tamper", &payload, token) {
+            Ok(_) => {}
+            Err(AgentError::Status { code: 404 | 405, .. }) => {
+                if !self.tamper_unsupported.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                    (self.log)("server does not accept tamper events; they are only logged locally");
+                }
+            }
+            Err(error) => {
+                self.tamper.restore(batch);
+                (self.log)(&format!("tamper event upload failed ({}); kept for the next cycle", error.summary()));
+            }
+        }
+    }
+
+    /// Register if needed, drain notifications and fetch the assigned policy.
     pub fn synchronize(&self, now: f64) -> bool {
         let (mut client_id, mut token) = {
             let inner = self.lock();
@@ -307,6 +341,7 @@ impl Runtime {
                 if !self.cfg.dry_run {
                     self.sync_categories(client_id.as_deref().unwrap_or_default(), token.as_deref());
                     self.upload_block_log(client_id.as_deref().unwrap_or_default(), token.as_deref());
+                    self.upload_tamper(client_id.as_deref().unwrap_or_default(), token.as_deref());
                 }
                 true
             }
@@ -395,6 +430,14 @@ impl Runtime {
         let now = jiff::Timestamp::now();
         let result = enforce_at(&self.cfg, &assignment, &self.log, now).and_then(|enforcement| {
             let mut inner = self.lock();
+            let current = dns_cache_state(&assignment, now).ok();
+            if enforcement.hosts_changed && current.is_some() && inner.hosts_state == current {
+                self.tamper.record(
+                    crate::tamper::TamperKind::HostsRestored,
+                    crate::tamper::TamperKind::HostsRestored.detail(),
+                );
+            }
+            inner.hosts_state = current;
             inner.cached = Some(assignment.clone());
             self.save(&inner)?;
             Ok(enforcement)
@@ -552,7 +595,7 @@ mod tests {
         )
         .unwrap();
         let config = AgentConfig::new("https://ems.example.com", "PC1");
-        let tags = host_tags(&config, &assignment, &Enforcement { sites: vec!["a.com".into()], killed: vec![] });
+        let tags = host_tags(&config, &assignment, &Enforcement { sites: vec!["a.com".into()], ..Default::default() });
         assert_eq!(
             tags[1..],
             [

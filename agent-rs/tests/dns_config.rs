@@ -63,7 +63,7 @@ fn dns_mode_reports_capability_tag() {
     let digest = policy_digest(body.as_object().unwrap());
     let assignment =
         validate_assignment(&json!({"vdom": "Default", "version": 3, "digest": digest, "body": body})).unwrap();
-    let enforcement = openems_agent::runtime::Enforcement { sites: vec!["*.example.com".into()], killed: vec![] };
+    let enforcement = openems_agent::runtime::Enforcement { sites: vec!["*.example.com".into()], ..Default::default() };
     let mut config = AgentConfig::new("http://127.0.0.1:8000", "test");
     assert!(
         !openems_agent::runtime::host_tags(&config, &assignment, &enforcement).contains(&"web-filter:dns".to_owned())
@@ -118,7 +118,7 @@ fn dns_cache_is_flushed_only_when_policy_or_open_windows_change() {
 #[test]
 fn agents_report_web_filter_v2_capability_and_keep_vdom_last() {
     let assignment = scheduled_assignment(1);
-    let enforcement = openems_agent::runtime::Enforcement { sites: vec![], killed: vec![] };
+    let enforcement = openems_agent::runtime::Enforcement::default();
     let tags = openems_agent::runtime::host_tags(
         &AgentConfig::new("http://127.0.0.1:8000", "test"),
         &assignment,
@@ -141,7 +141,7 @@ fn anti_bypass_is_opt_in_requires_dns_filter_and_reports_a_tag() {
     config.write_file(&path).unwrap();
     assert_eq!(AgentConfig::from_file(&path).unwrap(), config);
     let assignment = scheduled_assignment(1);
-    let enforcement = openems_agent::runtime::Enforcement { sites: vec![], killed: vec![] };
+    let enforcement = openems_agent::runtime::Enforcement::default();
     let tags = openems_agent::runtime::host_tags(&config, &assignment, &enforcement);
     assert!(tags.contains(&"web-filter:anti-bypass".to_owned()));
     assert_eq!(tags.last().unwrap(), "vdom:Default");
