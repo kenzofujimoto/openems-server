@@ -68,10 +68,14 @@ enum Command {
         #[arg(long)]
         config: Option<PathBuf>,
     },
-    /// Set restart-on-failure actions on the installed service (used by the MSI).
+    /// Set restart-on-failure actions and permissions on the installed service (used by the MSI).
     #[cfg(windows)]
     #[command(hide = true)]
     ConfigureRecovery,
+    /// Start the service again if it was disabled or stopped (run by the SYSTEM scheduled task).
+    #[cfg(windows)]
+    #[command(hide = true)]
+    Watchdog,
     /// Entry point used by the Windows Service Control Manager.
     #[cfg(windows)]
     #[command(hide = true)]
@@ -347,6 +351,11 @@ fn execute(command: Command) -> Result<ExitCode> {
         #[cfg(windows)]
         Command::ConfigureRecovery => {
             openems_agent::service::configure_recovery()?;
+            Ok(ExitCode::SUCCESS)
+        }
+        #[cfg(windows)]
+        Command::Watchdog => {
+            openems_agent::service::run_watchdog()?;
             Ok(ExitCode::SUCCESS)
         }
         #[cfg(windows)]

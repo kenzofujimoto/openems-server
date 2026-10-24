@@ -72,6 +72,78 @@ fn run(_: &str) -> Result<()> {
     Err(AgentError::Local("NRPT routing requires Windows".into()))
 }
 
+/// Whether the managed rule exists, read from the local NRPT store in the registry (no PowerShell).
+#[cfg(windows)]
+pub fn is_installed() -> Result<bool> {
+    use windows_sys::Win32::System::Registry::{
+        HKEY, HKEY_LOCAL_MACHINE, KEY_READ, RRF_RT_REG_SZ, RegCloseKey, RegEnumKeyExW, RegGetValueW, RegOpenKeyExW,
+    };
+    const ERROR_FILE_NOT_FOUND: u32 = 2;
+    const ERROR_NO_MORE_ITEMS: u32 = 259;
+    let wide = |text: &str| -> Vec<u16> { text.encode_utf16().chain([0]).collect() };
+    let path = wide(r"SYSTEM\CurrentControlSet\Services\Dnscache\Parameters\DnsPolicyConfig");
+    let comment = wide("Comment");
+    let mut key: HKEY = std::ptr::null_mut();
+    // SAFETY: NUL-terminated path; the key is closed below.
+    let status = unsafe { RegOpenKeyExW(HKEY_LOCAL_MACHINE, path.as_ptr(), 0, KEY_READ, &mut key) };
+    if status == ERROR_FILE_NOT_FOUND {
+        return Ok(false);
+    }
+    if status != 0 {
+        return Err(AgentError::Local(format!("NRPT store not readable (error {status})")));
+    }
+    let mut found = Ok(false);
+    for index in 0.. {
+        let mut name = [0u16; 256];
+        let mut length = name.len() as u32 - 1;
+        let null: *mut u32 = std::ptr::null_mut();
+        // SAFETY: buffer and length describe `name`; optional outputs are null.
+        let status = unsafe {
+            RegEnumKeyExW(
+                key,
+                index,
+                name.as_mut_ptr(),
+                &mut length,
+                null.cast(),
+                std::ptr::null_mut(),
+                null.cast(),
+                std::ptr::null_mut(),
+            )
+        };
+        if status == ERROR_NO_MORE_ITEMS {
+            break;
+        }
+        if status != 0 {
+            found = Err(AgentError::Local(format!("NRPT store not readable (error {status})")));
+            break;
+        }
+        let mut value = [0u16; 512];
+        let mut size = (value.len() * 2) as u32;
+        // SAFETY: `name` is NUL-terminated by the enumeration; value buffer size is in bytes.
+        let read = unsafe {
+            RegGetValueW(
+                key,
+                name.as_ptr(),
+                comment.as_ptr(),
+                RRF_RT_REG_SZ,
+                null,
+                value.as_mut_ptr().cast(),
+                &mut size,
+            )
+        };
+        if read == 0 {
+            let text = String::from_utf16_lossy(&value[..value.iter().position(|&unit| unit == 0).unwrap_or(0)]);
+            if text == RULE_COMMENT {
+                found = Ok(true);
+                break;
+            }
+        }
+    }
+    // SAFETY: key opened above.
+    unsafe { RegCloseKey(key) };
+    found
+}
+
 pub fn install(servers: &[IpAddr]) -> Result<()> {
     run(&install_script(servers)?)
 }

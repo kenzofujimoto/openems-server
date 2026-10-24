@@ -114,7 +114,7 @@ pub fn verdict(filters: &[FilterSpec], connection: &Connection) -> Option<Action
 }
 
 #[cfg(windows)]
-pub use machine::{install, remove};
+pub use machine::{install, installed_count, remove};
 
 #[cfg(windows)]
 mod machine {
@@ -347,6 +347,16 @@ mod machine {
             remove_owned(engine)?;
             plan(doh).iter().try_for_each(|spec| add_filter(engine, spec, &app))
         })
+    }
+
+    /// Filters this agent's provider currently owns, to detect removal by someone else.
+    pub fn installed_count() -> Result<usize> {
+        let engine = Engine::open()?;
+        let mut total = 0;
+        for layer in [FWPM_LAYER_ALE_AUTH_CONNECT_V4, FWPM_LAYER_ALE_AUTH_CONNECT_V6] {
+            total += owned_filters(&engine, layer)?.len();
+        }
+        Ok(total)
     }
 
     /// Remove the agent's filters, sublayer and provider; absent ones are fine.

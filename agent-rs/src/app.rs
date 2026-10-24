@@ -28,7 +28,12 @@ fn abort(stop: &StopSignal, workers: Vec<JoinHandle<()>>, error: AgentError) -> 
 
 /// Apply browser DoH policies now, then re-check every minute so a rewrite by anyone is undone.
 #[cfg(windows)]
-fn guard_browser_policies(config: &AgentConfig, log: &Logger, stop: &Arc<StopSignal>) -> Result<JoinHandle<()>> {
+fn guard_browser_policies(
+    config: &AgentConfig,
+    log: &Logger,
+    stop: &Arc<StopSignal>,
+    tamper: &Arc<crate::tamper::TamperLog>,
+) -> Result<JoinHandle<()>> {
     use crate::browser_policy::{WindowsRegistry, ensure};
     let originals = config.state_path.with_file_name("browser-policies.json");
     let report = |log: &Logger, changed: Vec<String>| {
@@ -37,19 +42,97 @@ fn guard_browser_policies(config: &AgentConfig, log: &Logger, stop: &Arc<StopSig
         }
     };
     report(log, ensure(&mut WindowsRegistry, &originals)?);
-    let (log, stop) = (Arc::clone(log), Arc::clone(stop));
+    let (log, stop, tamper) = (Arc::clone(log), Arc::clone(stop), Arc::clone(tamper));
     Ok(std::thread::Builder::new().name("openems-browser-policy".into()).spawn(move || {
         while !stop.wait(Duration::from_secs(60)) {
             match ensure(&mut WindowsRegistry, &originals) {
-                Ok(changed) => report(&log, changed),
+                Ok(changed) => {
+                    // Applied once at start; any later rewrite undoes someone else's change.
+                    if !changed.is_empty() {
+                        tamper.record(TamperKind::BrowserPolicyRestored, TamperKind::BrowserPolicyRestored.detail());
+                    }
+                    report(&log, changed)
+                }
                 Err(error) => log(&format!("browser policy check failed ({})", error.kind())),
             }
         }
     })?)
 }
 
+/// Repair what someone removed while the agent runs (tamper-protection.md, decision 3a).
+#[cfg(windows)]
+fn guard_protections(
+    log: &Logger,
+    stop: &Arc<StopSignal>,
+    tamper: &Arc<crate::tamper::TamperLog>,
+    routed: Option<Vec<IpAddr>>,
+    filtered: bool,
+    as_service: bool,
+) -> Result<JoinHandle<()>> {
+    use crate::hardening::{Check, Watchdog};
+    let (log, stop, tamper) = (Arc::clone(log), Arc::clone(stop), Arc::clone(tamper));
+    Ok(std::thread::Builder::new().name("openems-watchdog".into()).spawn(move || {
+        // The first task registration after install is not tampering.
+        if as_service
+            && !crate::service::watchdog_task_present().unwrap_or(true)
+            && let Err(error) = crate::service::install_watchdog_task()
+        {
+            log(&format!("watchdog scheduled task not created ({})", error.kind()));
+        }
+        let mut checks = Vec::new();
+        if let Some(servers) = routed {
+            checks.push(Check::new(TamperKind::DnsRuleRestored, nrpt::is_installed, move || nrpt::install(&servers)));
+        }
+        if filtered {
+            let expected = crate::wfp::plan(crate::doh::addresses()).len();
+            checks.push(Check::new(
+                TamperKind::WfpRestored,
+                move || Ok(crate::wfp::installed_count()? == expected),
+                || crate::wfp::install(crate::doh::addresses()),
+            ));
+        }
+        if as_service {
+            checks.push(Check::new(
+                TamperKind::ServiceConfigRestored,
+                crate::service::service_config_ok,
+                crate::service::repair_service_config,
+            ));
+        }
+        let mut frequent = Watchdog::new(checks);
+        let mut task = Watchdog::new(if as_service {
+            vec![Check::new(
+                TamperKind::WatchdogRestored,
+                crate::service::watchdog_task_present,
+                crate::service::install_watchdog_task,
+            )]
+        } else {
+            Vec::new()
+        });
+        let mut tick = 0u64;
+        while !stop.wait(Duration::from_secs(15)) {
+            tick += 1;
+            let mut notes = frequent.run(&tamper);
+            if tick.is_multiple_of(4) {
+                notes.extend(task.run(&tamper));
+            }
+            for note in notes {
+                log(&note);
+            }
+        }
+    })?)
+}
+
+/// The Windows service entry: also guards the service's own configuration and watchdog task.
+pub fn run_as_service(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()> {
+    run_with(config, log, stop, true)
+}
+
 /// Run until `stop` is signalled; listeners live as long as the loop.
 pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()> {
+    run_with(config, log, stop, false)
+}
+
+fn run_with(config: AgentConfig, log: Logger, stop: Arc<StopSignal>, as_service: bool) -> Result<()> {
     let runtime = Arc::new(Runtime::new(config.clone(), Arc::clone(&log), Arc::clone(&stop))?);
     // A marker left by the previous run means it never reached a graceful stop (killed or crashed).
     let marker = config.state_path.with_file_name("running.marker");
@@ -64,7 +147,7 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
             log(&format!("watchdog events not read ({})", error.kind()));
         }
     }
-    let result = serve(&config, &log, &stop, &runtime);
+    let result = serve(&config, &log, &stop, &runtime, as_service);
     if !config.dry_run
         && let Err(error) = crate::hardening::end_run(&marker)
     {
@@ -73,17 +156,26 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
     result
 }
 
-fn serve(config: &AgentConfig, log: &Logger, stop: &Arc<StopSignal>, runtime: &Arc<Runtime>) -> Result<()> {
+fn serve(
+    config: &AgentConfig,
+    log: &Logger,
+    stop: &Arc<StopSignal>,
+    runtime: &Arc<Runtime>,
+    as_service: bool,
+) -> Result<()> {
     let (config, log, stop) = (config.clone(), Arc::clone(log), Arc::clone(stop));
     runtime.blocked_domains.set_doh_blocking(config.dns_filter && config.anti_bypass);
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
     let mut routed = false;
+    // Resolver addresses behind the NRPT rule, kept so the watchdog can recreate it.
+    #[cfg_attr(not(windows), allow(unused_mut, unused_variables))]
+    let mut routed_servers: Option<Vec<IpAddr>> = None;
     #[cfg(windows)]
     let mut filtered = false;
     // Before any listener or NRPT change, so a failure here leaves nothing to undo.
     #[cfg(windows)]
     if config.anti_bypass {
-        workers.push(guard_browser_policies(&config, &log, &stop)?);
+        workers.push(guard_browser_policies(&config, &log, &stop, &runtime.tamper)?);
     }
     if config.block_page_https {
         let started = crate::authority::Authority::load_or_create(&config.authority_path).and_then(|authority| {
@@ -135,6 +227,7 @@ fn serve(config: &AgentConfig, log: &Logger, stop: &Arc<StopSignal>, runtime: &A
                 return Err(abort(&stop, workers, error));
             }
             routed = true;
+            routed_servers = Some(servers.clone());
             log("system DNS routed to the local resolver");
             #[cfg(windows)]
             if config.anti_bypass {
@@ -150,6 +243,15 @@ fn serve(config: &AgentConfig, log: &Logger, stop: &Arc<StopSignal>, runtime: &A
             }
         }
     }
+    #[cfg(windows)]
+    if routed || filtered || as_service {
+        match guard_protections(&log, &stop, &runtime.tamper, routed_servers, filtered, as_service) {
+            Ok(worker) => workers.push(worker),
+            Err(error) => log(&format!("watchdog not started ({})", error.kind())),
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = (as_service, routed_servers);
     log(&format!("openems-agent {} started for {}", env!("CARGO_PKG_VERSION"), config.devid));
     let result = Arc::clone(runtime).run();
     // Graceful stop (including upgrade and shutdown) hands DNS back; a crash never reaches here.

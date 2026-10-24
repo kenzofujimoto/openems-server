@@ -408,6 +408,9 @@ pub fn prepare_removal(config_path: &Path) -> Result<()> {
     if config.dns_filter {
         crate::nrpt::remove()?;
     }
+    // Windows Installer holds its mutex now, so the task cannot restart the service meanwhile.
+    #[cfg(windows)]
+    crate::service::remove_watchdog_task()?;
     // Browser policies stay while the agent is installed; removal restores what was there before.
     #[cfg(windows)]
     if config.anti_bypass {
