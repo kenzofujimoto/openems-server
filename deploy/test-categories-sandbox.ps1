@@ -269,9 +269,8 @@ try {
         try { $probe.Start() } finally { $probe.Stop() }
     }
     foreach ($name in $forwardedNames) {
-        if (-not (Test-Upstream $name)) {
-            throw ('Host DNS already filters or cannot resolve ' + $name + '; enable Sandbox networking and remove host filtering for it.')
-        }
+        # A freshly opened Sandbox may still be bringing its network up: retry before blaming the host.
+        Wait-Until { Test-Upstream $name } 60 ('Host DNS already filters or cannot resolve ' + $name + '; enable Sandbox networking and remove host filtering for it.')
     }
     $manifest = Get-Content -LiteralPath (Join-Path $work 'categories\manifest.json') -Raw | ConvertFrom-Json
     $games = @($manifest.categories | Where-Object { $_.id -eq 'games' })
