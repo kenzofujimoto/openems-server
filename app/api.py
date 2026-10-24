@@ -1,6 +1,7 @@
 """Authenticated reference-agent and management HTTP interfaces."""
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import os
 from contextlib import asynccontextmanager
@@ -14,8 +15,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from agent.policy import CATEGORIES
+
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService, LoginRateLimited
+from .capabilities import missing_tags
 from .categories import CategoryRepository
 from .events import (
     DEFAULT_RETENTION_DAYS,
@@ -108,6 +112,29 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     def record(request: Request, action: str, target: str = '', **metadata) -> None:
         audit.record(AuditEntry(actor=_actor(request), action=action, target=target, metadata=metadata))
 
+    # Block log reads are audited once per admin, route and hour: the panel polls every few seconds.
+    audited_views: set[tuple[str, str, datetime]] = set()
+
+    def record_view(request: Request) -> None:
+        hour = current_hour()
+        key = (_actor(request), request.url.path, hour)
+        if key in audited_views:
+            return
+        audited_views.difference_update({seen for seen in audited_views if seen[2] != hour})
+        audited_views.add(key)
+        record(request, 'events.read', request.url.path)
+
+    def event_view(event: BlockEvent) -> dict[str, Any]:
+        identity = f'{event.devid}|{event.hour.isoformat()}|{event.domain}|{event.reason}|{event.category}'
+        category = event.category or None
+        return {
+            'id': hashlib.sha256(identity.encode('utf-8')).hexdigest()[:16], 'at': event.hour.isoformat(),
+            'devid': event.devid, 'kind': 'web_block',
+            'detail': event.domain if event.reason != 'dropped' else 'eventos não registrados pelo limite do agente',
+            'reason': event.reason, 'category': category,
+            'category_label': CATEGORIES[category]['label'] if category in CATEGORIES else None, 'count': event.count,
+        }
+
     def endpoint_view(endpoint: Endpoint) -> dict[str, Any]:
         assigned = svc.effective_vdom(endpoint)
         desired = svc.effective_profile(endpoint.client_id)
@@ -123,6 +150,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'last_error': endpoint.last_error, 'last_applied': endpoint.last_applied.isoformat() if endpoint.last_applied else None,
             'last_seen': endpoint.last_seen.isoformat(),
             'desired_profile': {'vdom': desired.vdom, 'version': desired.version, 'digest': desired.digest} if desired else None,
+            'missing_capabilities': missing_tags(desired.body, endpoint.host_tags) if desired else [],
         }
 
     @app.middleware('http')
@@ -326,7 +354,11 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         record(request, 'profile.publish', vdom, version=profile.version)
-        return {'vdom': profile.vdom, 'version': profile.version, 'digest': profile.digest}
+        warnings = [{'devid': endpoint.devid, 'missing': missing}
+                    for endpoint in sorted(svc.list_endpoints(), key=lambda item: item.devid)
+                    if endpoint.status is EndpointStatus.REGISTERED and svc.effective_vdom(endpoint) == vdom
+                    and (missing := missing_tags(profile.body, endpoint.host_tags))]
+        return {'vdom': profile.vdom, 'version': profile.version, 'digest': profile.digest, 'warnings': warnings}
 
     @app.get('/api/v1/profiles')
     def list_profiles():
@@ -388,6 +420,34 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             raise HTTPException(status_code=404, detail='unknown rule')
         record(request, 'rule.remove', rule_id)
         return {'removed': rule_id}
+
+    @app.get('/api/v1/events')
+    def list_events(request: Request, limit: int = Query(default=50, ge=1, le=500)):
+        record_view(request)
+        return [event_view(event) for event in events.recent(limit)]
+
+    @app.get('/api/v1/stats/overview')
+    def overview(request: Request):
+        record_view(request)
+        today = current_hour().replace(hour=0)
+        start, previous_start = today - timedelta(days=6), today - timedelta(days=13)
+        totals = events.daily_totals(previous_start)
+        days = [(start + timedelta(days=offset)).date() for offset in range(7)]
+        previous = sum(total for day, total in totals.items() if day < start.date())
+        return {
+            'generated_at': datetime.now(UTC).isoformat(),
+            'blocks_by_day': [{'date': day.isoformat(), 'web': totals.get(day, 0), 'apps': 0, 'usb': 0} for day in days],
+            'top_domains': [{'domain': domain, 'count': count} for domain, count in events.top_domains(start, 5)],
+            # No history of machine status is kept, so only blocks can be compared.
+            'previous_period': {'blocks': previous},
+        }
+
+    @app.get('/api/v1/categories')
+    def list_categories():
+        manifest = categories.manifest() if categories else {'version': None, 'attribution': '', 'categories': []}
+        return {'version': manifest['version'], 'attribution': manifest['attribution'],
+                'categories': [{key: entry[key] for key in ('id', 'label', 'group', 'count')}
+                               for entry in manifest['categories']]}
 
     @app.get('/api/v1/audit')
     def get_audit(limit: int = Query(default=100, ge=1, le=1000)):

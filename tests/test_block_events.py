@@ -136,6 +136,8 @@ def test_postgres_store_sums_and_purges():
     store.add([event, event])
     store.add([BlockEvent(devid="pc", hour=hour - timedelta(days=40), domain="old.example", reason="rule", category="", count=1)])
     assert [(item.domain, item.count) for item in store.recent(10)] == [("steamcommunity.com", 4), ("old.example", 1)]
+    assert store.top_domains(hour - timedelta(days=50), 5) == [("steamcommunity.com", 4), ("old.example", 1)]
+    assert store.daily_totals(hour - timedelta(days=1)) == {hour.date(): 4}
     assert store.purge(hour - timedelta(days=30)) == 1
     assert [item.domain for item in store.recent(10)] == ["steamcommunity.com"]
     store.close()
