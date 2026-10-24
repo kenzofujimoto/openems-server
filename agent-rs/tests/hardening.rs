@@ -206,3 +206,28 @@ fn watchdog_events_written_by_the_scheduled_task_reach_the_service() {
     assert!(!pending.exists());
     std::fs::remove_dir_all(&directory).unwrap();
 }
+
+#[test]
+fn dacl_comparison_ignores_ace_and_right_order() {
+    use openems_agent::hardening::{dacl_rights, same_dacl};
+    let reordered = "D:P(A;;LCCCSWLORC;;;AU)(A;;RPCCLCSWLORC;;;BA)(A;;WOWDRCSDCRLODTWPRPSWLCDCCC;;;SY)";
+    assert!(same_dacl(SERVICE_SDDL, reordered));
+    // Windows' default service DACL lets Administrators stop and delete: not ours.
+    let default = "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;IU)";
+    assert!(!same_dacl(SERVICE_SDDL, default));
+    // The SACL part Windows may append is not part of the comparison.
+    assert!(same_dacl(SERVICE_SDDL, &format!("{SERVICE_SDDL}S:(AU;FA;CCDCLCSWRPWPDTLOSDRCWDWO;;;WD)")));
+    assert_eq!(dacl_rights(SERVICE_SDDL).len(), 3);
+}
+
+#[test]
+fn the_watchdog_task_runs_the_agent_as_system_at_boot_and_every_five_minutes() {
+    use openems_agent::hardening::watchdog_task_xml;
+    let xml = watchdog_task_xml(r"C:\Program Files\openems & co\openems-agent.exe");
+    assert!(xml.contains("<UserId>S-1-5-18</UserId>"));
+    assert!(xml.contains("<BootTrigger>") && xml.contains("<Interval>PT5M</Interval>"));
+    assert!(xml.contains("<Command>\"C:\Program Files\openems &amp; co\openems-agent.exe\"</Command>"));
+    assert!(xml.contains("<Arguments>watchdog</Arguments>"));
+    assert!(xml.contains("<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>"));
+    assert!(xml.contains("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>"));
+}
