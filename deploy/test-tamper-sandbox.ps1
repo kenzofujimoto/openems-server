@@ -247,8 +247,13 @@ function Test-RestrictedDacl {
     return $true
 }
 function Test-Task {
-    & (Join-Path $env:SystemRoot 'System32\schtasks.exe') '/Query' '/TN' $taskName 2>$null | Out-Null
-    return ($LASTEXITCODE -eq 0)
+    # Under 'Stop', Windows PowerShell 5.1 turns redirected native stderr ("task not found") into an error.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & (Join-Path $env:SystemRoot 'System32\schtasks.exe') '/Query' '/TN' $taskName 2>$null | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } finally { $ErrorActionPreference = $previous }
 }
 # Restart actions from the SERVICE_FAILURE_ACTIONS blob in the registry; sc.exe output is localized.
 function Test-Recovery {
