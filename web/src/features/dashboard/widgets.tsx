@@ -85,7 +85,8 @@ const TAMPER_DETAIL: Record<string, string> = {
 };
 
 function eventDetail(event: FleetEvent): string {
-  if (event.kind === "tamper" && event.reason && TAMPER_DETAIL[event.reason]) return TAMPER_DETAIL[event.reason];
+  const tamper = event.kind === "tamper" && event.reason ? TAMPER_DETAIL[event.reason] : undefined;
+  if (tamper) return tamper;
   const count = event.count !== undefined && event.count > 1 ? `${formatNumber(event.count)}×` : null;
   return [event.detail, event.category_label, count].filter(Boolean).join(" · ");
 }
