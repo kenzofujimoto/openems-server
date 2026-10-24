@@ -165,6 +165,19 @@ describe("block log", () => {
     expect(await screen.findByRole("button", { name: "Abrir RSM-SP-001" })).toBeInTheDocument();
   });
 
+  it("names tamper events in Portuguese and keeps unknown kinds readable", async () => {
+    const now = new Date().toISOString();
+    server.use(http.get("*/api/v1/events", () => HttpResponse.json([
+      { id: "t1", at: now, devid: "RSM-SP-002", kind: "tamper", reason: "dns_rule_restored",
+        detail: "NRPT rule routing DNS to the agent was recreated", category: null, category_label: null },
+      { id: "t2", at: now, devid: "RSM-SP-003", kind: "tamper", reason: "future_kind", detail: "something new" },
+    ])));
+    renderApp("/");
+    expect(await screen.findByText("Regra de DNS do agente recriada")).toBeInTheDocument();
+    expect(screen.queryByText("NRPT rule routing DNS to the agent was recreated")).toBeNull();
+    expect(screen.getByText("something new")).toBeInTheDocument();
+  });
+
   it("lists published categories by group with their attribution", async () => {
     renderApp("/policies/web");
     expect(await screen.findByRole("heading", { name: "Filtro web" })).toBeInTheDocument();
