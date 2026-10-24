@@ -1,0 +1,43 @@
+{
+  "environment": "Windows Sandbox with networking enabled, run as SYSTEM, Edge confirmed by the operator",
+  "date": "2026-10-24",
+  "scope": "F2 slice 4a: web categories downloaded from the server, verified by digest, cached for offline use and enforced through the local DNS resolver",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-categories-sandbox.ps1 at b20ec39",
+  "package": {
+    "build": "tools/build-msi-fixtures.ps1 -Production (no defines), WiX 5.0.2, version 0.3.0, agent and installer source at 65c0340",
+    "openems-agent.msi": "e45b7077edc028918470d7d5b844eafe263e484e5e69c085d302c26424170dbc",
+    "properties": ["SERVER=http://127.0.0.1:18013", "BLOCKPAGEHTTPS=1", "DNSFILTER=1"],
+    "fault_injection_actions": "absent (CustomAction table checked inside Sandbox before install)"
+  },
+  "categories": {
+    "build": "app/categories.py build_categories from a two-domain UT1-shaped games list (steampowered.com, steamcommunity.com)",
+    "games": "0033b3a0a6f68dff9d29cc49a369d5c5594c75e81c657883e2240b5151028490"
+  },
+  "checks": [
+    "production install downloads the games category and blocks it through system DNS",
+    "allowed exception and unlisted names resolve upstream",
+    "the category is cached in the protected data directory with its published digest",
+    "with the backend offline, a service restart keeps blocking from the cache",
+    "Edge shows the block page for steamcommunity.com, confirmed by the operator",
+    "removal restores NRPT rules, trust and hosts"
+  ],
+  "operator_observation": "Edge showed the RSM block page for https://steamcommunity.com/ without a certificate warning",
+  "durations": ["/i openems-agent.msi: 123 s", "/x openems-agent.msi: 11 s"],
+  "unrelated_roots_added": [],
+  "error": null,
+  "cleanup_errors": [],
+  "notes": [
+    "A first attempt failed the offline restart check: the agent persisted a new policy only at the next enforcement tick (15 s), so a restart soon after it arrived lost it. Fixed in 65c0340 with a native contract that uses a 30 s interval",
+    "A second attempt failed the preflight because the freshly opened Sandbox had no DNS yet; the host resolved every name. The preflight now retries for 60 s (b20ec39)"
+  ],
+  "not_validated": [
+    "Full UT1 lists and the daily update job (part 4b)",
+    "Block event log, panel screens and category name on the block page (part 4b)",
+    "UT1 license confirmation at the official source",
+    "Physical endpoint, Chrome and Firefox, real management server",
+    "Linux build of the native agent (CI), not compiled locally",
+    "Code signing"
+  ]
+}
