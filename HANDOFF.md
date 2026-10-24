@@ -13,6 +13,21 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
 - Evidência em `validation/host-chrome-https-2026-10-22.json`. O estado instalado foi mantido para o teste solicitado; não confundir com as validações anteriores sem alteração no host.
 - Próximo recorte proposto: `PLAN-installer-blockpage.md` (F1/F2: opções no MSI, preservação de upgrade, transação de CA e pacote para a segunda máquina). Ainda precisa de aprovação específica do plano antes de alterar implementação em vários arquivos. Firefox permanece pendente; cada máquina deve gerar e proteger sua própria CA.
 
+### Continuação — F2 categorias, parte 4a (branch `feature/web-categories`, `web-categories.md` aprovado em 2026-10-23)
+
+- Feito com TDD:
+  - Taxonomia no estilo FortiGuard em `agent/policy.py` (`CATEGORIES`, 21 ids), montada sobre as listas UT1. Nomes conferidos no espelho `olbat/ut1-blacklists`, ativo em 2026-10-12. **A licença CC BY-SA 4.0 precisa ser confirmada na fonte oficial**: o site da universidade mudou de endereço.
+  - Arquivo de categoria: `OEMSCAT1` + contagem u32 + hashes u64 ordenados (8 primeiros bytes do SHA-256). Um domínio pertence à categoria se ele ou um domínio-pai estiver na lista. `blocked_categories` vale no topo e dentro das janelas de horário; `allowed` vence. Vetores compartilhados com o Rust (`categories.rs`).
+  - Servidor: `tools/update_categories.py` (UT1 → arquivos + manifesto com atribuição, troca atômica) e rotas do agente `/fct/api/public/v1/categories/` e `.../categories/file/` (token do dispositivo, digest publicado). Configurado por `OPENEMS_CATEGORIES_DIR`.
+  - Agente: depois de cada sincronização, baixa só as categorias referenciadas, com timeout próprio de 300 s, tamanho e SHA-256 conferidos e digest validado antes de virar nome de arquivo. Guarda em `categories/` ao lado do `state.json`, carrega do cache ao iniciar (funciona offline) e informa a tag `web-filter:categories`.
+  - O contrato nativo (`tests/test_native_categories.py`) roda o agente real contra o servidor de teste, numa porta DNS efêmera.
+- Corrigidas duas instabilidades de teste: o `free_port` caía em blocos de portas reservadas (agora sorteia abaixo da faixa dinâmica), e o contrato encerrava o agente antes de a política chegar ao `state.json`. O agente agora informa no log se carregou cada categoria do cache.
+- Suíte: **574 Python aprovados, 41 ignorados, 5 deselecionados; 110 Rust**.
+- Aceite `deploy/test-categories-sandbox.ps1` (contratos em `tests/test_categories_sandbox.py`), com a categoria `games` gerada pela ferramenta real.
+  - Verifica: bloqueio de `api.steampowered.com` e `steamcommunity.com`, `allowed` para `store.steampowered.com`, arquivo em cache com o digest, reinício do serviço offline ainda bloqueando, Edge em `steamcommunity.com` confirmado pelo operador, e desinstalação.
+- Pacote: `.venv/sandbox-acceptance/categories-input/` (MSI e `categories/`) e `categories.wsb`, com rede. Win+R → `C:\openems-input\RUN-CATEGORIES-TEST.cmd`; relatório em `results/categories-result.json`. **Aceite real ainda não executado.**
+- Pendente na parte 4b: registro de bloqueios, rotas `/api/v1/events` e `/api/v1/stats/overview`, telas do painel, aviso de agentes sem `web-filter:categories`, nome da categoria na página de bloqueio e tarefa diária no deploy.
+
 ### Continuação — F2 antiburla (branch `feature/dns-anti-bypass`, `dns-anti-bypass.md` aprovado em 2026-10-23)
 
 - Feito com TDD:
