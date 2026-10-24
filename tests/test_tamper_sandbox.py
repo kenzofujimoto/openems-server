@@ -65,6 +65,8 @@ def test_harness_checks_permissions_from_unprivileged_and_administrator_sessions
     assert 'FileSystemAccessRule' in text and "'Modify'" in text
     # Missing answers are reported by name instead of failing on the absent property.
     assert 'did not run' in text and '$result.permissions' in text
+    # cmd reads "echo key=5>>file" as a redirection of handle 5: the probe is a PowerShell script.
+    assert 'probe.ps1' in text and 'probe.cmd' not in text and '[IO.File]::Open(' in text
     for probe in ("'stop'", "'config'", "'delete'", 'agent.json', 'Program Files\\openems'):
         assert probe in text, probe
     assert 'Get-ServiceAces' in text and 'sdshow' in text
