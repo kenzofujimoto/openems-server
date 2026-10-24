@@ -226,7 +226,7 @@ fn the_watchdog_task_runs_the_agent_as_system_at_boot_and_every_five_minutes() {
     let xml = watchdog_task_xml(r"C:\Program Files\openems & co\openems-agent.exe");
     assert!(xml.contains("<UserId>S-1-5-18</UserId>"));
     assert!(xml.contains("<BootTrigger>") && xml.contains("<Interval>PT5M</Interval>"));
-    assert!(xml.contains("<Command>\"C:\Program Files\openems &amp; co\openems-agent.exe\"</Command>"));
+    assert!(xml.contains(r#"<Command>"C:\Program Files\openems &amp; co\openems-agent.exe"</Command>"#));
     assert!(xml.contains("<Arguments>watchdog</Arguments>"));
     assert!(xml.contains("<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>"));
     assert!(xml.contains("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>"));
