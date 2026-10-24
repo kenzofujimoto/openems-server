@@ -178,9 +178,13 @@ impl Runtime {
             // Offline start: categories downloaded earlier keep blocking before the server answers.
             let directory = crate::categories::cache_dir(&cfg.state_path);
             for id in blocked_domains.referenced_categories() {
-                if let Some((digest, set)) = crate::categories::load_cached(&directory, &id, None) {
-                    blocked_domains.categories().insert(&id, set);
-                    inner.category_digests.insert(id, digest);
+                match crate::categories::load_cached(&directory, &id, None) {
+                    Some((digest, set)) => {
+                        log(&format!("category {id} loaded from cache ({} domains)", set.len()));
+                        blocked_domains.categories().insert(&id, set);
+                        inner.category_digests.insert(id, digest);
+                    }
+                    None => log(&format!("category {id} has no cached copy yet; it does not block until downloaded")),
                 }
             }
         }

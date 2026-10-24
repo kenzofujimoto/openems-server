@@ -80,13 +80,17 @@ def test_agent_downloads_blocks_respects_allowed_and_keeps_categories_offline(na
             assert not blocked(port, "example.org")
             cached = list((tmp_path / "categories").glob("games-*.bin"))
             assert len(cached) == 1 and cached[0].read_bytes() == next(categories.glob("games-*.bin")).read_bytes()
+            # The policy reaches state.json at the next enforcement cycle, shortly after the sync.
+            state = tmp_path / "state.json"
+            assert wait_for(lambda: state.exists() and "blocked_categories" in state.read_text(encoding="utf-8"), 15)
         finally:
             stop(agent)
     # Same server address, now gone: the cached category keeps blocking after a restart.
     # (State belongs to one server, so a different address would correctly start from scratch.)
     offline = start_agent(native, origin, tmp_path, port)
     try:
-        assert wait_for(lambda: blocked(port, "api.steampowered.com"), 20), "cached category was not used offline"
+        if not wait_for(lambda: blocked(port, "api.steampowered.com"), 20):
+            raise AssertionError("cached category was not used offline:\n" + stop(offline))
     finally:
         stop(offline)
 

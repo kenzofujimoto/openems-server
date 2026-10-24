@@ -2,6 +2,7 @@
 
 import json
 import os
+import random
 import socket
 import struct
 import subprocess
@@ -13,13 +14,15 @@ from tests.test_native_agent import run_agent
 
 
 def free_port() -> int:
-    # Windows can reserve a free UDP port for TCP (Hyper-V exclusion ranges); need both.
-    for _ in range(32):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp, socket.socket() as tcp:
-            udp.bind(("127.0.0.1", 0))
-            port = udp.getsockname()[1]
+    # The agent needs UDP and TCP on one port. Windows hands out ephemeral ports sequentially, and
+    # Hyper-V/WinNAT exclusion blocks and TIME_WAIT sockets cluster there, so sample randomly below
+    # the dynamic range instead.
+    for _ in range(200):
+        port = random.randint(20000, 49151)
+        with socket.socket() as tcp, socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
             try:
                 tcp.bind(("127.0.0.1", port))
+                udp.bind(("127.0.0.1", port))
             except OSError:
                 continue
             return port
