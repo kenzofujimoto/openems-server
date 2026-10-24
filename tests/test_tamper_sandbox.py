@@ -56,7 +56,10 @@ def test_harness_checks_permissions_from_unprivileged_and_administrator_sessions
     # standard user created inside the Sandbox, with a random password that is never written down.
     assert 'permissions-ready' in text and 'permissions-result.json' in text
     assert 'New-LocalUser' in text and 'RandomNumberGenerator' in text and 'Remove-LocalUser' in text
-    assert "Add-LocalGroupMember -Group 'Users'" in text
+    # Group names are localized (Usuários on a Portuguese Windows): use the well-known SID.
+    assert "Add-LocalGroupMember -SID 'S-1-5-32-545'" in text and "-Group 'Users'" not in text
+    # sc.exe output is localized too: recovery actions are read from the registry, not parsed text.
+    assert 'FailureActions' in text and 'qfailure' not in text
     assert '-Credential' in text
     for probe in ("'stop'", "'config'", "'delete'", 'agent.json', 'Program Files\\openems'):
         assert probe in text, probe
