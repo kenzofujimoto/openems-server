@@ -4,7 +4,7 @@ from __future__ import annotations
 import ipaddress
 import os
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -17,6 +17,15 @@ from fastapi.staticfiles import StaticFiles
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService, LoginRateLimited
 from .categories import CategoryRepository
+from .events import (
+    DEFAULT_RETENTION_DAYS,
+    BlockEvent,
+    EventStore,
+    InMemoryEventStore,
+    current_hour,
+    parse_row,
+    validate_retention,
+)
 from .limits import RequestSizeLimitMiddleware
 from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
@@ -24,6 +33,7 @@ from .schemas import (
     AckPayload,
     ClientPayload,
     DevicePayload,
+    EventsPayload,
     IdpPayload,
     InvitationPayload,
     LoginPayload,
@@ -67,11 +77,14 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                record_path: str | None = None, admin_service: AdminService | None = None,
                audit_log: AuditLog | None = None, *, lab_mode: bool = False,
                close_resources: list[Any] | None = None, panel_dir: Path | None = None,
-               category_dir: Path | None = None) -> FastAPI:
+               category_dir: Path | None = None, event_store: EventStore | None = None,
+               event_retention_days: int = DEFAULT_RETENTION_DAYS) -> FastAPI:
     svc = service or EmsService(require_invitation=not lab_mode)
     saml = saml_sp or SamlSp('http://localhost:8013')
     admin = admin_service or AdminService()
     audit = audit_log or InMemoryAuditLog()
+    events = event_store or InMemoryEventStore()
+    retention_days = validate_retention(event_retention_days)
     env_admin = os.environ.get('OPENEMS_ADMIN')
     if env_admin and not admin.has_admins():
         if ':' not in env_admin:
@@ -245,6 +258,22 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         if data is None:
             raise HTTPException(status_code=404, detail='category file not published')
         return Response(content=data, media_type='application/octet-stream')
+
+    @app.post('/fct/api/public/v1/events/')
+    def report_events(payload: EventsPayload):
+        # Rows that cannot be stored are skipped, not refused: a retried batch would fail forever.
+        devid = svc.get_endpoint_by_client_id(payload.client_id).devid
+        now = datetime.now(UTC)
+        events.purge(current_hour(now) - timedelta(days=retention_days))
+        accepted = [event for row in payload.events
+                    if (event := parse_row(devid, row, now=now, retention_days=retention_days)) is not None]
+        if payload.dropped:
+            dropped_row = BlockEvent(devid=devid, hour=current_hour(now), domain='', reason='dropped',
+                                          category='', count=payload.dropped)
+            events.add([*accepted, dropped_row])
+        else:
+            events.add(accepted)
+        return {'accepted': len(accepted), 'rejected': len(payload.events) - len(accepted)}
 
     @app.post('/fct/api/public/v1/host_tags/')
     def report_host_tags(payload: TagsPayload):
@@ -431,6 +460,7 @@ def build() -> FastAPI:
     """Wire persistent stores from environment; default HTTP behavior is closed."""
     from .audit import PostgresAuditLog
     from .enrollment import PostgresEnrollmentStore
+    from .events import PostgresEventStore
     from .idp_store import PostgresIdpStore
     from .queue import RedisQueue
     from .replay import RedisPendingRequestStore, RedisReplayCache
@@ -455,6 +485,7 @@ def build() -> FastAPI:
         raise ValueError('OPENEMS_BASE_URL must use HTTPS outside loopback')
     resources = []
     store = profile_store = rule_store = admin_store = audit_log = enrollment_store = idp_store = session_store = None
+    event_store = None
     if dsn:
         store = PostgresStore(dsn)
         profile_store = PostgresProfileStore(dsn)
@@ -464,7 +495,9 @@ def build() -> FastAPI:
         enrollment_store = PostgresEnrollmentStore(dsn)
         idp_store = PostgresIdpStore(dsn)
         session_store = PostgresSessionStore(dsn)
-        resources = [store, profile_store, rule_store, admin_store, audit_log, enrollment_store, idp_store, session_store]
+        event_store = PostgresEventStore(dsn)
+        resources = [store, profile_store, rule_store, admin_store, audit_log, enrollment_store, idp_store, session_store,
+                     event_store]
         for resource in resources:
             resource.init_schema()
     redis_url = os.environ.get('OPENEMS_REDIS_URL')
@@ -486,6 +519,10 @@ def build() -> FastAPI:
     if queue:
         resources.append(queue)
     category_dir = os.environ.get('OPENEMS_CATEGORIES_DIR')
+    retention = os.environ.get('OPENEMS_EVENT_RETENTION_DAYS', str(DEFAULT_RETENTION_DAYS))
+    if not retention.isdigit():
+        raise ValueError('OPENEMS_EVENT_RETENTION_DAYS must be a whole number of days')
     return create_app(svc, saml_sp=saml, admin_service=admin, audit_log=audit_log,
                       lab_mode=lab_mode, close_resources=resources,
-                      category_dir=Path(category_dir) if category_dir else None)
+                      category_dir=Path(category_dir) if category_dir else None,
+                      event_store=event_store, event_retention_days=int(retention))

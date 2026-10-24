@@ -34,6 +34,19 @@ class TagsPayload(ClientPayload):
         return list(dict.fromkeys(tags))
 
 
+class EventRowPayload(InputModel):
+    hour: str = Field(min_length=1, max_length=40)
+    domain: str = Field(min_length=1, max_length=255)
+    reason: Literal["rule", "category", "doh"]
+    category: str | None = Field(default=None, max_length=32)
+    count: int = Field(ge=1, le=100_000)
+
+
+class EventsPayload(ClientPayload):
+    events: list[EventRowPayload] = Field(default_factory=list, max_length=5000)
+    dropped: int = Field(default=0, ge=0, le=10_000_000)
+
+
 class AckPayload(ClientPayload):
     vdom: str | None = Field(default=None, min_length=1, max_length=128)
     version: int = Field(ge=0)
