@@ -10,6 +10,7 @@ from agent.categories import build_category_file, parse_category_file
 
 from agent.policy import (
     CATEGORIES,
+    block_reason,
     domain_blocked_at,
     domain_hash,
     in_category,
@@ -74,6 +75,20 @@ def test_categories_block_with_allowed_exceptions_and_schedules():
     assert domain_blocked_at("www.facebook.com", settings, monday_noon, categories)
     assert not domain_blocked_at("www.facebook.com", settings, monday_night, categories)
     assert not domain_blocked_at("api.steampowered.com", settings, monday_night, {}), "missing data never blocks"
+
+
+def test_block_reason_names_the_rule_or_the_first_matching_category():
+    categories = {"games": hashes("steampowered.com"), "social": hashes("facebook.com", "steampowered.com")}
+    settings = web(blocked=["steamcommunity.com"], blocked_categories=["games", "social"],
+                   allowed=["store.steampowered.com"])
+    now = datetime(2026, 10, 26, 12, tzinfo=UTC)
+    # A rule wins over a category for the same name; the block log reports the rule.
+    assert block_reason("steamcommunity.com", settings, now, categories) == {"reason": "rule"}
+    assert block_reason("api.steampowered.com", settings, now, categories) == {"reason": "category", "category": "games"}
+    assert block_reason("www.facebook.com", settings, now, categories) == {"reason": "category", "category": "social"}
+    assert block_reason("store.steampowered.com", settings, now, categories) is None
+    assert block_reason("example.org", settings, now, categories) is None
+    assert block_reason("not a name", settings, now, categories) is None
 
 
 @pytest.mark.parametrize("settings", [

@@ -185,6 +185,8 @@ fn category_decisions_match_python() {
         let when: jiff::Timestamp = format!("{}Z", case["when"].as_str().unwrap()).parse().unwrap();
         let name = case["name"].as_str().unwrap();
         assert_eq!(filter.blocks_at_with(name, when, &store), case["result"].as_bool().unwrap(), "category {case}");
+        let reason = filter.block_reason_at(name, when, &store).map(|reason| reason.to_json());
+        assert_eq!(reason.unwrap_or(Value::Null), case["reason"], "reason {case}");
     }
     // Without category data nothing is blocked by categories.
     let empty = CategoryStore::default();
