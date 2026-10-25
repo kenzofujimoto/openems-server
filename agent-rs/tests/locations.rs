@@ -63,7 +63,9 @@ fn two_local_signals_are_needed_and_a_home_network_with_the_same_range_is_not_th
 #[test]
 fn dns_suffixes_and_the_internal_certificate_count_as_signals() {
     let pin = "ab".repeat(32);
-    let parsed = locations(json!({"dns_suffixes": ["Corp.Example."], "probe": {"host": "intranet.corp.example", "port": 443, "sha256": pin}}));
+    let parsed = locations(
+        json!({"dns_suffixes": ["Corp.Example."], "probe": {"host": "intranet.corp.example", "port": 443, "sha256": pin}}),
+    );
     let mut observed = at_home();
     observed.dns_suffixes = vec!["corp.example".into()];
     assert!(choose(&parsed, &observed).is_none(), "one signal is not enough");
@@ -76,7 +78,13 @@ fn dns_suffixes_and_the_internal_certificate_count_as_signals() {
 #[test]
 fn unknown_signals_never_match() {
     let parsed = locations(json!({"public_cidrs": ["200.1.2.0/24"], "cidrs": ["10.0.0.0/8"]}));
-    let observed = Observed { addresses: vec![], gateway_macs: vec![], dns_suffixes: vec![], public_ip: None, probes: Default::default() };
+    let observed = Observed {
+        addresses: vec![],
+        gateway_macs: vec![],
+        dns_suffixes: vec![],
+        public_ip: None,
+        probes: Default::default(),
+    };
     assert!(choose(&parsed, &observed).is_none());
 }
 
@@ -110,8 +118,10 @@ fn a_location_with_a_tampered_policy_is_skipped_and_others_still_work() {
 
 #[test]
 fn malformed_definitions_are_skipped_and_an_old_server_sends_none() {
-    let raw = response(vec![json!({"id": "x", "name": "X", "cidrs": ["not-a-range"], "gateway_macs": [], "dns_suffixes": [],
-                                   "public_cidrs": [], "probe": null, "assignment": assignment("X")})]);
+    let raw = response(vec![
+        json!({"id": "x", "name": "X", "cidrs": ["not-a-range"], "gateway_macs": [], "dns_suffixes": [],
+                                   "public_cidrs": [], "probe": null, "assignment": assignment("X")}),
+    ]);
     assert!(parse_locations(&validate_assignment(&raw).unwrap().raw).unwrap().is_empty());
     assert!(parse_locations(&assignment("Default")).unwrap().is_empty());
 }
@@ -121,4 +131,45 @@ fn the_server_reported_public_address_is_read_from_the_response() {
     let raw = response(vec![]);
     assert_eq!(openems_agent::locations::client_ip(&raw), Some("200.1.2.3".parse().unwrap()));
     assert_eq!(openems_agent::locations::client_ip(&assignment("Default")), None);
+}
+
+#[test]
+fn malformed_signals_cannot_turn_an_unknown_network_into_the_office() {
+    for signals in [
+        json!({"cidrs": ["192.168.1.0/24"], "dns_suffixes": [""]}),
+        json!({"cidrs": ["192.168.1.0/24"], "dns_suffixes": ["..."]}),
+        json!({"public_cidrs": ["0.0.0.0/0"], "probe": {"host": "", "port": 443, "sha256": "ab".repeat(32)}}),
+        json!({"public_cidrs": ["0.0.0.0/0"], "probe": {"host": "corp.example", "port": 0, "sha256": "ab".repeat(32)}}),
+    ] {
+        assert!(locations(signals.clone()).is_empty(), "invalid location must be ignored: {signals}");
+    }
+}
+
+#[test]
+fn multiple_matches_of_one_type_are_still_only_one_signal() {
+    let parsed = locations(json!({"cidrs": ["192.168.0.0/16", "192.168.1.0/24"], "dns_suffixes": ["corp.example"]}));
+    let mut observed = at_home();
+    observed.addresses.push(("192.168.1.21".parse().unwrap(), 24));
+    assert!(choose(&parsed, &observed).is_none());
+    observed.dns_suffixes = vec!["CORP.EXAMPLE.".into()];
+    assert!(choose(&parsed, &observed).is_some());
+}
+
+#[test]
+fn cidr_boundaries_do_not_match_other_families_or_adjacent_networks() {
+    use openems_agent::locations::Range;
+
+    let host = Range::parse("192.168.1.20/32").unwrap();
+    assert!(host.contains("192.168.1.20".parse().unwrap()));
+    assert!(!host.contains("192.168.1.21".parse().unwrap()));
+    assert!(!host.contains("::ffff:192.168.1.20".parse().unwrap()));
+    let all = Range::parse("::/0").unwrap();
+    assert!(all.contains("2001:db8::1".parse().unwrap()));
+    assert!(!all.contains("192.168.1.20".parse().unwrap()));
+    let subnet = Range::parse("2001:db8::5/64").unwrap();
+    assert!(subnet.contains("2001:db8::ffff".parse().unwrap()));
+    assert!(!subnet.contains("2001:db8:0:1::1".parse().unwrap()));
+    for invalid in ["192.168.1.0/33", "::/129", "192.168.1.0", "bad/8", "::/-1"] {
+        assert!(Range::parse(invalid).is_none());
+    }
 }
