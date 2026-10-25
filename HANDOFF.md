@@ -28,6 +28,37 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - Verifica: bloqueio de `api.steampowered.com` e `steamcommunity.com`, `allowed` para `store.steampowered.com`, arquivo em cache com o digest, reinício do serviço offline ainda bloqueando, Edge em `steamcommunity.com` confirmado pelo operador, e desinstalação.
 - Pacote: `.venv/sandbox-acceptance/categories-input/` (MSI e `categories/`) e `categories.wsb`, com rede. Win+R → `C:\openems-input\RUN-CATEGORIES-TEST.cmd`; relatório em `results/categories-result.json`. O pré-teste espera até 60 s pela rede do Sandbox.
 - **Aceite em Sandbox aprovado em 2026-10-24 (6/6)**, Edge confirmado pelo operador: `validation/sandbox-categories-2026-10-24.json`.
+### Continuação — F5 parte 5b (branch `feature/uninstall-code`, criada a partir de `feature/tamper-protection`; decisões 5 a 7 do `tamper-protection.md`)
+
+- **Feito (etapa 1 de 6, `dc58b02`):** primitivas do código de desinstalação, com paridade entre Python e Rust conferida por `contract/uninstall-vectors.json` (`tools/gen_uninstall_vectors.py`).
+  - `agent/uninstall.py` (só biblioteca padrão, servidor e ferramenta offline) e `agent-rs/src/uninstall.rs` (HMAC-SHA256 implementado sobre o `sha2`, sem dependência nova).
+  - Segredo = HMAC-SHA256(chave-mestra, `"openems-uninstall-v1\0" + client_id`). A chave tem no mínimo 32 bytes. Como o segredo vale por cadastro, reinstalar gera um segredo novo e invalida códigos antigos.
+  - Código = HMAC-SHA256(segredo, contador u64 big-endian). Usa os 50 bits mais altos, escritos como 10 símbolos Crockford base32 no formato `XXXXX-XXXXX`. A normalização aceita minúsculas, espaços e traços, e lê O como 0 e I/L como 1.
+  - A conferência aceita contadores em (último usado, último usado + 20]. A liberação de remoção é HMAC(segredo, `"openems-release-v1"`) em hex.
+- **Próximas etapas, nesta ordem e cada uma com TDD:**
+  - 2: `tools/uninstall_code.py`, que gera o código sem servidor (`--client-id`, `--counter`, padrão 1; chave lida de arquivo ou da entrada padrão, nunca da linha de comando).
+  - 3: servidor.
+    - `OPENEMS_UNINSTALL_MASTER_KEY`.
+    - `POST /fct/api/public/v1/uninstall_secret/`, que entrega o segredo ao agente sem um.
+    - Contador por endpoint (migração `004`).
+    - `POST /api/v1/endpoints/uninstall_code` (só admin; auditado sem o código).
+    - `POST /api/v1/uninstall_release` (grupo ou frota; a marca vai na resposta de `config/assigned`).
+  - 4: agente.
+    - `uninstall.json` só do SYSTEM, com segredo, client_id, último contador, erros e liberação.
+    - `installer-prepare --remove --uninstall-code`, com 5 erros = bloqueio de 1 hora.
+    - Sem segredo, a remoção passa, mas gera o evento `uninstall_without_secret`. Esse tipo precisa entrar na lista fechada do servidor e do painel.
+    - `uninstall-service` exige o código.
+    - Novo `openems-agent cleanup --uninstall-code`, para máquinas cujo MSI foi removido à força.
+  - 5: MSI e painel.
+    - Propriedade `UNINSTALLCODE` em `MsiHiddenProperties`, repassada só à ação de remoção.
+    - Botão "Gerar código de desinstalação" na ficha da máquina, só para admin, com o código exibido uma vez.
+  - 6: aceite em Sandbox.
+    - Sem código e com código errado, a remoção falha.
+    - Com o código do servidor simulado, remove.
+    - O upgrade não pede código.
+    - Com o servidor desligado e a rede cortada, o código da ferramenta offline remove.
+    - Liberação recebida → remoção sem código.
+
 ### Continuação — F5 parte 5a (branch `feature/tamper-protection`, criada a partir de `feature/block-log`; `tamper-protection.md` aprovado em 2026-10-24 com 7 decisões)
 
 - Feito com TDD:
