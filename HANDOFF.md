@@ -53,21 +53,38 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - `TAMPER_KINDS` (servidor e schema) inclui `uninstall_code_rejected` e `uninstall_without_secret`. Os rótulos no painel ficam para a etapa 5.
   - Corrigido também um defeito antigo: `test_concurrent_runners_apply_once` (só roda com `OPENEMS_TEST_DSN`) ainda esperava uma única migração (`1cd8a18`).
   - Postgres para os testes: contêiner descartável `docker run -d --rm --name openems-uninstall-pg -e POSTGRES_PASSWORD=pw -p 127.0.0.1:55432:5432 postgres:16` e `OPENEMS_TEST_DSN=postgresql://postgres:pw@127.0.0.1:55432/postgres`. O `openems-test-pg` antigo tem senha desconhecida.
-  - Corrigido depois da etapa 3 (`5f4e205` teste, commit seguinte com a correção): os testes de DNS do Rust falhavam de forma intermitente com WSAEACCES (10013). Causa: o Windows entrega portas UDP efêmeras por um cursor global que avança de 1 em 1, e Hyper-V/WSL/Docker reservam blocos TCP de até 300 portas seguidas. Com o cursor logo antes de um bloco, as 32 tentativas de `bind_pair` caíam todas nele. Agora só a primeira tentativa usa a porta do sistema; as seguintes sorteiam portas da faixa 49152–65535. Produção não era afetada, porque o agente abre a porta fixa 53. Reprodução: avançar o cursor UDP até 57253 e rodar `cargo test --test dns_resolver`.
+  - Corrigido depois da etapa 3 (`5f4e205` teste, `ecc611a` correção): os testes de DNS do Rust falhavam de forma intermitente com WSAEACCES (10013). Causa: o Windows entrega portas UDP efêmeras por um cursor global que avança de 1 em 1, e Hyper-V/WSL/Docker reservam blocos TCP de até 300 portas seguidas. Com o cursor logo antes de um bloco, as 32 tentativas de `bind_pair` caíam todas nele. Agora só a primeira tentativa usa a porta do sistema; as seguintes sorteiam portas da faixa 49152–65535. Produção não era afetada, porque o agente abre a porta fixa 53. Reprodução: avançar o cursor UDP até 57253 e rodar `cargo test --test dns_resolver`.
+- **Feito (etapa 4 de 6, de `3127e48` a `9cc4853`):** agente.
+  - Paridade em Rust: `derive_secret`, `delivery_proof` e `master_key_from_text` em `agent-rs/src/uninstall.rs`, conferidos pelos vetores. `TamperKind` ganhou `uninstall_code_rejected` e `uninstall_without_secret`.
+  - `agent-rs/src/removal.rs`: `uninstall.json` ao lado do `state.json` com `client_id`, segredo (hex), `acked`, `last_used`, `failures`, `locked_until` e `release`. Gravado só para SYSTEM (`D:P(A;;FA;;;SY)`) quando o processo é SYSTEM; fora dele (testes, `run` manual), com a permissão privada comum.
+  - Decisão (`authorize`), nesta ordem:
+    - liberação válida → remove;
+    - bloqueado → recusa;
+    - sem código → recusa, mostrando o `client_id`;
+    - código válido → grava o contador e remove;
+    - código errado → conta o erro; 5 erros = bloqueio de 1 h, com evento `uninstall_code_rejected`.
+  - Sem segredo guardado, o agente pergunta ao servidor:
+    - 200 → grava e passa a exigir o código;
+    - 409 → recusa (o arquivo foi apagado depois da entrega);
+    - sem resposta → remove e registra `uninstall_without_secret`.
+  - Proteções contra atalhos:
+    - acesso negado ou JSON danificado recusam a remoção, em vez de contarem como "sem segredo";
+    - `state.json` danificado não dispensa o segredo guardado;
+    - um `client_id` editado no `state.json`, sem resposta do servidor, mantém o segredo guardado (o `state.json` é gravável por Administradores).
+  - Sincronização (`runtime.rs`, `sync_uninstall`): busca, grava, confirma; com `client_id` novo, troca o segredo. Resposta 404/405/409/503 → tenta de novo depois de 1 h. A liberação de `config/assigned` é espelhada, e some quando o campo some.
+  - Comandos:
+    - `installer-prepare --remove --uninstall-code X`: confere antes de qualquer mudança. `--uninstall-code` sem `--remove` é erro, validado no código, porque o `requires` do clap não funciona com o flag booleano.
+    - `uninstall-service --uninstall-code X`.
+    - Novo `cleanup --uninstall-code X` (Windows): remove serviço, tarefa, `hosts`, confiança, NRPT, WFP e políticas de navegador. A remoção de proteções foi extraída para `remove_protections`, usada também por `prepare_removal`.
+    - Todos exigem SYSTEM na prática, porque o `uninstall.json` só é legível pelo SYSTEM; a mensagem de acesso negado orienta a usar o `msiexec /x` ou rodar como SYSTEM.
+  - Eventos na remoção: enviados na hora (o serviço está parado) e, sem servidor, gravados em `tamper-pending.json`. Cada chamada ao servidor tem o limite de 10 s do `ApiClient`, então uma remoção sem rede pode levar até ~20 s.
+  - `openems-agent uninstall-code --master-key-file PATH|- --client-id ID [--counter N] [--count 1..20]`: saída idêntica à de `tools/uninstall_code.py`, conferida em `tests/test_native_uninstall.py`. Erros de argumento desse subcomando são genéricos, para nunca repetir uma chave digitada.
+  - Testes: `agent-rs/tests/removal.rs` (13) e `tests/test_native_uninstall.py` (7). **Os testes nativos usam `target/release` primeiro: rode `cargo build --release` antes.** A remoção real (SYSTEM) fica para o aceite da etapa 6.
+  - O `uninstall.json` fica na máquina depois da remoção, como o `state.json`. Numa reinstalação com o mesmo cadastro, o contador continua e um código já usado não vale de novo.
 - **Próximas etapas, nesta ordem e cada uma com TDD:**
-  - 4: agente.
-    - Rust: `delivery_proof` com paridade nos vetores (a chave `delivery_proof` já está em `contract/uninstall-vectors.json`) e `derive_secret`, para o subcomando abaixo.
-    - Fluxo do segredo: buscar → gravar `uninstall.json` → confirmar → em 409, sem segredo, seguir sem ele (evento `uninstall_without_secret` na remoção). Com `client_id` novo, descartar o segredo antigo e buscar de novo.
-    - Liberação: guardar `uninstall_release` se bater com `release_token(secret)`. Decidir se a perde quando o campo some de uma resposta válida (recomendação: sim, porque a revogação existe no servidor).
-    - **Novo subcomando `openems-agent uninstall-code --master-key-file PATH|- --client-id ID [--counter N] [--count 1..20]`** (decisão do usuário em 2026-10-25): geração offline sem Python no computador do operador, com o mesmo comportamento de `tools/uninstall_code.py`, que continua existindo.
-    - Mostrar o `client_id` na mensagem que pede o código.
-    - `uninstall.json` só do SYSTEM, com segredo, client_id, último contador, erros e liberação.
-    - `installer-prepare --remove --uninstall-code`, com 5 erros = bloqueio de 1 hora.
-    - Sem segredo, a remoção passa, mas gera o evento `uninstall_without_secret` (o servidor já aceita esse tipo; falta o rótulo no painel).
-    - `uninstall-service` exige o código.
-    - Novo `openems-agent cleanup --uninstall-code`, para máquinas cujo MSI foi removido à força.
   - 5: MSI e painel.
-    - Propriedade `UNINSTALLCODE` em `MsiHiddenProperties`, repassada só à ação de remoção.
+    - Propriedade `UNINSTALLCODE` em `MsiHiddenProperties`, repassada só à ação de remoção (`installer-prepare --remove --uninstall-code "[UNINSTALLCODE]"`, com `HideTarget="yes"`).
+    - Hoje `PrepareAgentRemoval` roda depois de `StopServices`: com código errado, o serviço fica parado alguns segundos até o rollback. Recomendado: conferir o código numa ação anterior à parada (um comando que só autoriza, sem consumir duas vezes o mesmo código).
     - Botão "Gerar código de desinstalação" na ficha da máquina, só para admin, com o código exibido uma vez.
     - Tela de liberação de remoção (grupo ou frota, com revogação), botão "Reabrir entrega do segredo" e rótulos de `uninstall_code_rejected` e `uninstall_without_secret`. A rota `GET /api/v1/uninstall_release` responde 503 sem chave-mestra.
   - 6: aceite em Sandbox.
