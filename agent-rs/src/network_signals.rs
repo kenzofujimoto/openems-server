@@ -193,8 +193,16 @@ fn probe_before(probe: &Probe, deadline: Instant) -> Option<String> {
         .with_custom_certificate_verifier(Arc::new(PinVerifier { pin: probe.sha256.clone() }))
         .with_no_client_auth();
     let config = Arc::new(config);
-    for address in addresses {
-        let Ok(socket) = TcpStream::connect_timeout(&address, remaining(deadline).ok()?) else { continue };
+    for (index, address) in addresses.iter().enumerate() {
+        // A silent first address (commonly IPv6 on an IPv4-only network) must not spend the
+        // entire probe deadline. Share the remaining time across candidates and reserve one
+        // share for the TLS handshake after connecting.
+        let shares = u32::try_from(addresses.len() - index + 1).ok()?;
+        let connect_timeout = remaining(deadline).ok()? / shares;
+        if connect_timeout.is_zero() {
+            return None;
+        }
+        let Ok(socket) = TcpStream::connect_timeout(address, connect_timeout) else { continue };
         let mut socket = DeadlineSocket { socket, deadline };
         let mut connection = rustls::ClientConnection::new(Arc::clone(&config), server_name.clone()).ok()?;
         let mut verified = true;
