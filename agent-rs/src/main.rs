@@ -86,6 +86,18 @@ enum Command {
     #[cfg(windows)]
     #[command(hide = true)]
     Watchdog,
+    /// Generate uninstall codes without the server, from the master key and the machine's client_id.
+    /// The key is read from a file or standard input ("-"), never from the command line.
+    UninstallCode {
+        #[arg(long, value_name = "PATH")]
+        master_key_file: String,
+        #[arg(long)]
+        client_id: String,
+        #[arg(long, default_value_t = 1)]
+        counter: u64,
+        #[arg(long, default_value_t = 1)]
+        count: u64,
+    },
     /// Entry point used by the Windows Service Control Manager.
     #[cfg(windows)]
     #[command(hide = true)]
@@ -266,6 +278,21 @@ fn configure(args: ConfigureArgs) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// The uninstall master key from a file or standard input; errors never include the path or the contents.
+fn read_master_key(source: &str) -> Result<Vec<u8>> {
+    use std::io::Read;
+    let mut data = Vec::new();
+    let read = if source == "-" {
+        std::io::stdin().read_to_end(&mut data).map(|_| ())
+    } else {
+        std::fs::File::open(source).and_then(|mut file| file.read_to_end(&mut data)).map(|_| ())
+    };
+    read.map_err(|_| AgentError::Config("could not read the master key file".into()))?;
+    let text =
+        String::from_utf8(data).map_err(|_| AgentError::Config("the master key file must be UTF-8 text".into()))?;
+    openems_agent::uninstall::master_key_from_text(&text)
+}
+
 fn execute(command: Command) -> Result<ExitCode> {
     match command {
         Command::RunOnce(args) => {
@@ -382,6 +409,26 @@ fn execute(command: Command) -> Result<ExitCode> {
             openems_agent::service::run_watchdog()?;
             Ok(ExitCode::SUCCESS)
         }
+        Command::UninstallCode { master_key_file, client_id, counter, count } => {
+            if client_id.trim().is_empty() {
+                return Err(AgentError::Config("--client-id must not be empty".into()));
+            }
+            let codes = openems_agent::uninstall::offline_codes(
+                &read_master_key(&master_key_file)?,
+                &client_id,
+                counter,
+                count,
+            )?;
+            if let [(_, code)] = codes.as_slice() {
+                println!("{code}");
+            } else {
+                let width = codes.last().map_or(1, |(counter, _)| counter.to_string().len());
+                for (counter, code) in &codes {
+                    println!("{counter:>width$}  {code}");
+                }
+            }
+            Ok(ExitCode::SUCCESS)
+        }
         #[cfg(windows)]
         Command::Service { config } => {
             openems_agent::service::run_dispatcher(config)?;
@@ -391,7 +438,22 @@ fn execute(command: Command) -> Result<ExitCode> {
 }
 
 fn main() -> ExitCode {
-    match execute(Cli::parse().command) {
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        // Never echo uninstall-code arguments: a key typed on the command line would end up in the error.
+        Err(error)
+            if std::env::args().nth(1).as_deref() == Some("uninstall-code")
+                && !matches!(
+                    error.kind(),
+                    clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
+                ) =>
+        {
+            eprintln!("error: invalid arguments (the master key is read only through --master-key-file)");
+            return ExitCode::from(2);
+        }
+        Err(error) => error.exit(),
+    };
+    match execute(cli.command) {
         Ok(code) => code,
         Err(error) => {
             eprintln!("error: {error}");

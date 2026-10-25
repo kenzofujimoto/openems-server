@@ -83,3 +83,26 @@ pub fn derive_secret(master_key: &[u8], client_id: &str) -> Result<[u8; 32]> {
     }
     Ok(mac(master_key, &[SECRET_LABEL, client_id.as_bytes()].concat()))
 }
+
+/// Master key as configured on the server (OPENEMS_UNINSTALL_MASTER_KEY): UTF-8 text, BOM and
+/// surrounding whitespace removed, as agent/uninstall.py's master_key_from_text.
+pub fn master_key_from_text(text: &str) -> Result<Vec<u8>> {
+    let key = text.trim_start_matches('\u{feff}').trim().as_bytes().to_vec();
+    if key.len() < MIN_MASTER_KEY {
+        return Err(AgentError::Config(format!("the uninstall master key must have at least {MIN_MASTER_KEY} bytes")));
+    }
+    Ok(key)
+}
+
+/// Codes for `count` consecutive counters from `counter`, without the server (tools/uninstall_code.py).
+pub fn offline_codes(master_key: &[u8], client_id: &str, counter: u64, count: u64) -> Result<Vec<(u64, String)>> {
+    if !(1..=WINDOW).contains(&count) {
+        return Err(AgentError::Config(format!("--count must be between 1 and {WINDOW}")));
+    }
+    const MAX_COUNTER: u64 = i64::MAX as u64;
+    if counter == 0 || counter > MAX_COUNTER - (count - 1) {
+        return Err(AgentError::Config(format!("--counter must be between 1 and {MAX_COUNTER} for every listed code")));
+    }
+    let secret = derive_secret(master_key, client_id.trim())?;
+    Ok((counter..counter + count).map(|value| (value, code(&secret, value))).collect())
+}
