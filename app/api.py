@@ -44,7 +44,9 @@ from .schemas import (
     EventsPayload,
     IdpPayload,
     InvitationPayload,
+    LocationPolicyPayload,
     LoginPayload,
+    NetworkLocationPayload,
     RegisterPayload,
     ReleasePayload,
     RulePayload,
@@ -157,7 +159,9 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
 
     def endpoint_view(endpoint: Endpoint) -> dict[str, Any]:
         assigned = svc.effective_vdom(endpoint)
-        desired = svc.effective_profile(endpoint.client_id)
+        desired = svc.desired_profile(endpoint)
+        location_name = next((location['name'] for location in svc.list_locations()
+                              if location['id'] == endpoint.location), '')
         return {
             'devid': endpoint.devid, 'client_id': endpoint.client_id, 'hostname': endpoint.hostname,
             'os': endpoint.os, 'fctver': endpoint.fctver, 'vdom': endpoint.vdom,
@@ -167,6 +171,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'host_tags': endpoint.host_tags, 'config_version': endpoint.config_version,
             'current_config_version': desired.version if desired else 0,
             'applied_vdom': endpoint.applied_vdom, 'applied_digest': endpoint.applied_digest,
+            'location': endpoint.location, 'location_name': location_name,
             'last_error': endpoint.last_error, 'last_applied': endpoint.last_applied.isoformat() if endpoint.last_applied else None,
             'last_seen': endpoint.last_seen.isoformat(),
             'desired_profile': {'vdom': desired.vdom, 'version': desired.version, 'digest': desired.digest} if desired else None,
@@ -440,6 +445,56 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     def list_profiles():
         return [{**profile_response(profile), 'updated_at': profile.updated_at.isoformat()} for profile in svc.list_profiles()]
 
+    @app.get('/api/v1/network_locations')
+    def list_network_locations():
+        return svc.list_locations()
+
+    @app.post('/api/v1/network_locations')
+    def create_network_location(payload: NetworkLocationPayload, request: Request):
+        location = payload.model_dump()
+        if not svc.create_location(location):
+            raise HTTPException(status_code=409, detail='location already exists')
+        record(request, 'network_location.create', payload.id)
+        return location
+
+    @app.put('/api/v1/network_locations/{location_id}')
+    def update_network_location(location_id: str, payload: NetworkLocationPayload, request: Request):
+        if payload.id != location_id:
+            raise HTTPException(status_code=422, detail='location id must match the URL')
+        location = payload.model_dump()
+        if not svc.update_location(location):
+            raise HTTPException(status_code=404, detail='unknown location')
+        record(request, 'network_location.update', payload.id)
+        return location
+
+    @app.delete('/api/v1/network_locations/{location_id}')
+    def delete_network_location(location_id: str, request: Request):
+        if not svc.remove_location(location_id):
+            raise HTTPException(status_code=404, detail='unknown location')
+        record(request, 'network_location.delete', location_id)
+        return {'ok': True}
+
+    @app.get('/api/v1/location_policies')
+    def list_location_policies():
+        return svc.list_location_policies()
+
+    @app.post('/api/v1/location_policies')
+    def set_location_policy(payload: LocationPolicyPayload, request: Request):
+        try:
+            svc.set_location_policy(payload.vdom, payload.location_id, payload.inside_vdom)
+        except (UnknownProfileError, ValueError) as error:
+            raise HTTPException(status_code=404, detail='unknown location or inside profile') from error
+        record(request, 'location_policy.set', payload.location_id, vdom=payload.vdom, inside_vdom=payload.inside_vdom)
+        return payload.model_dump()
+
+    @app.delete('/api/v1/location_policies')
+    def delete_location_policy(request: Request, vdom: str = Query(min_length=1, max_length=128),
+                               location_id: str = Query(min_length=1, max_length=128)):
+        if not svc.remove_location_policy(vdom, location_id):
+            raise HTTPException(status_code=404, detail='unknown location policy')
+        record(request, 'location_policy.delete', location_id, vdom=vdom)
+        return {'ok': True}
+
     @app.get('/fct/api/public/v1/config/')
     def get_config(request: Request, vdom: str = 'Default', client_id: str = ''):
         if not lab_mode:
@@ -452,13 +507,15 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             raise HTTPException(status_code=404, detail='no profile for group') from error
 
     @app.get('/fct/api/public/v1/config/assigned/')
-    def assigned_config(client_id: str):
+    def assigned_config(client_id: str, request: Request):
         endpoint = svc.get_endpoint_by_client_id(client_id)
         profile = svc.effective_profile(client_id)
         if profile is None:
             result = {'vdom': svc.effective_vdom(endpoint), 'version': 0, 'digest': '', 'body': None, 'unassigned': True}
         else:
             result = profile_response(profile)
+        result['client_ip'] = request.client.host if request.client else ''
+        result['locations'] = svc.assigned_locations(endpoint)
         if (release := uninstall.release_for(endpoint)) is not None:
             result['uninstall_release'] = release
         return result
@@ -473,11 +530,13 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             raise HTTPException(status_code=422, detail='policy group and digest are required')
         try:
             endpoint = svc.ack_config(payload.client_id, payload.version, vdom=payload.vdom,
-                                      digest=payload.digest, success=payload.success, error=payload.error)
+                                      digest=payload.digest, success=payload.success, error=payload.error,
+                                      location=payload.location)
         except ValueError as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
         return {'client_id': endpoint.client_id, 'config_version': endpoint.config_version,
-                'applied_vdom': endpoint.applied_vdom, 'last_error': endpoint.last_error}
+                'applied_vdom': endpoint.applied_vdom, 'last_error': endpoint.last_error,
+                'location': endpoint.location}
 
     @app.post('/api/v1/assignment_rules')
     def add_rule(payload: RulePayload, request: Request):
@@ -606,6 +665,7 @@ def build() -> FastAPI:
     from .enrollment import PostgresEnrollmentStore
     from .events import PostgresEventStore
     from .idp_store import PostgresIdpStore
+    from .network_locations import PostgresLocationStore
     from .queue import RedisQueue
     from .replay import RedisPendingRequestStore, RedisReplayCache
     from .sessions import PostgresSessionStore
@@ -630,7 +690,7 @@ def build() -> FastAPI:
         raise ValueError('OPENEMS_BASE_URL must use HTTPS outside loopback')
     resources = []
     store = profile_store = rule_store = admin_store = audit_log = enrollment_store = idp_store = session_store = None
-    event_store = uninstall_store = None
+    event_store = uninstall_store = location_store = None
     if dsn:
         store = PostgresStore(dsn)
         profile_store = PostgresProfileStore(dsn)
@@ -642,8 +702,9 @@ def build() -> FastAPI:
         session_store = PostgresSessionStore(dsn)
         event_store = PostgresEventStore(dsn)
         uninstall_store = PostgresUninstallStore(dsn)
+        location_store = PostgresLocationStore(dsn)
         resources = [store, profile_store, rule_store, admin_store, audit_log, enrollment_store, idp_store, session_store,
-                     event_store, uninstall_store]
+                     event_store, uninstall_store, location_store]
         for resource in resources:
             resource.init_schema()
     redis_url = os.environ.get('OPENEMS_REDIS_URL')
@@ -651,6 +712,7 @@ def build() -> FastAPI:
     replay = RedisReplayCache(redis_url) if redis_url else None
     pending = RedisPendingRequestStore(redis_url) if redis_url else None
     svc = EmsService(store=store, queue=queue, profile_store=profile_store, rule_store=rule_store,
+                     location_store=location_store,
                      enrollment_store=enrollment_store, require_invitation=not lab_mode)
     enrollment_token = os.environ.get('OPENEMS_ENROLLMENT_TOKEN')
     if enrollment_token:

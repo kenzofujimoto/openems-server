@@ -1,5 +1,7 @@
 """Strict HTTP input contracts for the reference-agent protocol."""
 
+import ipaddress
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -66,6 +68,95 @@ class AckPayload(ClientPayload):
     digest: str | None = Field(default=None, max_length=64)
     success: bool = True
     error: str = Field(default="", max_length=1000)
+    location: str = Field(default="", max_length=128)
+
+
+def _hostname(value: str) -> str:
+    value = value.strip().rstrip(".").lower()
+    try:
+        value = value.encode("idna").decode("ascii")
+    except UnicodeError as error:
+        raise ValueError("invalid DNS name") from error
+    if not value or len(value) > 253 or any(
+        not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+        for label in value.split(".")
+    ):
+        raise ValueError("invalid DNS name")
+    return value
+
+
+class LocationProbePayload(InputModel):
+    host: str = Field(min_length=1, max_length=253)
+    port: int = Field(default=443, ge=1, le=65535)
+    sha256: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
+
+    @field_validator("host")
+    @classmethod
+    def valid_host(cls, value: str) -> str:
+        try:
+            return str(ipaddress.ip_address(value))
+        except ValueError:
+            return _hostname(value)
+
+    @field_validator("sha256")
+    @classmethod
+    def normalized_pin(cls, value: str) -> str:
+        return value.lower()
+
+
+class NetworkLocationPayload(InputModel):
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,127}$")
+    name: str = Field(min_length=1, max_length=128)
+    cidrs: list[str] = Field(default_factory=list, max_length=128)
+    gateway_macs: list[str] = Field(default_factory=list, max_length=128)
+    dns_suffixes: list[str] = Field(default_factory=list, max_length=128)
+    public_cidrs: list[str] = Field(default_factory=list, max_length=128)
+    probe: LocationProbePayload | None = None
+
+    @field_validator("name")
+    @classmethod
+    def nonempty_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("location name must not be empty")
+        return value.strip()
+
+    @field_validator("cidrs", "public_cidrs")
+    @classmethod
+    def valid_cidrs(cls, values: list[str]) -> list[str]:
+        try:
+            return list(dict.fromkeys(str(ipaddress.ip_network(value, strict=False)) for value in values))
+        except ValueError as error:
+            raise ValueError("invalid CIDR range") from error
+
+    @field_validator("gateway_macs")
+    @classmethod
+    def valid_macs(cls, values: list[str]) -> list[str]:
+        result = []
+        for value in values:
+            normalized = re.sub(r"[:.\- ]", "", value).lower()
+            if not re.fullmatch(r"[a-f0-9]{12}", normalized):
+                raise ValueError("invalid gateway MAC address")
+            result.append(normalized)
+        return list(dict.fromkeys(result))
+
+    @field_validator("dns_suffixes")
+    @classmethod
+    def valid_suffixes(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(_hostname(value) for value in values))
+
+    @model_validator(mode="after")
+    def enough_signals(self) -> "NetworkLocationPayload":
+        if not self.public_cidrs and sum(bool(signal) for signal in (
+            self.cidrs, self.gateway_macs, self.dns_suffixes, self.probe
+        )) < 2:
+            raise ValueError("a location needs a public range or two distinct local signal types")
+        return self
+
+
+class LocationPolicyPayload(InputModel):
+    vdom: str = Field(min_length=1, max_length=128)
+    location_id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,127}$")
+    inside_vdom: str = Field(min_length=1, max_length=128)
 
 
 class ConditionPayload(InputModel):

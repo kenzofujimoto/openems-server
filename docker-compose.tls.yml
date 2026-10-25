@@ -3,6 +3,9 @@
 services:
   server:
     ports: !reset []
+    environment:
+      # Only nginx and trusted containers can reach this port in the TLS overlay.
+      FORWARDED_ALLOW_IPS: "*"
   tls:
     image: nginx:1.28-alpine
     depends_on:

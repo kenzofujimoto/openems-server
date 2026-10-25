@@ -49,7 +49,7 @@ def test_upgrades_legacy_schema_and_preserves_endpoint_and_profile(database):
             CREATE TABLE profiles (vdom TEXT PRIMARY KEY, version INTEGER NOT NULL DEFAULT 0,
             body JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
             INSERT INTO profiles(vdom,version,body) VALUES ('Default',8,'{"webfilter":{}}')""")
-    assert runner()(database) == ["001_initial.sql", "002_block_events.sql", "003_tamper_events.sql", "004_uninstall.sql"]
+    assert runner()(database) == ["001_initial.sql", "002_block_events.sql", "003_tamper_events.sql", "004_uninstall.sql", "005_network_locations.sql"]
     endpoints = PostgresStore(database)
     profiles = PostgresProfileStore(database)
     try:
@@ -57,6 +57,7 @@ def test_upgrades_legacy_schema_and_preserves_endpoint_and_profile(database):
         assert old.hostname == "old-host"
         assert old.credential_hash == ""
         assert old.config_version == 0 and old.last_applied is None
+        assert old.location == ""
         old.credential_hash = "hash-only"
         old.config_version = 8
         old.applied_vdom = "Default"

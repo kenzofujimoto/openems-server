@@ -19,6 +19,7 @@ from agent.policy import validate_policy
 
 from .enrollment import EnrollmentStore, InMemoryEnrollmentStore
 from .models import AssignmentRule, Endpoint, EndpointStatus, Profile, RegisterRequest
+from .network_locations import InMemoryLocationStore, LocationStore
 from .queue import InMemoryQueue, Queue
 from .rules import evaluate_rules
 from .stores import (
@@ -61,11 +62,13 @@ class EmsService:
         require_invitation: bool = True,
         valid_invitations: set[str] | None = None,
         enrollment_store: EnrollmentStore | None = None,
+        location_store: LocationStore | None = None,
     ) -> None:
         self._store: Store = store or InMemoryStore()
         self._queue: Queue = queue or InMemoryQueue()
         self._profile_store: ProfileStore = profile_store or InMemoryProfileStore()
         self._rule_store: RuleStore = rule_store or InMemoryRuleStore()
+        self._locations: LocationStore = location_store or InMemoryLocationStore()
         self._ems_serial = ems_serial
         self._require_invitation = require_invitation
         self._enrollment = enrollment_store or InMemoryEnrollmentStore()
@@ -198,8 +201,11 @@ class EmsService:
         """
         # The store assigns the version atomically so concurrent workers never collide.
         profile = self._profile_store.publish(vdom, validate_policy(body))
+        affected_groups = {mapping["vdom"] for mapping in self._locations.mappings()
+                           if mapping["inside_vdom"] == vdom}
+        affected_groups.add(vdom)
         for endpoint in self._store.all():
-            if self.effective_vdom(endpoint) == vdom:
+            if self.effective_vdom(endpoint) in affected_groups:
                 self._queue.push(
                     endpoint.client_id,
                     {"type": "config_update", "vdom": vdom, "version": profile.version},
@@ -249,9 +255,59 @@ class EmsService:
             raise UnknownEndpointError(client_id)
         return self._queue.pull(client_id)
 
+    def list_locations(self) -> list[dict[str, Any]]:
+        return self._locations.locations()
+
+    def create_location(self, location: dict[str, Any]) -> bool:
+        return self._locations.create(location)
+
+    def update_location(self, location: dict[str, Any]) -> bool:
+        return self._locations.update(location)
+
+    def remove_location(self, location_id: str) -> bool:
+        return self._locations.remove(location_id)
+
+    def list_location_policies(self) -> list[dict[str, str]]:
+        return self._locations.mappings()
+
+    def set_location_policy(self, vdom: str, location_id: str, inside_vdom: str) -> None:
+        self.get_profile(inside_vdom)
+        self._locations.set_mapping(vdom, location_id, inside_vdom)
+
+    def remove_location_policy(self, vdom: str, location_id: str) -> bool:
+        return self._locations.remove_mapping(vdom, location_id)
+
+    def assigned_locations(self, endpoint: Endpoint) -> list[dict[str, Any]]:
+        group = self.effective_vdom(endpoint)
+        mapped = {mapping["location_id"]: mapping["inside_vdom"]
+                  for mapping in self._locations.mappings() if mapping["vdom"] == group}
+        result = []
+        for location in self._locations.locations():
+            if location["id"] not in mapped:
+                continue
+            profile = self._profile_store.get(mapped[location["id"]])
+            if profile is not None:
+                result.append({**location, "assignment": {
+                    "vdom": profile.vdom, "version": profile.version,
+                    "digest": profile.digest, "body": profile.body,
+                }})
+        return result
+
+    def desired_profile(self, endpoint: Endpoint) -> Profile | None:
+        """Current desired policy at the last successfully reported location."""
+        group = self.effective_vdom(endpoint)
+        if endpoint.location:
+            for mapping in self._locations.mappings():
+                if mapping["vdom"] == group and mapping["location_id"] == endpoint.location:
+                    inside = self._profile_store.get(mapping["inside_vdom"])
+                    if inside is not None:
+                        return inside
+        return self._profile_store.get(group)
+
     def ack_config(
         self, client_id: str, version: int, *, vdom: str | None = None,
         digest: str | None = None, success: bool = True, error: str = "",
+        location: str = "",
     ) -> Endpoint:
         """Record that the endpoint has applied a given profile version."""
         endpoint = self._store.get_by_client_id(client_id)
@@ -259,6 +315,15 @@ class EmsService:
             raise UnknownEndpointError(client_id)
         # A group without a profile is an explicit release: version 0, empty digest.
         profile = self.effective_profile(client_id)
+        if location:
+            mapped = next((mapping for mapping in self._locations.mappings()
+                           if mapping["vdom"] == self.effective_vdom(endpoint)
+                           and mapping["location_id"] == location), None)
+            if mapped is None:
+                raise ValueError("acknowledgment does not match assigned location")
+            profile = self._profile_store.get(mapped["inside_vdom"])
+            if profile is None or vdom is None or digest is None:
+                raise ValueError("acknowledgment does not match assigned policy")
         expected_vdom = profile.vdom if profile else self.effective_vdom(endpoint)
         expected_version = profile.version if profile else 0
         expected_digest = profile.digest if profile else ""
@@ -268,6 +333,7 @@ class EmsService:
                 or (profile is None and (vdom is None or digest is None))):
             raise ValueError("acknowledgment does not match assigned policy")
         if success:
+            endpoint.location = location
             endpoint.config_version = expected_version
             endpoint.applied_vdom = expected_vdom
             endpoint.applied_digest = expected_digest

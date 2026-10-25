@@ -80,6 +80,7 @@ ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS applied_vdom TEXT NOT NULL DEFAUL
 ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS applied_digest TEXT NOT NULL DEFAULT '';
 ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS last_error TEXT NOT NULL DEFAULT '';
 ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS last_applied TIMESTAMPTZ;
+ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS location TEXT NOT NULL DEFAULT '';
 """
 
 
@@ -116,15 +117,15 @@ class PostgresStore:
             last_seen=EXCLUDED.last_seen, credential_hash=EXCLUDED.credential_hash,
             config_version=EXCLUDED.config_version, applied_vdom=EXCLUDED.applied_vdom,
             applied_digest=EXCLUDED.applied_digest, last_error=EXCLUDED.last_error,
-            last_applied=EXCLUDED.last_applied"""
+            last_applied=EXCLUDED.last_applied, location=EXCLUDED.location"""
         with self._conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO endpoints
                     (devid, client_id, hostname, os, fctver, vdom, status,
                      reg_ip, host_tags, last_seen, created_at, credential_hash,
-                     config_version, applied_vdom, applied_digest, last_error, last_applied)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                     config_version, applied_vdom, applied_digest, last_error, last_applied, location)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (devid) """ + conflict,
                 (
                     endpoint.devid,
@@ -144,6 +145,7 @@ class PostgresStore:
                     endpoint.applied_digest,
                     endpoint.last_error,
                     endpoint.last_applied,
+                    endpoint.location,
                 ),
             )
             return cur.rowcount == 1
@@ -167,7 +169,7 @@ class PostgresStore:
     _SELECT = (
         "SELECT devid, client_id, hostname, os, fctver, vdom, status, reg_ip, "
         "host_tags, last_seen, created_at, credential_hash, config_version, "
-        "applied_vdom, applied_digest, last_error, last_applied FROM endpoints "
+        "applied_vdom, applied_digest, last_error, last_applied, location FROM endpoints "
     )
 
     def _one(self, where: str, params: tuple[object, ...]) -> Endpoint | None:
@@ -196,6 +198,7 @@ class PostgresStore:
             applied_digest=r[14],
             last_error=r[15],
             last_applied=r[16],
+            location=r[17],
         )
 
 

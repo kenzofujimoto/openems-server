@@ -99,6 +99,7 @@ def test_credentials_and_full_policy_status_roundtrip(store) -> None:
     endpoint.applied_digest = "a" * 64
     endpoint.last_error = "pending retry"
     endpoint.last_applied = datetime.now(UTC)
+    endpoint.location = "sp"
     store.upsert(endpoint)
     restored = store.get_by_devid("DEV-1")
     assert restored.credential_hash == "hashed-token"
@@ -108,6 +109,7 @@ def test_credentials_and_full_policy_status_roundtrip(store) -> None:
     assert restored.applied_digest == "a" * 64
     assert restored.last_error == "pending retry"
     assert restored.last_applied == endpoint.last_applied
+    assert restored.location == "sp"
 
 
 def test_create_cannot_overwrite_existing_identity(store) -> None:

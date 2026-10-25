@@ -61,6 +61,7 @@ class Endpoint:
     applied_digest: str = ""
     last_error: str = ""
     last_applied: datetime | None = None
+    location: str = ""
 
 
 @dataclass(slots=True)

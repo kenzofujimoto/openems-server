@@ -543,6 +543,8 @@ def test_explicit_unassigned_ack_confirms_release_and_cross_group_fetch_is_denie
         "digest": "",
         "body": None,
         "unassigned": True,
+        "client_ip": "testclient",
+        "locations": [],
     }
     for invalid in (
         {"vdom": "Default", "version": 0, "digest": ""},

@@ -136,7 +136,13 @@ def test_public_ip_comes_from_transport_not_a_spoofed_forwarded_header():
     service = EmsService(require_invitation=False)
     endpoint = service.register(RegisterRequest(devid="pc"))
     app = create_app(service)
-    with TestClient(app, client=("200.1.2.3", 50000)) as client:
+
+    @app.middleware("http")
+    async def remote_transport(request, call_next):
+        request.scope["client"] = ("200.1.2.3", 50000)
+        return await call_next(request)
+
+    with TestClient(app) as client:
         response = client.get("/fct/api/public/v1/config/assigned/", params={"client_id": endpoint.client_id}, headers={"Authorization": f"Bearer {endpoint.device_token}", "X-Forwarded-For": "1.2.3.4"})
     assert response.status_code == 200 and response.json()["client_ip"] == "200.1.2.3"
     assert response.json()["locations"] == []
@@ -146,7 +152,7 @@ def test_location_writes_require_admin_and_csrf():
     admin = AdminService(secret="tests")
     admin.add_admin("admin", "pw")
     admin.add_admin("reader", "pw", role="viewer")
-    client = TestClient(create_app(EmsService(), admin_service=admin))
+    client = TestClient(create_app(EmsService(), admin_service=admin), base_url="https://testserver")
     assert client.post("/api/v1/network_locations", json=office()).status_code == 401
     reader = admin.issue_token("reader", "viewer")
     assert client.get("/api/v1/network_locations", headers={"Authorization": f"Bearer {reader}"}).status_code == 200
@@ -201,6 +207,44 @@ def test_location_store_roundtrip_and_cascade(location_store):
     assert location_store.locations()[0]["name"] == "Updated"
     assert location_store.remove("sp")
     assert location_store.locations() == [] and location_store.mappings() == []
+
+
+def test_location_store_missing_rows_and_mapping_replacement(location_store):
+    from app.schemas import NetworkLocationPayload
+
+    location = NetworkLocationPayload(**office()).model_dump()
+    assert not location_store.update(location)
+    assert not location_store.remove("sp")
+    with pytest.raises(ValueError, match="unknown location"):
+        location_store.set_mapping("Default", "sp", "Office")
+    location_store.create(location)
+    location_store.set_mapping("Default", "sp", "Office")
+    location_store.set_mapping("Default", "sp", "Other")
+    assert location_store.mappings()[0]["inside_vdom"] == "Other"
+    assert location_store.remove_mapping("Default", "sp")
+    assert not location_store.remove_mapping("Default", "sp")
+    assert location_store.locations()[0]["id"] == "sp"
+
+
+def test_effective_group_controls_locations_including_a_group_without_outside_profile(setup):
+    from app.models import AssignmentRule
+
+    service, _, client, endpoint = setup
+    client.post("/api/v1/network_locations", json=office())
+    client.post("/api/v1/location_policies", json={"vdom": "Remote", "location_id": "sp", "inside_vdom": "Office"})
+    identity = {"client_id": endpoint.client_id}
+    assert client.get("/fct/api/public/v1/config/assigned/", params=identity).json()["locations"] == []
+    service.add_rule(AssignmentRule(id="remote", target_vdom="Remote"))
+    raw = client.get("/fct/api/public/v1/config/assigned/", params=identity).json()
+    assert raw["unassigned"] and raw["vdom"] == "Remote"
+    assert raw["locations"][0]["assignment"]["vdom"] == "Office"
+    profile = service.get_profile("Office")
+    ack = {**identity, "vdom": "Office", "version": profile.version, "digest": profile.digest, "location": "sp"}
+    assert client.post("/fct/api/public/v1/config/ack/", json=ack).status_code == 200
+    client.delete("/api/v1/location_policies", params={"vdom": "Remote", "location_id": "sp"})
+    assert client.post("/fct/api/public/v1/config/ack/", json=ack).status_code == 409
+    detail = client.get("/api/v1/endpoints/detail", params={"devid": "pc"}).json()
+    assert detail["desired_profile"] is None
 
 
 def test_endpoint_location_roundtrip_survives_other_updates():
