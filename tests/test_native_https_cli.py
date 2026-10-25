@@ -45,7 +45,8 @@ def test_msi_removes_owned_root_before_deleting_executable():
     ns = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
     action = root.find(".//w:CustomAction[@Id='PrepareAgentRemoval']", ns)
     assert action is not None, "MSI must not leave its trusted root after removal"
-    assert action.attrib["ExeCommand"] == "installer-prepare --remove"
+    # The uninstall code follows (tests/test_native_uninstall.py pins it).
+    assert action.attrib["ExeCommand"].startswith("installer-prepare --remove ")
     assert action.attrib["BinaryRef"] == "AgentActions"
     assert action.attrib["Return"] == "check"
     sequence = root.find(".//w:InstallExecuteSequence/w:Custom[@Action='PrepareAgentRemoval']", ns)

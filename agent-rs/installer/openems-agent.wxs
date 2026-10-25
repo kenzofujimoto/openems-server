@@ -4,6 +4,11 @@
 
   Build:   wix build installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d AgentExe=target/release/openems-agent.exe -o openems-agent.msi
   Install: msiexec /i openems-agent.msi /qn SERVER=https://ems.example.com INVITATION=<one-time code> [VDOM=Default] [DEVID=name]
+  Remove:  msiexec /x openems-agent.msi /qn UNINSTALLCODE=XXXXX-XXXXX
+           Once the agent holds its uninstall secret, removal needs a one-time code from the panel or from
+           `openems-agent uninstall-code` (offline), unless the server released removal for the machine.
+           Programs and Features cannot ask for the code, so it fails there with error 1603; the reason is in
+           the MSI log. Upgrades never ask for a code.
 
   The executable lives in Program Files (writable only by administrators); the
   configuration, state and logs live in the protected ProgramData\openems folder.
@@ -26,6 +31,8 @@
     <Property Id="BLOCKPAGEHTTPS" Secure="yes" />
     <Property Id="DNSFILTER" Secure="yes" />
     <Property Id="ANTIBYPASS" Secure="yes" />
+    <!-- One-time uninstall code; hidden so it never reaches the MSI log. -->
+    <Property Id="UNINSTALLCODE" Secure="yes" Hidden="yes" />
     <SetProperty Id="DEVID" Value="[ComputerName]" Before="CostFinalize" Sequence="execute" Condition="NOT DEVID" />
     <SetProperty Id="HOSTSFILE" Value="[System64Folder]drivers\etc\hosts" Before="CostFinalize" Sequence="execute" Condition="NOT HOSTSFILE" />
     <SetProperty Id="BlockPageArguments" Value="--block-page" Before="CostFinalize" Sequence="execute" Condition="BLOCKPAGE=&quot;1&quot; OR BLOCKPAGEHTTPS=&quot;1&quot;" />
@@ -62,8 +69,9 @@
                   ExeCommand="installer-rollback" />
     <CustomAction Id="CommitAgentSetup" BinaryRef="AgentActions" Execute="commit" Impersonate="no" Return="check"
                   ExeCommand="installer-commit" />
-    <CustomAction Id="PrepareAgentRemoval" BinaryRef="AgentActions" Execute="deferred" Impersonate="no" Return="check"
-                  ExeCommand="installer-prepare --remove" />
+    <!-- Checks the uninstall code before changing anything; a refusal fails removal and rollback restarts the service. -->
+    <CustomAction Id="PrepareAgentRemoval" BinaryRef="AgentActions" Execute="deferred" Impersonate="no" Return="check" HideTarget="yes"
+                  ExeCommand="installer-prepare --remove --uninstall-code &quot;[UNINSTALLCODE]&quot;" />
     <CustomAction Id="RollbackAgentRemoval" BinaryRef="AgentActions" Execute="rollback" Impersonate="no" Return="check"
                   ExeCommand="installer-rollback" />
     <CustomAction Id="CommitAgentRemoval" BinaryRef="AgentActions" Execute="commit" Impersonate="no" Return="check"
