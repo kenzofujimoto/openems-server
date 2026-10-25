@@ -181,16 +181,19 @@ def test_built_msi_hides_the_uninstall_code(tmp_path):
     environment = {**os.environ, "DOTNET_ROOT": str(ROOT / ".venv" / "dotnet-sdk")}
     package = tmp_path / "openems-agent.msi"
     built = subprocess.run([str(wix), "build", str(WXS), "-arch", "x64", "-d", "Version=0.5.0", "-d", f"AgentExe={agent}",
-                            "-o", str(package)], capture_output=True, text=True, env=environment, timeout=300, check=False)
+                            "-d", f"SessionExe={agent.with_name('openems-session.exe')}", "-o", str(package)],
+                           capture_output=True, text=True, env=environment, timeout=300, check=False)
     assert built.returncode == 0, built.stdout + built.stderr
     query = (
         "$i = New-Object -ComObject WindowsInstaller.Installer; $d = $i.OpenDatabase($args[0], 0);"
         "function One($sql) { $v = $d.OpenView($sql); $v.Execute(); $r = $v.Fetch(); if ($r) { $r.StringData(1) } };"
         "One \"SELECT Value FROM Property WHERE Property='MsiHiddenProperties'\";"
-        "One \"SELECT Type FROM CustomAction WHERE Action='PrepareAgentRemoval'\""
+        "One \"SELECT Type FROM CustomAction WHERE Action='PrepareAgentRemoval'\";"
+        "One \"SELECT FileName FROM File WHERE FileName LIKE '%openems-session.exe'\""
     )
     tables = subprocess.run(["powershell", "-NoProfile", "-Command", f"& {{ {query} }} '{package}'"],
                             capture_output=True, text=True, timeout=120, check=False)
-    hidden, action_type = (tables.stdout.strip().splitlines() + ["", ""])[:2]
+    hidden, action_type, session_file = (tables.stdout.strip().splitlines() + ["", "", ""])[:3]
+    assert "openems-session.exe" in session_file, "the package installs the session component"
     assert "UNINSTALLCODE" in hidden.split(";"), tables.stdout + tables.stderr
     assert int(action_type) & 0x2000, "msidbCustomActionTypeHideTarget"

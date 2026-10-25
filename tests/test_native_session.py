@@ -87,3 +87,18 @@ def test_the_session_component_prints_what_it_would_show(native, tmp_path):
     missing = subprocess.run([str(session_binary(native)), "--print", "--board", str(tmp_path / "absent.json")],
                              capture_output=True, text=True, encoding="utf-8", timeout=30, check=False)
     assert json.loads(missing.stdout) == {"tooltip": "RSM Endpoint: aguardando a política da empresa", "notices": []}
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_msi_installs_the_session_component_next_to_the_agent():
+    import xml.etree.ElementTree as ET
+
+    namespace = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
+    root = ET.parse(ROOT / "agent-rs" / "installer" / "openems-agent.wxs").getroot()
+    folder = root.find(".//w:Directory[@Id='INSTALLFOLDER']", namespace)
+    files = {file.attrib["Name"]: file.attrib["Source"] for file in folder.iter(f"{{{namespace['w']}}}File")}
+    assert files.get("openems-session.exe") == "$(var.SessionExe)"
+    builder = (ROOT / "tools" / "build-msi-fixtures.ps1").read_text(encoding="utf-8")
+    assert "SessionExe=" in builder and "openems-session.exe" in builder
