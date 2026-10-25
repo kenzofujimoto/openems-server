@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import os
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -102,7 +103,8 @@ def test_failed_batch_rolls_back_schema_and_history(database, tmp_path):
 def test_concurrent_runners_apply_once(database):
     with ThreadPoolExecutor(max_workers=4) as executor:
         results = list(executor.map(lambda _: runner()(database), range(4)))
-    assert sorted(len(result) for result in results) == [0, 0, 0, 1]
+    migrations = len(list((Path(__file__).resolve().parent.parent / "migrations").glob("*.sql")))
+    assert sorted(len(result) for result in results) == [0, 0, 0, migrations], "one runner applies every file"
 
 
 def test_missing_directory_rejected_before_connecting(tmp_path):
