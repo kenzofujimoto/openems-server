@@ -80,6 +80,8 @@ struct Inner {
     category_digests: std::collections::HashMap<String, String>,
     /// A new policy arrived: enforce (and persist it) now instead of at the next interval.
     enforce_requested: bool,
+    /// The server has no uninstall codes (or refused for now): ask again only after this.
+    uninstall_retry_at: f64,
 }
 
 pub struct Runtime {
@@ -241,6 +243,55 @@ impl Runtime {
         if self.stop.is_stopped() { Err(AgentError::Local("agent stopping".into())) } else { Ok(()) }
     }
 
+    /// Keep this registration's uninstall secret (fetched, stored, then confirmed so the server stops
+    /// handing it out) and mirror the server's removal release. Failures only delay removal protection.
+    fn sync_uninstall(&self, client_id: &str, token: Option<&str>, release: Option<&str>, now: f64) {
+        use crate::removal::{load, mark_acked, path_for, store_secret, update_release};
+        let path = path_for(&self.cfg.state_path);
+        let outcome = (|| -> Result<()> {
+            // A damaged file is replaced when the server still hands the secret out.
+            let stored = load(&path).unwrap_or(None).filter(|state| state.client_id == client_id);
+            if !stored.as_ref().is_some_and(|state| state.acked) && now >= self.lock().uninstall_retry_at {
+                let secret = match stored {
+                    Some(state) => hex::decode(&state.secret).unwrap_or_default(),
+                    None => match self.api.post("uninstall_secret", &json!({ "client_id": client_id }), token) {
+                        Ok(answer) => {
+                            let secret = answer
+                                .get("secret")
+                                .and_then(serde_json::Value::as_str)
+                                .and_then(|secret| hex::decode(secret).ok())
+                                .filter(|secret| secret.len() == 32)
+                                .ok_or_else(|| AgentError::Transport("invalid uninstall secret".into()))?;
+                            store_secret(&path, client_id, &secret)?;
+                            secret
+                        }
+                        // Delivered before (a damaged or deleted file), or no master key on the server.
+                        Err(AgentError::Status { code: 404 | 405 | 409 | 503, .. }) => {
+                            self.lock().uninstall_retry_at = now + 3600.0;
+                            return Ok(());
+                        }
+                        Err(error) => return Err(error),
+                    },
+                };
+                let proof = crate::uninstall::delivery_proof(&secret);
+                self.api.post("uninstall_secret/ack", &json!({ "client_id": client_id, "proof": proof }), token)?;
+                mark_acked(&path)?;
+                (self.log)("uninstall secret stored; removal now requires a code");
+            }
+            if update_release(&path, release)? {
+                (self.log)(if release.is_some() {
+                    "removal released by the server"
+                } else {
+                    "removal release revoked"
+                });
+            }
+            Ok(())
+        })();
+        if let Err(error) = outcome {
+            (self.log)(&format!("uninstall secret not synchronized ({}); retrying next cycle", error.summary()));
+        }
+    }
+
     /// Send the block log; a failed upload keeps its rows (within the limit) for the next cycle.
     fn upload_block_log(&self, client_id: &str, token: Option<&str>) {
         let log = self.blocked_domains.block_log();
@@ -329,6 +380,8 @@ impl Runtime {
         let mut inner = self.lock();
         match attempt {
             Ok(assignment) => {
+                let release =
+                    assignment.raw.get("uninstall_release").and_then(serde_json::Value::as_str).map(str::to_owned);
                 // Revocation follows the newest validated policy immediately, not the next enforcement tick.
                 if !self.cfg.dry_run {
                     match assignment.web_filter() {
@@ -347,6 +400,12 @@ impl Runtime {
                     self.sync_categories(client_id.as_deref().unwrap_or_default(), token.as_deref());
                     self.upload_block_log(client_id.as_deref().unwrap_or_default(), token.as_deref());
                     self.upload_tamper(client_id.as_deref().unwrap_or_default(), token.as_deref());
+                    self.sync_uninstall(
+                        client_id.as_deref().unwrap_or_default(),
+                        token.as_deref(),
+                        release.as_deref(),
+                        now,
+                    );
                 }
                 true
             }
