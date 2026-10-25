@@ -441,12 +441,21 @@ fn serve_tcp(listener: &TcpListener, shared: &Arc<Shared>, stop: &StopSignal) {
 /// UDP and TCP on one port. For port 0, retry: Windows may reserve a free UDP port for TCP
 /// (Hyper-V and WinNAT exclusion ranges), which fails the TCP bind with WSAEACCES.
 fn bind_pair(address: SocketAddr) -> std::io::Result<(UdpSocket, TcpListener)> {
+    bind_pair_with(address, |port| {
+        let mut candidate = address;
+        candidate.set_port(port);
+        let socket = UdpSocket::bind(candidate)?;
+        let listener = TcpListener::bind(socket.local_addr()?)?;
+        Ok((socket, listener))
+    })
+}
+
+fn bind_pair_with<T>(address: SocketAddr, mut try_port: impl FnMut(u16) -> std::io::Result<T>) -> std::io::Result<T> {
     let attempts = if address.port() == 0 { 32 } else { 1 };
     let mut last = None;
     for _ in 0..attempts {
-        let socket = UdpSocket::bind(address)?;
-        match TcpListener::bind(socket.local_addr()?) {
-            Ok(listener) => return Ok((socket, listener)),
+        match try_port(address.port()) {
+            Ok(pair) => return Ok(pair),
             Err(error) => last = Some(error),
         }
     }
@@ -521,6 +530,63 @@ mod tests {
                 SocketAddr::V6(SocketAddrV6::new("fe80::1".parse().unwrap(), 53, 0, 7)),
             ]
         );
+    }
+
+    /// Windows hands out port-0 binds from a system-wide cursor that moves by one, and Hyper-V, WSL and
+    /// Docker reserve contiguous blocks of up to 300 ports per protocol (`netsh int ipv4 show
+    /// excludedportrange`).
+    fn windows_like(cursor: u16, reserved: std::ops::RangeInclusive<u16>) -> impl FnMut(u16) -> std::io::Result<u16> {
+        let mut next = cursor;
+        move |port| {
+            let port = if port == 0 {
+                next += 1;
+                next - 1
+            } else {
+                port
+            };
+            if reserved.contains(&port) {
+                Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+            } else {
+                Ok(port)
+            }
+        }
+    }
+
+    #[test]
+    fn ephemeral_pairs_escape_a_reserved_block_next_to_the_system_cursor() {
+        let mut fake = windows_like(57253, 57253..=57552);
+        let mut tried = Vec::new();
+        let port = bind_pair_with(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)), |port| {
+            tried.push(port);
+            fake(port)
+        })
+        .unwrap();
+        assert!(!(57253..=57552).contains(&port));
+        assert_eq!(tried[0], 0, "the system's own choice is tried first");
+        assert!(tried[1..].iter().all(|port| (49152..=65535).contains(port)), "{tried:?}");
+    }
+
+    #[test]
+    fn ephemeral_pairs_give_up_with_the_last_error_after_a_bounded_number_of_attempts() {
+        let mut tried = 0;
+        let error = bind_pair_with(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)), |_| {
+            tried += 1;
+            Err::<(), _>(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+        })
+        .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::PermissionDenied);
+        assert_eq!(tried, 32);
+    }
+
+    #[test]
+    fn a_fixed_port_is_tried_once() {
+        let mut tried = Vec::new();
+        let error = bind_pair_with(SocketAddr::from((Ipv4Addr::LOCALHOST, 53)), |port| {
+            tried.push(port);
+            Err::<(), _>(std::io::Error::from(std::io::ErrorKind::AddrInUse))
+        })
+        .unwrap_err();
+        assert_eq!((tried, error.kind()), (vec![53], std::io::ErrorKind::AddrInUse));
     }
 
     #[cfg(windows)]
