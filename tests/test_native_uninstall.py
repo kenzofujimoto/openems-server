@@ -1,0 +1,122 @@
+"""Native agent and uninstall codes (part 5b): secret delivery, release and the offline generator.
+
+The agent runs as the current user against a disposable server, so uninstall.json stays readable by the
+test; under the service it is SYSTEM-only. Removal itself needs SYSTEM and runs in the Sandbox acceptance.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import httpx
+
+from agent.uninstall import derive_secret, release_token
+from tests.test_agent_integration import live_server
+from tests.test_native_agent import INVITATION
+from tests.test_native_categories import stop, wait_for
+
+ROOT = Path(__file__).resolve().parent.parent
+MASTER = b"test-only-master-key-0123456789abcdef"
+DEVID = "uninstall-pc"
+
+
+def start(native: Path, origin: str, tmp_path: Path) -> subprocess.Popen:
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("OPENEMS_")}
+    environment["OPENEMS_INVITATION"] = INVITATION
+    (tmp_path / "hosts").write_text("127.0.0.1 localhost\n", encoding="utf-8")
+    return subprocess.Popen(
+        [str(native), "run", "--server", origin, "--devid", DEVID, "--interval", "1",
+         "--hosts-file", str(tmp_path / "hosts"), "--state-path", str(tmp_path / "state.json")],
+        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=environment,
+    )
+
+
+def stored(tmp_path: Path) -> dict:
+    try:
+        return json.loads((tmp_path / "uninstall.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError):
+        return {}
+
+
+def test_the_agent_stores_its_secret_and_confirms_delivery(native, tmp_path):
+    with live_server(uninstall_master_key=MASTER) as (service, origin, _):
+        agent = start(native, origin, tmp_path)
+        try:
+            if not wait_for(lambda: stored(tmp_path).get("acked") is True, 30):
+                raise AssertionError(f"secret not confirmed: {stored(tmp_path)}\n" + stop(agent))
+            client_id = service.get_endpoint(DEVID).client_id
+            state = stored(tmp_path)
+            assert (state["client_id"], state["secret"]) == (client_id, derive_secret(MASTER, client_id).hex())
+            assert (state["last_used"], state["failures"], state["release"]) == (0, 0, None)
+            token = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))["device_token"]
+            again = httpx.post(f"{origin}/fct/api/public/v1/uninstall_secret/", json={"client_id": client_id},
+                               headers={"Authorization": f"Bearer {token}"}, trust_env=False)
+            assert again.status_code == 409, "after the agent's confirmation the server keeps the secret to itself"
+        finally:
+            if agent.poll() is None:
+                stop(agent)
+
+
+def test_a_release_is_kept_while_published_and_dropped_when_revoked(native, tmp_path):
+    with live_server(uninstall_master_key=MASTER) as (service, origin, client):
+        agent = start(native, origin, tmp_path)
+        try:
+            assert wait_for(lambda: stored(tmp_path).get("acked") is True, 30), stop(agent)
+            expected = release_token(derive_secret(MASTER, service.get_endpoint(DEVID).client_id))
+            assert client.post("/api/v1/uninstall_release", json={"scope": "*", "released": True}).status_code == 200
+            if not wait_for(lambda: stored(tmp_path).get("release") == expected, 20):
+                raise AssertionError(f"release not stored: {stored(tmp_path)}\n" + stop(agent))
+            assert client.post("/api/v1/uninstall_release", json={"scope": "*", "released": False}).status_code == 200
+            if not wait_for(lambda: stored(tmp_path).get("release", "missing") is None, 20):
+                raise AssertionError(f"revoked release kept: {stored(tmp_path)}\n" + stop(agent))
+        finally:
+            if agent.poll() is None:
+                stop(agent)
+
+
+def test_without_uninstall_codes_on_the_server_the_agent_keeps_enforcing(native, tmp_path):
+    with live_server() as (_, origin, client):
+        assert client.post("/api/v1/profiles/Default", json={"web_filter": {"blocked": ["example.com"]}}).status_code == 200
+        agent = start(native, origin, tmp_path)
+        try:
+            if not wait_for(lambda: "example.com" in (tmp_path / "hosts").read_text(encoding="utf-8"), 30):
+                raise AssertionError(stop(agent))
+            assert not (tmp_path / "uninstall.json").exists()
+            assert agent.poll() is None
+        finally:
+            if agent.poll() is None:
+                stop(agent)
+
+
+def generate(command: list[str], key: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, input=key, capture_output=True, text=True, timeout=60, check=False)
+
+
+def test_the_agent_generates_the_same_offline_codes_as_the_python_tool(native):
+    arguments = ["--master-key-file", "-", "--client-id", "client-1", "--counter", "19", "--count", "3"]
+    key = MASTER.decode() + "\n"
+    python = generate([sys.executable, str(ROOT / "tools" / "uninstall_code.py"), *arguments], key)
+    agent = generate([str(native), "uninstall-code", *arguments], key)
+    assert python.returncode == 0 and agent.returncode == 0, agent.stderr
+    assert agent.stdout == python.stdout
+    default = ["--master-key-file", "-", "--client-id", "client-1"]
+    single = generate([str(native), "uninstall-code", *default], key)
+    reference = generate([sys.executable, str(ROOT / "tools" / "uninstall_code.py"), *default], key)
+    assert single.stdout == reference.stdout and single.stdout.count("\n") == 1
+
+
+def test_the_agent_generator_never_takes_or_echoes_the_key_on_the_command_line(native, tmp_path):
+    rejected = generate([str(native), "uninstall-code", "--master-key", MASTER.decode(), "--client-id", "x"], "")
+    assert rejected.returncode != 0 and MASTER.decode() not in rejected.stdout + rejected.stderr
+    short = tmp_path / "short.key"
+    short.write_text("short-but-secret", encoding="utf-8")
+    refused = generate([str(native), "uninstall-code", "--master-key-file", str(short), "--client-id", "x"], "")
+    assert refused.returncode != 0 and "short-but-secret" not in refused.stdout + refused.stderr
+    for count in ("0", "21"):
+        result = generate([str(native), "uninstall-code", "--master-key-file", "-", "--client-id", "x",
+                           "--count", count], MASTER.decode())
+        assert result.returncode != 0, count
