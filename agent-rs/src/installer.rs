@@ -374,12 +374,14 @@ pub fn prepare(
 }
 
 /// Journal removal before exact root and hosts cleanup; MSI rollback can restore both.
-pub fn prepare_removal(config_path: &Path) -> Result<()> {
+pub fn prepare_removal(config_path: &Path, uninstall_code: Option<&str>) -> Result<()> {
     authority::require_system()?;
     if !config_path.try_exists()? {
         return Ok(());
     }
     let config = AgentConfig::from_file(config_path)?;
+    // Before anything changes: a refused code leaves the agent exactly as it was.
+    crate::removal::authorize_removal(&config, uninstall_code)?;
     let (directory, mut saved) = begin(config_path, &config)?;
     allow_bytes(&mut saved, &config.authority_path, None)?;
     if let Some(bytes) =
@@ -399,6 +401,12 @@ pub fn prepare_removal(config_path: &Path) -> Result<()> {
         }
     }
     save(&directory, &saved)?;
+    remove_protections(&config)
+}
+
+/// Undo what the agent set up on the machine: its HTTPS root, hosts block, NRPT rule, watchdog task,
+/// anti-bypass filters and browser policies.
+fn remove_protections(config: &AgentConfig) -> Result<()> {
     if let Some(root) = Authority::managed_root(&config.authority_path)? {
         Machine.untrust(&root)?;
         fs::remove_file(&config.authority_path)?;
@@ -419,6 +427,17 @@ pub fn prepare_removal(config_path: &Path) -> Result<()> {
         crate::browser_policy::restore(&mut crate::browser_policy::WindowsRegistry, &originals)?;
     }
     Ok(())
+}
+
+/// For a machine whose MSI registration was removed by force: the installer actions never ran, so the
+/// service and every protection are still there. Requires SYSTEM and the same authorization as msiexec /x.
+#[cfg(windows)]
+pub fn cleanup(config_path: &Path, uninstall_code: Option<&str>) -> Result<()> {
+    authority::require_system()?;
+    let config = AgentConfig::from_file(config_path)?;
+    crate::removal::authorize_removal(&config, uninstall_code)?;
+    crate::service::remove_if_present()?;
+    remove_protections(&config)
 }
 
 pub fn rollback(config_path: &Path) -> Result<()> {

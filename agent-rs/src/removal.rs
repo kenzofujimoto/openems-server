@@ -2,9 +2,14 @@
 //! readable only by SYSTEM, keeps this registration's secret, the last code counter used, wrong
 //! attempts and the server's release. Every removal command asks `authorize` before changing anything.
 
+use crate::api::ApiClient;
+use crate::config::AgentConfig;
 use crate::error::{AgentError, Result};
+use crate::state::EndpointState;
+use crate::tamper::TamperKind;
 use crate::uninstall::{release_token, verify};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::path::{Path, PathBuf};
 
 /// Wrong codes in a row before removal is locked.
@@ -91,6 +96,13 @@ pub fn load(path: &Path) -> Result<Option<UninstallState>> {
     let bytes = match std::fs::read(path) {
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            return Err(AgentError::Local(
+                "uninstall.json is readable only by SYSTEM; remove the agent with msiexec /x or run this command as \
+                 SYSTEM"
+                    .into(),
+            ));
+        }
         Err(error) => return Err(error.into()),
     };
     serde_json::from_slice(&bytes)
@@ -198,4 +210,73 @@ pub fn authorize(
             Ok(Err(Refusal::Rejected { locked_until }))
         }
     }
+}
+
+/// Authorization for a removal command. The registration comes from state.json; a damaged one counts as
+/// unknown, so a stored secret still applies. Wrong codes and removal without a secret are reported.
+pub fn authorize_removal_with(
+    config: &AgentConfig,
+    typed: Option<&str>,
+    now: i64,
+    fetch: impl FnOnce(&str) -> Fetch,
+    report: &mut dyn FnMut(TamperKind),
+) -> Result<Allowed> {
+    let path = path_for(&config.state_path);
+    let registered = EndpointState::load(&config.state_path, &config.server, &config.devid)
+        .ok()
+        .flatten()
+        .and_then(|state| state.client_id);
+    match authorize(&path, registered.as_deref(), typed, now, fetch)? {
+        Ok(allowed) => {
+            if allowed == Allowed::WithoutSecret {
+                report(TamperKind::UninstallWithoutSecret);
+            }
+            Ok(allowed)
+        }
+        Err(refusal) => {
+            if matches!(refusal, Refusal::Rejected { .. }) {
+                report(TamperKind::UninstallCodeRejected);
+            }
+            let client_id = load(&path)
+                .ok()
+                .flatten()
+                .map(|state| state.client_id)
+                .or(registered)
+                .unwrap_or_else(|| "unknown".into());
+            Err(AgentError::Local(refusal.message(&client_id)))
+        }
+    }
+}
+
+/// `authorize_removal_with` against the configured server. The service is stopped during removal, so
+/// events are sent right away and left in the pending file when the server cannot be reached.
+pub fn authorize_removal(config: &AgentConfig, typed: Option<&str>) -> Result<Allowed> {
+    let registration = EndpointState::load(&config.state_path, &config.server, &config.devid).ok().flatten();
+    let client_id = registration.as_ref().and_then(|state| state.client_id.clone());
+    let token = registration.and_then(|state| state.device_token);
+    let api = ApiClient::new(&config.server);
+    let fetch =
+        |client_id: &str| match api.post("uninstall_secret", &json!({ "client_id": client_id }), token.as_deref()) {
+            Ok(answer) => answer
+                .get("secret")
+                .and_then(serde_json::Value::as_str)
+                .and_then(|secret| hex::decode(secret).ok())
+                .filter(|secret| secret.len() == 32)
+                .map_or(Fetch::Unavailable, Fetch::Delivered),
+            Err(AgentError::Status { code: 409, .. }) => Fetch::AlreadyDelivered,
+            Err(_) => Fetch::Unavailable,
+        };
+    let mut report = |kind: TamperKind| {
+        let at = jiff::Timestamp::now();
+        let sent = client_id.as_deref().is_some_and(|client_id| {
+            let event = json!({ "at": at.to_string(), "kind": kind.name(), "detail": kind.detail() });
+            let payload = json!({ "client_id": client_id, "events": [event], "dropped": 0 });
+            api.post("tamper", &payload, token.as_deref()).is_ok()
+        });
+        if !sent {
+            let pending = config.state_path.with_file_name("tamper-pending.json");
+            let _ = crate::tamper::append_pending(&pending, kind, kind.detail(), at);
+        }
+    };
+    authorize_removal_with(config, typed, jiff::Timestamp::now().as_second(), fetch, &mut report)
 }

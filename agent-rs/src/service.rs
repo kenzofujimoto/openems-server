@@ -443,13 +443,41 @@ pub fn run_watchdog() -> Result<()> {
 }
 
 /// Stop and remove the service, then clear only the managed hosts block.
-pub fn uninstall(config: Option<PathBuf>) -> Result<()> {
+pub fn uninstall(config: Option<PathBuf>, uninstall_code: Option<&str>) -> Result<()> {
     let config_path = config.unwrap_or_else(default_config_path);
-    let hosts_path = AgentConfig::from_file(&config_path)?.hosts_path;
+    let agent_config = AgentConfig::from_file(&config_path)?;
+    crate::removal::authorize_removal(&agent_config, uninstall_code)?;
     let manager = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT).map_err(service_error)?;
     let service = manager
         .open_service(SERVICE_NAME, ServiceAccess::STOP | ServiceAccess::DELETE | ServiceAccess::QUERY_STATUS)
         .map_err(service_error)?;
+    stop_and_delete(service, || {
+        clear_hosts(&agent_config.hosts_path)?;
+        crate::trust::remove(Some(&config_path))?;
+        remove_watchdog_task()
+    })
+}
+
+/// Stop and delete the service when it exists (cleanup after a forced MSI removal).
+pub fn remove_if_present() -> Result<()> {
+    let manager = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT).map_err(service_error)?;
+    match manager.open_service(SERVICE_NAME, ServiceAccess::STOP | ServiceAccess::DELETE | ServiceAccess::QUERY_STATUS)
+    {
+        Ok(service) => stop_and_delete(service, || Ok(())),
+        Err(windows_service::Error::Winapi(error))
+            if error.raw_os_error() == Some(windows_sys::Win32::Foundation::ERROR_SERVICE_DOES_NOT_EXIST as i32) =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(service_error(error)),
+    }
+}
+
+/// Stop the service, run `before_delete` once it is stopped, then delete it.
+fn stop_and_delete(
+    service: windows_service::service::Service,
+    before_delete: impl FnOnce() -> Result<()>,
+) -> Result<()> {
     if service.query_status().map_err(service_error)?.current_state != ServiceState::Stopped {
         service.stop().map_err(service_error)?;
         let deadline = Instant::now() + Duration::from_secs(45);
@@ -460,9 +488,7 @@ pub fn uninstall(config: Option<PathBuf>) -> Result<()> {
             std::thread::sleep(Duration::from_millis(250));
         }
     }
-    clear_hosts(&hosts_path)?;
-    crate::trust::remove(Some(&config_path))?;
-    remove_watchdog_task()?;
+    before_delete()?;
     service.delete().map_err(service_error)?;
     drop(service);
     Ok(())

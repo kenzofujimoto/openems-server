@@ -62,11 +62,21 @@ enum Command {
         #[arg(long)]
         start: bool,
     },
-    /// Stop and remove the Windows service and its hosts block.
+    /// Stop and remove the Windows service and its hosts block (SYSTEM; needs a code once armed).
     #[cfg(windows)]
     UninstallService {
         #[arg(long)]
         config: Option<PathBuf>,
+        #[arg(long)]
+        uninstall_code: Option<String>,
+    },
+    /// Remove the service and every protection after a forced MSI removal (SYSTEM; needs a code once armed).
+    #[cfg(windows)]
+    Cleanup {
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        uninstall_code: Option<String>,
     },
     /// Set restart-on-failure actions and permissions on the installed service (used by the MSI).
     #[cfg(windows)]
@@ -109,6 +119,9 @@ struct InstallerArgs {
     anti_bypass: bool,
     #[arg(long, conflicts_with_all = ["server", "devid", "hosts_file", "invitation", "block_page", "block_page_https", "dns_filter", "anti_bypass"])]
     remove: bool,
+    /// One-time code from the panel or the offline generator; msiexec passes UNINSTALLCODE here.
+    #[arg(long)]
+    uninstall_code: Option<String>,
 }
 
 #[derive(Args)]
@@ -288,8 +301,13 @@ fn execute(command: Command) -> Result<ExitCode> {
         }
         Command::InstallerPrepare(args) => {
             let path = args.config.unwrap_or_else(default_config_path);
+            // clap's `requires` counts the false default of --remove as present, so check here.
+            if args.uninstall_code.is_some() && !args.remove {
+                return Err(AgentError::Config("--uninstall-code is only valid with --remove".into()));
+            }
             if args.remove {
-                openems_agent::installer::prepare_removal(&path)?;
+                let code = args.uninstall_code.filter(|code| !code.is_empty());
+                openems_agent::installer::prepare_removal(&path, code.as_deref())?;
             } else {
                 let bootstrap = args.server.filter(|server| !server.is_empty()).map(|server| {
                     let devid = args.devid.unwrap_or_else(|| gethostname::gethostname().to_string_lossy().into_owned());
@@ -343,9 +361,15 @@ fn execute(command: Command) -> Result<ExitCode> {
             Ok(ExitCode::SUCCESS)
         }
         #[cfg(windows)]
-        Command::UninstallService { config } => {
-            openems_agent::service::uninstall(config)?;
+        Command::UninstallService { config, uninstall_code } => {
+            openems_agent::service::uninstall(config, uninstall_code.as_deref())?;
             println!("service {} removed; its hosts block was cleared", openems_agent::service::SERVICE_NAME);
+            Ok(ExitCode::SUCCESS)
+        }
+        #[cfg(windows)]
+        Command::Cleanup { config, uninstall_code } => {
+            openems_agent::installer::cleanup(&config.unwrap_or_else(default_config_path), uninstall_code.as_deref())?;
+            println!("agent service and protections removed");
             Ok(ExitCode::SUCCESS)
         }
         #[cfg(windows)]
