@@ -81,12 +81,17 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - `openems-agent uninstall-code --master-key-file PATH|- --client-id ID [--counter N] [--count 1..20]`: saída idêntica à de `tools/uninstall_code.py`, conferida em `tests/test_native_uninstall.py`. Erros de argumento desse subcomando são genéricos, para nunca repetir uma chave digitada.
   - Testes: `agent-rs/tests/removal.rs` (13) e `tests/test_native_uninstall.py` (7). **Os testes nativos usam `target/release` primeiro: rode `cargo build --release` antes.** A remoção real (SYSTEM) fica para o aceite da etapa 6.
   - O `uninstall.json` fica na máquina depois da remoção, como o `state.json`. Numa reinstalação com o mesmo cadastro, o contador continua e um código já usado não vale de novo.
+- **Feito (etapa 5 de 6, de `54be26a` a `2ae8740`):** MSI e painel.
+  - MSI: `UNINSTALLCODE` com `Secure` e `Hidden` (entra em `MsiHiddenProperties`), repassada só a `PrepareAgentRemoval` (`installer-prepare --remove --uninstall-code "[UNINSTALLCODE]"`, `HideTarget="yes"`). `tests/test_native_uninstall.py` compila o MSI com o WiX portátil e lê as tabelas pelo COM do Windows Installer.
+  - **Decisão: a conferência continua depois de `StopServices`.** Antecipá-la exigiria uma marca de autorização entre duas ações, porque conferir grava o contador. Custo aceito: com código errado, o serviço fica parado alguns segundos (até ~20 s sem rede) até o rollback do MSI, e a tarefa watchdog também o reinicia.
+  - "Programas e Recursos" não pede o código: com segredo ativo, a remoção falha ali com o erro 1603, e o motivo fica no log do MSI. Comando documentado no topo do `.wxs`: `msiexec /x openems-agent.msi /qn UNINSTALLCODE=XXXXX-XXXXX`.
+  - Painel (só admin; leitores não veem nada):
+    - ficha da máquina (`UninstallSection.tsx`): "Gerar código de desinstalação" mostra o código uma vez, com cópia, e ele não entra no cache; "Reabrir entrega do segredo" pede confirmação;
+    - página Endpoints (`ReleaseDialog.tsx`): "Liberar desinstalação" por grupo efetivo ou "Toda a frota", com aviso, lista e revogação;
+    - sem chave-mestra (503) ou em servidor antigo (404), o botão some e a ficha explica;
+    - rótulos em português de `uninstall_code_rejected` e `uninstall_without_secret`.
+  - Testes do painel em `web/src/features/endpoints/uninstall.test.tsx` (8). Conferido no navegador no modo mock (`panel-mock-repo`, porta 5174).
 - **Próximas etapas, nesta ordem e cada uma com TDD:**
-  - 5: MSI e painel.
-    - Propriedade `UNINSTALLCODE` em `MsiHiddenProperties`, repassada só à ação de remoção (`installer-prepare --remove --uninstall-code "[UNINSTALLCODE]"`, com `HideTarget="yes"`).
-    - Hoje `PrepareAgentRemoval` roda depois de `StopServices`: com código errado, o serviço fica parado alguns segundos até o rollback. Recomendado: conferir o código numa ação anterior à parada (um comando que só autoriza, sem consumir duas vezes o mesmo código).
-    - Botão "Gerar código de desinstalação" na ficha da máquina, só para admin, com o código exibido uma vez.
-    - Tela de liberação de remoção (grupo ou frota, com revogação), botão "Reabrir entrega do segredo" e rótulos de `uninstall_code_rejected` e `uninstall_without_secret`. A rota `GET /api/v1/uninstall_release` responde 503 sem chave-mestra.
   - 6: aceite em Sandbox.
     - Sem código e com código errado, a remoção falha.
     - Com o código do servidor simulado, remove.
