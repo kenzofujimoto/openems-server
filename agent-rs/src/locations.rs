@@ -96,6 +96,13 @@ fn dns_name(text: &str) -> Option<String> {
     .then_some(normalized)
 }
 
+fn probe_host(text: &str) -> Option<String> {
+    match text.parse::<IpAddr>() {
+        Ok(address) => Some(address.to_string()),
+        Err(_) => dns_name(text),
+    }
+}
+
 fn strings(value: &Value, key: &str) -> Option<Vec<String>> {
     match value.get(key) {
         None | Some(Value::Null) => Some(Vec::new()),
@@ -113,7 +120,7 @@ fn parse_location(value: &Value) -> Option<Location> {
     let probe = match value.get("probe") {
         None | Some(Value::Null) => None,
         Some(probe) => Some(Probe {
-            host: dns_name(probe.get("host")?.as_str()?)?,
+            host: probe_host(probe.get("host")?.as_str()?)?,
             port: u16::try_from(probe.get("port")?.as_u64()?).ok().filter(|port| *port > 0)?,
             sha256: probe
                 .get("sha256")?

@@ -19,6 +19,7 @@ pub mod https_blockpage;
 pub mod installer;
 pub mod locations;
 pub mod logging;
+pub mod network_signals;
 pub mod nrpt;
 pub mod policy;
 pub mod processes;
