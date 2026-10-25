@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -82,3 +83,19 @@ def test_harness_uses_production_packages_offline_codes_and_one_run_per_sandbox(
     assert 'UNINSTALLCODE=' in text
     # The code given to msiexec must not appear in its verbose log.
     assert 'MSI log contains the uninstall code' in text
+
+
+def test_package_builder_writes_the_key_codes_and_profile(tmp_path):
+    output, results = tmp_path / 'uninstall-input', tmp_path / 'results'
+    built = subprocess.run([sys.executable, str(ROOT / 'tools/build_uninstall_sandbox.py'), '--output', str(output),
+                            '--results', str(results)], capture_output=True, text=True, timeout=120, check=False)
+    assert built.returncode == 0, built.stderr
+    assert {path.name for path in output.iterdir()} == {'codes.json', 'master.key', 'test-uninstall-sandbox.ps1',
+                                                         'RUN-UNINSTALL-TEST.cmd'}
+    assert (output / 'master.key').read_text(encoding='utf-8').strip() == VECTORS['master_key']
+    codes = json.loads((output / 'codes.json').read_text(encoding='utf-8'))
+    from agent.uninstall import code, derive_secret
+    secret = derive_secret(VECTORS['master_key'].encode(), 'sandbox-uninstall')
+    assert codes == {'client_id': 'sandbox-uninstall', 'codes': {str(n): code(secret, n) for n in range(1, 21)}}
+    profile = (tmp_path / 'uninstall.wsb').read_text(encoding='utf-8')
+    assert str(output) in profile and str(results) in profile and '<ReadOnly>true</ReadOnly>' in profile
