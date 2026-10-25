@@ -35,10 +35,18 @@ def start(native: Path, origin: str, tmp_path: Path) -> subprocess.Popen:
     )
 
 
+def read(path: Path) -> str:
+    """File contents, or "" while missing or being replaced (Windows denies reads during the rename)."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except (FileNotFoundError, PermissionError):
+        return ""
+
+
 def stored(tmp_path: Path) -> dict:
     try:
-        return json.loads((tmp_path / "uninstall.json").read_text(encoding="utf-8"))
-    except (FileNotFoundError, ValueError):
+        return json.loads(read(tmp_path / "uninstall.json"))
+    except ValueError:
         return {}
 
 
@@ -83,7 +91,7 @@ def test_without_uninstall_codes_on_the_server_the_agent_keeps_enforcing(native,
         assert client.post("/api/v1/profiles/Default", json={"web_filter": {"blocked": ["example.com"]}}).status_code == 200
         agent = start(native, origin, tmp_path)
         try:
-            if not wait_for(lambda: "example.com" in (tmp_path / "hosts").read_text(encoding="utf-8"), 30):
+            if not wait_for(lambda: "example.com" in read(tmp_path / "hosts"), 30):
                 raise AssertionError(stop(agent))
             assert not (tmp_path / "uninstall.json").exists()
             assert agent.poll() is None
