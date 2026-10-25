@@ -58,3 +58,16 @@ def test_harness_checks_the_component_in_the_interactive_session_and_the_registr
     assert 'Assert-ProductionPackage ([string](Join-Path' in text
     assert 'PING.EXE' in text and 'openems-test-app.exe' in text
     assert 'Restart the Sandbox' in text
+
+
+def test_package_builder_writes_the_harness_launcher_and_profile(tmp_path):
+    import sys
+
+    output, results = tmp_path / 'session-input', tmp_path / 'results'
+    built = subprocess.run([sys.executable, str(ROOT / 'tools/build_session_sandbox.py'), '--output', str(output),
+                            '--results', str(results)], capture_output=True, text=True, timeout=120, check=False)
+    assert built.returncode == 0, built.stderr
+    assert {path.name for path in output.iterdir()} == {'test-session-sandbox.ps1', 'RUN-SESSION-TEST.cmd'}
+    assert 'test-session-sandbox.ps1' in (output / 'RUN-SESSION-TEST.cmd').read_text(encoding='ascii')
+    profile = (tmp_path / 'session.wsb').read_text(encoding='utf-8')
+    assert str(output) in profile and str(results) in profile and '<ReadOnly>true</ReadOnly>' in profile
