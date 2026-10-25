@@ -35,10 +35,15 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - Segredo = HMAC-SHA256(chave-mestra, `"openems-uninstall-v1\0" + client_id`). A chave tem no mínimo 32 bytes. Como o segredo vale por cadastro, reinstalar gera um segredo novo e invalida códigos antigos.
   - Código = HMAC-SHA256(segredo, contador u64 big-endian). Usa os 50 bits mais altos, escritos como 10 símbolos Crockford base32 no formato `XXXXX-XXXXX`. A normalização aceita minúsculas, espaços e traços, e lê O como 0 e I/L como 1.
   - A conferência aceita contadores em (último usado, último usado + 20]. A liberação de remoção é HMAC(segredo, `"openems-release-v1"`) em hex.
+- **Feito (etapa 2 de 6, `a487a95` testes, `098f1a7` implementação):** `tools/uninstall_code.py --master-key-file PATH|- --client-id ID [--counter N] [--count 1..20]`.
+  - A chave vem só de arquivo ou da entrada padrão. A ferramenta não repete argumentos desconhecidos (um `--master-key SEGREDO` não vaza no erro) e não mostra caminho nem conteúdo nos erros de leitura.
+  - `master_key_from_text` em `agent/uninstall.py` fixa o formato da chave: texto UTF-8, sem BOM, aparado e com no mínimo 32 bytes. **A etapa 3 deve ler `OPENEMS_UNINSTALL_MASTER_KEY` por essa função**, para servidor e ferramenta não divergirem.
+  - `--count 20` lista uma janela inteira (o último contador usado é desconhecido offline). Se todos forem recusados, continuar com `--counter 21`.
+  - **Mudança no desenho:** o `--devid` foi retirado. O `client_id` é aleatório (`secrets.token_hex(16)`) e sua ligação com o `devid` só existe no banco. Na máquina, o `client_id` está em `C:\ProgramData\openems\state.json`. Na etapa 4, o agente deve mostrá-lo na mensagem que pede o código.
+  - **Risco para as etapas 3 e 4:** `update_client_id` (`app/service.py`) troca o `client_id` e, com ele, o segredo derivado. O servidor precisa reenviar o segredo ao agente nesse caso. Senão, o código gerado com o `client_id` novo não bate com o segredo antigo guardado.
 - **Próximas etapas, nesta ordem e cada uma com TDD:**
-  - 2: `tools/uninstall_code.py`, que gera o código sem servidor (`--client-id`, `--counter`, padrão 1; chave lida de arquivo ou da entrada padrão, nunca da linha de comando).
   - 3: servidor.
-    - `OPENEMS_UNINSTALL_MASTER_KEY`.
+    - `OPENEMS_UNINSTALL_MASTER_KEY` (lida por `master_key_from_text`).
     - `POST /fct/api/public/v1/uninstall_secret/`, que entrega o segredo ao agente sem um.
     - Contador por endpoint (migração `004`).
     - `POST /api/v1/endpoints/uninstall_code` (só admin; auditado sem o código).
