@@ -144,7 +144,7 @@ def test_native_uses_live_local_signals_offline_and_rejects_a_changed_certificat
             definition = configure(client, {"cidrs": ["0.0.0.0/0"], "probe": probe})
             agent = start(native, origin, tmp_path)
             try:
-                assert wait_for(lambda: applied(client, "Office", "office"), 25), read(tmp_path / "hosts")
+                assert wait_for(lambda: applied(client, "Office", "office"), 25), stop(agent)
                 definition["probe"] = {**probe, "sha256": "00" * 32}
                 client.put("/api/v1/network_locations/office", json=definition).raise_for_status()
                 assert wait_for(lambda: applied(client, "Default", ""), 25)
@@ -152,7 +152,8 @@ def test_native_uses_live_local_signals_offline_and_rejects_a_changed_certificat
                 client.put("/api/v1/network_locations/office", json=definition).raise_for_status()
                 assert wait_for(lambda: applied(client, "Office", "office"), 25)
             finally:
-                stop(agent)
+                if agent.poll() is None:
+                    stop(agent)
         # Definitions and both policies survive, but each observation is collected again.
         offline = start(native, origin, tmp_path)
         try:
