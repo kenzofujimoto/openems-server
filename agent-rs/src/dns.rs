@@ -25,6 +25,8 @@ const MAX_TCP_QUERIES: usize = 16;
 const UPSTREAM_REFRESH: Duration = Duration::from_secs(5);
 /// Standard signal that makes Firefox turn off automatic DNS over HTTPS.
 const DOH_CANARY: &str = "use-application-dns.net";
+/// IANA dynamic range, which Windows uses for ephemeral ports by default.
+const DYNAMIC_PORTS: std::ops::RangeInclusive<u16> = 49152..=65535;
 
 #[derive(Debug)]
 pub enum Decision {
@@ -439,7 +441,9 @@ fn serve_tcp(listener: &TcpListener, shared: &Arc<Shared>, stop: &StopSignal) {
 }
 
 /// UDP and TCP on one port. For port 0, retry: Windows may reserve a free UDP port for TCP
-/// (Hyper-V and WinNAT exclusion ranges), which fails the TCP bind with WSAEACCES.
+/// (Hyper-V and WinNAT exclusion ranges), which fails the TCP bind with WSAEACCES. Those ranges
+/// are contiguous blocks of up to 300 ports and Windows hands out port 0 sequentially, so retries
+/// after the first use random ports in the dynamic range instead of asking the system again.
 fn bind_pair(address: SocketAddr) -> std::io::Result<(UdpSocket, TcpListener)> {
     bind_pair_with(address, |port| {
         let mut candidate = address;
@@ -453,8 +457,9 @@ fn bind_pair(address: SocketAddr) -> std::io::Result<(UdpSocket, TcpListener)> {
 fn bind_pair_with<T>(address: SocketAddr, mut try_port: impl FnMut(u16) -> std::io::Result<T>) -> std::io::Result<T> {
     let attempts = if address.port() == 0 { 32 } else { 1 };
     let mut last = None;
-    for _ in 0..attempts {
-        match try_port(address.port()) {
+    for attempt in 0..attempts {
+        let port = if address.port() == 0 && attempt > 0 { fastrand::u16(DYNAMIC_PORTS) } else { address.port() };
+        match try_port(port) {
             Ok(pair) => return Ok(pair),
             Err(error) => last = Some(error),
         }
