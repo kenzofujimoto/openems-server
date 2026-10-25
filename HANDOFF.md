@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Aceites pendentes no Sandbox
+
+Decisão do usuário em 2026-10-25: as rodadas de Sandbox ficam para o fim, todas juntas. Cada fase nova acrescenta aqui o seu aceite. Nenhuma fase desta lista está aceita até o JSON de resultado dizer `passed: true`. Antes de rodar, gerar de novo os pacotes a partir do código final (MSIs com `tools/build-msi-fixtures.ps1 -Production` e `-Production -Next`, `DOTNET_ROOT=.venv/dotnet-sdk`, WiX `.venv/wix-tools/wix.exe`), porque o agente mudou depois de cada pacote.
+
+| Fase | Roteiro | Pacote e perfil | Como rodar | Resultado |
+|---|---|---|---|---|
+| F5 5c — componente de sessão e reboot | `deploy/test-session-sandbox.ps1` | `.venv/sandbox-acceptance/session-input` (`python tools/build_session_sandbox.py`), `session.wsb` | Win+R → `C:\openems-input\RUN-SESSION-TEST.cmd`; ao fim da fase 1, reiniciar o Sandbox por dentro e rodar de novo | `results/session-phase1.json`, `results/session-result.json` |
+
 ## Continuação Codex — F2 HTTPS local
 
 Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.md`.
