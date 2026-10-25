@@ -120,3 +120,25 @@ def test_the_agent_generator_never_takes_or_echoes_the_key_on_the_command_line(n
         result = generate([str(native), "uninstall-code", "--master-key-file", "-", "--client-id", "x",
                            "--count", count], MASTER.decode())
         assert result.returncode != 0, count
+
+
+def run(native: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run([str(native), *arguments], capture_output=True, text=True, timeout=60, check=False)
+
+
+def test_removal_commands_take_the_uninstall_code(native, tmp_path):
+    for command in (["installer-prepare", "--remove"], ["uninstall-service"], ["cleanup"]):
+        help_text = run(native, *command[:1], "--help").stdout
+        assert "--uninstall-code" in help_text, command
+    misplaced = run(native, "installer-prepare", "--server", "https://e", "--uninstall-code", "ABCDE-FGHJK")
+    assert misplaced.returncode != 0 and "--remove" in misplaced.stderr, "a code only makes sense for removal"
+
+
+def test_removal_commands_refuse_to_run_without_system(native, tmp_path):
+    config = tmp_path / "agent.json"
+    config.write_text(json.dumps({"server": "https://ems.example.com", "devid": "PC1",
+                                  "state_path": str(tmp_path / "state.json"),
+                                  "hosts_path": str(tmp_path / "hosts")}), encoding="utf-8")
+    for command in (["installer-prepare", "--remove"], ["cleanup"]):
+        result = run(native, *command, "--config", str(config), "--uninstall-code", "ABCDE-FGHJK")
+        assert result.returncode != 0 and "SYSTEM" in result.stderr, (command, result.stderr)
