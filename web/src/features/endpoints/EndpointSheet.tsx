@@ -3,8 +3,10 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { ConnectionDot, PolicyBadge } from "@/components/StatusBadge";
 import { formatDateTime, relativeTime } from "@/lib/format";
+import { useIsAdmin } from "@/lib/queries";
 import type { Endpoint } from "@/lib/schemas";
 import { connectionStatus, policyStatus } from "@/lib/status";
+import { UninstallSection } from "./UninstallSection";
 
 const CAPABILITY_LABEL: Record<string, string> = {
   "web-filter:categories": "Categorias de sites",
@@ -22,6 +24,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export function EndpointSheet({ endpoint, onClose }: { endpoint: Endpoint | null; onClose: () => void }) {
+  const isAdmin = useIsAdmin();
   return (
     <Dialog.Root open={endpoint !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
       <Dialog.Portal>
@@ -82,6 +85,8 @@ export function EndpointSheet({ endpoint, onClose }: { endpoint: Endpoint | null
                     ) : "Nenhuma"}
                   </Row>
                 </dl>
+                {/* Keyed by machine: a code shown for one device never carries over to another. */}
+                {isAdmin ? <UninstallSection key={endpoint.devid} devid={endpoint.devid} /> : null}
               </div>
             </>
           ) : null}

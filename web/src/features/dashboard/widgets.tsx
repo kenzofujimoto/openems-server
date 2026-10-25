@@ -82,6 +82,8 @@ const TAMPER_DETAIL: Record<string, string> = {
   watchdog_restored: "Tarefa agendada do watchdog recriada",
   service_started_by_watchdog: "Serviço parado foi iniciado pelo watchdog",
   unexpected_exit: "O agente terminou sem parada normal",
+  uninstall_code_rejected: "Código de desinstalação recusado",
+  uninstall_without_secret: "Agente removido sem segredo de desinstalação",
 };
 
 function eventDetail(event: FleetEvent): string {

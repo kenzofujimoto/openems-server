@@ -1,7 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { ApiError, apiFetch, setCsrfToken } from "./api";
-import { categoriesSchema, endpointSchema, eventSchema, overviewSchema, sessionSchema, type Session } from "./schemas";
+import {
+  categoriesSchema,
+  endpointSchema,
+  eventSchema,
+  overviewSchema,
+  sessionSchema,
+  type Session,
+  uninstallCodeSchema,
+  uninstallReleaseSchema,
+} from "./schemas";
 
 const SESSION_KEY = ["session"] as const;
 
@@ -88,4 +97,59 @@ export function useCategories() {
     queryKey: ["categories"],
     queryFn: () => optional(apiFetch("/api/v1/categories", categoriesSchema)),
   });
+}
+
+/** Uninstall codes are off (503) without a master key on the server, and absent (404) on older servers. */
+async function uninstallFeature<T>(request: Promise<T>): Promise<T | null> {
+  try {
+    return await request;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 503)) return null;
+    throw error;
+  }
+}
+
+const RELEASES_KEY = ["uninstall-releases"] as const;
+
+export function useUninstallReleases(enabled: boolean) {
+  return useQuery({
+    queryKey: RELEASES_KEY,
+    queryFn: () => uninstallFeature(apiFetch("/api/v1/uninstall_release", z.array(uninstallReleaseSchema))),
+    enabled,
+  });
+}
+
+export function useSetUninstallRelease() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (release: { scope: string; released: boolean }) =>
+      apiFetch("/api/v1/uninstall_release", z.object({ scope: z.string(), released: z.boolean() }), {
+        method: "POST",
+        json: release,
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: RELEASES_KEY }),
+  });
+}
+
+/** The code is returned to the caller only: it never enters the query cache. */
+export function useGenerateUninstallCode() {
+  return useMutation({
+    mutationFn: (devid: string) =>
+      apiFetch("/api/v1/endpoints/uninstall_code", uninstallCodeSchema, { method: "POST", json: { devid } }),
+  });
+}
+
+export function useReopenUninstallSecret() {
+  return useMutation({
+    mutationFn: (devid: string) =>
+      apiFetch("/api/v1/endpoints/uninstall_secret/reset", z.object({ ok: z.boolean() }), {
+        method: "POST",
+        json: { devid },
+      }),
+  });
+}
+
+export function useIsAdmin(): boolean {
+  const role = useSession().data?.role;
+  return role === "admin" || role === "superadmin";
 }

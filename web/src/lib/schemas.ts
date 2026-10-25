@@ -73,3 +73,12 @@ export const categoriesSchema = z.object({
   attribution: z.string(),
   categories: z.array(categorySchema),
 });
+
+export const uninstallCodeSchema = z.object({ devid: z.string(), counter: z.number().int(), code: z.string() });
+export type UninstallCode = z.infer<typeof uninstallCodeSchema>;
+
+/** Removal released without a code for a policy group, or for the whole fleet with scope "*". */
+export const uninstallReleaseSchema = z.object({ scope: z.string(), released_at: z.string(), released_by: z.string() });
+export type UninstallRelease = z.infer<typeof uninstallReleaseSchema>;
+
+export const FLEET_SCOPE = "*";

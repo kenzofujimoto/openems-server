@@ -5,10 +5,11 @@ import { ConnectionDot, PolicyBadge } from "@/components/StatusBadge";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { relativeTime } from "@/lib/format";
-import { useEndpoints } from "@/lib/queries";
+import { useEndpoints, useIsAdmin } from "@/lib/queries";
 import type { Endpoint } from "@/lib/schemas";
 import { connectionStatus, policyStatus } from "@/lib/status";
 import { EndpointSheet } from "./EndpointSheet";
+import { ReleaseDialog } from "./ReleaseDialog";
 
 type Filter = "all" | "applied" | "pending" | "error" | "offline";
 
@@ -35,10 +36,19 @@ export function EndpointsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const rows = useMemo(() => (endpoints.data ?? []).filter((endpoint) => matches(endpoint, filter, query.trim())), [endpoints.data, filter, query]);
   const selectedEndpoint = endpoints.data?.find((endpoint) => endpoint.devid === selected) ?? null;
+  const isAdmin = useIsAdmin();
+  const groups = useMemo(
+    () => [...new Set((endpoints.data ?? []).map((endpoint) => endpoint.effective_vdom))].sort((a, b) => a.localeCompare(b)),
+    [endpoints.data],
+  );
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Endpoints" description={`${endpoints.data?.length ?? 0} dispositivos cadastrados`} />
+      <PageHeader
+        title="Endpoints"
+        description={`${endpoints.data?.length ?? 0} dispositivos cadastrados`}
+        actions={isAdmin ? <ReleaseDialog groups={groups} /> : null}
+      />
       {endpoints.isError ? <ErrorNotice message="Não foi possível carregar os endpoints." onRetry={() => void endpoints.refetch()} /> : null}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">

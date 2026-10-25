@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { audit, categories, endpoints, events, overview, profiles, rules, session } from "./data";
+import { audit, categories, endpoints, events, overview, profiles, rules, session, uninstallReleases } from "./data";
 
 export const handlers = [
   http.get("*/api/v1/auth/session", () => HttpResponse.json(session)),
@@ -18,4 +18,11 @@ export const handlers = [
   http.get("*/api/v1/assignment_rules", () => HttpResponse.json(rules)),
   http.get("*/api/v1/audit", () => HttpResponse.json(audit)),
   http.get("*/api/v1/categories", () => HttpResponse.json(categories)),
+  http.get("*/api/v1/uninstall_release", () => HttpResponse.json(uninstallReleases)),
+  http.post("*/api/v1/uninstall_release", async ({ request }) => HttpResponse.json(await request.json())),
+  http.post("*/api/v1/endpoints/uninstall_code", async ({ request }) => {
+    const { devid } = (await request.json()) as { devid: string };
+    return HttpResponse.json({ devid, counter: 1, code: "QZJ9T-4Y3D1" });
+  }),
+  http.post("*/api/v1/endpoints/uninstall_secret/reset", () => HttpResponse.json({ ok: true })),
 ];

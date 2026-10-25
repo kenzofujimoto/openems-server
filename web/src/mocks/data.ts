@@ -139,3 +139,5 @@ export const categories = {
     { id: "social", label: "Redes sociais", group: "Interesse geral", count: 812 },
   ],
 };
+
+export const uninstallReleases: Array<{ scope: string; released_at: string; released_by: string }> = [];
