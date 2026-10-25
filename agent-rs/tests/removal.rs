@@ -162,3 +162,73 @@ fn an_unreadable_file_refuses_removal_instead_of_passing() {
     std::fs::write(&path, b"{not json").unwrap();
     assert!(authorize(&path, Some("client-1"), None, NOW, |_| Fetch::Unavailable).is_err());
 }
+
+mod commands {
+    use super::*;
+    use openems_agent::config::AgentConfig;
+    use openems_agent::removal::authorize_removal_with;
+    use openems_agent::state::EndpointState;
+    use openems_agent::tamper::TamperKind;
+
+    fn config(name: &str, client_id: Option<&str>) -> AgentConfig {
+        let path = scratch(name);
+        let mut config = AgentConfig::new("https://ems.example.com", "PC1");
+        config.state_path = path.with_file_name("state.json");
+        if let Some(client_id) = client_id {
+            EndpointState {
+                server: config.server.clone(),
+                devid: config.devid.clone(),
+                client_id: Some(client_id.into()),
+                device_token: Some("token".into()),
+                profile: None,
+            }
+            .save(&config.state_path)
+            .unwrap();
+        }
+        config
+    }
+
+    #[test]
+    fn a_refusal_is_an_error_naming_the_client_id_and_a_rejection_is_reported() {
+        let config = config("command-refusal", Some("client-1"));
+        store_secret(&path_for(&config.state_path), "client-1", &SECRET).unwrap();
+        let mut reported = Vec::new();
+        let error = authorize_removal_with(&config, None, NOW, unreachable, &mut |kind| reported.push(kind)).unwrap_err();
+        assert!(error.to_string().contains("client-1"), "{error}");
+        assert!(reported.is_empty(), "asking for a code is not tampering");
+        authorize_removal_with(&config, Some("00000-00000"), NOW, unreachable, &mut |kind| reported.push(kind))
+            .unwrap_err();
+        assert_eq!(reported, vec![TamperKind::UninstallCodeRejected]);
+        let allowed =
+            authorize_removal_with(&config, Some(&code(&SECRET, 1)), NOW, unreachable, &mut |kind| reported.push(kind));
+        assert_eq!(allowed.unwrap(), Allowed::Code(1));
+        assert_eq!(reported.len(), 1);
+    }
+
+    #[test]
+    fn removal_without_a_secret_is_reported_and_the_server_is_asked_for_the_registered_id() {
+        let config = config("command-without", Some("client-7"));
+        let mut reported = Vec::new();
+        let allowed = authorize_removal_with(
+            &config,
+            None,
+            NOW,
+            |client| {
+                assert_eq!(client, "client-7");
+                Fetch::Unavailable
+            },
+            &mut |kind| reported.push(kind),
+        );
+        assert_eq!(allowed.unwrap(), Allowed::WithoutSecret);
+        assert_eq!(reported, vec![TamperKind::UninstallWithoutSecret]);
+    }
+
+    #[test]
+    fn a_damaged_state_file_does_not_bypass_a_stored_secret() {
+        let config = config("command-damaged", None);
+        store_secret(&path_for(&config.state_path), "client-1", &SECRET).unwrap();
+        std::fs::write(&config.state_path, b"garbage").unwrap();
+        let error = authorize_removal_with(&config, None, NOW, unreachable, &mut |_| {}).unwrap_err();
+        assert!(error.to_string().contains("client-1"), "{error}");
+    }
+}
