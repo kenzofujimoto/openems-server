@@ -118,6 +118,24 @@ PROCESSES = [
 ]
 
 VALIDATE: list[Any] = [
+    {"usb_control": {}},
+    {"usb_control": {"default_action": "block", "rules": [
+        {"id": "approved", "action": "allow", "vid": "0781", "pid": "ABCD", "serial": "SN1"},
+        {"id": "rest", "action": "read_only", "class": "storage"}]}},
+    {"usb_control": {"default_action": "erase"}},
+    {"usb_control": {"rules": [{"id": "a", "action": "block"}]}},
+    {"usb_control": {"rules": [{"id": "a", "action": "block", "class": "hid"}]}},
+    {"usb_control": {"rules": [{"id": "a", "action": "block", "vid": "zzzz"}]}},
+    {"usb_control": {"rules": [{"id": "a", "action": "block", "serial": "bad\nserial"}]}},
+    {"app_control": {"execution_rules": [
+        {"id": "a", "kind": "hash", "value": "AB" * 32, "sample_path": r"C:\Apps\a.exe"},
+        {"id": "b", "kind": "name", "value": "Example.EXE"},
+        {"id": "c", "kind": "publisher", "value": "Example Publisher"}],
+        "network_blocked": [r"C:\Apps\a.exe", r"C:\Apps\a.exe"]}},
+    {"app_control": {"execution_rules": [{"id": "a", "kind": "hash", "value": "bad"}]}},
+    {"app_control": {"execution_rules": [{"id": "a", "kind": "name", "value": "../bad.exe"}]}},
+    {"app_control": {"execution_rules": [{"id": "a", "kind": "path", "value": "relative.exe"}]}},
+    {"app_control": {"network_blocked": [r"\\server\share\app.exe"]}},
     {"web_filter": {"blocked": ["Example.COM", "example.com", "bücher.de"]},
      "app_control": {"blocked": ["A.exe", "a.exe"]}, "other": {"keep": True}},
     {"web_filter": {"blocked": "example.com"}},

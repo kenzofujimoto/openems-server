@@ -356,6 +356,88 @@ def normalize_process(value: object) -> str:
     return value.lower()
 
 
+def _control_text(value: object, maximum: int = 256) -> str:
+    if not isinstance(value, str) or not value or len(value) > maximum or value != value.strip():
+        raise ValueError("control selector must be a bounded nonempty string")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError("control selector contains control characters")
+    return value
+
+
+def _absolute_application_path(value: object) -> str:
+    path = _control_text(value, 2048)
+    if not (re.match(r"^[A-Za-z]:[\\/]", path) or (path.startswith("/") and not path.startswith("//"))):
+        raise ValueError("application path must be absolute and local")
+    if any(part in (".", "..") for part in re.split(r"[\\/]", path)) or any(character in path for character in '*?"<>|%'):
+        raise ValueError("application paths must be exact without traversal or expansion")
+    return path
+
+
+def _control_rules(value: object) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or len(value) > 256 or any(not isinstance(rule, dict) for rule in value):
+        raise ValueError("control rules must be a list of at most 256 objects")
+    ids = []
+    for rule in value:
+        identifier = rule.get("id")
+        if not isinstance(identifier, str) or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", identifier):
+            raise ValueError("control rule needs an id of at most 64 letters, digits, underscores or hyphens")
+        ids.append(identifier)
+    if len(set(ids)) != len(ids):
+        raise ValueError("control rule ids must be unique")
+    return value
+
+
+def _validate_usb(settings: object) -> None:
+    if not isinstance(settings, dict) or set(settings) - {"default_action", "rules"}:
+        raise ValueError("usb_control must contain only default_action and rules")
+    settings.setdefault("default_action", "allow")
+    settings.setdefault("rules", [])
+    if settings["default_action"] not in ("allow", "block", "read_only"):
+        raise ValueError("unknown USB default action")
+    for rule in _control_rules(settings["rules"]):
+        selectors = {"class", "vid", "pid", "serial", "instance_id"}
+        if set(rule) - {"id", "action", *selectors} or not selectors.intersection(rule):
+            raise ValueError("USB rule needs a supported device selector")
+        if rule.get("action") not in ("allow", "block", "read_only"):
+            raise ValueError("unknown USB action")
+        if "class" in rule and rule["class"] != "storage":
+            raise ValueError("USB enforcement is restricted to storage; HID devices are protected")
+        for field in ("vid", "pid"):
+            if field in rule:
+                if not isinstance(rule[field], str) or not re.fullmatch(r"[a-fA-F0-9]{4}", rule[field]):
+                    raise ValueError("USB VID and PID must each contain four hexadecimal digits")
+                rule[field] = rule[field].lower()
+        for field in ("serial", "instance_id"):
+            if field in rule:
+                _control_text(rule[field], 512)
+
+
+def _validate_app_extensions(settings: dict[str, Any]) -> None:
+    if "execution_rules" in settings:
+        for rule in _control_rules(settings["execution_rules"]):
+            if set(rule) - {"id", "kind", "value", "sample_path"}:
+                raise ValueError("unsupported application rule field")
+            kind = rule.get("kind")
+            value = _control_text(rule.get("value"), 2048)
+            if kind == "hash":
+                if not re.fullmatch(r"[a-fA-F0-9]{64}", value):
+                    raise ValueError("application hash must be a SHA-256 digest")
+                rule["value"] = value.lower()
+            elif kind == "name":
+                rule["value"] = normalize_process(value)
+            elif kind == "path":
+                _absolute_application_path(value)
+            elif kind != "publisher":
+                raise ValueError("unknown application rule kind")
+            if "sample_path" in rule:
+                _absolute_application_path(rule["sample_path"])
+    if "network_blocked" in settings:
+        paths = settings["network_blocked"]
+        if not isinstance(paths, list) or len(paths) > 256:
+            raise ValueError("network_blocked must be a list of at most 256 application paths")
+        settings["network_blocked"] = list(dict.fromkeys(_absolute_application_path(path) for path in paths))
+
+
 def validate_policy(body: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(body, dict):
         raise ValueError("policy body must be an object")  # noqa: TRY004 - shared API validation contract
@@ -385,4 +467,8 @@ def validate_policy(body: dict[str, Any]) -> dict[str, Any]:
         )
     if isinstance(normalized.get("web_filter"), dict):
         _validate_web_extensions(normalized["web_filter"])
+    if isinstance(normalized.get("app_control"), dict):
+        _validate_app_extensions(normalized["app_control"])
+    if "usb_control" in normalized:
+        _validate_usb(normalized["usb_control"])
     return normalized

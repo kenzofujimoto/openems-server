@@ -10,15 +10,25 @@ from typing import Any
 
 
 def required_tags(body: Any) -> list[str]:
+    tags = []
+    if isinstance(body, dict):
+        usb = body.get("usb_control")
+        apps = body.get("app_control")
+        if isinstance(usb, dict) and (usb.get("rules") or usb.get("default_action", "allow") != "allow"):
+            tags.append("usb-control:v1")
+        if isinstance(apps, dict):
+            if apps.get("execution_rules"):
+                tags.append("app-control:wdac")
+            if apps.get("network_blocked"):
+                tags.append("app-control:network")
     web_filter = body.get("web_filter") if isinstance(body, dict) else None
     if not isinstance(web_filter, dict):
-        return []
+        return tags
     windows = [window for window in web_filter.get("scheduled") or [] if isinstance(window, dict)]
     rules = [*(web_filter.get("blocked") or []), *(web_filter.get("allowed") or []),
              *(rule for window in windows for rule in window.get("blocked") or [])]
     categories = bool(web_filter.get("blocked_categories")) or any(window.get("blocked_categories") for window in windows)
     safe_search = bool(web_filter.get("safe_search"))
-    tags = []
     if safe_search or windows:
         tags.append("web-filter:v2")
     if categories:

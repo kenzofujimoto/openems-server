@@ -1173,6 +1173,226 @@
   "validate": [
     {
       "input": {
+        "usb_control": {}
+      },
+      "normalized": {
+        "usb_control": {
+          "default_action": "allow",
+          "rules": []
+        }
+      }
+    },
+    {
+      "input": {
+        "usb_control": {
+          "default_action": "block",
+          "rules": [
+            {
+              "id": "approved",
+              "action": "allow",
+              "vid": "0781",
+              "pid": "ABCD",
+              "serial": "SN1"
+            },
+            {
+              "id": "rest",
+              "action": "read_only",
+              "class": "storage"
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "usb_control": {
+          "default_action": "block",
+          "rules": [
+            {
+              "id": "approved",
+              "action": "allow",
+              "vid": "0781",
+              "pid": "abcd",
+              "serial": "SN1"
+            },
+            {
+              "id": "rest",
+              "action": "read_only",
+              "class": "storage"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "input": {
+        "usb_control": {
+          "default_action": "erase"
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "usb_control": {
+          "rules": [
+            {
+              "id": "a",
+              "action": "block"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "usb_control": {
+          "rules": [
+            {
+              "id": "a",
+              "action": "block",
+              "class": "hid"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "usb_control": {
+          "rules": [
+            {
+              "id": "a",
+              "action": "block",
+              "vid": "zzzz"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "usb_control": {
+          "rules": [
+            {
+              "id": "a",
+              "action": "block",
+              "serial": "bad\nserial"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "app_control": {
+          "execution_rules": [
+            {
+              "id": "a",
+              "kind": "hash",
+              "value": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+              "sample_path": "C:\\Apps\\a.exe"
+            },
+            {
+              "id": "b",
+              "kind": "name",
+              "value": "Example.EXE"
+            },
+            {
+              "id": "c",
+              "kind": "publisher",
+              "value": "Example Publisher"
+            }
+          ],
+          "network_blocked": [
+            "C:\\Apps\\a.exe",
+            "C:\\Apps\\a.exe"
+          ]
+        }
+      },
+      "normalized": {
+        "app_control": {
+          "execution_rules": [
+            {
+              "id": "a",
+              "kind": "hash",
+              "value": "abababababababababababababababababababababababababababababababab",
+              "sample_path": "C:\\Apps\\a.exe"
+            },
+            {
+              "id": "b",
+              "kind": "name",
+              "value": "example.exe"
+            },
+            {
+              "id": "c",
+              "kind": "publisher",
+              "value": "Example Publisher"
+            }
+          ],
+          "network_blocked": [
+            "C:\\Apps\\a.exe"
+          ],
+          "blocked": []
+        }
+      }
+    },
+    {
+      "input": {
+        "app_control": {
+          "execution_rules": [
+            {
+              "id": "a",
+              "kind": "hash",
+              "value": "bad"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "app_control": {
+          "execution_rules": [
+            {
+              "id": "a",
+              "kind": "name",
+              "value": "../bad.exe"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "app_control": {
+          "execution_rules": [
+            {
+              "id": "a",
+              "kind": "path",
+              "value": "relative.exe"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "app_control": {
+          "network_blocked": [
+            "\\\\server\\share\\app.exe"
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
         "web_filter": {
           "blocked": [
             "Example.COM",
