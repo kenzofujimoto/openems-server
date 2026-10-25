@@ -173,3 +173,13 @@ fn cidr_boundaries_do_not_match_other_families_or_adjacent_networks() {
         assert!(Range::parse(invalid).is_none());
     }
 }
+
+#[test]
+fn a_probe_host_may_be_a_literal_ipv6_address() {
+    let parsed = locations(json!({"cidrs": ["192.168.1.0/24"],
+        "probe": {"host": "::1", "port": 443, "sha256": "ab".repeat(32)}}));
+    assert_eq!(parsed.len(), 1);
+    let mut observed = at_home();
+    observed.probes.insert(("::1".into(), 443), Some("ab".repeat(32)));
+    assert!(choose(&parsed, &observed).is_some());
+}
