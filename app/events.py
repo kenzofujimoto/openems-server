@@ -18,7 +18,8 @@ from agent.policy import CATEGORIES, normalize_domain
 REASONS = ("rule", "category", "doh")
 # Protections an agent found altered and restored (tamper-protection.md, decision 4).
 TAMPER_KINDS = ("dns_rule_restored", "wfp_restored", "browser_policy_restored", "hosts_restored",
-                "service_config_restored", "watchdog_restored", "service_started_by_watchdog", "unexpected_exit")
+                "service_config_restored", "watchdog_restored", "service_started_by_watchdog", "unexpected_exit",
+                "uninstall_code_rejected", "uninstall_without_secret")
 DEFAULT_RETENTION_DAYS = 30
 # Agent clocks may run slightly ahead; anything later is refused.
 FUTURE_TOLERANCE = timedelta(hours=1)

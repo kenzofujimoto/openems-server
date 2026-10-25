@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from agent.policy import CATEGORIES
+from agent.uninstall import master_key_from_text
 
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService, LoginRateLimited
@@ -38,12 +39,14 @@ from .saml import SamlError, SamlSp, UnknownIdpError
 from .schemas import (
     AckPayload,
     ClientPayload,
+    DeliveryProofPayload,
     DevicePayload,
     EventsPayload,
     IdpPayload,
     InvitationPayload,
     LoginPayload,
     RegisterPayload,
+    ReleasePayload,
     RulePayload,
     TagsPayload,
     TamperPayload,
@@ -54,6 +57,12 @@ from .service import (
     RegistrationError,
     UnknownEndpointError,
     UnknownProfileError,
+)
+from .uninstall_codes import (
+    SecretAlreadyDeliveredError,
+    UninstallCodes,
+    UninstallDisabledError,
+    UninstallStore,
 )
 
 _STATIC_DIR = Path(__file__).parent / 'static'
@@ -85,13 +94,15 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                audit_log: AuditLog | None = None, *, lab_mode: bool = False,
                close_resources: list[Any] | None = None, panel_dir: Path | None = None,
                category_dir: Path | None = None, event_store: EventStore | None = None,
-               event_retention_days: int = DEFAULT_RETENTION_DAYS) -> FastAPI:
+               event_retention_days: int = DEFAULT_RETENTION_DAYS, uninstall_master_key: bytes | None = None,
+               uninstall_store: UninstallStore | None = None) -> FastAPI:
     svc = service or EmsService(require_invitation=not lab_mode)
     saml = saml_sp or SamlSp('http://localhost:8013')
     admin = admin_service or AdminService()
     audit = audit_log or InMemoryAuditLog()
     events = event_store or InMemoryEventStore()
     retention_days = validate_retention(event_retention_days)
+    uninstall = UninstallCodes(svc, uninstall_store, uninstall_master_key)
     env_admin = os.environ.get('OPENEMS_ADMIN')
     if env_admin and not admin.has_admins():
         if ':' not in env_admin:
@@ -221,6 +232,10 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                   for item in error.errors()]
         return JSONResponse({'detail': errors}, status_code=422)
 
+    @app.exception_handler(UninstallDisabledError)
+    async def uninstall_disabled(request: Request, error: UninstallDisabledError):
+        return JSONResponse({'detail': 'uninstall codes are not configured on this server'}, status_code=503)
+
     @app.exception_handler(UnknownEndpointError)
     async def unknown_endpoint(request: Request, error: UnknownEndpointError):
         return JSONResponse({'detail': 'unknown endpoint'}, status_code=404)
@@ -326,6 +341,20 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         return {'accepted': len(accepted) - (1 if payload.dropped else 0),
                 'rejected': len(payload.events) - len(accepted) + (1 if payload.dropped else 0)}
 
+    @app.post('/fct/api/public/v1/uninstall_secret/')
+    def uninstall_secret(payload: ClientPayload):
+        try:
+            secret = uninstall.deliver_secret(payload.client_id)
+        except SecretAlreadyDeliveredError as error:
+            raise HTTPException(status_code=409, detail='uninstall secret already delivered') from error
+        return {'secret': secret.hex()}
+
+    @app.post('/fct/api/public/v1/uninstall_secret/ack/')
+    def uninstall_secret_ack(payload: DeliveryProofPayload):
+        if not uninstall.confirm_delivery(payload.client_id, payload.proof):
+            raise HTTPException(status_code=403, detail='delivery proof does not match')
+        return {'ok': True}
+
     @app.post('/fct/api/public/v1/host_tags/')
     def report_host_tags(payload: TagsPayload):
         endpoint = svc.ingest_host_tags(payload.client_id, payload.tags)
@@ -361,6 +390,30 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         svc.revoke_device(payload.devid)
         record(request, 'device.revoke', payload.devid)
         return {'ok': True}
+
+    @app.post('/api/v1/endpoints/uninstall_code')
+    def uninstall_code(payload: DevicePayload, request: Request):
+        counter, value = uninstall.next_code(payload.devid)
+        # The code itself is never recorded: whoever reads the audit log must not be able to use it.
+        record(request, 'endpoint.uninstall_code', payload.devid, counter=counter)
+        return {'devid': payload.devid, 'counter': counter, 'code': value}
+
+    @app.post('/api/v1/endpoints/uninstall_secret/reset')
+    def reopen_uninstall_secret(payload: DevicePayload, request: Request):
+        uninstall.reopen_delivery(payload.devid)
+        record(request, 'endpoint.uninstall_secret.reset', payload.devid)
+        return {'ok': True}
+
+    @app.get('/api/v1/uninstall_release')
+    def list_uninstall_releases():
+        return [{'scope': release.scope, 'released_at': release.released_at.isoformat(),
+                 'released_by': release.released_by} for release in uninstall.releases()]
+
+    @app.post('/api/v1/uninstall_release')
+    def set_uninstall_release(payload: ReleasePayload, request: Request):
+        uninstall.set_release(payload.scope, payload.released, _actor(request))
+        record(request, 'uninstall.release' if payload.released else 'uninstall.release.revoke', payload.scope)
+        return {'scope': payload.scope, 'released': payload.released}
 
     @app.post('/api/v1/enrollment/invitations')
     def invitation(payload: InvitationPayload, request: Request):
@@ -400,11 +453,15 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
 
     @app.get('/fct/api/public/v1/config/assigned/')
     def assigned_config(client_id: str):
+        endpoint = svc.get_endpoint_by_client_id(client_id)
         profile = svc.effective_profile(client_id)
         if profile is None:
-            endpoint = svc.get_endpoint_by_client_id(client_id)
-            return {'vdom': svc.effective_vdom(endpoint), 'version': 0, 'digest': '', 'body': None, 'unassigned': True}
-        return profile_response(profile)
+            result = {'vdom': svc.effective_vdom(endpoint), 'version': 0, 'digest': '', 'body': None, 'unassigned': True}
+        else:
+            result = profile_response(profile)
+        if (release := uninstall.release_for(endpoint)) is not None:
+            result['uninstall_release'] = release
+        return result
 
     @app.post('/fct/api/public/v1/messages/pull/')
     def pull_messages(payload: ClientPayload):
@@ -558,6 +615,7 @@ def build() -> FastAPI:
         PostgresRuleStore,
         PostgresStore,
     )
+    from .uninstall_codes import PostgresUninstallStore
 
     lab_mode = os.environ.get('OPENEMS_LAB_MODE', '').lower() in {'1', 'true', 'yes'}
     dsn = os.environ.get('OPENEMS_DATABASE_URL')
@@ -572,7 +630,7 @@ def build() -> FastAPI:
         raise ValueError('OPENEMS_BASE_URL must use HTTPS outside loopback')
     resources = []
     store = profile_store = rule_store = admin_store = audit_log = enrollment_store = idp_store = session_store = None
-    event_store = None
+    event_store = uninstall_store = None
     if dsn:
         store = PostgresStore(dsn)
         profile_store = PostgresProfileStore(dsn)
@@ -583,8 +641,9 @@ def build() -> FastAPI:
         idp_store = PostgresIdpStore(dsn)
         session_store = PostgresSessionStore(dsn)
         event_store = PostgresEventStore(dsn)
+        uninstall_store = PostgresUninstallStore(dsn)
         resources = [store, profile_store, rule_store, admin_store, audit_log, enrollment_store, idp_store, session_store,
-                     event_store]
+                     event_store, uninstall_store]
         for resource in resources:
             resource.init_schema()
     redis_url = os.environ.get('OPENEMS_REDIS_URL')
@@ -606,10 +665,19 @@ def build() -> FastAPI:
     if queue:
         resources.append(queue)
     category_dir = os.environ.get('OPENEMS_CATEGORIES_DIR')
+    # Optional: empty (docker-compose default) leaves uninstall codes off and removal unprotected.
+    uninstall_key_text = os.environ.get('OPENEMS_UNINSTALL_MASTER_KEY', '')
+    uninstall_key = None
+    if uninstall_key_text.strip():
+        try:
+            uninstall_key = master_key_from_text(uninstall_key_text)
+        except ValueError as error:
+            raise ValueError('OPENEMS_UNINSTALL_MASTER_KEY must contain at least 32 bytes') from error
     retention = os.environ.get('OPENEMS_EVENT_RETENTION_DAYS', str(DEFAULT_RETENTION_DAYS))
     if not retention.isdigit():
         raise ValueError('OPENEMS_EVENT_RETENTION_DAYS must be a whole number of days')
     return create_app(svc, saml_sp=saml, admin_service=admin, audit_log=audit_log,
                       lab_mode=lab_mode, close_resources=resources,
                       category_dir=Path(category_dir) if category_dir else None,
-                      event_store=event_store, event_retention_days=int(retention))
+                      event_store=event_store, event_retention_days=int(retention),
+                      uninstall_master_key=uninstall_key, uninstall_store=uninstall_store)

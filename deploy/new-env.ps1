@@ -35,6 +35,15 @@ if ($AdminUser -notmatch '^[A-Za-z0-9._-]{3,64}$') {
     throw "Administrator user names may contain letters, digits, dot, dash and underscore."
 }
 
+# The uninstall master key survives -Force: every installed agent's uninstall secret derives from it.
+$uninstallKey = $null
+if (Test-Path -LiteralPath $Path) {
+    $existing = Get-Content -LiteralPath $Path | Where-Object { $_ -like "OPENEMS_UNINSTALL_MASTER_KEY=?*" } | Select-Object -First 1
+    if ($existing) { $uninstallKey = $existing.Substring("OPENEMS_UNINSTALL_MASTER_KEY=".Length) }
+}
+$newUninstallKey = -not $uninstallKey
+if ($newUninstallKey) { $uninstallKey = New-Secret 64 }
+
 $dbPassword = New-Secret 32
 $adminPassword = New-Secret 20
 $invitation = New-Secret 48
@@ -46,7 +55,8 @@ $lines = @(
     "OPENEMS_ENROLLMENT_TOKEN=$invitation",
     "OPENEMS_ENROLLMENT_VDOM=Default",
     "OPENEMS_ENROLLMENT_USES=$Uses",
-    "OPENEMS_BASE_URL=$BaseUrl"
+    "OPENEMS_BASE_URL=$BaseUrl",
+    "OPENEMS_UNINSTALL_MASTER_KEY=$uninstallKey"
 )
 # UTF-8 without BOM: docker compose reads a BOM as part of the first variable name.
 [IO.File]::WriteAllText($Path, ($lines -join "`n") + "`n", (New-Object Text.UTF8Encoding($false)))
@@ -55,5 +65,11 @@ Write-Host "Wrote $Path"
 Write-Host ""
 Write-Host "Panel login:          $AdminUser / $adminPassword"
 Write-Host "Agent invitation:     $invitation  (valid for $Uses enrollments)"
+if ($newUninstallKey) {
+    Write-Host "Uninstall master key: $uninstallKey"
+    Write-Host "  Store it in the password vault, outside the server: tools/uninstall_code.py needs it if the server is lost."
+} else {
+    Write-Host "Uninstall master key: kept from the existing file."
+}
 Write-Host ""
 Write-Host "Keep these values safe; they are not shown again."

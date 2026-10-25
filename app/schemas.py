@@ -50,7 +50,8 @@ class EventsPayload(ClientPayload):
 class TamperRowPayload(InputModel):
     at: str = Field(min_length=1, max_length=40)
     kind: Literal["dns_rule_restored", "wfp_restored", "browser_policy_restored", "hosts_restored",
-                  "service_config_restored", "watchdog_restored", "service_started_by_watchdog", "unexpected_exit"]
+                  "service_config_restored", "watchdog_restored", "service_started_by_watchdog", "unexpected_exit",
+                  "uninstall_code_rejected", "uninstall_without_secret"]
     detail: str = Field(min_length=1, max_length=200)
 
 
@@ -107,6 +108,15 @@ class InvitationPayload(InputModel):
 
 class DevicePayload(InputModel):
     devid: str = Field(min_length=1, max_length=256)
+
+
+class DeliveryProofPayload(ClientPayload):
+    proof: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ReleasePayload(InputModel):
+    scope: str = Field(min_length=1, max_length=128)  # a policy group, or "*" for the whole fleet
+    released: bool
 
 
 class IdpPayload(InputModel):

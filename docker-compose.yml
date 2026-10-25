@@ -1,6 +1,6 @@
 # Required environment: POSTGRES_PASSWORD, OPENEMS_DATABASE_URL (URL-encode its
 # password), OPENEMS_ADMIN, OPENEMS_SESSION_SECRET, OPENEMS_ENROLLMENT_TOKEN,
-# OPENEMS_BASE_URL. No default credentials are supplied.
+# OPENEMS_BASE_URL. Optional: OPENEMS_UNINSTALL_MASTER_KEY. No default credentials are supplied.
 services:
   postgres:
     image: postgres:16
@@ -63,6 +63,8 @@ services:
       OPENEMS_BASE_URL: ${OPENEMS_BASE_URL:?Set public HTTPS base URL}
       OPENEMS_CATEGORIES_DIR: /var/lib/openems/categories
       OPENEMS_EVENT_RETENTION_DAYS: ${OPENEMS_EVENT_RETENTION_DAYS:-30}
+      # Optional; never change it after agents are installed (their uninstall secrets derive from it).
+      OPENEMS_UNINSTALL_MASTER_KEY: ${OPENEMS_UNINSTALL_MASTER_KEY:-}
     volumes:
       - categories:/var/lib/openems/categories:ro
     ports:

@@ -6,6 +6,7 @@
       "client_id": "client-1",
       "secret": "bbd60961d27d323920d17f20c5963b0482746d2986b2457d0b2cc1d7d9d4c11e",
       "release": "4fbca88e95285bb61b8aa0b8dd16ba7b7b07985eb16181bb7f9a9a1cf58c5cad",
+      "delivery_proof": "ca2fc95b238c8ee1ad460f343da17c9843c32abe257b95fa7b2f4f61ee719b09",
       "codes": [
         {
           "counter": 1,
@@ -37,6 +38,7 @@
       "client_id": "0123456789abcdef0123456789abcdef",
       "secret": "926db80a27acde671bc50a869b6bb07d76cd5df960740980f03cbd4430b9fca9",
       "release": "32d94016292441a329067d8ad851de96e4b8958ee547804be4b609e321d4ee28",
+      "delivery_proof": "a74214a8e5219e55ee46bb6e8076c7f9c89f7d45c8899513cbd84caf11c08532",
       "codes": [
         {
           "counter": 1,
@@ -68,6 +70,7 @@
       "client_id": "ação",
       "secret": "b86958f8b4cc550488d2b81db29531c87859a845fc6e49b3a2fd5e2b3c09dd0c",
       "release": "0c67e781eed7a7e6a0def3c06e6bf33ce128112c0d4039dfa97959876246be50",
+      "delivery_proof": "5700e07265bf9c36023b9de3f0bdeee3ad27a2a1f2dafd890f41d9bb187ce008",
       "codes": [
         {
           "counter": 1,

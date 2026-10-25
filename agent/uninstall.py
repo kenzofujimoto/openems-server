@@ -18,6 +18,7 @@ WINDOW = 20
 MIN_MASTER_KEY = 32
 _SECRET_LABEL = b"openems-uninstall-v1\x00"
 _RELEASE_LABEL = b"openems-release-v1"
+_DELIVERY_LABEL = b"openems-secret-delivered-v1"
 _LOOKALIKES = str.maketrans({"O": "0", "I": "1", "L": "1"})
 
 
@@ -68,3 +69,8 @@ def verify(secret: bytes, typed: str, last_used: int, window: int = WINDOW) -> i
 def release_token(secret: bytes) -> str:
     """Proof that the server released removal without a code for this registration."""
     return hmac.new(secret, _RELEASE_LABEL, hashlib.sha256).hexdigest()
+
+
+def delivery_proof(secret: bytes) -> str:
+    """Agent's confirmation that it stored the secret; after it, the server no longer hands the secret out."""
+    return hmac.new(secret, _DELIVERY_LABEL, hashlib.sha256).hexdigest()
