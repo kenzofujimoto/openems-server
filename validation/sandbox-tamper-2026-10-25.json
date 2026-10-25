@@ -1,0 +1,53 @@
+{
+  "environment": "Windows Sandbox (Portuguese Windows) with networking enabled; SYSTEM phase plus the operator's administrator session and a standard user created inside the Sandbox",
+  "date": "2026-10-25",
+  "scope": "F5 part 5a (tamper-protection.md): restricted service permissions, in-service watchdog, scheduled watchdog task and tamper events",
+  "passed": true,
+  "simulated_policy": true,
+  "harness": "deploy/test-tamper-sandbox.ps1 at 933c662",
+  "packages": {
+    "build": "tools/build-msi-fixtures.ps1 -Production and -Production -Next (no defines), WiX 5.0.2, agent and installer source at 4c4271b",
+    "openems-agent-previous.msi (0.3.0, slice 4b release)": "723f990d486ad16cca3b444672f356ba37caf2a5c1356b8bb2d91d210de5f5b8",
+    "openems-agent.msi (0.4.0)": "ee9abe9d1fe2 (first 12 hex digits)",
+    "openems-agent-next.msi (0.4.1)": "c48130af21e8 (first 12 hex digits)",
+    "properties": ["SERVER=http://127.0.0.1:18013", "BLOCKPAGEHTTPS=1", "DNSFILTER=1", "ANTIBYPASS=1"],
+    "fault_injection_actions": "absent in all three packages (CustomAction table checked inside Sandbox before install)"
+  },
+  "checks": [
+    "upgrade from the previous release applies the restricted service permissions and the watchdog scheduled task",
+    "a standard user cannot stop, reconfigure or delete the service, edit agent.json or write to the program folder",
+    "an administrator cannot stop, reconfigure or delete the service",
+    "a deleted NRPT rule is recreated and reported",
+    "a changed browser policy is reapplied and reported",
+    "removed recovery actions and a reset service DACL are restored and reported",
+    "a deleted watchdog scheduled task is recreated and reported",
+    "a killed service is restarted by recovery and the unexpected exit is reported",
+    "a disabled and stopped service is started again by the scheduled watchdog and reported",
+    "upgrade to a later version works with the restricted permissions",
+    "removal deletes the scheduled task and restores NRPT rules, browser policies, trust and hosts"
+  ],
+  "permissions": {
+    "admin_stop": 5, "admin_config": 5, "admin_delete": 5,
+    "user_stop": 5, "user_config": 5, "user_delete": 5,
+    "user_agent_json": 1, "user_program_files": 1,
+    "agent_json_unchanged": true, "program_files_probe_absent": true,
+    "meaning": "sc.exe exit code 5 is access denied; write probes 1 = denied"
+  },
+  "durations": ["/i openems-agent-previous.msi: 122 s", "/i openems-agent.msi: 126 s", "/i openems-agent-next.msi: 127 s", "/x openems-agent-next.msi: 11 s"],
+  "unrelated_roots_added": [],
+  "error": null,
+  "cleanup_errors": [],
+  "notes": [
+    "Earlier attempts failed on harness defects only: a localized group name (Usuarios), cmd parsing 'echo key=5>>file' as a handle redirection, and Windows PowerShell 5.1 turning redirected native stderr into a terminating error",
+    "One attempt found an agent defect: the scheduled watchdog started the service before writing its event, and the service read pending events only at start. Fixed in 4c4271b with a native contract",
+    "Tampering was done with SYSTEM rights (the only account that can still change the service), which also covers an administrator who took ownership"
+  ],
+  "not_validated": [
+    "Part 5b: one-time uninstall code, release switch and offline code tool",
+    "Part 5c: logon session component",
+    "Reboot with the service disabled through the registry (the scheduled task's boot trigger)",
+    "Physical endpoint, real management server, PostgreSQL migration 003_tamper_events.sql",
+    "Linux build of the native agent (CI), not compiled locally",
+    "Code signing"
+  ]
+}
