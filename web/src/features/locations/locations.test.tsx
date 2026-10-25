@@ -55,13 +55,16 @@ describe("network locations", () => {
     renderApp("/policies/locations");
     await user.click(await screen.findByRole("button", { name: "Novo local" }));
     const dialog = await screen.findByRole("dialog", { name: "Novo local de rede" });
-    await user.type(within(dialog).getByLabelText("Identificador"), "rj");
-    await user.type(within(dialog).getByLabelText("Nome"), "Escritório RJ");
-    await user.type(within(dialog).getByLabelText("Faixas de IP local (CIDR)"), "192.168.1.0/24");
+    const fields: Array<[string, string]> = [["Identificador", "rj"], ["Nome", "Escritório RJ"], ["Faixas de IP local (CIDR)", "192.168.1.0/24"]];
+    for (const [label, value] of fields) {
+      await user.click(within(dialog).getByLabelText(label));
+      await user.paste(value);
+    }
     await user.click(within(dialog).getByRole("button", { name: "Salvar local" }));
     expect(within(dialog).getByRole("alert")).toHaveTextContent("pelo menos dois tipos de sinais locais");
     expect(backend.writes).toEqual([]);
-    await user.type(within(dialog).getByLabelText("MACs dos gateways"), "00:11:22:33:44:55");
+    await user.click(within(dialog).getByLabelText("MACs dos gateways"));
+    await user.paste("00:11:22:33:44:55");
     await user.click(within(dialog).getByRole("button", { name: "Salvar local" }));
     expect(await screen.findByRole("row", { name: /Escritório RJ/ })).toBeInTheDocument();
     expect(backend.writes).toEqual([{ method: "POST", body: { ...OFFICE, id: "rj", name: "Escritório RJ" }, csrf: "mock-csrf-token" }]);
@@ -75,10 +78,56 @@ describe("network locations", () => {
     const dialog = await screen.findByRole("dialog", { name: "Editar local de rede" });
     expect(within(dialog).getByLabelText("Identificador")).toBeDisabled();
     await user.clear(within(dialog).getByLabelText("Nome"));
-    await user.type(within(dialog).getByLabelText("Nome"), "Sede SP");
+    await user.click(within(dialog).getByLabelText("Nome"));
+    await user.paste("Sede SP");
     await user.click(within(dialog).getByRole("button", { name: "Salvar local" }));
     expect(await screen.findByRole("row", { name: /Sede SP/ })).toBeInTheDocument();
     expect(backend.writes[0]).toMatchObject({ method: "PUT", body: { id: "sp", name: "Sede SP" }, csrf: "mock-csrf-token" });
+  });
+
+  it("accepts the office public range as the only signal and rejects an invalid CIDR", async () => {
+    const backend = locationServer([]);
+    const user = userEvent.setup();
+    renderApp("/policies/locations");
+    await user.click(await screen.findByRole("button", { name: "Novo local" }));
+    const dialog = await screen.findByRole("dialog", { name: "Novo local de rede" });
+    await user.click(within(dialog).getByLabelText("Identificador"));
+    await user.paste("vpn");
+    await user.click(within(dialog).getByLabelText("Nome"));
+    await user.paste("VPN corporativa");
+    const publicRange = within(dialog).getByLabelText("Faixas de IP público (CIDR)");
+    await user.click(publicRange);
+    await user.paste("not-a-network");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar local" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("faixas CIDR válidas");
+    expect(backend.writes).toEqual([]);
+    await user.clear(publicRange);
+    await user.click(publicRange);
+    await user.paste("203.0.113.0/24");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar local" }));
+    expect(await screen.findByRole("row", { name: /VPN corporativa/ })).toBeInTheDocument();
+    expect(backend.writes[0]).toMatchObject({ body: { public_cidrs: ["203.0.113.0/24"], cidrs: [], probe: null } });
+  });
+
+  it("requires the complete certificate signal and combines it with the DNS suffix", async () => {
+    const backend = locationServer([]);
+    const user = userEvent.setup();
+    renderApp("/policies/locations");
+    await user.click(await screen.findByRole("button", { name: "Novo local" }));
+    const dialog = await screen.findByRole("dialog", { name: "Novo local de rede" });
+    const fields: Array<[string, string]> = [["Identificador", "tls"], ["Nome", "Sede TLS"], ["Sufixos DNS", "Corp.Example."], ["Host interno (TLS)", "intranet.corp.example"]];
+    for (const [label, value] of fields) {
+      await user.click(within(dialog).getByLabelText(label));
+      await user.paste(value);
+    }
+    await user.click(within(dialog).getByRole("button", { name: "Salvar local" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("SHA-256 do certificado");
+    expect(backend.writes).toEqual([]);
+    await user.click(within(dialog).getByLabelText("SHA-256 do certificado"));
+    await user.paste("AB".repeat(32));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar local" }));
+    expect(await screen.findByRole("row", { name: /Sede TLS/ })).toBeInTheDocument();
+    expect(backend.writes[0]).toMatchObject({ body: { probe: { host: "intranet.corp.example", port: 443, sha256: "ab".repeat(32) } } });
   });
 
   it("only deletes a location after explaining the outside-policy fallback", async () => {
@@ -108,6 +157,23 @@ describe("network locations", () => {
     await user.click(within(row).getByRole("button", { name: "Remover mapeamento de Strict em Escritório SP" }));
     await waitFor(() => expect(screen.queryByRole("row", { name: /Strict.*Escritório SP.*Default/ })).toBeNull());
     expect(backend.mappings).toHaveLength(0);
+  });
+
+  it("keeps the mapping selection valid after its selected location is deleted", async () => {
+    const backend = locationServer([OFFICE, { ...OFFICE, id: "rj", name: "Escritório RJ" }]);
+    const user = userEvent.setup();
+    renderApp("/policies/locations");
+    const mapping = await screen.findByRole("form", { name: "Perfil dentro do local" });
+    const select = within(mapping).getByRole("combobox", { name: "Local" });
+    await user.selectOptions(select, "rj");
+    await user.selectOptions(select, "sp");
+    await user.click(screen.getByRole("button", { name: "Excluir Escritório SP" }));
+    const dialog = await screen.findByRole("dialog", { name: "Excluir local de rede" });
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar exclusão" }));
+    await waitFor(() => expect(within(select).queryByRole("option", { name: "Escritório SP" })).toBeNull());
+    expect(select).toHaveValue("rj");
+    await user.click(within(mapping).getByRole("button", { name: "Salvar mapeamento" }));
+    await waitFor(() => expect(backend.writes[0]).toMatchObject({ body: { location_id: "rj" } }));
   });
 
   it("allows viewers to read locations without exposing writes", async () => {
