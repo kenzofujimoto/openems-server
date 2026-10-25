@@ -23,7 +23,10 @@ fn notice(id: u64, when: &str) -> Notice {
 
 #[test]
 fn the_board_sits_next_to_the_state_file() {
-    assert_eq!(path_for(&PathBuf::from(r"C:\ProgramData\openems\state.json")), PathBuf::from(r"C:\ProgramData\openems\session.json"));
+    assert_eq!(
+        path_for(&PathBuf::from(r"C:\ProgramData\openems\state.json")),
+        PathBuf::from(r"C:\ProgramData\openems\session.json")
+    );
 }
 
 #[test]
@@ -83,7 +86,11 @@ fn a_fresh_component_shows_only_recent_notices_then_only_new_ones() {
     let state = SessionState {
         protected: true,
         last_contact: None,
-        notices: vec![notice(1, "2026-10-25T11:00:00Z"), notice(2, "2026-10-25T11:59:30Z"), notice(3, "2026-10-25T12:00:00Z")],
+        notices: vec![
+            notice(1, "2026-10-25T11:00:00Z"),
+            notice(2, "2026-10-25T11:59:30Z"),
+            notice(3, "2026-10-25T12:00:00Z"),
+        ],
     };
     let now = at("2026-10-25T12:00:10Z");
     let first: Vec<u64> = notices_to_show(&state, None, now).iter().map(|notice| notice.id).collect();

@@ -26,6 +26,7 @@ pub mod removal;
 pub mod runtime;
 #[cfg(windows)]
 pub mod service;
+pub mod session;
 pub mod state;
 pub mod tamper;
 pub mod trust;

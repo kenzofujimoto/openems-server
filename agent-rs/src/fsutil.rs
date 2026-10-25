@@ -66,13 +66,19 @@ fn replace_file(
 /// Protect secret files before their first write: owner, SYSTEM and Administrators only.
 #[cfg(windows)]
 pub fn secure_file(path: &Path) -> Result<()> {
+    // OWNER RIGHTS, SYSTEM and BUILTIN\Administrators; protected DACL blocks inheritance.
+    secure_file_with(path, "D:P(A;;FA;;;OW)(A;;FA;;;SY)(A;;FA;;;BA)")
+}
+
+/// Apply a protected DACL given in SDDL to a file.
+#[cfg(windows)]
+pub fn secure_file_with(path: &Path, sddl: &str) -> Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Foundation::{HLOCAL, LocalFree};
     use windows_sys::Win32::Security::Authorization::ConvertStringSecurityDescriptorToSecurityDescriptorW;
     use windows_sys::Win32::Security::{PSECURITY_DESCRIPTOR, SetFileSecurityW};
 
-    // OWNER RIGHTS, SYSTEM and BUILTIN\Administrators; protected DACL blocks inheritance.
-    let sddl: Vec<u16> = "D:P(A;;FA;;;OW)(A;;FA;;;SY)(A;;FA;;;BA)".encode_utf16().chain([0]).collect();
+    let sddl: Vec<u16> = sddl.encode_utf16().chain([0]).collect();
     let wide: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
     let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
     // SAFETY: both strings are NUL-terminated and outlive the calls; the
@@ -128,6 +134,14 @@ pub fn secure_directory(path: &Path) -> Result<()> {
 pub fn secure_directory(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
+    Ok(())
+}
+
+/// Unix keeps files readable by everyone and writable by the owner; the SDDL is Windows-only.
+#[cfg(unix)]
+pub fn secure_file_with(path: &Path, _sddl: &str) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o644))?;
     Ok(())
 }
 
