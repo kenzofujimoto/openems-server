@@ -59,6 +59,7 @@ enum Outcome {
 struct Pending {
     generation: u64,
     assignment: Assignment,
+    location: String,
     outcome: Outcome,
 }
 
@@ -67,8 +68,13 @@ struct Inner {
     client_id: Option<String>,
     device_token: Option<String>,
     profile: Option<Assignment>,
+    /// Full outside configuration including location definitions; never replaced by an inside profile.
+    outside: Option<Assignment>,
     cached: Option<Assignment>,
-    last_ack: Option<(String, i64, String)>,
+    last_ack: Option<((String, i64, String), String)>,
+    location: String,
+    /// Live-only proof of freshness. A persisted client_ip never survives restart as a trusted signal.
+    public_contact: Option<(Instant, std::net::IpAddr)>,
     next_sync: f64,
     failures: u32,
     pending: Option<Pending>,
@@ -185,6 +191,7 @@ impl Runtime {
             inner.client_id = state.client_id;
             inner.device_token = state.device_token.or(inner.device_token);
             inner.cached = profile.clone();
+            inner.outside = profile.clone();
             inner.profile = profile;
         }
         let api = ApiClient::new(&cfg.server);
@@ -195,7 +202,7 @@ impl Runtime {
             blocked_domains.replace(profile.web_filter()?);
             // Offline start: categories downloaded earlier keep blocking before the server answers.
             let directory = crate::categories::cache_dir(&cfg.state_path);
-            for id in blocked_domains.referenced_categories() {
+            for id in Self::referenced_categories(profile) {
                 match crate::categories::load_cached(&directory, &id, None) {
                     Some((digest, set)) => {
                         log(&format!("category {id} loaded from cache ({} domains)", set.len()));
@@ -395,17 +402,10 @@ impl Runtime {
             Ok(assignment) => {
                 let release =
                     assignment.raw.get("uninstall_release").and_then(serde_json::Value::as_str).map(str::to_owned);
-                // Revocation follows the newest validated policy immediately, not the next enforcement tick.
-                if !self.cfg.dry_run {
-                    match assignment.web_filter() {
-                        Ok(rules) => self.blocked_domains.replace(rules),
-                        Err(_) => return false,
-                    }
-                }
-                if inner.profile.as_ref().map(Assignment::identity) != Some(assignment.identity()) {
-                    inner.enforce_requested = true;
-                }
-                inner.profile = Some(assignment);
+                // Location metadata may change without changing the outside policy's identity.
+                inner.enforce_requested = true;
+                inner.public_contact = crate::locations::client_ip(&assignment.raw).map(|ip| (Instant::now(), ip));
+                inner.outside = Some(assignment);
                 inner.failures = 0;
                 inner.next_sync = now + self.cfg.interval as f64;
                 drop(inner);
@@ -446,7 +446,7 @@ impl Runtime {
         use crate::categories::{
             CategorySet, MAX_FILE_SIZE, cache_dir, file_digest, load_cached, store_cached, valid_digest,
         };
-        let referenced = self.blocked_domains.referenced_categories();
+        let referenced = self.lock().outside.as_ref().map(Self::referenced_categories).unwrap_or_default();
         self.blocked_domains.categories().retain(&referenced);
         self.lock().category_digests.retain(|id, _| referenced.contains(id));
         if referenced.is_empty() {
@@ -503,24 +503,77 @@ impl Runtime {
         }
     }
 
+    fn referenced_categories(outside: &Assignment) -> Vec<String> {
+        let mut categories = outside.web_filter().map(|rules| rules.referenced_categories()).unwrap_or_default();
+        if let Ok(locations) = crate::locations::parse_locations(&outside.raw) {
+            for location in locations {
+                if let Ok(rules) = location.assignment.web_filter() {
+                    categories.extend(rules.referenced_categories());
+                }
+            }
+        }
+        categories.sort();
+        categories.dedup();
+        categories
+    }
+
     /// Apply the last valid policy; returns false only when enforcement failed.
     pub fn enforce_local(&self) -> bool {
-        let Some(assignment) = self.lock().profile.clone() else { return true };
+        let locations = self
+            .lock()
+            .outside
+            .as_ref()
+            .and_then(|outside| crate::locations::parse_locations(&outside.raw).ok())
+            .unwrap_or_default();
+        let observed = if locations.is_empty() {
+            crate::locations::Observed::default()
+        } else {
+            crate::network_signals::collect(&locations).unwrap_or_else(|error| {
+                (self.log)(&format!("network signals unavailable ({}); treating location as outside", error.kind()));
+                Default::default()
+            })
+        };
+        self.enforce_observed(observed, Instant::now())
+    }
+
+    fn enforce_observed(&self, mut observed: crate::locations::Observed, at: Instant) -> bool {
+        let (outside, public_contact) = {
+            let inner = self.lock();
+            (inner.outside.clone(), inner.public_contact)
+        };
+        let Some(outside) = outside else { return true };
+        observed.public_ip = public_contact
+            .filter(|(seen, _)| {
+                at.saturating_duration_since(*seen) < Duration::from_secs(self.cfg.interval.saturating_mul(3))
+            })
+            .map(|(_, ip)| ip);
+        let locations = crate::locations::parse_locations(&outside.raw).unwrap_or_default();
+        let selected = crate::locations::choose(&locations, &observed);
+        let location = selected.map_or_else(String::new, |location| location.id.clone());
+        let assignment = selected.map_or_else(|| outside.clone(), |location| location.assignment.clone());
         let now = jiff::Timestamp::now();
-        let result = enforce_at(&self.cfg, &assignment, &self.log, now).and_then(|enforcement| {
-            let mut inner = self.lock();
-            let current = dns_cache_state(&assignment, now).ok();
-            if enforcement.hosts_changed && current.is_some() && inner.hosts_state == current {
-                self.tamper.record(
-                    crate::tamper::TamperKind::HostsRestored,
-                    crate::tamper::TamperKind::HostsRestored.detail(),
-                );
-            }
-            inner.hosts_state = current;
-            inner.cached = Some(assignment.clone());
-            self.save(&inner)?;
-            Ok(enforcement)
-        });
+        let result = assignment
+            .web_filter()
+            .and_then(|rules| {
+                if !self.cfg.dry_run {
+                    self.blocked_domains.replace(rules);
+                }
+                enforce_at(&self.cfg, &assignment, &self.log, now)
+            })
+            .and_then(|enforcement| {
+                let mut inner = self.lock();
+                let current = dns_cache_state(&assignment, now).ok();
+                if enforcement.hosts_changed && current.is_some() && inner.hosts_state == current {
+                    self.tamper.record(
+                        crate::tamper::TamperKind::HostsRestored,
+                        crate::tamper::TamperKind::HostsRestored.detail(),
+                    );
+                }
+                inner.hosts_state = current;
+                inner.cached = Some(outside);
+                self.save(&inner)?;
+                Ok(enforcement)
+            });
         if result.is_ok() && self.cfg.dns_filter && !self.cfg.dry_run {
             self.flush_on_dns_change(&assignment, now);
         }
@@ -529,11 +582,25 @@ impl Runtime {
         let generation = inner.generation;
         match result {
             Ok(enforcement) => {
+                inner.profile = Some(assignment.clone());
+                if inner.location != location {
+                    let text = selected.map_or_else(
+                        || "Fora da rede da empresa".to_owned(),
+                        |location| format!("Rede da empresa ({}) detectada", location.name),
+                    );
+                    self.session.notice("network_location", text, now);
+                    inner.location = location.clone();
+                    (self.log)(&format!(
+                        "network location changed: {}",
+                        if location.is_empty() { "outside" } else { &location }
+                    ));
+                }
                 self.session.set_protected(true);
                 for name in &enforcement.killed {
                     self.session.app_closed(name, now);
                 }
-                inner.pending = Some(Pending { generation, assignment, outcome: Outcome::Applied(enforcement) });
+                inner.pending =
+                    Some(Pending { generation, assignment, location, outcome: Outcome::Applied(enforcement) });
                 drop(inner);
                 self.publish_session();
                 true
@@ -542,6 +609,7 @@ impl Runtime {
                 inner.pending = Some(Pending {
                     generation,
                     assignment,
+                    location,
                     outcome: Outcome::Failed(format!("enforcement failed: {}", error.kind())),
                 });
                 inner.last_ack = None;
@@ -578,20 +646,28 @@ impl Runtime {
         };
         let (Some(pending), Some(client_id)) = (pending, client_id) else { return };
         let identity = pending.assignment.identity();
+        let acknowledgment = (identity.clone(), pending.location.clone());
         let attempt = (|| -> Result<()> {
             let applied = matches!(pending.outcome, Outcome::Applied(_));
-            if !applied || last_ack.as_ref() != Some(&identity) {
+            if !applied || last_ack.as_ref() != Some(&acknowledgment) {
                 let mut payload = json!({
                     "client_id": client_id, "vdom": identity.0, "version": identity.1, "digest": identity.2, "success": applied,
+                    "location": pending.location,
                 });
                 if let Outcome::Failed(error) = &pending.outcome {
                     payload["error"] = error.clone().into();
                 }
                 self.api.post("config/ack", &payload, token.as_deref())?;
-                self.lock().last_ack = applied.then(|| identity.clone());
+                self.lock().last_ack = applied.then(|| acknowledgment.clone());
             }
             if let Outcome::Applied(enforcement) = &pending.outcome {
-                let tags = host_tags(&self.cfg, &pending.assignment, enforcement);
+                let mut tags = host_tags(&self.cfg, &pending.assignment, enforcement);
+                // Assignment rules may inspect tags: report the outside group to avoid feeding the
+                // selected inside profile back into group selection and oscillating every cycle.
+                if let Some(outside) = self.lock().outside.as_ref() {
+                    tags.pop();
+                    tags.push(format!("vdom:{}", outside.vdom));
+                }
                 self.api.post("host_tags", &json!({ "client_id": client_id, "tags": tags }), token.as_deref())?;
             }
             Ok(())
@@ -716,9 +792,14 @@ mod tests {
             "assignment": make("Office", vec![])
         }]);
         EndpointState {
-            server: cfg.server.clone(), devid: cfg.devid.clone(), client_id: Some("test".into()),
-            profile: Some(outside), ..Default::default()
-        }.save(&cfg.state_path).unwrap();
+            server: cfg.server.clone(),
+            devid: cfg.devid.clone(),
+            client_id: Some("test".into()),
+            profile: Some(outside),
+            ..Default::default()
+        }
+        .save(&cfg.state_path)
+        .unwrap();
         let runtime = Runtime::new(cfg, Arc::new(|_| {}), Arc::new(StopSignal::default())).unwrap();
         (dir, runtime)
     }
@@ -726,7 +807,8 @@ mod tests {
     fn office_observation() -> crate::locations::Observed {
         crate::locations::Observed {
             addresses: vec![("192.168.1.20".parse().unwrap(), 24)],
-            gateway_macs: vec!["00:11:22:33:44:55".into()], ..Default::default()
+            gateway_macs: vec!["00:11:22:33:44:55".into()],
+            ..Default::default()
         }
     }
 
@@ -736,14 +818,13 @@ mod tests {
         assert!(runtime.enforce_observed(office_observation(), Instant::now()));
         assert_eq!(runtime.lock().profile.as_ref().unwrap().vdom, "Office");
         assert!(!std::fs::read_to_string(dir.path().join("hosts")).unwrap().contains("example.org"));
-        let persisted = EndpointState::load(&runtime.cfg.state_path, &runtime.cfg.server, &runtime.cfg.devid).unwrap().unwrap();
+        let persisted =
+            EndpointState::load(&runtime.cfg.state_path, &runtime.cfg.server, &runtime.cfg.devid).unwrap().unwrap();
         let outside = persisted.profile.unwrap();
         assert_eq!(outside["vdom"], "Default");
         assert_eq!(outside["uninstall_release"], "outside-release");
         assert_eq!(outside["locations"][0]["id"], "office");
-        let home = crate::locations::Observed {
-            addresses: office_observation().addresses, ..Default::default()
-        };
+        let home = crate::locations::Observed { addresses: office_observation().addresses, ..Default::default() };
         assert!(runtime.enforce_observed(home, Instant::now()));
         assert_eq!(runtime.lock().profile.as_ref().unwrap().vdom, "Default");
         assert!(std::fs::read_to_string(dir.path().join("hosts")).unwrap().contains("example.org"));
