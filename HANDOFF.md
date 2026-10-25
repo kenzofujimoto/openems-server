@@ -91,17 +91,33 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
     - sem chave-mestra (503) ou em servidor antigo (404), o botão some e a ficha explica;
     - rótulos em português de `uninstall_code_rejected` e `uninstall_without_secret`.
   - Testes do painel em `web/src/features/endpoints/uninstall.test.tsx` (8). Conferido no navegador no modo mock (`panel-mock-repo`, porta 5174).
-- **Próximas etapas, nesta ordem e cada uma com TDD:**
-  - 6: aceite em Sandbox.
-    - Sem código e com código errado, a remoção falha.
-    - Com o código do servidor simulado, remove.
-    - O upgrade não pede código.
-    - Com o servidor desligado e a rede cortada, o código da ferramenta offline remove.
-    - Liberação recebida → remoção sem código.
-    - Com código errado, o rollback do MSI reinicia o serviço (decisão da etapa 5).
-    - Numa reinstalação com o mesmo cadastro, o código já usado não vale de novo.
-    - `openems-agent cleanup --uninstall-code` como SYSTEM numa máquina com o registro do MSI apagado à força.
-    - Remoção 5 vezes com código errado → bloqueio e eventos `uninstall_code_rejected` no servidor simulado.
+- **Etapa 6 de 6 (aceite em Sandbox): roteiro e pacote prontos (`6c95b5d` contratos, `4c17d6d` roteiro); falta a rodada do operador.**
+  - Roteiro `deploy/test-uninstall-sandbox.ps1`, com contratos em `tests/test_uninstall_sandbox.py`:
+    - `-Plan`;
+    - `-SelfTest` reproduz `contract/uninstall-vectors.json` com o HMAC do .NET;
+    - recusa rodar fora do Sandbox;
+    - a fase de testes roda como SYSTEM, por tarefa agendada.
+  - Servidor simulado em PowerShell em `127.0.0.1:18014`, com `client_id` fixo `sandbox-uninstall`. Ele entrega o segredo até a prova (depois responde 409) e publica `uninstall_release` quando existe o marcador `backend-release`. Com `backend-disabled`, responde 503 e simula o servidor sem chave-mestra.
+  - Pacote em `.venv/sandbox-acceptance/uninstall-input`:
+    - `openems-agent.msi` 0.4.0 (sha256 `4304928e…`) e `openems-agent-next.msi` 0.4.1 (`878871f4…`), ambos do código atual, gerados com `tools/build-msi-fixtures.ps1 -Production` (e `-Next`), WiX portátil e `DOTNET_ROOT=.venv/dotnet-sdk`;
+    - `master.key`: a chave **só de teste** dos vetores;
+    - `codes.json`: 20 códigos gerados no host por `tools/uninstall_code.py`;
+    - o roteiro e `RUN-UNINSTALL-TEST.cmd`.
+  - Perfil `.venv/sandbox-acceptance/uninstall.wsb`: entrada só leitura, resultados em `results/`, sem área de transferência e com a rede ligada, como o de antiadulteração.
+  - **Para rodar:** abrir `uninstall.wsb` (Sandbox novo) e fazer Win+R → `C:\openems-input\RUN-UNINSTALL-TEST.cmd`. Leva uns 25 min. Resultado em `results/uninstall-result.json`; se `passed: true`, preservar em `validation/sandbox-uninstall-<data>.json`.
+  - Cenários, nesta ordem; o bloqueio fica por último porque dura 1 h e o `uninstall.json` sobrevive às reinstalações:
+    1. o segredo é entregue e confirmado;
+    2. sem código: recusa e rollback;
+    3. código errado: recusa, rollback e evento;
+    4. upgrade sem código;
+    5. código 1 remove, e o log do MSI não contém o código;
+    6. reinstalação: código 1 recusado, código 2 remove;
+    7. liberação recebida e servidor parado: remove sem código;
+    8. servidor parado: código do `openems-agent uninstall-code` remove;
+    9. remoção forçada (extração `/a` + `install-service`): `cleanup` sem código falha, com código remove;
+    10. sem segredo: remove e reporta `uninstall_without_secret`;
+    11. 5 erros: o código certo é recusado e nenhum código é consumido.
+  - **Se mudar o agente ou o roteiro:** recompilar o release, gerar os dois MSIs de novo e recriar o resto com `python tools/build_uninstall_sandbox.py` (chave dos vetores, 20 códigos de `tools/uninstall_code.py`, roteiro, `.cmd` e `uninstall.wsb`).
 
 ### Continuação — F5 parte 5a (branch `feature/tamper-protection`, criada a partir de `feature/block-log`; `tamper-protection.md` aprovado em 2026-10-24 com 7 decisões)
 
