@@ -2,6 +2,7 @@
 //! contract/uninstall-vectors.json). HOTP-style: HMAC-SHA256 over a big-endian counter, 50 bits
 //! written as 10 Crockford base32 symbols.
 
+use crate::error::{AgentError, Result};
 use sha2::{Digest, Sha256};
 
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -9,6 +10,9 @@ const CODE_LENGTH: usize = 10;
 /// Counters accepted above the last one used, so unused codes generated in the panel stay valid.
 pub const WINDOW: u64 = 20;
 const RELEASE_LABEL: &[u8] = b"openems-release-v1";
+const DELIVERY_LABEL: &[u8] = b"openems-secret-delivered-v1";
+const SECRET_LABEL: &[u8] = b"openems-uninstall-v1\0";
+pub const MIN_MASTER_KEY: usize = 32;
 
 /// HMAC-SHA256 (RFC 2104) on the existing sha2 dependency.
 fn mac(key: &[u8], message: &[u8]) -> [u8; 32] {
@@ -62,4 +66,20 @@ pub fn verify(secret: &[u8], typed: &str, last_used: u64) -> Option<u64> {
 /// Proof that the server released removal without a code for this registration.
 pub fn release_token(secret: &[u8]) -> String {
     hex::encode(mac(secret, RELEASE_LABEL))
+}
+
+/// Confirmation that the secret was stored; after it the server no longer hands the secret out.
+pub fn delivery_proof(secret: &[u8]) -> String {
+    hex::encode(mac(secret, DELIVERY_LABEL))
+}
+
+/// A registration's secret, as the server derives it; used only by the offline code generator.
+pub fn derive_secret(master_key: &[u8], client_id: &str) -> Result<[u8; 32]> {
+    if master_key.len() < MIN_MASTER_KEY {
+        return Err(AgentError::Config(format!("the uninstall master key must have at least {MIN_MASTER_KEY} bytes")));
+    }
+    if client_id.is_empty() {
+        return Err(AgentError::Config("a client id is required".into()));
+    }
+    Ok(mac(master_key, &[SECRET_LABEL, client_id.as_bytes()].concat()))
 }

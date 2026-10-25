@@ -23,10 +23,12 @@ pub enum TamperKind {
     WatchdogRestored,
     ServiceStartedByWatchdog,
     UnexpectedExit,
+    UninstallCodeRejected,
+    UninstallWithoutSecret,
 }
 
 impl TamperKind {
-    pub const ALL: [TamperKind; 8] = [
+    pub const ALL: [TamperKind; 10] = [
         TamperKind::DnsRuleRestored,
         TamperKind::WfpRestored,
         TamperKind::BrowserPolicyRestored,
@@ -35,6 +37,8 @@ impl TamperKind {
         TamperKind::WatchdogRestored,
         TamperKind::ServiceStartedByWatchdog,
         TamperKind::UnexpectedExit,
+        TamperKind::UninstallCodeRejected,
+        TamperKind::UninstallWithoutSecret,
     ];
 
     /// Wire name; the server accepts only these.
@@ -48,6 +52,8 @@ impl TamperKind {
             TamperKind::WatchdogRestored => "watchdog_restored",
             TamperKind::ServiceStartedByWatchdog => "service_started_by_watchdog",
             TamperKind::UnexpectedExit => "unexpected_exit",
+            TamperKind::UninstallCodeRejected => "uninstall_code_rejected",
+            TamperKind::UninstallWithoutSecret => "uninstall_without_secret",
         }
     }
 
@@ -66,6 +72,8 @@ impl TamperKind {
             TamperKind::WatchdogRestored => "watchdog scheduled task was recreated",
             TamperKind::ServiceStartedByWatchdog => "service was found stopped and started by the watchdog",
             TamperKind::UnexpectedExit => "previous run ended without a graceful stop",
+            TamperKind::UninstallCodeRejected => "an uninstall code was rejected",
+            TamperKind::UninstallWithoutSecret => "agent removed without an uninstall secret on this machine",
         }
     }
 }
