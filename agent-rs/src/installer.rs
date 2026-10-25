@@ -407,6 +407,9 @@ pub fn prepare_removal(config_path: &Path, uninstall_code: Option<&str>) -> Resu
 /// Undo what the agent set up on the machine: its HTTPS root, hosts block, NRPT rule, watchdog task,
 /// anti-bypass filters and browser policies.
 fn remove_protections(config: &AgentConfig) -> Result<()> {
+    // The stopped service already closed them; this covers a component opened by hand.
+    #[cfg(windows)]
+    crate::session_launcher::stop_components()?;
     if let Some(root) = Authority::managed_root(&config.authority_path)? {
         Machine.untrust(&root)?;
         fs::remove_file(&config.authority_path)?;

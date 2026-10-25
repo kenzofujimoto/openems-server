@@ -92,7 +92,9 @@ fn service_main(_arguments: Vec<OsString>) {
         })
     };
     let config_path = CONFIG_PATH.get().cloned().unwrap_or_else(default_config_path);
-    let outcome = file_logger(&data_dir().join("agent.log")).and_then(|log| {
+    let logger = file_logger(&data_dir().join("agent.log"));
+    let sessions = spawn_session_keeper(Arc::clone(&stop), logger.as_ref().ok().cloned());
+    let outcome = logger.and_then(|log| {
         let config = AgentConfig::from_file(&config_path);
         if let Err(error) = &config {
             log(&format!("configuration rejected: {error}"));
@@ -103,6 +105,10 @@ fn service_main(_arguments: Vec<OsString>) {
         }
         result
     });
+    // Before reporting Stopped: an upgrade or removal replaces files right after, so no component may hold them.
+    stop.stop();
+    let _ = sessions.join();
+    let _ = crate::session_launcher::stop_components();
     // A non-zero exit lets the configured failure actions restart the agent.
     let exit = if outcome.is_ok() { ServiceExitCode::Win32(0) } else { ServiceExitCode::ServiceSpecific(1) };
     {
@@ -113,6 +119,36 @@ fn service_main(_arguments: Vec<OsString>) {
     // Wakes the watcher when the agent ended on its own (an error), so the thread exits.
     stop.stop();
     let _ = watcher.join();
+}
+
+/// Open the session component in every active user session, at start and every 15 s, until stopping
+/// (session-component.md). A missing component executable is logged once and otherwise ignored.
+fn spawn_session_keeper(stop: Arc<StopSignal>, log: Option<crate::runtime::Logger>) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        let executable = std::env::current_exe()
+            .map(|path| path.with_file_name(crate::session_launcher::COMPONENT))
+            .unwrap_or_default();
+        let mut reported = false;
+        loop {
+            match crate::session_launcher::ensure_components(&executable) {
+                Ok(opened) => {
+                    reported = false;
+                    if let (Some(log), false) = (&log, opened.is_empty()) {
+                        log(&format!("session component opened in session(s) {opened:?}"));
+                    }
+                }
+                Err(error) => {
+                    if let (Some(log), false) = (&log, reported) {
+                        log(&format!("session component not opened ({error})"));
+                    }
+                    reported = true;
+                }
+            }
+            if stop.wait(Duration::from_secs(15)) {
+                break;
+            }
+        }
+    })
 }
 
 /// Register the running executable as an auto-start LocalSystem service that restarts on failure.

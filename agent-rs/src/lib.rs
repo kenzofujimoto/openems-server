@@ -27,6 +27,8 @@ pub mod runtime;
 #[cfg(windows)]
 pub mod service;
 pub mod session;
+#[cfg(windows)]
+pub mod session_launcher;
 pub mod state;
 pub mod tamper;
 pub mod trust;
