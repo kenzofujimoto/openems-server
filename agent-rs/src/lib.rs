@@ -28,4 +28,5 @@ pub mod service;
 pub mod state;
 pub mod tamper;
 pub mod trust;
+pub mod uninstall;
 pub mod wfp;

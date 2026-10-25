@@ -8,7 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from agent.uninstall import WINDOW, code, derive_secret, normalize, release_token, verify
+from agent.uninstall import (
+    WINDOW,
+    code,
+    derive_secret,
+    normalize,
+    release_token,
+    verify,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 MASTER = b"test-only-master-key-0123456789abcdef"

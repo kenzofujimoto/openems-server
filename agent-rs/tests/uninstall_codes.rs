@@ -30,7 +30,11 @@ fn verification_matches_python() {
     for case in vectors["verify"].as_array().unwrap() {
         let secret = secret(case);
         let expected = case["result"].as_u64();
-        assert_eq!(verify(&secret, case["code"].as_str().unwrap(), case["last_used"].as_u64().unwrap()), expected, "{case}");
+        assert_eq!(
+            verify(&secret, case["code"].as_str().unwrap(), case["last_used"].as_u64().unwrap()),
+            expected,
+            "{case}"
+        );
     }
     for case in vectors["normalize"].as_array().unwrap() {
         assert_eq!(normalize(case["input"].as_str().unwrap()).as_deref(), case["result"].as_str(), "{case}");
