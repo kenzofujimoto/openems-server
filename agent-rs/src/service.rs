@@ -427,17 +427,16 @@ pub fn run_watchdog() -> Result<()> {
     {
         let Some(service) = service else { break };
         let kind = match action {
-            WatchdogAction::MakeAutomatic => {
-                set_automatic(service)?;
-                TamperKind::ServiceConfigRestored
-            }
-            WatchdogAction::Start => {
-                service.start::<&str>(&[]).map_err(service_error)?;
-                TamperKind::ServiceStartedByWatchdog
-            }
+            WatchdogAction::MakeAutomatic => TamperKind::ServiceConfigRestored,
+            WatchdogAction::Start => TamperKind::ServiceStartedByWatchdog,
         };
+        // Written before acting: a started service may read the file before a later write lands.
         if let Some(pending) = &pending {
             append_pending(pending, kind, kind.detail(), jiff::Timestamp::now())?;
+        }
+        match action {
+            WatchdogAction::MakeAutomatic => set_automatic(service)?,
+            WatchdogAction::Start => service.start::<&str>(&[]).map_err(service_error)?,
         }
     }
     Ok(())

@@ -267,6 +267,11 @@ impl Runtime {
 
     /// Send tamper events; same retry and unsupported-server handling as the block log.
     fn upload_tamper(&self, client_id: &str, token: Option<&str>) {
+        // The scheduled watchdog is another process: pick up what it wrote since the last cycle.
+        let pending = self.cfg.state_path.with_file_name("tamper-pending.json");
+        if let Err(error) = crate::tamper::drain_pending(&pending, &self.tamper) {
+            (self.log)(&format!("watchdog events not read ({})", error.kind()));
+        }
         let batch = self.tamper.take();
         if batch.is_empty() {
             return;
