@@ -98,6 +98,10 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
     - O upgrade não pede código.
     - Com o servidor desligado e a rede cortada, o código da ferramenta offline remove.
     - Liberação recebida → remoção sem código.
+    - Com código errado, o rollback do MSI reinicia o serviço (decisão da etapa 5).
+    - Numa reinstalação com o mesmo cadastro, o código já usado não vale de novo.
+    - `openems-agent cleanup --uninstall-code` como SYSTEM numa máquina com o registro do MSI apagado à força.
+    - Remoção 5 vezes com código errado → bloqueio e eventos `uninstall_code_rejected` no servidor simulado.
 
 ### Continuação — F5 parte 5a (branch `feature/tamper-protection`, criada a partir de `feature/block-log`; `tamper-protection.md` aprovado em 2026-10-24 com 7 decisões)
 
