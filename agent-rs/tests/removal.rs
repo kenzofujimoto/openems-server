@@ -32,7 +32,10 @@ fn unreachable(_: &str) -> Fetch {
 
 #[test]
 fn the_file_sits_next_to_the_state_file() {
-    assert_eq!(path_for(&PathBuf::from(r"C:\ProgramData\openems\state.json")), PathBuf::from(r"C:\ProgramData\openems\uninstall.json"));
+    assert_eq!(
+        path_for(&PathBuf::from(r"C:\ProgramData\openems\state.json")),
+        PathBuf::from(r"C:\ProgramData\openems\uninstall.json")
+    );
 }
 
 #[test]
@@ -93,7 +96,10 @@ fn without_a_stored_secret_the_server_decides() {
     assert_eq!(authorize(&unregistered, None, None, NOW, unreachable).unwrap(), Ok(Allowed::WithoutSecret));
 
     let offline = scratch("offline");
-    assert_eq!(authorize(&offline, Some("client-1"), None, NOW, |_| Fetch::Unavailable).unwrap(), Ok(Allowed::WithoutSecret));
+    assert_eq!(
+        authorize(&offline, Some("client-1"), None, NOW, |_| Fetch::Unavailable).unwrap(),
+        Ok(Allowed::WithoutSecret)
+    );
 
     let deleted = scratch("deleted");
     assert_eq!(
@@ -123,6 +129,22 @@ fn a_secret_from_an_older_registration_is_replaced() {
     });
     assert_eq!(decision.unwrap(), Ok(Allowed::Code(1)));
     assert_eq!(load(&path).unwrap().unwrap().client_id, "client-2");
+}
+
+#[test]
+fn an_edited_client_id_with_no_server_answer_keeps_the_stored_secret() {
+    // state.json is writable by administrators: changing its client_id must not unlock removal offline.
+    let path = armed("edited");
+    assert_eq!(
+        authorize(&path, Some("forged"), None, NOW, |_| Fetch::Unavailable).unwrap(),
+        Err(Refusal::CodeRequired)
+    );
+    let right = code(&SECRET, 1);
+    assert_eq!(
+        authorize(&path, Some("forged"), Some(&right), NOW, |_| Fetch::Unavailable).unwrap(),
+        Ok(Allowed::Code(1))
+    );
+    assert_eq!(load(&path).unwrap().unwrap().client_id, "client-1");
 }
 
 #[test]
