@@ -1,0 +1,97 @@
+"""Authenticated inventory snapshots and actual application/device control events."""
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.api import create_app
+from app.audit import InMemoryAuditLog
+from app.auth import AdminService
+from app.models import RegisterRequest
+from app.service import EmsService
+
+
+@pytest.fixture
+def harness():
+    service = EmsService(valid_invitations={"inventory-test", "other-test"})
+    endpoint = service.register(RegisterRequest(devid="pc", invitation="inventory-test"))
+    other = service.register(RegisterRequest(devid="other", invitation="other-test"))
+    admin = AdminService()
+    admin.add_admin("operator", "test-password")
+    audit = InMemoryAuditLog()
+    client = TestClient(create_app(service, admin_service=admin, audit_log=audit))
+    management = {"Authorization": "Bearer " + admin.issue_token("operator", "admin")}
+    device = {"Authorization": "Bearer " + endpoint.device_token}
+    return service, client, endpoint, other, management, device, audit
+
+
+def snapshot(client_id):
+    now = datetime.now(UTC).isoformat()
+    return {"client_id": client_id, "collected_at": now, "applications": [
+        {"name": "Example", "path": r"C:\Apps\one.exe", "sha256": "ab" * 32,
+         "publisher": "Publisher", "version": "1.0", "running": True},
+    ], "usb_devices": [
+        {"instance_id": r"USBSTOR\DISK\serial", "vid": "0781", "pid": "abcd", "manufacturer": "Example",
+         "product": "USB disk", "serial": "serial", "class": "storage", "drive_letters": ["E:"],
+         "present": True, "first_seen": now, "last_seen": now},
+    ]}
+
+
+def test_device_inventory_is_scoped_to_authenticated_identity_and_audited_on_read(harness):
+    _, client, endpoint, other, management, device, audit = harness
+    path = "/fct/api/public/v1/inventory/"
+    assert client.post(path, json=snapshot(endpoint.client_id)).status_code == 401
+    assert client.post(path, json=snapshot(other.client_id), headers=device).status_code == 401
+    assert client.post(path, json=snapshot(endpoint.client_id), headers=device).status_code == 200
+    result = client.get("/api/v1/endpoints/inventory", params={"devid": "pc"}, headers=management)
+    assert result.status_code == 200
+    assert result.json()["applications"][0]["sha256"] == "ab" * 32
+    assert result.json()["usb_devices"][0]["instance_id"] == r"USBSTOR\DISK\serial"
+    assert result.json()["devid"] == "pc"
+    assert "client_id" not in result.json()
+    assert any(entry.action == "inventory.read" for entry in audit.list())
+    assert client.get("/api/v1/endpoints/inventory", params={"devid": "other"}, headers=management).json()["applications"] == []
+
+
+def test_inventory_replacement_rejects_old_or_naive_snapshots_and_bounds_fields(harness):
+    _, client, endpoint, _, management, device, _ = harness
+    payload = snapshot(endpoint.client_id)
+    path = "/fct/api/public/v1/inventory/"
+    assert client.post(path, json=payload, headers=device).status_code == 200
+    stale = {**payload, "collected_at": (datetime.now(UTC) - timedelta(days=1)).isoformat(), "applications": []}
+    assert client.post(path, json=stale, headers=device).status_code == 409
+    naive = {**payload, "collected_at": "2026-10-25T12:00:00"}
+    assert client.post(path, json=naive, headers=device).status_code == 422
+    invalid = {**payload, "applications": [{**payload["applications"][0], "path": "x" * 4097}]}
+    assert client.post(path, json=invalid, headers=device).status_code == 422
+    assert len(client.get("/api/v1/endpoints/inventory", params={"devid": "pc"}, headers=management).json()["applications"]) == 1
+
+
+def test_control_events_reach_feed_and_real_dashboard_totals(harness):
+    _, client, endpoint, _, management, device, _ = harness
+    now = datetime.now(UTC).isoformat()
+    rows = [{"at": now, "kind": kind, "target": target, "rule_id": "policy-rule"} for kind, target in (
+        ("usb_block", "USB disk"), ("app_block", "one.exe"), ("app_network_block", "two.exe"),
+    )]
+    response = client.post("/fct/api/public/v1/control_events/", json={"client_id": endpoint.client_id, "events": rows}, headers=device)
+    assert response.status_code == 200 and response.json()["accepted"] == 3
+    feed = client.get("/api/v1/events", headers=management).json()
+    assert {event["kind"] for event in feed} == {"usb_block", "app_block", "app_network_block"}
+    assert all(event["devid"] == "pc" for event in feed)
+    totals = client.get("/api/v1/stats/overview", headers=management).json()["blocks_by_day"][-1]
+    assert totals["apps"] == 2 and totals["usb"] == 1
+
+
+def test_control_events_deduplicate_retries_and_expire_old_data_on_read(harness):
+    _, client, endpoint, _, management, device, _ = harness
+    now = datetime.now(UTC).isoformat()
+    row = {"at": now, "kind": "usb_read_only", "target": "USB disk", "rule_id": "read-only"}
+    payload = {"client_id": endpoint.client_id, "events": [row]}
+    for _ in range(2):
+        assert client.post("/fct/api/public/v1/control_events/", json=payload, headers=device).status_code == 200
+    assert len(client.get("/api/v1/events", headers=management).json()) == 1
+    old = {**row, "at": (datetime.now(UTC) - timedelta(days=40)).isoformat()}
+    reply = client.post("/fct/api/public/v1/control_events/", json={**payload, "events": [old]}, headers=device).json()
+    assert reply == {"accepted": 0, "rejected": 1}
