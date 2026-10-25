@@ -22,6 +22,7 @@ pub mod nrpt;
 pub mod policy;
 pub mod processes;
 pub mod provisioning;
+pub mod removal;
 pub mod runtime;
 #[cfg(windows)]
 pub mod service;

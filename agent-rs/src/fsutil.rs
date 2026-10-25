@@ -13,17 +13,34 @@ fn temp_path(path: &Path) -> PathBuf {
 /// Write `data` to a sibling temp file and rename it over `path`.
 /// With `expected`, refuse when someone changed the file since it was read.
 pub fn atomic_write(path: &Path, data: &[u8], expected: Option<&[u8]>, private: bool) -> Result<()> {
+    replace_file(path, data, expected, |temp| {
+        if private {
+            secure_file(temp)?;
+        } else if let Ok(metadata) = fs::metadata(path) {
+            fs::set_permissions(temp, metadata.permissions())?;
+        }
+        Ok(())
+    })
+}
+
+/// Like `atomic_write`, with `protect` applied to the new file before any byte is written.
+pub fn atomic_write_protected(path: &Path, data: &[u8], protect: impl Fn(&Path) -> Result<()>) -> Result<()> {
+    replace_file(path, data, None, protect)
+}
+
+fn replace_file(
+    path: &Path,
+    data: &[u8],
+    expected: Option<&[u8]>,
+    protect: impl Fn(&Path) -> Result<()>,
+) -> Result<()> {
     if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
         fs::create_dir_all(parent)?;
     }
     let temp = temp_path(path);
     let outcome = (|| -> Result<()> {
         let mut file = OpenOptions::new().write(true).create_new(true).open(&temp)?;
-        if private {
-            secure_file(&temp)?;
-        } else if let Ok(metadata) = fs::metadata(path) {
-            fs::set_permissions(&temp, metadata.permissions())?;
-        }
+        protect(&temp)?;
         file.write_all(data)?;
         file.sync_all()?;
         drop(file);
