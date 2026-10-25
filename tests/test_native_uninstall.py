@@ -150,3 +150,47 @@ def test_removal_commands_refuse_to_run_without_system(native, tmp_path):
     for command in (["installer-prepare", "--remove"], ["cleanup"]):
         result = run(native, *command, "--config", str(config), "--uninstall-code", "ABCDE-FGHJK")
         assert result.returncode != 0 and "SYSTEM" in result.stderr, (command, result.stderr)
+
+
+WXS = ROOT / "agent-rs" / "installer" / "openems-agent.wxs"
+WIX_NS = {"w": "http://wixtoolset.org/schemas/v4/wxs"}
+
+
+def test_msi_passes_a_hidden_uninstall_code_only_to_removal():
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(WXS).getroot()
+    prop = root.find(".//w:Property[@Id='UNINSTALLCODE']", WIX_NS)
+    assert prop is not None and prop.attrib.get("Secure") == "yes" and prop.attrib.get("Hidden") == "yes"
+    removal = root.find(".//w:CustomAction[@Id='PrepareAgentRemoval']", WIX_NS)
+    assert removal.attrib.get("HideTarget") == "yes", "the code must not reach the MSI log"
+    assert '--uninstall-code "[UNINSTALLCODE]"' in removal.attrib["ExeCommand"].replace("&quot;", '"')
+    setup = root.find(".//w:CustomAction[@Id='PrepareAgentSetup']", WIX_NS)
+    assert "UNINSTALLCODE" not in setup.attrib["ExeCommand"]
+    scheduled = root.find(".//w:InstallExecuteSequence/w:Custom[@Action='PrepareAgentRemoval']", WIX_NS)
+    assert "NOT UPGRADINGPRODUCTCODE" in scheduled.attrib["Condition"], "upgrades never ask for a code"
+
+
+def test_built_msi_hides_the_uninstall_code(tmp_path):
+    import pytest
+
+    wix = ROOT / ".venv" / "wix-tools" / "wix.exe"
+    agent = ROOT / "agent-rs" / "target" / "release" / "openems-agent.exe"
+    if os.name != "nt" or not wix.is_file() or not agent.is_file():
+        pytest.skip("needs Windows, the portable WiX in .venv/wix-tools and a release agent build")
+    environment = {**os.environ, "DOTNET_ROOT": str(ROOT / ".venv" / "dotnet-sdk")}
+    package = tmp_path / "openems-agent.msi"
+    built = subprocess.run([str(wix), "build", str(WXS), "-arch", "x64", "-d", "Version=0.5.0", "-d", f"AgentExe={agent}",
+                            "-o", str(package)], capture_output=True, text=True, env=environment, timeout=300, check=False)
+    assert built.returncode == 0, built.stdout + built.stderr
+    query = (
+        "$i = New-Object -ComObject WindowsInstaller.Installer; $d = $i.OpenDatabase($args[0], 0);"
+        "function One($sql) { $v = $d.OpenView($sql); $v.Execute(); $r = $v.Fetch(); if ($r) { $r.StringData(1) } };"
+        "One \"SELECT Value FROM Property WHERE Property='MsiHiddenProperties'\";"
+        "One \"SELECT Type FROM CustomAction WHERE Action='PrepareAgentRemoval'\""
+    )
+    tables = subprocess.run(["powershell", "-NoProfile", "-Command", f"& {{ {query} }} '{package}'"],
+                            capture_output=True, text=True, timeout=120, check=False)
+    hidden, action_type = (tables.stdout.strip().splitlines() + ["", ""])[:2]
+    assert "UNINSTALLCODE" in hidden.split(";"), tables.stdout + tables.stderr
+    assert int(action_type) & 0x2000, "msidbCustomActionTypeHideTarget"
