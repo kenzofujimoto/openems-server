@@ -28,6 +28,25 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - Verifica: bloqueio de `api.steampowered.com` e `steamcommunity.com`, `allowed` para `store.steampowered.com`, arquivo em cache com o digest, reinício do serviço offline ainda bloqueando, Edge em `steamcommunity.com` confirmado pelo operador, e desinstalação.
 - Pacote: `.venv/sandbox-acceptance/categories-input/` (MSI e `categories/`) e `categories.wsb`, com rede. Win+R → `C:\openems-input\RUN-CATEGORIES-TEST.cmd`; relatório em `results/categories-result.json`. O pré-teste espera até 60 s pela rede do Sandbox.
 - **Aceite em Sandbox aprovado em 2026-10-24 (6/6)**, Edge confirmado pelo operador: `validation/sandbox-categories-2026-10-24.json`.
+### Continuação — roadmap restante (pedido do usuário em 2026-10-25: "faça tudo menos a 9")
+
+- Ordem: F5 5c (componente de sessão e reboot) → F6 → F4 → F3 → pendências de código da F7 e da F2 → F8 (Linux aqui; macOS depende de Mac e Apple Developer ID). Cada fase: desenho em `.md`, TDD, roteiro de Sandbox. O usuário autorizou seguir sem parar para aprovar cada plano; decisões que mudariam o rumo são sinalizadas.
+- `main` = `19ef954` (tudo até a 5b, push feito). Cada fase em branch nova a partir da anterior.
+
+### Continuação — F5 parte 5c (branch `feature/session-component`, a partir da `main`; desenho em `session-component.md`)
+
+- **Feito com TDD:**
+  - `agent-rs/src/session.rs`: quadro `session.json` ao lado do `state.json` (SYSTEM grava; Administradores e Usuários leem, `D:P(A;;FA;;;SY)(A;;FR;;;BA)(A;;FR;;;BU)`), com `protected`, `last_contact` e até 20 avisos numerados em português. A numeração continua depois de reiniciar.
+  - `runtime.rs`: aplicativo encerrado pela política vira aviso `app_closed`; aplicação ok → `protected`; sincronização ok → `last_contact`.
+  - `src/bin/openems-session.rs`: segundo executável, sem console. Ícone (escudo do sistema) com a dica de estado e balão para avisos novos; mutex `Local\openems-session`; sai em `WM_CLOSE`/`WM_QUERYENDSESSION`/`WM_ENDSESSION`; refaz o ícone se o Explorer reiniciar. `--print --board PATH` mostra o mesmo em JSON, sem interface. Teste rápido no host: sobe, fica vivo e a segunda instância sai.
+  - `src/session_launcher.rs` + `service.rs`: o serviço abre o componente em cada sessão ativa (`WTSEnumerateSessions`, `WTSQueryUserToken`, `CreateProcessAsUser`) a cada 15 s, e fecha todos antes de informar `Stopped` (upgrade e remoção não encontram o `.exe` em uso). `remove_protections` também fecha.
+  - MSI: componente `SessionExecutable` com `openems-session.exe`; `tools/build-msi-fixtures.ps1` passa `-d SessionExe` (ao lado do `AgentExe`).
+  - Testes: `agent-rs/tests/session.rs` (7), `tests/test_native_session.py` (3), contratos `tests/test_session_sandbox.py` (5). Rust 151, Python 733.
+- **Aceite em Sandbox pendente (duas fases, com reboot):** `deploy/test-session-sandbox.ps1`. Pacote em `.venv/sandbox-acceptance/session-input` (MSIs 0.4.0 `67d50cd5…` e 0.4.1 `45383222…`, do código atual) e perfil `session.wsb`, gerados por `tools/build-msi-fixtures.ps1 -Production` (e `-Next`) e `python tools/build_session_sandbox.py`.
+  - Para rodar: abrir `session.wsb` (Sandbox novo), Win+R → `C:\openems-input\RUN-SESSION-TEST.cmd`. Ao terminar a fase 1, **reiniciar o Sandbox por dentro** (Iniciar → Energia → Reiniciar) e rodar o mesmo comando de novo. Resultados: `results/session-phase1.json` e `results/session-result.json`.
+  - Fase 1: componente na sessão do usuário; encerrado, volta; aplicativo bloqueado vira aviso; upgrade sem 3010; `Start=4` no registro e serviço parado. Fase 2: depois do boot, o watchdog restaura e inicia o serviço (`service_started_by_watchdog`), o componente volta, e a remoção fecha o componente e apaga o `.exe`.
+  - A tarefa watchdog roda a cada 5 min: se a fase 2 demorar a começar, ela pode religar o serviço antes do reboot. O resultado continua valendo (o evento é o mesmo); só não separa o caminho do boot do periódico.
+
 ### Continuação — F5 parte 5b (branch `feature/uninstall-code`, criada a partir de `feature/tamper-protection`; decisões 5 a 7 do `tamper-protection.md`)
 
 - **Feito (etapa 1 de 6, `dc58b02`):** primitivas do código de desinstalação, com paridade entre Python e Rust conferida por `contract/uninstall-vectors.json` (`tools/gen_uninstall_vectors.py`).
