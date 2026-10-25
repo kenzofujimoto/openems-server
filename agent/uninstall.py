@@ -21,6 +21,14 @@ _RELEASE_LABEL = b"openems-release-v1"
 _LOOKALIKES = str.maketrans({"O": "0", "I": "1", "L": "1"})
 
 
+def master_key_from_text(text: str) -> bytes:
+    """Master key as configured (OPENEMS_UNINSTALL_MASTER_KEY or the offline tool's key file)."""
+    key = text.lstrip("﻿").strip().encode("utf-8")
+    if len(key) < MIN_MASTER_KEY:
+        raise ValueError(f"the uninstall master key must have at least {MIN_MASTER_KEY} bytes")
+    return key
+
+
 def derive_secret(master_key: bytes, client_id: str) -> bytes:
     if len(master_key) < MIN_MASTER_KEY:
         raise ValueError(f"the uninstall master key must have at least {MIN_MASTER_KEY} bytes")
