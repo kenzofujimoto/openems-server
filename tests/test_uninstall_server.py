@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from agent.uninstall import code, delivery_proof, derive_secret, release_token
+from agent.uninstall import (
+    code,
+    delivery_proof,
+    derive_secret,
+    master_key_from_text,
+    release_token,
+)
 from app.api import build, create_app
 from app.audit import InMemoryAuditLog
 from app.auth import AdminService
@@ -246,6 +255,47 @@ def test_build_reads_the_master_key_from_the_environment(clean_environment):
     device = client.post("/fct/api/public/v1/register/", json={"devid": "RSM-SP-041"}).json()
     response = client.post(SECRET_ROUTE, json={"client_id": device["client_id"]})
     assert response.json() == {"secret": derive_secret(MASTER, device["client_id"]).hex()}
+
+
+def test_an_empty_master_key_variable_leaves_the_feature_off(clean_environment):
+    # docker-compose passes ${OPENEMS_UNINSTALL_MASTER_KEY:-} as an empty string when .env has no key.
+    clean_environment.setenv("OPENEMS_LAB_MODE", "1")
+    clean_environment.setenv("OPENEMS_UNINSTALL_MASTER_KEY", "")
+    client = TestClient(build())
+    device = client.post("/fct/api/public/v1/register/", json={"devid": "RSM-SP-042"}).json()
+    assert client.post(SECRET_ROUTE, json={"client_id": device["client_id"]}).status_code == 503
+
+
+def test_compose_passes_the_master_key_without_requiring_it():
+    compose = (Path(__file__).resolve().parent.parent / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "OPENEMS_UNINSTALL_MASTER_KEY: ${OPENEMS_UNINSTALL_MASTER_KEY:-}" in compose
+
+
+def _new_env(path: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    shell = shutil.which("powershell") or shutil.which("pwsh")
+    if shell is None:
+        pytest.skip("PowerShell is not available")
+    script = Path(__file__).resolve().parent.parent / "deploy" / "new-env.ps1"
+    return subprocess.run([shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-Path", str(path),
+                           *extra], capture_output=True, text=True, timeout=120, check=False)
+
+
+def _env_values(path: Path) -> dict[str, str]:
+    return dict(line.split("=", 1) for line in path.read_text(encoding="utf-8").splitlines() if "=" in line)
+
+
+def test_new_env_generates_a_master_key_and_keeps_it_on_force(tmp_path: Path):
+    path = tmp_path / ".env"
+    first = _new_env(path)
+    assert first.returncode == 0, first.stderr
+    key = _env_values(path)["OPENEMS_UNINSTALL_MASTER_KEY"]
+    assert len(master_key_from_text(key)) >= 48
+    assert "cofre" in first.stdout or "vault" in first.stdout.lower(), "tells the operator to store the key"
+    replaced = _new_env(path, "-Force")
+    assert replaced.returncode == 0, replaced.stderr
+    values = _env_values(path)
+    assert values["OPENEMS_UNINSTALL_MASTER_KEY"] == key, "a new key would orphan every installed agent's secret"
+    assert key not in replaced.stdout, "an existing key is not shown again"
 
 
 def test_build_rejects_a_short_master_key_without_exposing_it(clean_environment):
