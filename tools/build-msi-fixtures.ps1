@@ -28,10 +28,13 @@ $repository = Split-Path -Parent $PSScriptRoot
 $source = Join-Path $repository 'agent-rs\installer\openems-agent.wxs'
 if (-not $AgentExe) { $AgentExe = Join-Path $repository 'agent-rs\target\release\openems-agent.exe' }
 if (-not (Test-Path -LiteralPath $AgentExe -PathType Leaf)) { throw "Agent executable not found: $AgentExe" }
+# The session component is built next to the agent (cargo builds both binaries).
+$SessionExe = Join-Path (Split-Path -Parent $AgentExe) 'openems-session.exe'
+if (-not (Test-Path -LiteralPath $SessionExe -PathType Leaf)) { throw "Session component not found: $SessionExe" }
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 for ($index = 0; $index -lt $versions.Count; $index++) {
     $target = Join-Path $OutputDirectory $fixtures[$index]
-    $arguments = @('build', $source, '-arch', 'x64', '-d', ('Version=' + $versions[$index]), '-d', ('AgentExe=' + $AgentExe)) +
+    $arguments = @('build', $source, '-arch', 'x64', '-d', ('Version=' + $versions[$index]), '-d', ('AgentExe=' + $AgentExe), '-d', ('SessionExe=' + $SessionExe)) +
         @($defines | ForEach-Object { @('-d', $_) }) + @('-o', $target)
     & $Wix @arguments
     if ($LASTEXITCODE -ne 0) { throw ('wix build failed for ' + $fixtures[$index] + ' with exit code ' + $LASTEXITCODE) }

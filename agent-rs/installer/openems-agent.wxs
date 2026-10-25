@@ -2,7 +2,7 @@
 <!--
   Per-machine MSI for the native openems agent (WiX Toolset 5).
 
-  Build:   wix build installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d AgentExe=target/release/openems-agent.exe -o openems-agent.msi
+  Build:   wix build installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d AgentExe=target/release/openems-agent.exe -d SessionExe=target/release/openems-session.exe -o openems-agent.msi
   Install: msiexec /i openems-agent.msi /qn SERVER=https://ems.example.com INVITATION=<one-time code> [VDOM=Default] [DEVID=name]
   Remove:  msiexec /x openems-agent.msi /qn UNINSTALLCODE=XXXXX-XXXXX
            Once the agent holds its uninstall secret, removal needs a one-time code from the panel or from
@@ -58,6 +58,10 @@
                           Description="Applies RSM endpoint policies and reports their status to the management server."
                           Type="ownProcess" Start="auto" ErrorControl="normal" Account="LocalSystem" Arguments="service" />
           <ServiceControl Id="AgentServiceControl" Name="openems-agent" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+        </Component>
+        <!-- Tray component the service opens in each user session (session-component.md). -->
+        <Component Id="SessionExecutable" Guid="B6F4C1E2-5A7D-4E39-8C21-0D9F3A6E4B57">
+          <File Id="SessionExe" Source="$(var.SessionExe)" Name="openems-session.exe" KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>
