@@ -1,6 +1,6 @@
 //! Uninstall codes must match the Python reference (agent/uninstall.py) byte for byte.
 
-use openems_agent::uninstall::{code, normalize, release_token, verify};
+use openems_agent::uninstall::{code, delivery_proof, derive_secret, normalize, release_token, verify};
 use serde_json::Value;
 
 fn vectors() -> Value {
@@ -21,7 +21,23 @@ fn codes_and_release_tokens_match_python() {
             assert_eq!(code(&secret, counter), item["code"].as_str().unwrap(), "{case}");
         }
         assert_eq!(release_token(&secret), case["release"].as_str().unwrap());
+        assert_eq!(delivery_proof(&secret), case["delivery_proof"].as_str().unwrap());
     }
+}
+
+#[test]
+fn secrets_derive_from_the_master_key_like_python() {
+    let vectors = vectors();
+    let master = vectors["master_key"].as_str().unwrap().as_bytes();
+    for case in vectors["secrets"].as_array().unwrap() {
+        assert_eq!(
+            derive_secret(master, case["client_id"].as_str().unwrap()).unwrap().to_vec(),
+            secret(case),
+            "{case}"
+        );
+    }
+    assert!(derive_secret(&master[..31], "client-1").is_err(), "short master key");
+    assert!(derive_secret(master, "").is_err(), "empty client id");
 }
 
 #[test]

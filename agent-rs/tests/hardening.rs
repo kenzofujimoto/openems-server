@@ -160,6 +160,8 @@ fn every_kind_has_the_wire_name_the_server_accepts() {
             "watchdog_restored",
             "service_started_by_watchdog",
             "unexpected_exit",
+            "uninstall_code_rejected",
+            "uninstall_without_secret",
         ]
     );
 }
