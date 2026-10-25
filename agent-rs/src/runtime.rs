@@ -694,4 +694,88 @@ mod tests {
             ]
         );
     }
+
+    fn network_runtime() -> (tempfile::TempDir, Runtime) {
+        let dir = tempfile::tempdir().unwrap();
+        let mut cfg = AgentConfig::new("http://127.0.0.1:9", "locations-test");
+        cfg.allow_insecure_http = true;
+        cfg.state_path = dir.path().join("state.json");
+        cfg.hosts_path = dir.path().join("hosts");
+        std::fs::write(&cfg.hosts_path, "127.0.0.1 localhost\n").unwrap();
+        let make = |group: &str, blocked: Vec<&str>| {
+            let body = json!({"web_filter": {"blocked": blocked}});
+            json!({"vdom": group, "version": 1, "digest": crate::policy::policy_digest(body.as_object().unwrap()), "body": body})
+        };
+        let mut outside = make("Default", vec!["example.org"]);
+        outside["client_ip"] = json!("200.1.2.3");
+        outside["uninstall_release"] = json!("outside-release");
+        outside["locations"] = json!([{
+            "id": "office", "name": "Escritório", "cidrs": ["192.168.1.0/24"],
+            "gateway_macs": ["00:11:22:33:44:55"], "dns_suffixes": [],
+            "public_cidrs": ["200.1.2.0/24"], "probe": null,
+            "assignment": make("Office", vec![])
+        }]);
+        EndpointState {
+            server: cfg.server.clone(), devid: cfg.devid.clone(), client_id: Some("test".into()),
+            profile: Some(outside), ..Default::default()
+        }.save(&cfg.state_path).unwrap();
+        let runtime = Runtime::new(cfg, Arc::new(|_| {}), Arc::new(StopSignal::default())).unwrap();
+        (dir, runtime)
+    }
+
+    fn office_observation() -> crate::locations::Observed {
+        crate::locations::Observed {
+            addresses: vec![("192.168.1.20".parse().unwrap(), 24)],
+            gateway_macs: vec!["00:11:22:33:44:55".into()], ..Default::default()
+        }
+    }
+
+    #[test]
+    fn network_policy_is_reselected_offline_without_losing_outside_cache() {
+        let (dir, runtime) = network_runtime();
+        assert!(runtime.enforce_observed(office_observation(), Instant::now()));
+        assert_eq!(runtime.lock().profile.as_ref().unwrap().vdom, "Office");
+        assert!(!std::fs::read_to_string(dir.path().join("hosts")).unwrap().contains("example.org"));
+        let persisted = EndpointState::load(&runtime.cfg.state_path, &runtime.cfg.server, &runtime.cfg.devid).unwrap().unwrap();
+        let outside = persisted.profile.unwrap();
+        assert_eq!(outside["vdom"], "Default");
+        assert_eq!(outside["uninstall_release"], "outside-release");
+        assert_eq!(outside["locations"][0]["id"], "office");
+        let home = crate::locations::Observed {
+            addresses: office_observation().addresses, ..Default::default()
+        };
+        assert!(runtime.enforce_observed(home, Instant::now()));
+        assert_eq!(runtime.lock().profile.as_ref().unwrap().vdom, "Default");
+        assert!(std::fs::read_to_string(dir.path().join("hosts")).unwrap().contains("example.org"));
+        let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();
+        assert_eq!(board.notices.len(), 2);
+        assert!(board.notices[0].text.contains("Rede da empresa"));
+        assert!(board.notices[1].text.contains("Fora da rede da empresa"));
+        assert_eq!(runtime.lock().pending.as_ref().unwrap().location, "");
+    }
+
+    #[test]
+    fn public_address_expires_after_three_intervals_and_is_unknown_after_restart() {
+        let (_dir, runtime) = network_runtime();
+        let now = Instant::now();
+        // The address in a persisted response has no live freshness proof.
+        assert!(runtime.enforce_observed(Default::default(), now));
+        assert_eq!(runtime.lock().profile.as_ref().unwrap().vdom, "Default");
+        runtime.lock().public_contact = Some((now, "200.1.2.3".parse().unwrap()));
+        assert!(runtime.enforce_observed(Default::default(), now + Duration::from_secs(44)));
+        assert_eq!(runtime.lock().profile.as_ref().unwrap().vdom, "Office");
+        assert_eq!(runtime.lock().pending.as_ref().unwrap().location, "office");
+        assert!(runtime.enforce_observed(Default::default(), now + Duration::from_secs(45)));
+        assert_eq!(runtime.lock().profile.as_ref().unwrap().vdom, "Default");
+    }
+
+    #[test]
+    fn identical_network_observations_do_not_repeat_session_notices() {
+        let (_dir, runtime) = network_runtime();
+        for _ in 0..3 {
+            assert!(runtime.enforce_observed(office_observation(), Instant::now()));
+        }
+        let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();
+        assert_eq!(board.notices.len(), 1);
+    }
 }
