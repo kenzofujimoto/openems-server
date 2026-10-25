@@ -43,6 +43,16 @@ fn internal_probe_requires_the_exact_certificate_and_completes_a_real_tls_handsh
 }
 
 #[test]
+fn hostname_probe_falls_back_to_ipv4_when_the_first_ipv6_address_does_not_respond() {
+    let (mut probe, worker) = tls_probe(true);
+    probe.host = "localhost".into();
+    let started = Instant::now();
+    assert_eq!(network_signals::probe_certificate(&probe), Some(probe.sha256.clone()));
+    assert!(started.elapsed() < Duration::from_secs(3));
+    worker.join().unwrap();
+}
+
+#[test]
 fn a_peer_that_never_speaks_tls_is_unknown_after_two_seconds() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let probe =
