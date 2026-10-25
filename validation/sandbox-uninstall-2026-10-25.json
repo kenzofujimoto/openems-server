@@ -1,0 +1,42 @@
+﻿{
+    "passed":  true,
+    "checks":  [
+                   "install: the agent fetches and confirms the secret, and the server stops handing it out",
+                   "removal without a code fails, rollback restarts the service and the product stays",
+                   "removal with a wrong code fails, rollback restarts the service and uninstall_code_rejected is reported",
+                   "upgrade to a later version needs no code",
+                   "removal with the server code (counter 1) succeeds, protections are removed and the MSI log never holds the code",
+                   "after reinstalling with the same registration, a code used again is refused and the next one removes",
+                   "a release received from the server lets removal pass without a code even with the server stopped",
+                   "with the server stopped, a code from the agent executable (offline generator) removes the agent",
+                   "after a forced MSI removal, cleanup without a code fails and cleanup with a code removes the service and protections",
+                   "a machine without a secret (server without master key) is removed without a code and uninstall_without_secret is reported",
+                   "after five wrong codes removal is locked: the right code is refused and the product stays"
+               ],
+    "durations":  [
+                      "/i openems-agent.msi: 123 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/i openems-agent-next.msi: 123 s",
+                      "/x openems-agent-next.msi: 2 s",
+                      "/i openems-agent.msi: 122 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/i openems-agent.msi: 123 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/i openems-agent.msi: 122 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/a openems-agent.msi: 121 s",
+                      "/i openems-agent.msi: 122 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/i openems-agent.msi: 122 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/x openems-agent.msi: 2 s",
+                      "/x openems-agent.msi: 2 s"
+                  ],
+    "error":  null,
+    "last_log":  "C:\\openems-uninstall-36aebce3b0034a4ab35f1bd7733fe992\\37ebd9a6422549f29025bb0ec258cafe.log"
+}
