@@ -11,6 +11,7 @@ import pytest
 from agent.uninstall import (
     WINDOW,
     code,
+    delivery_proof,
     derive_secret,
     master_key_from_text,
     normalize,
@@ -79,6 +80,13 @@ def test_release_tokens_are_bound_to_one_machine_secret():
     first, second = derive_secret(MASTER, "client-1"), derive_secret(MASTER, "client-2")
     assert re.fullmatch(r"[0-9a-f]{64}", release_token(first))
     assert release_token(first) != release_token(second)
+
+
+def test_delivery_proofs_confirm_the_secret_without_revealing_it_or_a_release():
+    first, second = derive_secret(MASTER, "client-1"), derive_secret(MASTER, "client-2")
+    assert re.fullmatch(r"[0-9a-f]{64}", delivery_proof(first))
+    assert delivery_proof(first) != delivery_proof(second)
+    assert delivery_proof(first) not in (release_token(first), first.hex()), "separate label from the release"
 
 
 def _generator():

@@ -14,7 +14,8 @@ from app.events import BlockEvent, InMemoryEventStore, TamperEvent, current_hour
 from app.service import EmsService
 
 KINDS = ["dns_rule_restored", "wfp_restored", "browser_policy_restored", "hosts_restored", "service_config_restored",
-         "watchdog_restored", "service_started_by_watchdog", "unexpected_exit"]
+         "watchdog_restored", "service_started_by_watchdog", "unexpected_exit", "uninstall_code_rejected",
+         "uninstall_without_secret"]
 
 
 def stamp(when: datetime) -> str:
