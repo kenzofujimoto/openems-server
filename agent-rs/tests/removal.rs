@@ -193,7 +193,8 @@ mod commands {
         let config = config("command-refusal", Some("client-1"));
         store_secret(&path_for(&config.state_path), "client-1", &SECRET).unwrap();
         let mut reported = Vec::new();
-        let error = authorize_removal_with(&config, None, NOW, unreachable, &mut |kind| reported.push(kind)).unwrap_err();
+        let error =
+            authorize_removal_with(&config, None, NOW, unreachable, &mut |kind| reported.push(kind)).unwrap_err();
         assert!(error.to_string().contains("client-1"), "{error}");
         assert!(reported.is_empty(), "asking for a code is not tampering");
         authorize_removal_with(&config, Some("00000-00000"), NOW, unreachable, &mut |kind| reported.push(kind))
