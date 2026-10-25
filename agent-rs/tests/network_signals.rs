@@ -80,7 +80,10 @@ fn an_unreachable_high_priority_probe_does_not_hide_a_healthy_later_location() {
     let started = Instant::now();
     let mut observed = network_signals::collect(&locations).unwrap();
     observed.dns_suffixes = vec!["corp.example".into()];
-    assert_eq!(openems_agent::locations::choose(&locations, &observed).map(|location| location.id.as_str()), Some("site-1"));
+    assert_eq!(
+        openems_agent::locations::choose(&locations, &observed).map(|location| location.id.as_str()),
+        Some("site-1")
+    );
     assert!(started.elapsed() < Duration::from_secs(3));
     worker.join().unwrap();
 }
