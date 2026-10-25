@@ -31,6 +31,8 @@ export const endpointSchema = z.object({
   desired_profile: z.object({ vdom: z.string(), version: z.number().int(), digest: z.string() }).nullable(),
   // Agent tags the effective policy needs but this agent does not report; older servers omit it.
   missing_capabilities: z.array(z.string()).default([]),
+  location: z.string().default(""),
+  location_name: z.string().default(""),
 });
 export type Endpoint = z.infer<typeof endpointSchema>;
 
@@ -82,3 +84,20 @@ export const uninstallReleaseSchema = z.object({ scope: z.string(), released_at:
 export type UninstallRelease = z.infer<typeof uninstallReleaseSchema>;
 
 export const FLEET_SCOPE = "*";
+
+export const networkProbeSchema = z.object({ host: z.string(), port: z.number().int(), sha256: z.string() });
+export const networkLocationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  cidrs: z.array(z.string()),
+  gateway_macs: z.array(z.string()),
+  dns_suffixes: z.array(z.string()),
+  public_cidrs: z.array(z.string()),
+  probe: networkProbeSchema.nullable(),
+});
+export type NetworkLocation = z.infer<typeof networkLocationSchema>;
+
+export const locationPolicySchema = z.object({ vdom: z.string(), location_id: z.string(), inside_vdom: z.string() });
+export type LocationPolicy = z.infer<typeof locationPolicySchema>;
+
+export const profileSummarySchema = z.object({ vdom: z.string(), version: z.number().int(), digest: z.string() });

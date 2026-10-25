@@ -10,6 +10,11 @@ import {
   type Session,
   uninstallCodeSchema,
   uninstallReleaseSchema,
+  networkLocationSchema,
+  locationPolicySchema,
+  profileSummarySchema,
+  type NetworkLocation,
+  type LocationPolicy,
 } from "./schemas";
 
 const SESSION_KEY = ["session"] as const;
@@ -152,4 +157,61 @@ export function useReopenUninstallSecret() {
 export function useIsAdmin(): boolean {
   const role = useSession().data?.role;
   return role === "admin" || role === "superadmin";
+}
+
+const LOCATIONS_KEY = ["network-locations"] as const;
+const LOCATION_POLICIES_KEY = ["location-policies"] as const;
+
+export function useNetworkLocations() {
+  return useQuery({ queryKey: LOCATIONS_KEY, queryFn: () => apiFetch("/api/v1/network_locations", z.array(networkLocationSchema)) });
+}
+
+export function useLocationPolicies() {
+  return useQuery({ queryKey: LOCATION_POLICIES_KEY, queryFn: () => apiFetch("/api/v1/location_policies", z.array(locationPolicySchema)) });
+}
+
+export function useProfileSummaries() {
+  return useQuery({ queryKey: ["profile-summaries"], queryFn: () => apiFetch("/api/v1/profiles", z.array(profileSummarySchema)) });
+}
+
+export function useSaveNetworkLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ location, editing }: { location: NetworkLocation; editing: boolean }) =>
+      apiFetch(editing ? `/api/v1/network_locations/${encodeURIComponent(location.id)}` : "/api/v1/network_locations", z.unknown(), {
+        method: editing ? "PUT" : "POST", json: location,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY }),
+  });
+}
+
+export function useDeleteNetworkLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/v1/network_locations/${encodeURIComponent(id)}`, z.object({ ok: z.boolean() }), { method: "DELETE" }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY }),
+        queryClient.invalidateQueries({ queryKey: LOCATION_POLICIES_KEY }),
+      ]);
+    },
+  });
+}
+
+export function useSaveLocationPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (mapping: LocationPolicy) => apiFetch("/api/v1/location_policies", z.unknown(), { method: "POST", json: mapping }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: LOCATION_POLICIES_KEY }),
+  });
+}
+
+export function useDeleteLocationPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vdom, location_id }: LocationPolicy) => apiFetch(
+      `/api/v1/location_policies?${new URLSearchParams({ vdom, location_id })}`, z.object({ ok: z.boolean() }), { method: "DELETE" },
+    ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: LOCATION_POLICIES_KEY }),
+  });
 }

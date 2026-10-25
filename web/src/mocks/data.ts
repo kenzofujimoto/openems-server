@@ -1,6 +1,7 @@
 // Deterministic sample data shaped exactly like the openems management API.
 // Endpoints, profiles, rules and audit mirror existing routes; overview and
 // events define the contract for server routes that the roadmap adds next.
+import type { LocationPolicy, NetworkLocation } from "@/lib/schemas";
 
 export interface MockEndpoint {
   devid: string;
@@ -141,3 +142,9 @@ export const categories = {
 };
 
 export const uninstallReleases: Array<{ scope: string; released_at: string; released_by: string }> = [];
+
+export const networkLocations: NetworkLocation[] = [{
+  id: "sp", name: "Escritório SP", cidrs: ["192.168.1.0/24"], gateway_macs: ["00:11:22:33:44:55"],
+  dns_suffixes: ["corp.example"], public_cidrs: [], probe: null,
+}];
+export const locationPolicies: LocationPolicy[] = [{ vdom: "Strict", location_id: "sp", inside_vdom: "Default" }];

@@ -59,6 +59,7 @@ export function EndpointSheet({ endpoint, onClose }: { endpoint: Endpoint | null
                   <Row label="Sistema">{endpoint.os || "—"}</Row>
                   <Row label="Versão do agente">{endpoint.fctver || "—"}</Row>
                   <Row label="Grupo atribuído">{endpoint.effective_vdom}</Row>
+                  <Row label="Local de rede">{endpoint.location_name || endpoint.location || "Fora da rede da empresa"}</Row>
                   <Row label="Política desejada">
                     {endpoint.desired_profile ? (
                       <>

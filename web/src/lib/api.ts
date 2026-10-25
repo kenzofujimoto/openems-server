@@ -18,7 +18,7 @@ export function setCsrfToken(token: string | null): void {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   json?: unknown;
   signal?: AbortSignal;
 }
