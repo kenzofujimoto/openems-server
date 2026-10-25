@@ -87,3 +87,25 @@ def test_a_policy_change_is_not_reported_as_tampering(native, tmp_path):
         finally:
             if agent.poll() is None:
                 stop(agent)
+
+
+def test_watchdog_events_written_while_the_agent_runs_reach_the_server(native, tmp_path):
+    # The scheduled watchdog starts the service and only then could write its event: the service must
+    # pick up pending events on every cycle, not only at start.
+    store = InMemoryEventStore()
+    (tmp_path / "hosts").write_text("127.0.0.1 localhost\n", encoding="utf-8")
+    with live_server(event_store=store) as (_, origin, client):
+        assert client.post("/api/v1/profiles/Default", json={"web_filter": {"blocked": ["example.com"]}}).status_code == 200
+        agent = start(native, origin, tmp_path)
+        try:
+            assert wait_for(lambda: (tmp_path / "state.json").exists(), 20), "agent did not apply the policy"
+            pending = tmp_path / "tamper-pending.json"
+            at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            pending.write_text(
+                '[{"at": "' + at + '", "kind": "service_started_by_watchdog", "detail": "x"}]', encoding="utf-8")
+            if not wait_for(lambda: "service_started_by_watchdog" in kinds(store), 20):
+                raise AssertionError(f"pending watchdog event not uploaded: {kinds(store)}\n" + stop(agent))
+            assert not pending.exists(), "drained events are removed"
+        finally:
+            if agent.poll() is None:
+                stop(agent)
