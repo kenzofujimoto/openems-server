@@ -12,6 +12,7 @@ from agent.uninstall import (
     WINDOW,
     code,
     derive_secret,
+    master_key_from_text,
     normalize,
     release_token,
     verify,
@@ -31,6 +32,16 @@ def test_each_registration_gets_its_own_secret_from_the_master_key():
         derive_secret(b"too short", "client-1")
     with pytest.raises(ValueError):
         derive_secret(MASTER, "")
+
+
+def test_the_master_key_is_the_trimmed_utf8_text_shared_by_server_and_offline_tool():
+    assert master_key_from_text(f"  {MASTER.decode()}\r\n") == MASTER
+    assert master_key_from_text("﻿" + MASTER.decode()) == MASTER, "byte order mark from Notepad"
+    assert master_key_from_text("ç" * 16) == ("ç" * 16).encode("utf-8"), "length counts UTF-8 bytes"
+    for invalid in ("", "   \n", "x" * 31, f"  {'x' * 31}  "):
+        with pytest.raises(ValueError) as error:
+            master_key_from_text(invalid)
+        assert invalid.strip() == "" or invalid.strip() not in str(error.value), "never echo the key"
 
 
 def test_codes_are_ten_unambiguous_symbols_per_counter():
