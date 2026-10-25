@@ -189,7 +189,7 @@ def test_built_msi_hides_the_uninstall_code(tmp_path):
         "function One($sql) { $v = $d.OpenView($sql); $v.Execute(); $r = $v.Fetch(); if ($r) { $r.StringData(1) } };"
         "One \"SELECT Value FROM Property WHERE Property='MsiHiddenProperties'\";"
         "One \"SELECT Type FROM CustomAction WHERE Action='PrepareAgentRemoval'\";"
-        "One \"SELECT FileName FROM File WHERE FileName LIKE '%openems-session.exe'\""
+        "One \"SELECT FileName FROM File WHERE File='SessionExe'\""
     )
     tables = subprocess.run(["powershell", "-NoProfile", "-Command", f"& {{ {query} }} '{package}'"],
                             capture_output=True, text=True, timeout=120, check=False)
