@@ -40,23 +40,36 @@ Branch local: `feature/https-blockpage`. Contrato aprovado em `https-blockpage.m
   - `master_key_from_text` em `agent/uninstall.py` fixa o formato da chave: texto UTF-8, sem BOM, aparado e com no mínimo 32 bytes. **A etapa 3 deve ler `OPENEMS_UNINSTALL_MASTER_KEY` por essa função**, para servidor e ferramenta não divergirem.
   - `--count 20` lista uma janela inteira (o último contador usado é desconhecido offline). Se todos forem recusados, continuar com `--counter 21`.
   - **Mudança no desenho:** o `--devid` foi retirado. O `client_id` é aleatório (`secrets.token_hex(16)`) e sua ligação com o `devid` só existe no banco. Na máquina, o `client_id` está em `C:\ProgramData\openems\state.json`. Na etapa 4, o agente deve mostrá-lo na mensagem que pede o código.
-  - **Risco para as etapas 3 e 4:** `update_client_id` (`app/service.py`) troca o `client_id` e, com ele, o segredo derivado. O servidor precisa reenviar o segredo ao agente nesse caso. Senão, o código gerado com o `client_id` novo não bate com o segredo antigo guardado.
+  - **Risco para as etapas 3 e 4:** `update_client_id` (`app/service.py`) troca o `client_id` e, com ele, o segredo derivado. O servidor precisa reenviar o segredo ao agente nesse caso. Senão, o código gerado com o `client_id` novo não bate com o segredo antigo guardado. (Resolvido no servidor na etapa 3; falta o agente na etapa 4.)
+- **Feito (etapa 3 de 6, testes `947840b` e `b22b945`, implementação `f05421f`):** servidor. Módulo novo `app/uninstall_codes.py`.
+  - **Mudança no desenho 1, entrega única com confirmação.** O `state.json` é legível por Administradores e guarda o `device_token`. Se o segredo fosse entregue sempre, um admin local o buscaria pela API e geraria os próprios códigos.
+    - `POST /fct/api/public/v1/uninstall_secret/` com `{client_id}` → `{"secret": hex}`. Entrega o segredo enquanto o agente não confirma; depois disso, responde 409.
+    - `POST /fct/api/public/v1/uninstall_secret/ack/` com `{client_id, proof}`, em que `proof = delivery_proof(secret)`: HMAC com o rótulo `openems-secret-delivered-v1`, já nos vetores. Prova errada → 403.
+    - Admin: `POST /api/v1/endpoints/uninstall_secret/reset` com `{devid}` reabre a entrega para um agente que perdeu o `uninstall.json` (auditoria `endpoint.uninstall_secret.reset`).
+  - **Mudança no desenho 2, contador numa tabela própria.** A tabela `uninstall_state` (chave `client_id`, migração `004_uninstall.sql`, também em `init_schema`) fica fora de `endpoints`, cujo `upsert` regrava a linha inteira e poderia desfazer um incremento. O incremento é atômico (`INSERT ... ON CONFLICT ... RETURNING`). Um `client_id` novo começa do zero: segredo novo, contador 0 e entrega pendente.
+  - `POST /api/v1/endpoints/uninstall_code` com `{devid}` → `{devid, counter, code}`. Só admin. A auditoria `endpoint.uninstall_code` guarda o contador, nunca o código. Funciona também para máquina revogada.
+  - `GET` e `POST /api/v1/uninstall_release` com `{scope, released}`: `scope` é um grupo ou `*` (frota inteira). Auditoria `uninstall.release` e `uninstall.release.revoke`. Vale pelo **grupo efetivo atual**. Para máquinas cobertas, `config/assigned` ganha `uninstall_release = release_token(secret)`, também quando `unassigned`.
+  - `OPENEMS_UNINSTALL_MASTER_KEY` é opcional (vazio = desligado, e as rotas respondem 503) e é lida por `master_key_from_text`. O `docker-compose.yml` a repassa com `:-`. `deploy/new-env.ps1` gera 64 caracteres, avisa para guardar no cofre e **mantém a chave existente com `-Force`**. Nunca trocar a chave com agentes instalados.
+  - `TAMPER_KINDS` (servidor e schema) inclui `uninstall_code_rejected` e `uninstall_without_secret`. Os rótulos no painel ficam para a etapa 5.
+  - Corrigido também um defeito antigo: `test_concurrent_runners_apply_once` (só roda com `OPENEMS_TEST_DSN`) ainda esperava uma única migração (`1cd8a18`).
+  - Postgres para os testes: contêiner descartável `docker run -d --rm --name openems-uninstall-pg -e POSTGRES_PASSWORD=pw -p 127.0.0.1:55432:5432 postgres:16` e `OPENEMS_TEST_DSN=postgresql://postgres:pw@127.0.0.1:55432/postgres`. O `openems-test-pg` antigo tem senha desconhecida.
+  - Observado: os testes `agent-rs/tests/dns_resolver.rs` falham com WSAEACCES (10013) ao abrir `127.0.0.1:0` logo depois dos testes nativos em Python, e passam sozinhos. Isso já acontecia antes da etapa 3, que não toca em `agent-rs`. O agente instalado no host (PID do serviço) é suspeito. Não investigado.
 - **Próximas etapas, nesta ordem e cada uma com TDD:**
-  - 3: servidor.
-    - `OPENEMS_UNINSTALL_MASTER_KEY` (lida por `master_key_from_text`).
-    - `POST /fct/api/public/v1/uninstall_secret/`, que entrega o segredo ao agente sem um.
-    - Contador por endpoint (migração `004`).
-    - `POST /api/v1/endpoints/uninstall_code` (só admin; auditado sem o código).
-    - `POST /api/v1/uninstall_release` (grupo ou frota; a marca vai na resposta de `config/assigned`).
   - 4: agente.
+    - Rust: `delivery_proof` com paridade nos vetores (a chave `delivery_proof` já está em `contract/uninstall-vectors.json`) e `derive_secret`, para o subcomando abaixo.
+    - Fluxo do segredo: buscar → gravar `uninstall.json` → confirmar → em 409, sem segredo, seguir sem ele (evento `uninstall_without_secret` na remoção). Com `client_id` novo, descartar o segredo antigo e buscar de novo.
+    - Liberação: guardar `uninstall_release` se bater com `release_token(secret)`. Decidir se a perde quando o campo some de uma resposta válida (recomendação: sim, porque a revogação existe no servidor).
+    - **Novo subcomando `openems-agent uninstall-code --master-key-file PATH|- --client-id ID [--counter N] [--count 1..20]`** (decisão do usuário em 2026-10-25): geração offline sem Python no computador do operador, com o mesmo comportamento de `tools/uninstall_code.py`, que continua existindo.
+    - Mostrar o `client_id` na mensagem que pede o código.
     - `uninstall.json` só do SYSTEM, com segredo, client_id, último contador, erros e liberação.
     - `installer-prepare --remove --uninstall-code`, com 5 erros = bloqueio de 1 hora.
-    - Sem segredo, a remoção passa, mas gera o evento `uninstall_without_secret`. Esse tipo precisa entrar na lista fechada do servidor e do painel.
+    - Sem segredo, a remoção passa, mas gera o evento `uninstall_without_secret` (o servidor já aceita esse tipo; falta o rótulo no painel).
     - `uninstall-service` exige o código.
     - Novo `openems-agent cleanup --uninstall-code`, para máquinas cujo MSI foi removido à força.
   - 5: MSI e painel.
     - Propriedade `UNINSTALLCODE` em `MsiHiddenProperties`, repassada só à ação de remoção.
     - Botão "Gerar código de desinstalação" na ficha da máquina, só para admin, com o código exibido uma vez.
+    - Tela de liberação de remoção (grupo ou frota, com revogação), botão "Reabrir entrega do segredo" e rótulos de `uninstall_code_rejected` e `uninstall_without_secret`. A rota `GET /api/v1/uninstall_release` responde 503 sem chave-mestra.
   - 6: aceite em Sandbox.
     - Sem código e com código errado, a remoção falha.
     - Com o código do servidor simulado, remove.
