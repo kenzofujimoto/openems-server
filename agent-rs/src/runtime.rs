@@ -96,6 +96,8 @@ pub struct Runtime {
     /// Protections found altered and restored, uploaded with each synchronization.
     pub tamper: Arc<crate::tamper::TamperLog>,
     tamper_unsupported: std::sync::atomic::AtomicBool,
+    /// Status and notices for the component in each user session (session.json).
+    pub session: crate::session::SessionBoard,
 }
 
 /// What the Windows DNS cache depends on in DNS mode: the policy and which windows are open.
@@ -205,7 +207,6 @@ impl Runtime {
             }
         }
         Ok(Runtime {
-            cfg,
             api,
             inner: Mutex::new(inner),
             log,
@@ -214,6 +215,8 @@ impl Runtime {
             block_log_unsupported: std::sync::atomic::AtomicBool::new(false),
             tamper: Arc::new(crate::tamper::TamperLog::default()),
             tamper_unsupported: std::sync::atomic::AtomicBool::new(false),
+            session: crate::session::SessionBoard::open(&crate::session::path_for(&cfg.state_path)),
+            cfg,
         })
     }
 
@@ -237,6 +240,16 @@ impl Runtime {
             profile: inner.cached.as_ref().map(|assignment| assignment.raw.clone()),
         }
         .save(&self.cfg.state_path)
+    }
+
+    /// The board only informs users: a failed write is logged and retried with the next change.
+    fn publish_session(&self) {
+        if self.cfg.dry_run {
+            return;
+        }
+        if let Err(error) = self.session.publish() {
+            (self.log)(&format!("session notices not written ({})", error.kind()));
+        }
     }
 
     fn stopping(&self) -> Result<()> {
@@ -396,6 +409,8 @@ impl Runtime {
                 inner.failures = 0;
                 inner.next_sync = now + self.cfg.interval as f64;
                 drop(inner);
+                self.session.contact(jiff::Timestamp::now());
+                self.publish_session();
                 if !self.cfg.dry_run {
                     self.sync_categories(client_id.as_deref().unwrap_or_default(), token.as_deref());
                     self.upload_block_log(client_id.as_deref().unwrap_or_default(), token.as_deref());
@@ -514,7 +529,13 @@ impl Runtime {
         let generation = inner.generation;
         match result {
             Ok(enforcement) => {
+                self.session.set_protected(true);
+                for name in &enforcement.killed {
+                    self.session.app_closed(name, now);
+                }
                 inner.pending = Some(Pending { generation, assignment, outcome: Outcome::Applied(enforcement) });
+                drop(inner);
+                self.publish_session();
                 true
             }
             Err(error) => {
@@ -525,6 +546,8 @@ impl Runtime {
                 });
                 inner.last_ack = None;
                 drop(inner);
+                self.session.set_protected(false);
+                self.publish_session();
                 (self.log)(&format!("policy enforcement failed ({})", error.kind()));
                 false
             }
