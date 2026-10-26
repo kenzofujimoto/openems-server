@@ -108,3 +108,25 @@ def test_missing_or_invalid_report_never_counts_as_passed(tmp_path):
     summary = summarize_results([tmp_path / "missing.json", broken])
     assert summary["passed"] is False
     assert set(summary["pending"]) == {"missing.json", "broken.json"}
+
+
+def test_a_malformed_receipt_is_pending_instead_of_crashing_the_summary(tmp_path):
+    sys.path.insert(0, str(ROOT / "tools"))
+    from build_final_acceptance import summarize_results
+
+    report = tmp_path / "applications-result.json"
+    report.write_text(json.dumps({"passed": True, "package_receipt": "wrong-type"}), encoding="utf-8")
+    summary = summarize_results([report], {"source_revision": "current", "packages": {}})
+    assert summary["passed"] is False and summary["pending"] == [report.name]
+
+
+def test_success_from_another_build_never_accepts_the_current_build(tmp_path):
+    sys.path.insert(0, str(ROOT / "tools"))
+    from build_final_acceptance import summarize_results
+
+    report = tmp_path / "session-result.json"
+    report.write_text(json.dumps({"passed": True, "package_receipt": {
+        "source_revision": "old", "packages": {"openems-agent.msi": {"sha256": "old"}},
+    }}), encoding="utf-8")
+    summary = summarize_results([report], {"source_revision": "current", "packages": {}})
+    assert summary["accepted"] == [] and summary["pending"] == [report.name]
