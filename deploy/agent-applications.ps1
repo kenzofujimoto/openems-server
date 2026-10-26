@@ -7,6 +7,7 @@ $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $group = 'openems application control'
 $events = @()
 function Field($Object, [string]$Name, $Default) {
+    if ($null -eq $Object) { return $Default }
     $property = $Object.PSObject.Properties[$Name]
     if ($null -eq $property) { return $Default }
     return $property.Value

@@ -61,14 +61,14 @@ function Inventory {
     $disks = @(Get-CimInstance Win32_DiskDrive -ErrorAction Stop)
     foreach ($node in $all | Where-Object { $_.InstanceId -like 'USB\VID_*' -or $_.InstanceId -like 'USBSTOR\*' -or $_.Class -eq 'DiskDrive' }) {
         $instance = [string]$node.InstanceId
-        $vid = ''; $pid = ''; $serial = ''; $class = 'other'; $letters = @(); $number = $null; $unique = ''; $boot = $false; $system = $false
+        $vid = ''; $productId = ''; $serial = ''; $class = 'other'; $letters = @(); $number = $null; $unique = ''; $boot = $false; $system = $false
         $model = [string]$node.FriendlyName; $manufacturer = [string](Property $instance 'DEVPKEY_Device_Manufacturer')
         if ($node.Class -eq 'Keyboard') { $class = 'keyboard' }
         elseif ($node.Class -eq 'Mouse') { $class = 'mouse' }
         elseif ($node.Class -eq 'HIDClass') { $class = 'hid' }
         $ancestor = $instance
         for ($hop = 0; $hop -lt 8 -and $ancestor; $hop++) {
-            if ($ancestor -match '(?i)USB\\VID_([0-9A-F]{4})&PID_([0-9A-F]{4})') { $vid = $Matches[1].ToLowerInvariant(); $pid = $Matches[2].ToLowerInvariant(); break }
+            if ($ancestor -match '(?i)USB\\VID_([0-9A-F]{4})&PID_([0-9A-F]{4})') { $vid = $Matches[1].ToLowerInvariant(); $productId = $Matches[2].ToLowerInvariant(); break }
             $ancestor = [string](Property $ancestor 'DEVPKEY_Device_Parent')
         }
         if ($instance -like 'USBSTOR\*' -or $node.Class -eq 'DiskDrive') {
@@ -85,7 +85,7 @@ function Inventory {
                 } else { continue }
             }
         }
-        $output += [pscustomobject]@{ instance_id=$instance; vid=$vid; pid=$pid; serial=$serial; class=$class; manufacturer=$manufacturer; product=$model
+        $output += [pscustomobject]@{ instance_id=$instance; vid=$vid; pid=$productId; serial=$serial; class=$class; manufacturer=$manufacturer; product=$model
             drive_letters=@($letters); present=$true; first_seen=''; last_seen=''; disk_number=$number; disk_unique_id=$unique; is_boot=$boot; is_system=$system }
         if ($output.Count -ge 512) { break }
     }
