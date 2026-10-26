@@ -15,9 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY --from=panel /app/panel_dist ./app/panel_dist
-# Shared stdlib policy validation and category files must be identical on server and endpoint.
-COPY agent/policy.py ./agent/policy.py
-COPY agent/categories.py ./agent/categories.py
+# Shared policy, categories and uninstall-code modules must ship together.
+COPY agent ./agent
 COPY tools/update_categories.py ./tools/update_categories.py
 # A new named volume copies this owner, so the daily job can publish as the unprivileged user.
 RUN useradd --system --uid 10001 --no-create-home openems \
