@@ -17,6 +17,35 @@ SCRIPT = ROOT / "deploy/test-controls-sandbox.ps1"
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
+@pytest.mark.parametrize("phase", ["session", "locations"])
+def test_failed_installation_exports_logs_without_copying_configuration(tmp_path, phase):
+    source, destination = tmp_path / "guest", tmp_path / "results"
+    source.mkdir()
+    (source / "install.log").write_text("Return value 3", encoding="utf-8")
+    (source / "agent.json").write_text("private configuration", encoding="utf-8")
+    agent_log = tmp_path / "agent.log"
+    agent_log.write_text("service diagnostic", encoding="utf-8")
+    script = ROOT / f"deploy/test-{phase}-sandbox.ps1"
+    command = r"""
+$ErrorActionPreference='Stop'
+$tokens=$null;$errors=$null
+$tree=[System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$tokens,[ref]$errors)
+$definition=$tree.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Export-Diagnostics'},$true)
+if ($null -eq $definition) { throw 'Missing diagnostic export' }
+& $definition.Body.GetScriptBlock() $args[1] $args[2] $args[3]
+"""
+    result = subprocess.run(["powershell.exe", "-NoProfile", "-Command",
+                             f"& {{ {command} }} '{script}' '{source}' '{destination}' '{agent_log}'"],
+                            capture_output=True, text=True, timeout=60, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    exported = list(destination.glob("**/*.log"))
+    assert {item.name for item in exported} == {"install.log", "agent.log"}
+    assert not list(destination.glob("**/*.json"))
+    text = script.read_text(encoding="utf-8")
+    assert "finally {\n        try { Export-Diagnostics" in text
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
 @pytest.mark.parametrize("kind,unavailable,calls,available", [
     ("USB", True, 0, False), ("Applications", True, 1, False),
     ("Applications", False, 1, True),
@@ -28,22 +57,23 @@ $tokens=$null;$errors=$null
 $tree=[System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$tokens,[ref]$errors)
 $definition=$tree.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-ExecutionBaseline'},$true)
 if ($null -eq $definition) { throw 'Missing execution-capability baseline' }
-$script:calls=0
-function Code-Policies {
-    $script:calls++
-    if ($argsForTest[1] -eq 'True') { throw 'Could not list Code Integrity policies.' }
+$global:ciCalls=0
+$global:ciUnavailable=$args[2] -eq 'True'
+function global:Code-Policies {
+    $global:ciCalls++
+    if ($global:ciUnavailable) { throw 'Could not list Code Integrity policies.' }
     return @('foreign-policy')
 }
 $argsForTest=@($args[1],$args[2])
 $baseline=& $definition.Body.GetScriptBlock() $argsForTest[0]
-@{baseline=$baseline;calls=$script:calls}|ConvertTo-Json -Depth 5 -Compress
+@{baseline=$baseline;calls=$global:ciCalls}|ConvertTo-Json -Depth 5 -Compress
 """
     result = subprocess.run(["powershell.exe", "-NoProfile", "-Command",
                              f"& {{ {command} }} '{SCRIPT}' '{kind}' '{unavailable}'"],
                             capture_output=True, text=True, timeout=60, check=False)
     assert result.returncode == 0, result.stdout + result.stderr
     observed = json.loads(result.stdout)
-    assert observed["calls"] == calls
+    assert observed["calls"] == calls, observed
     assert observed["baseline"]["available"] is available
     assert observed["baseline"]["policies"] == (["foreign-policy"] if available else [])
     if kind == "Applications" and unavailable:
