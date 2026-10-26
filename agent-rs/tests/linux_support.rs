@@ -88,3 +88,10 @@ fn file_transactions_refuse_foreign_files_and_journal_paths() {
     assert!(transaction.replace(&[(other, b"bad".to_vec())]).is_err());
     assert!(!journal.exists());
 }
+
+#[test]
+fn legacy_process_rules_without_owned_linux_configuration_are_a_noop() {
+    let directory = tempfile::tempdir().unwrap();
+    assert!(openems_agent::linux_support::apply_policy(&json!({"app_control":{"blocked":["test-process"]}}), &directory.path().join("state.json")).unwrap().is_empty());
+    assert!(directory.path().read_dir().unwrap().next().is_none());
+}
