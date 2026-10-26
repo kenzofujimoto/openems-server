@@ -61,17 +61,18 @@ register, send posture/telemetry, and be managed by a free server.
   stateless HMAC-signed bearer tokens. A middleware gates every `/api/v1/*` route
   (except `/api/v1/auth/login`) once any admin exists — until then it runs in open
   *setup mode*. The endpoint channel (`/fct/api/*`) keeps its own device auth and
-  is never gated. The console has a sign-in overlay (token in `localStorage`,
-  attached to every call, 401 → re-login). Bootstrap an admin with
+  is never gated. The React panel uses an HttpOnly session cookie and CSRF tokens
+  for writes; credentials are not stored in `localStorage`. Bootstrap an admin with
   `OPENEMS_ADMIN=user:pass`.
 - **Audit log** (`app/audit.py`): every mutating admin action (profile.publish,
   rule.add, rule.remove) is recorded with the acting admin (from the verified
   token), timestamp, target and metadata — `InMemoryAuditLog` or
-  `PostgresAuditLog`. Served at `GET /api/v1/audit` and shown in the console.
+  `PostgresAuditLog`. Served at `GET /api/v1/audit` and shown in the React panel.
 - **Everything persists**: endpoints, profiles, **assignment rules**, **admins**
   and the **audit log** each have an `InMemory*` and a `Postgres*` store/log behind
   one contract test; the queue and replay cache have Redis backends. With a live
-  Postgres + Redis the full suite runs **120 tests, 0 skipped**.
+  Postgres + Redis the full backend contract suite exercises persistent stores.
+  Destructive endpoint acceptance is separate; see [ACCEPTANCE.md](ACCEPTANCE.md).
 - FastAPI HTTP layer exposing:
   - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
     `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
@@ -95,7 +96,7 @@ pragmatic JSON shape.
 Full stack (server + PostgreSQL + Redis) with Docker:
 ```bash
 docker compose up --build
-# console at http://localhost:8013/console/  (admin / changeme)
+# panel at http://localhost:8013/panel/; use the administrator configured in your .env
 ```
 
 Or just the server (in-memory backends, no infra):

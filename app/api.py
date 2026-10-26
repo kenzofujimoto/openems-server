@@ -14,7 +14,6 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 
 from agent.policy import CATEGORIES
 from agent.uninstall import master_key_from_text
@@ -72,7 +71,6 @@ from .uninstall_codes import (
     UninstallStore,
 )
 
-_STATIC_DIR = Path(__file__).parent / 'static'
 _PANEL_DIR = Path(__file__).parent / 'panel_dist'
 _COOKIE = 'openems_session'
 _SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
@@ -706,9 +704,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
 
     @app.get('/')
     def root():
-        # The React panel replaces the legacy console once it has been built.
-        target = '/panel/' if (panel_root / 'index.html').is_file() else '/console/'
-        return RedirectResponse(target, status_code=302)
+        return RedirectResponse('/panel/', status_code=302)
 
     @app.get('/panel', include_in_schema=False)
     def panel_redirect():
@@ -725,7 +721,10 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             raise HTTPException(status_code=404, detail='panel is not built')
         return FileResponse(index, headers={'Cache-Control': 'no-store'})
 
-    app.mount('/console', StaticFiles(directory=_STATIC_DIR, html=True), name='console')
+    @app.get('/console')
+    @app.get('/console/')
+    def old_console():
+        return RedirectResponse('/panel/', status_code=308)
     return app
 
 

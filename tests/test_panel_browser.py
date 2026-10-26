@@ -16,9 +16,8 @@ from tests.test_native_agent import INVITATION
 @pytest.fixture(scope="module")
 def browser():
     assert (Path(__file__).resolve().parents[1] / "app/panel_dist/index.html").is_file(), "Run npm run build in web first"
-    with sync_playwright() as playwright:
-        with playwright.chromium.launch(headless=True) as instance:
-            yield instance
+    with sync_playwright() as playwright, playwright.chromium.launch(headless=True) as instance:
+        yield instance
 
 
 @pytest.fixture

@@ -67,6 +67,15 @@ jobs:
           cache: pip
       - run: python -m pip install -r requirements.txt
       - run: python -m playwright install --with-deps chromium
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the production panel for real API browser contracts
+        run: |
+          npm ci --prefix web --no-audit --no-fund
+          npm run build --prefix web
       - name: Lint
         run: python -m ruff check app agent tools tests
       - name: Build the native agent for the cross-platform contract suite
@@ -141,7 +150,7 @@ jobs:
       - name: Build MSI
         run: |
           dotnet tool install --global wix --version $env:WIX_VERSION
-          wix build agent-rs/installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d AgentExe=agent-rs/target/release/openems-agent.exe -o openems-agent.msi
+          wix build agent-rs/installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d AgentExe=agent-rs/target/release/openems-agent.exe -d SessionExe=agent-rs/target/release/openems-session.exe -o openems-agent.msi
       - name: Contract, service and MSI installation tests
         env:
           OPENEMS_REQUIRE_NATIVE_AGENT: "1"
@@ -156,6 +165,7 @@ jobs:
           path: |
             openems-agent.msi
             agent-rs/target/release/openems-agent.exe
+            agent-rs/target/release/openems-session.exe
 
   coverage:
     needs: [integration, windows-service]
