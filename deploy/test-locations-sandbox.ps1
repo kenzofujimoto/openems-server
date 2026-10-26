@@ -3,6 +3,16 @@ param([string]$OutputDirectory = 'C:\openems-results', [switch]$SystemPhase, [sw
 # Real adapter addresses/gateway MACs drive the installed agent's decision, including offline restart.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+function Export-Diagnostics {
+    param([string]$Source, [string]$Destination, [string]$AgentLog = 'C:\ProgramData\openems\agent.log')
+    $target = Join-Path $Destination ('locations-diagnostics-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))
+    New-Item -ItemType Directory -Path $target -Force | Out-Null
+    Get-ChildItem -LiteralPath $Source -Filter '*.log' -File |
+        Copy-Item -Destination $target -Force
+    if (Test-Path -LiteralPath $AgentLog) {
+        Copy-Item -LiteralPath $AgentLog -Destination (Join-Path $target 'agent.log') -Force
+    }
+}
 $package = 'openems-agent.msi'
 $origin = 'http://127.0.0.1:18016'
 $report = 'locations-result.json'
@@ -67,7 +77,11 @@ if (-not $SystemPhase) {
         Write-Report (Join-Path $OutputDirectory $report) $outcome
         $outcome | ConvertTo-Json -Depth 12 | Write-Output
         if (-not $outcome.passed) { throw ('Locations acceptance failed. Logs remain in ' + $work + '.') }
-    } finally { Unregister-ScheduledTask -TaskName $task -Confirm:$false -ErrorAction Continue }
+    } finally {
+        try { Export-Diagnostics -Source $work -Destination $OutputDirectory }
+        catch { Write-Warning ('Could not export acceptance diagnostics: ' + $_.Exception.Message) }
+        Unregister-ScheduledTask -TaskName $task -Confirm:$false -ErrorAction Continue
+    }
     exit 0
 }
 if ($identity.User.Value -ne 'S-1-5-18') { throw 'SystemPhase requires SYSTEM.' }

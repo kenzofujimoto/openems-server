@@ -4,6 +4,16 @@ param([string]$OutputDirectory = 'C:\openems-results', [switch]$SystemPhase, [sw
 # restarts the Sandbox from inside it and runs the same command again for phase 2.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+function Export-Diagnostics {
+    param([string]$Source, [string]$Destination, [string]$AgentLog = 'C:\ProgramData\openems\agent.log')
+    $target = Join-Path $Destination ('session-diagnostics-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))
+    New-Item -ItemType Directory -Path $target -Force | Out-Null
+    Get-ChildItem -LiteralPath $Source -Filter '*.log' -File |
+        Copy-Item -Destination $target -Force
+    if (Test-Path -LiteralPath $AgentLog) {
+        Copy-Item -LiteralPath $AgentLog -Destination (Join-Path $target 'agent.log') -Force
+    }
+}
 $packages = @('openems-agent.msi', 'openems-agent-next.msi')
 $origin = 'http://127.0.0.1:18015'
 $stateDirectory = 'C:\openems-session'
@@ -80,7 +90,11 @@ if (-not $SystemPhase) {
         if (-not $result.passed) { throw ('Session phase ' + $phase + ' failed; logs remain in ' + $stateDirectory + '.') }
         if ($phase -eq 1) { Write-Output 'Phase 1 passed. Restart the Sandbox now (Start > Power > Restart), then run RUN-SESSION-TEST.cmd again.' }
     }
-    finally { Unregister-ScheduledTask -TaskName $task -Confirm:$false -ErrorAction Continue }
+    finally {
+        try { Export-Diagnostics -Source $stateDirectory -Destination $OutputDirectory }
+        catch { Write-Warning ('Could not export acceptance diagnostics: ' + $_.Exception.Message) }
+        Unregister-ScheduledTask -TaskName $task -Confirm:$false -ErrorAction Continue
+    }
     exit 0
 }
 if ($identity.User.Value -ne 'S-1-5-18') { throw 'SystemPhase requires SYSTEM.' }

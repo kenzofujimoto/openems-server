@@ -294,11 +294,17 @@ function Assert-FirewallPreserved($Before) {
     }
 }
 function Code-Policies {
-    if (-not (Get-Command CiTool.exe -ErrorAction SilentlyContinue)) { return @() }
+    if (-not (Get-Command CiTool.exe -ErrorAction SilentlyContinue)) { throw 'CiTool is unavailable in this guest.' }
     $raw = & CiTool.exe --list-policies -json
     if ($LASTEXITCODE -ne 0) { throw 'Could not list Code Integrity policies.' }
     $listing = $raw | ConvertFrom-Json
     return @($listing.Policies | ForEach-Object PolicyID)
+}
+function Get-ExecutionBaseline {
+    param([string]$ControlKind)
+    if ($ControlKind -ne 'Applications') { return @{ available=$false; policies=@(); reason='Not required for USB acceptance.' } }
+    try { return @{ available=$true; policies=@(Code-Policies); reason='' } }
+    catch { return @{ available=$false; policies=@(); reason=$_.Exception.Message } }
 }
 function New-Fixture([string]$Path) {
     $typeName = 'OpenemsFixture' + [Guid]::NewGuid().ToString('N')
@@ -359,7 +365,11 @@ try {
     Assert-ProductionPackage ([string](Join-Path $work $package))
     $hidBefore = @(Hid-Snapshot)
     $firewallBefore = @(Firewall-Snapshot)
-    $codeBefore = @(Code-Policies)
+    $executionBaseline = Get-ExecutionBaseline $Kind
+    $codeBefore = @($executionBaseline.policies)
+    if ($Kind -eq 'Applications' -and -not $executionBaseline.available) {
+        $result.pending += ('Execution acceptance requires working Code Integrity policy enumeration in a supported disposable VM: ' + $executionBaseline.reason)
+    }
     $hosts = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
     $hostsBefore = Get-Sha256 $hosts
     Write-Json $policyFile $baselinePolicy
@@ -453,7 +463,7 @@ try {
         Wait-Ack (Publish-Body (Empty-Body))
         if ((Invoke-Fixture $fixture $sentinel $url).exit -ne 0) { throw 'Removing network policy did not restore connectivity.' }
         Record-Check 'network policy release restored the selected app connection'
-        if (-not (Get-Command CiTool.exe -ErrorAction SilentlyContinue) -or @(Get-Module -ListAvailable ConfigCI).Count -eq 0) {
+        if (-not $executionBaseline.available -or @(Get-Module -ListAvailable ConfigCI).Count -eq 0) {
             $result.pending += 'This guest has no supported CiTool/ConfigCI. Repeat execution acceptance on a supported disposable Windows 11 VM; network acceptance alone is not WDAC acceptance.'
         } else {
             $body = Empty-Body
@@ -491,12 +501,15 @@ try {
     if ($null -ne (Get-Service openems-agent -ErrorAction SilentlyContinue)) { throw 'Removal left the agent service.' }
     if (@(Get-NetFirewallRule -Group $applicationGroup -ErrorAction SilentlyContinue).Count -gt 0) { throw 'Removal left application firewall rules.' }
     Assert-FirewallPreserved $firewallBefore
-    $codeAfter = @(Code-Policies)
-    if (@($codeBefore | Where-Object { $_ -notin $codeAfter }).Count -gt 0) { throw 'An unrelated Code Integrity policy was removed.' }
-    if (@($codeAfter | Where-Object { $_ -notin $codeBefore }).Count -gt 0) { throw 'A Code Integrity policy remains after removal; reboot-required is pending, not passed.' }
+    if ($executionBaseline.available) {
+        $codeAfter = @(Code-Policies)
+        if (@($codeBefore | Where-Object { $_ -notin $codeAfter }).Count -gt 0) { throw 'An unrelated Code Integrity policy was removed.' }
+        if (@($codeAfter | Where-Object { $_ -notin $codeBefore }).Count -gt 0) { throw 'A Code Integrity policy remains after removal; reboot-required is pending, not passed.' }
+        Record-Check 'Code Integrity policy ownership restored after removal'
+    }
     Assert-HidUnchanged $hidBefore
     if ((Get-Sha256 $hosts) -ne $hostsBefore) { throw 'Removal did not restore hosts.' }
-    Record-Check 'MSI removal restored owned controls and preserved unrelated firewall, Code Integrity, HID and hosts state'
+    Record-Check 'MSI removal restored owned controls and preserved unrelated firewall, HID and hosts state'
     $result.automation_passed=$true
     $result.passed=($result.pending.Count -eq 0 -and -not $result.physical_acceptance_pending)
     $result.status=if ($result.passed) { 'passed' } else { 'manual_required' }
