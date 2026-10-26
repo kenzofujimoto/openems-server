@@ -122,6 +122,27 @@ mod tests {
     }
 
     #[test]
+    fn usb_inventory_reads_product_id_without_overwriting_powershell_pid() {
+        let script = format!(
+            "function Get-PnpDevice {{ [pscustomobject]@{{InstanceId='USB\\VID_0781&PID_5581\\sample';Class='HIDClass';FriendlyName='Fixture'}} }}\nfunction Get-CimInstance {{ @() }}\nfunction Get-PnpDeviceProperty {{ [pscustomobject]@{{Data='Fixture'}} }}\n{USB}"
+        );
+        let script: &'static str = Box::leak(script.into_boxed_str());
+        let result = run(script, &json!({"mode":"inventory"})).unwrap();
+        assert_eq!(result["inventory"][0]["pid"], "5581");
+        assert_eq!(result["inventory"][0]["class"], "hid");
+    }
+
+    #[test]
+    fn application_inventory_tolerates_empty_uninstall_registry_keys() {
+        let script = format!(
+            "function Get-CimInstance {{ @() }}\nfunction Test-Path {{ $true }}\nfunction Get-ChildItem {{ [pscustomobject]@{{PSPath='fixture';PSChildName='empty'}} }}\nfunction Get-ItemProperty {{ $null }}\n{APPLICATIONS}"
+        );
+        let script: &'static str = Box::leak(script.into_boxed_str());
+        let result = run(script, &json!({"mode":"inventory"})).unwrap();
+        assert_eq!(result["inventory"], json!([]));
+    }
+
+    #[test]
     fn usb_script_plan_preserves_hid_and_boot_storage() {
         let result = run(
             USB,
