@@ -95,3 +95,15 @@ def test_control_events_deduplicate_retries_and_expire_old_data_on_read(harness)
     old = {**row, "at": (datetime.now(UTC) - timedelta(days=40)).isoformat()}
     reply = client.post("/fct/api/public/v1/control_events/", json={**payload, "events": [old]}, headers=device).json()
     assert reply == {"accepted": 0, "rejected": 1}
+
+
+def test_control_events_require_a_rule_identity_including_batch_setup(harness):
+    _, client, endpoint, _, management, device, _ = harness
+    row = {"at": datetime.now(UTC).isoformat(), "kind": "app_control_applied", "target": "execution policy"}
+    url = "/fct/api/public/v1/control_events/"
+    payload = {"client_id": endpoint.client_id, "events": [row]}
+    assert client.post(url, json=payload, headers=device).status_code == 422
+    assert client.post(url, json={**payload, "events": [{**row, "rule_id": ""}]}, headers=device).status_code == 422
+    assert client.post(url, json={**payload, "events": [{**row, "rule_id": "execution-policy"}]}, headers=device).status_code == 200
+    overview = client.get("/api/v1/stats/overview", headers=management).json()
+    assert sum(day["apps"] for day in overview["blocks_by_day"]) == 0
