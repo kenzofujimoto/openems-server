@@ -114,6 +114,17 @@ def test_invitation_management_never_recovers_a_token(storage):
     assert not store.consume("test-only-token", "Default")
 
 
+def test_revoked_bootstrap_invitation_cannot_be_reopened_by_server_restart(storage):
+    store = storage["invitations"]
+    expires = datetime.now(UTC) + timedelta(hours=1)
+    store.add("bootstrap-token", "Default", 2, expires)
+    [item] = store.list()
+    assert store.revoke(item["id"])
+    store.add("bootstrap-token", "Default", 2, expires)
+    assert not store.consume("bootstrap-token", "Default")
+    assert store.list() == []
+
+
 def test_profile_compare_and_swap_never_overwrites_a_newer_editor(storage):
     store = storage["profiles"]
     with pytest.raises(ProfilePreconditionError):
