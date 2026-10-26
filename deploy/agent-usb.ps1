@@ -74,6 +74,8 @@ function Inventory {
         if ($instance -like 'USBSTOR\*' -or $node.Class -eq 'DiskDrive') {
             $class = 'storage'; $serial = ($instance -split '\\')[-1] -replace '&\d+$',''
             $disk = @($disks | Where-Object { $_.PNPDeviceID -ieq $instance }) | Select-Object -First 1
+            # Virtual/internal disks can have no Storage API entry in Sandbox. Require USB evidence first.
+            if (-not $vid -and $instance -notlike 'USBSTOR\*' -and ($null -eq $disk -or [string]$disk.InterfaceType -ine 'USB')) { continue }
             if ($null -ne $disk) {
                 $candidate = Get-Disk -Number ([uint32]$disk.Index) -ErrorAction Stop
                 if ($candidate.BusType -eq 'USB') {
