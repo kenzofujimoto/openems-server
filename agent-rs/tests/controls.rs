@@ -2,25 +2,44 @@ use openems_agent::controls::{Backend, ControlEvent, ControlManager, Inventory};
 use openems_agent::error::{AgentError, Result};
 use serde_json::{Value, json};
 use std::path::Path;
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 use std::time::{Duration, Instant};
 
 #[derive(Default)]
-struct Fake { calls: AtomicUsize, reject: bool }
+struct Fake {
+    calls: AtomicUsize,
+    reject: bool,
+}
 impl Backend for Fake {
     fn apply(&self, _: &Value, _: &Path) -> Result<Vec<ControlEvent>> {
         self.calls.fetch_add(1, Ordering::Relaxed);
-        if self.reject { return Err(AgentError::Policy("enforcement unavailable".into())); }
+        if self.reject {
+            return Err(AgentError::Policy("enforcement unavailable".into()));
+        }
         Ok(vec![event("one")])
     }
     fn inventory(&self, _: &Path) -> Result<Inventory> {
         self.calls.fetch_add(1, Ordering::Relaxed);
-        Ok(Inventory { collected_at: "2026-10-25T12:00:00Z".into(), applications: vec![json!({"name":"Example"})], usb_devices: vec![] })
+        Ok(Inventory {
+            collected_at: "2026-10-25T12:00:00Z".into(),
+            applications: vec![json!({"name":"Example"})],
+            usb_devices: vec![],
+        })
     }
-    fn capabilities(&self) -> Vec<String> { vec!["controls:test".into()] }
+    fn capabilities(&self) -> Vec<String> {
+        vec!["controls:test".into()]
+    }
 }
 fn event(target: &str) -> ControlEvent {
-    ControlEvent { at: "2026-10-25T12:00:00Z".into(), kind: "app_block".into(), target: target.into(), rule_id: "rule".into() }
+    ControlEvent {
+        at: "2026-10-25T12:00:00Z".into(),
+        kind: "app_block".into(),
+        target: target.into(),
+        rule_id: "rule".into(),
+    }
 }
 
 #[test]
@@ -81,4 +100,39 @@ fn event_queue_is_bounded_reports_drops_and_does_not_accept_unknown_kinds() {
     let invalid = ControlEvent { kind: "arbitrary".into(), ..event("bad") };
     assert!(manager.record(vec![invalid]).is_err());
     assert_eq!(manager.pending().events.len(), 256);
+}
+
+struct PartialEnforcement;
+
+impl Backend for PartialEnforcement {
+    fn apply(&self, _: &Value, _: &Path) -> openems_agent::controls::ApplyResult {
+        Err(openems_agent::controls::ApplyFailure {
+            error: AgentError::Policy("application control requires a restart".into()),
+            events: vec![ControlEvent { kind: "usb_block".into(), ..event("external storage") }],
+        })
+    }
+
+    fn inventory(&self, _: &Path) -> Result<Inventory> {
+        unreachable!()
+    }
+
+    fn capabilities(&self) -> Vec<String> {
+        Vec::new()
+    }
+}
+
+#[test]
+fn actions_completed_before_another_control_fails_remain_reportable_after_restart() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = directory.path().join("state.json");
+    let backend = Arc::new(PartialEnforcement);
+    let manager = ControlManager::new(&state, backend.clone()).unwrap();
+
+    assert!(manager.apply(&json!({}), false).is_err(), "the full policy must not be acknowledged");
+    assert_eq!(manager.pending().events.len(), 1, "the real USB action must not be lost");
+    drop(manager);
+
+    let restarted = ControlManager::new(&state, backend).unwrap();
+    assert_eq!(restarted.pending().events[0].kind, "usb_block");
+    assert_eq!(restarted.pending().events[0].target, "external storage");
 }
