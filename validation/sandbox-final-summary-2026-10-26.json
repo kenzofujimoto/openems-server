@@ -1,0 +1,13 @@
+{
+  "passed": false,
+  "accepted": [
+    "session-phase1.json",
+    "session-result.json",
+    "locations-result.json"
+  ],
+  "pending": [
+    "usb-result.json",
+    "applications-result.json"
+  ],
+  "failed": []
+}

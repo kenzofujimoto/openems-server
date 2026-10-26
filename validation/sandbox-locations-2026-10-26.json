@@ -12,38 +12,38 @@
                ],
     "durations":  [
                       "/i: 124 s",
-                      "/x: 25 s"
+                      "/x: 24 s"
                   ],
     "transitions":  [
                         {
                             "limit_seconds":  25,
                             "direction":  "inside",
-                            "elapsed_seconds":  17.0271862
+                            "elapsed_seconds":  14.8563636
                         },
                         {
                             "limit_seconds":  25,
                             "direction":  "outside",
-                            "elapsed_seconds":  15.4498573
+                            "elapsed_seconds":  14.9834971
                         }
                     ],
     "signals":  {
-                    "cidr":  "172.28.54.234/20",
+                    "cidr":  "172.28.59.103/20",
                     "gateway_mac":  "00-15-5D-00-0E-00",
                     "gateway":  "172.28.48.1"
                 },
     "error":  null,
     "package_receipt":  {
-                            "checked_at":  "2026-10-26T17:52:01.2567657Z",
+                            "checked_at":  "2026-10-26T18:41:04.0410788Z",
                             "packages":  {
                                              "openems-agent.msi":  {
-                                                                       "sha256":  "f65c9bf6aee9dcee9eaccc5af3d7269e37caddfd0d77ce581ef9ea15d22cbf64",
+                                                                       "sha256":  "fc69cfb8ede407afb5d66970c5fcd06e71fcfbcd53cbc36de1119e8c61739d06",
                                                                        "bytes":  8445952
                                                                    },
                                              "openems-agent-next.msi":  {
-                                                                            "sha256":  "761e82a0ee4df8460fb3e88fdfa6e6e021c57832ebedac637f189623763ebe70",
+                                                                            "sha256":  "ac028a71daf227a36fe9de1ed63909dc47c646c9fddec4b785cf722efbee713a",
                                                                             "bytes":  8445952
                                                                         }
                                          },
-                            "source_revision":  "10745103c1284fa7bbbad5c0433b067f3b39ae72"
+                            "source_revision":  "779b4833bdb94bec8bd056648f717484d5fab5e5"
                         }
 }

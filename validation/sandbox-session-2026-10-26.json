@@ -1,0 +1,27 @@
+﻿{
+    "phase":  2,
+    "passed":  true,
+    "checks":  [
+                   "after reboot the scheduled watchdog restores automatic start, starts the service and reports it",
+                   "after reboot the session component runs in the user session again",
+                   "removal closes the component and deletes its executable"
+               ],
+    "durations":  [
+                      "/x openems-agent-next.msi: 13 s"
+                  ],
+    "error":  null,
+    "package_receipt":  {
+                            "checked_at":  "2026-10-26T18:33:55.2044034Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "fc69cfb8ede407afb5d66970c5fcd06e71fcfbcd53cbc36de1119e8c61739d06",
+                                                                       "bytes":  8445952
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "ac028a71daf227a36fe9de1ed63909dc47c646c9fddec4b785cf722efbee713a",
+                                                                            "bytes":  8445952
+                                                                        }
+                                         },
+                            "source_revision":  "779b4833bdb94bec8bd056648f717484d5fab5e5"
+                        }
+}

@@ -2,6 +2,8 @@
 
 Estado inicial: **pendente**. Testes locais, compilação, inspeção de MSI e geração de pacote não equivalem a um aceite no sistema operacional. A F9 continua fora do escopo. O estado de implementação de cada fase está em `HANDOFF.md`.
 
+Rodada real concluída em **26/10/2026**, com os pacotes/manifestos `779b483`: sessão passou nas duas fases, com reboot real; locais passou 8/8. USB passou nos quatro checks automatizados e aplicativos nos seis checks de inventário/rede/limpeza. Permanecem pendentes o USB físico e o bloqueio antes da execução por WDAC em VM compatível. Ambos retornam `manual_required`, com `automation_passed: true`, sem erros de limpeza. O consolidado e os relatórios finais estão em `validation/`; os pacotes atuais já foram preparados.
+
 ## Preparar uma única versão para todos os testes
 
 No repositório, depois de concluir e commitar o código nativo:
