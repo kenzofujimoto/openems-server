@@ -382,6 +382,152 @@ pub fn normalize_process(value: &str) -> Result<String> {
     Ok(value.to_ascii_lowercase())
 }
 
+fn control_text(value: &Value, maximum: usize) -> Result<&str> {
+    value
+        .as_str()
+        .filter(|text| {
+            !text.is_empty()
+                && text.chars().count() <= maximum
+                && *text == text.trim()
+                && !text.chars().any(|character| character < ' ' || character == '\u{7f}')
+        })
+        .ok_or_else(|| invalid("control selector must be a bounded nonempty string without control characters"))
+}
+
+fn application_path(value: &Value) -> Result<&str> {
+    let path = control_text(value, 2048)?;
+    let bytes = path.as_bytes();
+    let windows =
+        bytes.len() >= 3 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && matches!(bytes[2], b'/' | b'\\');
+    let unix = path.starts_with('/') && !path.starts_with("//");
+    if !(windows || unix)
+        || path.split(['/', '\\']).any(|part| matches!(part, "." | ".."))
+        || path.chars().any(|character| "*?\"<>|%".contains(character))
+    {
+        return Err(invalid("application paths must be absolute, local and exact"));
+    }
+    Ok(path)
+}
+
+fn control_rule_ids(items: &[Value]) -> Result<()> {
+    if items.len() > 256 {
+        return Err(invalid("control rules exceed 256 entries"));
+    }
+    let mut ids = std::collections::HashSet::new();
+    for item in items {
+        let id = item
+            .get("id")
+            .and_then(Value::as_str)
+            .filter(|id| {
+                let bytes = id.as_bytes();
+                !bytes.is_empty()
+                    && bytes.len() <= 64
+                    && bytes[0].is_ascii_alphanumeric()
+                    && bytes.iter().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+            })
+            .ok_or_else(|| invalid("control rule needs a valid id"))?;
+        if !ids.insert(id) {
+            return Err(invalid("control rule ids must be unique"));
+        }
+    }
+    Ok(())
+}
+
+fn validate_usb(settings: &mut Value) -> Result<()> {
+    let settings = settings
+        .as_object_mut()
+        .filter(|settings| settings.keys().all(|key| matches!(key.as_str(), "default_action" | "rules")))
+        .ok_or_else(|| invalid("usb_control must contain only default_action and rules"))?;
+    let action = settings.entry("default_action").or_insert_with(|| Value::String("allow".into()));
+    if !matches!(action.as_str(), Some("allow" | "block" | "read_only")) {
+        return Err(invalid("unknown USB default action"));
+    }
+    let rules = settings
+        .entry("rules")
+        .or_insert_with(|| Value::Array(Vec::new()))
+        .as_array_mut()
+        .ok_or_else(|| invalid("USB rules must be a list"))?;
+    control_rule_ids(rules)?;
+    for rule in rules {
+        let rule = rule.as_object_mut().ok_or_else(|| invalid("USB rule must be an object"))?;
+        let selectors = ["class", "vid", "pid", "serial", "instance_id"];
+        if !selectors.iter().any(|key| rule.contains_key(*key))
+            || rule.keys().any(|key| !selectors.contains(&key.as_str()) && !matches!(key.as_str(), "id" | "action"))
+        {
+            return Err(invalid("USB rule needs a supported device selector"));
+        }
+        if !matches!(rule.get("action").and_then(Value::as_str), Some("allow" | "block" | "read_only")) {
+            return Err(invalid("unknown USB action"));
+        }
+        if rule.get("class").is_some_and(|class| class.as_str() != Some("storage")) {
+            return Err(invalid("USB enforcement is restricted to storage"));
+        }
+        for field in ["vid", "pid"] {
+            if let Some(value) = rule.get_mut(field) {
+                let text = value
+                    .as_str()
+                    .filter(|text| text.len() == 4 && text.bytes().all(|byte| byte.is_ascii_hexdigit()))
+                    .ok_or_else(|| invalid("USB VID and PID must contain four hex digits"))?;
+                *value = Value::String(text.to_ascii_lowercase());
+            }
+        }
+        for field in ["serial", "instance_id"] {
+            if let Some(value) = rule.get(field) {
+                control_text(value, 512)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_app_extensions(settings: &mut Map<String, Value>) -> Result<()> {
+    if let Some(rules) = settings.get_mut("execution_rules") {
+        let rules = rules.as_array_mut().ok_or_else(|| invalid("execution_rules must be a list"))?;
+        control_rule_ids(rules)?;
+        for rule in rules {
+            let rule = rule.as_object_mut().ok_or_else(|| invalid("application rule must be an object"))?;
+            if rule.keys().any(|key| !["id", "kind", "value", "sample_path"].contains(&key.as_str())) {
+                return Err(invalid("unsupported application rule field"));
+            }
+            let value = control_text(rule.get("value").unwrap_or(&Value::Null), 2048)?.to_owned();
+            match rule.get("kind").and_then(Value::as_str) {
+                Some("hash") => {
+                    if value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+                        return Err(invalid("application hash must be a SHA-256 digest"));
+                    }
+                    rule.insert("value".into(), Value::String(value.to_ascii_lowercase()));
+                }
+                Some("name") => {
+                    rule.insert("value".into(), Value::String(normalize_process(&value)?));
+                }
+                Some("path") => {
+                    application_path(&Value::String(value))?;
+                }
+                Some("publisher") => {}
+                _ => return Err(invalid("unknown application rule kind")),
+            }
+            if let Some(path) = rule.get("sample_path") {
+                application_path(path)?;
+            }
+        }
+    }
+    if let Some(paths) = settings.get_mut("network_blocked") {
+        let items = paths
+            .as_array()
+            .filter(|items| items.len() <= 256)
+            .ok_or_else(|| invalid("network_blocked must contain at most 256 application paths"))?;
+        let mut unique = Vec::new();
+        for item in items {
+            application_path(item)?;
+            if !unique.contains(item) {
+                unique.push(item.clone());
+            }
+        }
+        *paths = Value::Array(unique);
+    }
+    Ok(())
+}
+
 /// Validate and normalize a policy body; unknown sections pass through untouched.
 pub fn validate_policy(body: &Value) -> Result<Value> {
     let Some(object) = body.as_object() else {
@@ -422,6 +568,12 @@ pub fn validate_policy(body: &Value) -> Result<Value> {
     }
     if let Some(Value::Object(settings)) = normalized.get_mut("web_filter") {
         validate_web_extensions(settings)?;
+    }
+    if let Some(Value::Object(settings)) = normalized.get_mut("app_control") {
+        validate_app_extensions(settings)?;
+    }
+    if let Some(settings) = normalized.get_mut("usb_control") {
+        validate_usb(settings)?;
     }
     Ok(Value::Object(normalized))
 }
