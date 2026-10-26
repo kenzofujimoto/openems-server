@@ -219,12 +219,10 @@ def test_build_factory_without_backends() -> None:
     assert c.get("/api/v1/endpoints/count").status_code == 401
 
 
-def test_console_html_served(client: TestClient) -> None:
-    resp = client.get("/console/")
-    assert resp.status_code == 200
-    assert "text/html" in resp.headers["content-type"]
-    body = resp.text
-    assert "openems" in body and "Endpoints" in body
+def test_old_console_bookmark_opens_the_react_panel(client: TestClient) -> None:
+    resp = client.get("/console/", follow_redirects=False)
+    assert resp.status_code == 308
+    assert resp.headers["location"] == "/panel/"
 
 
 # --- console: detail / delete rule / list profiles -------------------------
