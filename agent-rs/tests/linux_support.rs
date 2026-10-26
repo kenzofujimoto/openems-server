@@ -122,3 +122,11 @@ fn legacy_process_rules_without_owned_linux_configuration_are_a_noop() {
     );
     assert!(directory.path().read_dir().unwrap().next().is_none());
 }
+
+#[test]
+fn security_backend_settings_reject_conflicting_duplicates_and_honor_comments() {
+    use openems_agent::linux_support::setting_value;
+    assert_eq!(setting_value("# RuleFolder=/bad\nRuleFolder = \"/etc/usbguard/rules.d/\" # managed folder\n", "RuleFolder").unwrap(), Some("/etc/usbguard/rules.d/".into()));
+    assert!(setting_value("integrity = sha256\nintegrity = size\n", "integrity").is_err());
+    assert_eq!(setting_value("RuleFile=/etc/usbguard/custom.conf\n", "RuleFile").unwrap(), Some("/etc/usbguard/custom.conf".into()));
+}
