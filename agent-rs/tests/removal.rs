@@ -32,10 +32,8 @@ fn unreachable(_: &str) -> Fetch {
 
 #[test]
 fn the_file_sits_next_to_the_state_file() {
-    assert_eq!(
-        path_for(&PathBuf::from(r"C:\ProgramData\openems\state.json")),
-        PathBuf::from(r"C:\ProgramData\openems\uninstall.json")
-    );
+    let directory = std::env::temp_dir().join("openems");
+    assert_eq!(path_for(&directory.join("state.json")), directory.join("uninstall.json"));
 }
 
 #[test]

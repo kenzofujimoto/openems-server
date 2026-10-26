@@ -24,8 +24,8 @@ fn notice(id: u64, when: &str) -> Notice {
 #[test]
 fn the_board_sits_next_to_the_state_file() {
     assert_eq!(
-        path_for(&PathBuf::from(r"C:\ProgramData\openems\state.json")),
-        PathBuf::from(r"C:\ProgramData\openems\session.json")
+        path_for(&std::env::temp_dir().join("openems").join("state.json")),
+        std::env::temp_dir().join("openems").join("session.json")
     );
 }
 
