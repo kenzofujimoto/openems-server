@@ -859,4 +859,24 @@ mod tests {
         let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();
         assert_eq!(board.notices.len(), 1);
     }
+
+    struct UnavailableControls;
+    impl crate::controls::Backend for UnavailableControls {
+        fn apply(&self, _: &serde_json::Value, _: &std::path::Path) -> Result<Vec<crate::controls::ControlEvent>> {
+            Err(AgentError::Policy("control requires a reboot".into()))
+        }
+        fn inventory(&self, _: &std::path::Path) -> Result<crate::controls::Inventory> { unreachable!() }
+        fn capabilities(&self) -> Vec<String> { Vec::new() }
+    }
+
+    #[test]
+    fn unavailable_machine_controls_never_ack_success_or_replace_the_web_policy() {
+        let (dir, mut runtime) = network_runtime();
+        runtime.controls = crate::controls::ControlManager::new(&runtime.cfg.state_path, Arc::new(UnavailableControls)).unwrap();
+        assert!(!runtime.enforce_observed(Default::default(), Instant::now()));
+        assert!(matches!(runtime.lock().pending.as_ref().unwrap().outcome, Outcome::Failed(_)));
+        assert!(!std::fs::read_to_string(dir.path().join("hosts")).unwrap().contains("example.org"));
+        let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();
+        assert!(!board.protected);
+    }
 }
