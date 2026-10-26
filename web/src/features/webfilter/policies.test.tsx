@@ -101,4 +101,24 @@ describe("policy editors", () => {
     expect(await screen.findByText(/legacy-pc/)).toHaveTextContent("web-filter:dns");
     expect(screen.getByRole("status")).toHaveTextContent("aguardando confirmação");
   });
+
+  it.each(["apps", "usb"])("allows a viewer to inspect another device on the %s page", async (section) => {
+    backend();
+    const inspected: string[] = [];
+    server.use(
+      http.get("*/api/v1/auth/session", () => HttpResponse.json({ username: "reader", role: "viewer", csrf_token: "reader" })),
+      http.get("*/api/v1/endpoints/inventory", ({ request }) => {
+        const devid = new URL(request.url).searchParams.get("devid") ?? "";
+        inspected.push(devid);
+        return HttpResponse.json({ devid, collected_at: null, applications: [], usb_devices: [] });
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/policies/${section}`);
+    const selection = await screen.findByLabelText("Endpoint do inventário");
+    expect(selection).toBeEnabled();
+    await user.selectOptions(selection, "RSM-SP-002");
+    await waitFor(() => expect(inspected).toContain("RSM-SP-002"));
+    expect(screen.queryByRole("button", { name: "Publicar política" })).toBeNull();
+  });
 });
