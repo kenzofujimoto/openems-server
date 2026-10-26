@@ -59,7 +59,7 @@ def test_a_closed_application_reaches_the_session_board(native, tmp_path):
         try:
             assert wait_for(lambda: board(tmp_path).get("protected") is True, 30), stop(agent)
             victim = subprocess.Popen([str(dummy), "-n", "120", "127.0.0.1"], stdout=subprocess.DEVNULL)
-            closed = lambda: any(APP in notice["text"].lower() for notice in board(tmp_path).get("notices", []))  # noqa: E731
+            closed = lambda: any(APP in notice["text"].lower() for notice in board(tmp_path).get("notices", []))
             if not wait_for(closed, 30):
                 raise AssertionError(f"no notice: {board(tmp_path)}\n" + stop(agent))
             assert victim.wait(timeout=10) is not None, "the application was closed"

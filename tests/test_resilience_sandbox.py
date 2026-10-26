@@ -1,8 +1,9 @@
 """Safe entry-point contracts for service resilience acceptance in Windows Sandbox."""
 import json
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
+
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,7 +12,7 @@ BUILDER = ROOT / 'tools/build-msi-fixtures.ps1'
 pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows harness')
 
 def run(script, *args):
-    return subprocess.run(['powershell.exe', '-NoProfile', '-File', str(script), *args], capture_output=True, text=True, timeout=30)
+    return subprocess.run(['powershell.exe', '-NoProfile', '-File', str(script), *args], capture_output=True, text=True, timeout=30, check=False)
 
 def test_resilience_plan_declares_both_phases():
     result = run(SCRIPT, '-Plan')
@@ -32,7 +33,7 @@ def test_resilience_refuses_host_before_any_writes(tmp_path):
 
 def test_resilience_harness_parses():
     command = '$t=$null;$e=$null;[System.Management.Automation.Language.Parser]::ParseFile($env:HARNESS,[ref]$t,[ref]$e)|Out-Null;if($e.Count){$e|Out-String|Write-Error;exit 1}'
-    result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', command], env={**os.environ, 'HARNESS': str(SCRIPT)}, capture_output=True, text=True, timeout=30)
+    result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', command], env={**os.environ, 'HARNESS': str(SCRIPT)}, capture_output=True, text=True, timeout=30, check=False)
     assert SCRIPT.exists()
     assert result.returncode == 0, result.stderr
 

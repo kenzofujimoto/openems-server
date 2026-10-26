@@ -1,13 +1,12 @@
 """Safety contracts for the disposable Windows trust acceptance harness."""
 
-import os
 import json
-from pathlib import Path
+import os
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
-
 
 SCRIPT = Path(__file__).resolve().parents[1] / "deploy/test-trust-sandbox.ps1"
 

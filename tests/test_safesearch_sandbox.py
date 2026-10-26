@@ -31,7 +31,7 @@ def test_plan_builds_signed_policies_whose_windows_match_now(now):
     result = run('-Plan', '-PlanNow', now)
     assert result.returncode == 0, result.stderr
     plan = json.loads(result.stdout)
-    instant = datetime.fromisoformat(now.replace('Z', '+00:00'))
+    instant = datetime.fromisoformat(now)
     first, second = plan['policies']
     for policy in (first, second):
         # PowerShell builds the canonical JSON itself; Python must agree on the digest.

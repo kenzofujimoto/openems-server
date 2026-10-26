@@ -6,12 +6,12 @@ import hashlib
 import json
 from datetime import UTC, datetime
 
-from app.categories import CategoryRepository, build_categories
 from fastapi.testclient import TestClient
 
 from agent.categories import parse_category_file
 from agent.policy import domain_hash
 from app.api import create_app
+from app.categories import CategoryRepository, build_categories
 from app.service import EmsService
 
 NOW = datetime(2026, 10, 23, 18, 0, tzinfo=UTC)

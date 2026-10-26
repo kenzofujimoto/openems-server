@@ -3,11 +3,10 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 import pytest
-
 
 SCRIPT = Path(__file__).resolve().parents[1] / "deploy/test-https-browser-sandbox.ps1"
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows Sandbox harness")

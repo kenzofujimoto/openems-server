@@ -6,8 +6,8 @@ import hashlib
 from datetime import UTC, datetime
 
 import pytest
-from agent.categories import build_category_file, parse_category_file
 
+from agent.categories import build_category_file, parse_category_file
 from agent.policy import (
     CATEGORIES,
     block_reason,

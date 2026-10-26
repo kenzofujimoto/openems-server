@@ -15,7 +15,14 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
 
-from uninstall import code, delivery_proof, derive_secret, normalize, release_token, verify
+from uninstall import (
+    code,
+    delivery_proof,
+    derive_secret,
+    normalize,
+    release_token,
+    verify,
+)
 
 OUTPUT = ROOT / "contract" / "uninstall-vectors.json"
 # Test-only key: never used outside these vectors.
