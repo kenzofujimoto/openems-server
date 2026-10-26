@@ -2,6 +2,7 @@
 // Endpoints, profiles, rules and audit mirror existing routes; overview and
 // events define the contract for server routes that the roadmap adds next.
 import type { LocationPolicy, NetworkLocation } from "@/lib/schemas";
+import type { AssignmentRule, Profile } from "@/lib/management";
 
 export interface MockEndpoint {
   devid: string;
@@ -115,12 +116,12 @@ export const events = [
     reason: "rule", category: null, category_label: null, count: 1 },
 ];
 
-export const profiles = [
+export const profiles: Profile[] = [
   { vdom: "Default", version: 3, digest: DIGEST_DEFAULT, updated_at: minutesAgo(31), body: { web_filter: { blocked: ["facebook.com", "tiktok.com"] }, app_control: { blocked: ["utorrent.exe"] } } },
   { vdom: "Strict", version: 3, digest: DIGEST_STRICT, updated_at: minutesAgo(31), body: { web_filter: { blocked: ["facebook.com", "tiktok.com", "youtube.com", "instagram.com"] }, app_control: { blocked: ["utorrent.exe", "steam.exe"] } } },
 ];
 
-export const rules = [
+export const rules: AssignmentRule[] = [
   { id: "auditoria-strict", target_vdom: "Strict", priority: 10, enabled: true, conditions: [{ field: "hostname", op: "contains", value: "AUDITORIA" }] },
 ];
 

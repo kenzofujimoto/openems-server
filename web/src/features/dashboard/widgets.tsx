@@ -44,7 +44,7 @@ export function BlocksChart({ overview }: { overview: Overview }) {
             <YAxis tickLine={false} axisLine={false} width={40} tick={{ fill: "#888b8d", fontSize: 12 }} />
             <Tooltip
               cursor={{ fill: "#f6f7f9" }}
-              contentStyle={{ borderRadius: 10, border: "1px solid #e7e9ec", fontSize: 13 }}
+              contentStyle={{ borderRadius: 10, border: "1px solid var(--color-line)", background: "var(--color-surface)", color: "var(--color-ink)", fontSize: 13 }}
               formatter={(value) => formatNumber(Number(value))}
             />
             {SERIES.map((series, index) => (
@@ -67,7 +67,11 @@ export function BlocksChart({ overview }: { overview: Overview }) {
 const EVENT_STYLE: Record<EventKind, { icon: LucideIcon; label: string; tone: string }> = {
   web_block: { icon: Globe, label: "Site bloqueado", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
   app_block: { icon: AppWindow, label: "Aplicativo bloqueado", tone: "bg-[#e9eef2] text-rsm-navy" },
+  app_network_block: { icon: AppWindow, label: "Conexão do aplicativo bloqueada", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
+  app_control_applied: { icon: AppWindow, label: "Política de aplicativos aplicada", tone: "bg-rsm-green-soft text-rsm-green" },
+  app_network_policy: { icon: AppWindow, label: "Regra de rede aplicada", tone: "bg-rsm-green-soft text-rsm-green" },
   usb_block: { icon: Usb, label: "USB bloqueado", tone: "bg-rsm-green-soft text-rsm-green" },
+  usb_read_only: { icon: Usb, label: "USB em somente leitura", tone: "bg-warning-soft text-warning" },
   tamper: { icon: ShieldAlert, label: "Tentativa de adulteração", tone: "bg-warning-soft text-warning" },
   policy_error: { icon: TriangleAlert, label: "Erro de política", tone: "bg-danger-soft text-danger" },
 };
@@ -86,7 +90,7 @@ const TAMPER_DETAIL: Record<string, string> = {
   uninstall_without_secret: "Agente removido sem segredo de desinstalação",
 };
 
-function eventDetail(event: FleetEvent): string {
+export function eventDetail(event: FleetEvent): string {
   const tamper = event.kind === "tamper" && event.reason ? TAMPER_DETAIL[event.reason] : undefined;
   if (tamper) return tamper;
   const count = event.count !== undefined && event.count > 1 ? `${formatNumber(event.count)}×` : null;

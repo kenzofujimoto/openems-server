@@ -21,6 +21,7 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   json?: unknown;
   signal?: AbortSignal;
+  headers?: HeadersInit;
 }
 
 async function errorDetail(response: Response): Promise<string> {
@@ -37,7 +38,8 @@ async function errorDetail(response: Response): Promise<string> {
 
 export async function apiFetch<T>(path: string, schema: z.ZodType<T>, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? "GET";
-  const headers = new Headers({ Accept: "application/json" });
+  const headers = new Headers(options.headers);
+  headers.set("Accept", "application/json");
   if (method !== "GET") {
     if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
     if (options.json !== undefined) headers.set("Content-Type", "application/json");
@@ -58,4 +60,17 @@ export async function apiFetch<T>(path: string, schema: z.ZodType<T>, options: R
   const parsed = schema.safeParse(await response.json().catch(() => undefined));
   if (!parsed.success) throw new ApiError(0, "Unexpected server response");
   return parsed.data;
+}
+
+/** Same-origin authenticated binary download, used for the one-time installer bundle. */
+export async function apiDownload(path: string, filename: string, json: unknown): Promise<void> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
+  let response: Response;
+  try { response = await fetch(path, { method: "POST", headers, credentials: "same-origin", body: JSON.stringify(json) }); }
+  catch { throw new ApiError(0, "Server unreachable"); }
+  if (!response.ok) throw new ApiError(response.status, await errorDetail(response));
+  const url = URL.createObjectURL(await response.blob());
+  try { const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); }
+  finally { URL.revokeObjectURL(url); }
 }

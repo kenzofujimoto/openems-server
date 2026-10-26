@@ -1,6 +1,9 @@
 import { Link } from "@tanstack/react-router";
+import * as Dialog from "@radix-ui/react-dialog";
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Activity, AppWindow, Globe, LayoutDashboard, MapPin, Monitor, ScrollText, Settings, Usb, Users } from "lucide-react";
+import { Activity, AppWindow, Globe, LayoutDashboard, MapPin, Menu, Monitor, ScrollText, Settings, Usb, Users, X } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { summarize } from "@/lib/status";
 import { useEndpoints } from "@/lib/queries";
 
@@ -90,4 +93,9 @@ export function Sidebar() {
       </div>
     </aside>
   );
+}
+
+export function MobileNavigation() {
+  const [open, setOpen] = useState(false);
+  return <Dialog.Root open={open} onOpenChange={setOpen}><Dialog.Trigger asChild><Button size="sm" variant="ghost" className="lg:hidden" aria-label="Abrir navegação"><Menu aria-hidden="true" className="size-5" /></Button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-40 bg-rsm-navy/40" /><Dialog.Content className="fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto border-r border-line bg-surface p-5 shadow-xl"><div className="mb-5 flex items-center justify-between"><Dialog.Title className="font-medium">Navegação</Dialog.Title><Dialog.Close asChild><Button size="sm" variant="ghost" aria-label="Fechar navegação"><X aria-hidden="true" className="size-5" /></Button></Dialog.Close></div><Dialog.Description className="sr-only">Selecione uma seção do painel.</Dialog.Description><nav aria-label="Navegação móvel">{SECTIONS.map((section) => <div key={section.title} className="mb-5"><p className="mb-2 text-xs text-ink-muted">{section.title}</p><ul className="space-y-1">{section.items.map((item) => <li key={item.to}><Link to={item.to} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-canvas"><item.icon aria-hidden="true" className="size-4" />{item.label}</Link></li>)}</ul></div>)}</nav></Dialog.Content></Dialog.Portal></Dialog.Root>;
 }

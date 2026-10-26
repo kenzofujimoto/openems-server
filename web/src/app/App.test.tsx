@@ -185,7 +185,7 @@ describe("block log", () => {
     expect(within(games).getByText("2.104 domínios")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Consumo de banda e lazer" })).toBeInTheDocument();
     expect(screen.getByText(/CC BY-SA 4.0/)).toBeInTheDocument();
-    expect(screen.getByText(/F7/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Domínios bloqueados")).toBeInTheDocument();
   });
 
   it("explains when the server publishes no categories", async () => {
@@ -196,9 +196,9 @@ describe("block log", () => {
 });
 
 describe("navigation", () => {
-  it("marks upcoming modules with their roadmap phase", async () => {
+  it("opens the implemented USB policy editor", async () => {
     renderApp("/policies/usb");
     expect(await screen.findByRole("heading", { name: "Controle de USB" })).toBeInTheDocument();
-    expect(screen.getByText(/F4/)).toBeInTheDocument();
+    expect(await screen.findByLabelText("Ação padrão para armazenamento")).toBeInTheDocument();
   });
 });

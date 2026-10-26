@@ -51,7 +51,7 @@ export const overviewSchema = z.object({
 });
 export type Overview = z.infer<typeof overviewSchema>;
 
-export const eventKindSchema = z.enum(["web_block", "app_block", "usb_block", "tamper", "policy_error"]);
+export const eventKindSchema = z.enum(["web_block", "app_block", "app_network_block", "app_control_applied", "app_network_policy", "usb_block", "usb_read_only", "tamper", "policy_error"]);
 export type EventKind = z.infer<typeof eventKindSchema>;
 
 export const eventSchema = z.object({

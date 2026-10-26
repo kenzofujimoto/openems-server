@@ -8,14 +8,18 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileNavigation, Sidebar } from "@/components/layout/Sidebar";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ErrorNotice } from "@/components/PageHeader";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { EndpointsPage } from "@/features/endpoints/EndpointsPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
-import { PLANNED, PlannedPage, type PlannedModule } from "@/features/placeholder/PlannedPage";
+import { ApplicationsPage, UsbPage } from "@/features/policies/ControlsPages";
+import { EventsPage, AuditPage } from "@/features/management/RecordsPages";
+import { GroupsPage } from "@/features/management/GroupsPage";
+import { SettingsPage } from "@/features/management/SettingsPage";
 import { WebFilterPage } from "@/features/webfilter/WebFilterPage";
 import { useSession } from "@/lib/queries";
 
@@ -36,8 +40,9 @@ function Shell() {
     <div className="flex min-h-screen">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-end border-b border-line bg-surface px-6">
-          <UserMenu session={session.data} />
+        <header className="flex h-16 items-center justify-between border-b border-line bg-surface px-6">
+          <MobileNavigation />
+          <div className="ml-auto flex items-center gap-3"><ThemeToggle /><UserMenu session={session.data} /></div>
         </header>
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-8">
           <Outlet />
@@ -49,19 +54,17 @@ function Shell() {
 
 function buildRouter(history?: RouterHistory) {
   const root = createRootRoute({ component: Shell });
-  const planned = (path: string, module: PlannedModule) =>
-    createRoute({ getParentRoute: () => root, path, component: () => <PlannedPage module={module} /> });
   const tree = root.addChildren([
     createRoute({ getParentRoute: () => root, path: "/", component: DashboardPage }),
     createRoute({ getParentRoute: () => root, path: "/endpoints", component: EndpointsPage }),
-    planned("/events", PLANNED.events),
+    createRoute({ getParentRoute: () => root, path: "/events", component: EventsPage }),
     createRoute({ getParentRoute: () => root, path: "/policies/web", component: WebFilterPage }),
-    planned("/policies/apps", PLANNED.apps),
-    planned("/policies/usb", PLANNED.usb),
+    createRoute({ getParentRoute: () => root, path: "/policies/apps", component: ApplicationsPage }),
+    createRoute({ getParentRoute: () => root, path: "/policies/usb", component: UsbPage }),
     createRoute({ getParentRoute: () => root, path: "/policies/locations", component: LocationsPage }),
-    planned("/groups", PLANNED.groups),
-    planned("/audit", PLANNED.audit),
-    planned("/settings", PLANNED.settings),
+    createRoute({ getParentRoute: () => root, path: "/groups", component: GroupsPage }),
+    createRoute({ getParentRoute: () => root, path: "/audit", component: AuditPage }),
+    createRoute({ getParentRoute: () => root, path: "/settings", component: SettingsPage }),
   ]);
   // Production is served under /panel/; tests drive a memory history at "/".
   return createRouter({ routeTree: tree, history, basepath: history ? "/" : import.meta.env.BASE_URL });

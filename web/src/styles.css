@@ -33,6 +33,23 @@
 }
 
 @layer base {
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --color-canvas: #10171f;
+    --color-surface: #18222d;
+    --color-line: #334251;
+    --color-ink: #eef3f7;
+    --color-ink-soft: #c0ccd7;
+    --color-ink-muted: #9cabb9;
+    --color-rsm-blue-dark: #6fcefa;
+    --color-rsm-blue-soft: #14374a;
+    --color-rsm-green: #90d385;
+    --color-rsm-green-soft: #1b3926;
+    --color-danger: #ffaaaa;
+    --color-danger-soft: #472627;
+    --color-warning: #f3c773;
+    --color-warning-soft: #40351f;
+  }
   html {
     font-family: var(--font-sans);
     color: var(--color-ink);

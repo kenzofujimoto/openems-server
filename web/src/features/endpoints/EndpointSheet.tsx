@@ -7,11 +7,16 @@ import { useIsAdmin } from "@/lib/queries";
 import type { Endpoint } from "@/lib/schemas";
 import { connectionStatus, policyStatus } from "@/lib/status";
 import { UninstallSection } from "./UninstallSection";
+import { EndpointInventory } from "./EndpointInventory";
+import { EndpointActions } from "./EndpointActions";
 
 const CAPABILITY_LABEL: Record<string, string> = {
   "web-filter:categories": "Categorias de sites",
   "web-filter:dns": "DNS local (curingas, SafeSearch e categorias)",
   "web-filter:v2": "Horários e SafeSearch",
+  "usb-control:v1": "Controle de armazenamento USB",
+  "app-control:wdac": "Bloqueio antes da execução",
+  "app-control:network": "Bloqueio de rede por aplicativo",
 };
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -86,6 +91,8 @@ export function EndpointSheet({ endpoint, onClose }: { endpoint: Endpoint | null
                     ) : "Nenhuma"}
                   </Row>
                 </dl>
+                <EndpointInventory key={`inventory:${endpoint.devid}`} devid={endpoint.devid} />
+                {isAdmin ? <EndpointActions key={`access:${endpoint.devid}`} devid={endpoint.devid} /> : null}
                 {/* Keyed by machine: a code shown for one device never carries over to another. */}
                 {isAdmin ? <UninstallSection key={endpoint.devid} devid={endpoint.devid} /> : null}
               </div>
