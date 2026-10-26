@@ -21,6 +21,11 @@ HERE = Path(__file__).resolve().parent
 MACHINES = {62: ("amd64", "x86_64"), 183: ("arm64", "aarch64")}
 
 
+def source(name: str) -> bytes:
+    """Maintainer scripts must have LF even when built from a Windows checkout."""
+    return (HERE / name).read_text(encoding="utf-8").encode("utf-8")
+
+
 def binary(path: Path) -> tuple[bytes, int]:
     data = path.read_bytes()
     if len(data) < 64 or data[:7] != b"\x7fELF\x02\x01\x01":
@@ -36,8 +41,8 @@ def payload(agent: bytes, helper: bytes) -> dict[str, tuple[bytes | None, int]]:
         "etc/openems": (None, 0o700), "var/lib/openems": (None, 0o700),
         "usr/bin/openems-agent": (agent, 0o755),
         "usr/libexec/openems-platform": (helper, 0o755),
-        "usr/lib/systemd/system/openems-agent.service": ((HERE / "openems-agent.service").read_bytes(), 0o644),
-        "usr/share/openems/SUPPORT.md": ((HERE / "SUPPORT.md").read_bytes(), 0o644),
+        "usr/lib/systemd/system/openems-agent.service": (source("openems-agent.service"), 0o644),
+        "usr/share/openems/SUPPORT.md": (source("SUPPORT.md"), 0o644),
     }
 
 
@@ -77,7 +82,7 @@ def deb(version: str, machine: int, agent: bytes, helper: bytes, output: Path) -
                "Maintainer: OpenEMS operators\nSection: admin\nPriority: optional\n"
                "Depends: libc6, systemd, iproute2\nRecommends: usbguard, fapolicyd\n"
                "Description: Native endpoint policy agent with owned Linux integration\n")
-    scripts = {name: ((HERE / name).read_bytes(), 0o755) for name in ("postinst", "prerm", "postrm")}
+    scripts = {name: (source(name), 0o755) for name in ("postinst", "prerm", "postrm")}
     controls = {"control": (control.encode(), 0o644), **scripts}
     target = output / f"openems-agent_{version}_{architecture}.deb"
     target.write_bytes(ar({"debian-binary": b"2.0\n", "control.tar.gz": archive(controls),

@@ -15,6 +15,32 @@ fn invalid(message: &str) -> AgentError {
     AgentError::Policy(message.into())
 }
 
+/// Read one security-backend setting without treating a commented or overridden value as active.
+pub fn setting_value(text: &str, key: &str) -> Result<Option<String>> {
+    let mut selected: Option<String> = None;
+    for line in text.lines() {
+        let line = line.split('#').next().unwrap_or_default().trim();
+        let Some((name, raw)) = line.split_once('=') else { continue };
+        if name.trim() != key {
+            continue;
+        }
+        let raw = raw.trim();
+        let value = if raw.starts_with('"') || raw.starts_with('\'') {
+            let quote = raw.as_bytes()[0] as char;
+            raw.strip_prefix(quote)
+                .and_then(|value| value.strip_suffix(quote))
+                .ok_or_else(|| invalid("unterminated backend setting"))?
+        } else {
+            raw
+        };
+        if value.is_empty() || selected.as_ref().is_some_and(|previous| previous != value) {
+            return Err(invalid("empty or conflicting security-backend setting"));
+        }
+        selected = Some(value.to_owned());
+    }
+    Ok(selected)
+}
+
 pub fn resolv_conf_servers(text: &str) -> Vec<IpAddr> {
     let mut servers = Vec::new();
     for line in text.lines() {
@@ -482,14 +508,18 @@ pub fn apply_policy(body: &Value, state: &Path) -> Result<Vec<String>> {
                 return Err(AgentError::Local("USBGuard must be installed and running".into()));
             }
             let config = std::fs::read_to_string("/etc/usbguard/usbguard-daemon.conf")?;
-            if !config.lines().any(|line| line.trim() == "RuleFolder=/etc/usbguard/rules.d/")
-                && !config.lines().any(|line| line.trim() == "RuleFolder=/etc/usbguard/rules.d")
+            if setting_value(&config, "RuleFolder")?.as_deref().map(|path| path.trim_end_matches('/'))
+                != Some("/etc/usbguard/rules.d")
             {
                 return Err(AgentError::Local("USBGuard must explicitly load /etc/usbguard/rules.d".into()));
             }
-            if let Ok(main) = std::fs::read_to_string("/etc/usbguard/rules.conf")
-                && main.lines().any(|line| !line.trim().is_empty() && !line.trim().starts_with('#'))
-            {
+            let main_path = setting_value(&config, "RuleFile")?.unwrap_or_else(|| "/etc/usbguard/rules.conf".into());
+            let main = match std::fs::read_to_string(main_path) {
+                Ok(text) => text,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+                Err(error) => return Err(error.into()),
+            };
+            if main.lines().any(|line| !line.trim().is_empty() && !line.trim().starts_with('#')) {
                 return Err(AgentError::Local("existing USBGuard main rules have precedence; configure a dedicated managed rule folder before enabling USB control".into()));
             }
             check_precedence(Path::new(USB_RULES))?;
@@ -500,10 +530,8 @@ pub fn apply_policy(body: &Value, state: &Path) -> Result<Vec<String>> {
                 return Err(AgentError::Local("fapolicyd must be installed and running".into()));
             }
             if plan.needs_hash_integrity
-                && !std::fs::read_to_string("/etc/fapolicyd/fapolicyd.conf")?.lines().any(|line| {
-                    line.split('#').next().unwrap_or_default().split_whitespace().collect::<String>()
-                        == "integrity=sha256"
-                })
+                && setting_value(&std::fs::read_to_string("/etc/fapolicyd/fapolicyd.conf")?, "integrity")?.as_deref()
+                    != Some("sha256")
             {
                 return Err(AgentError::Local("SHA-256 execution rules require fapolicyd integrity=sha256".into()));
             }
