@@ -51,4 +51,17 @@ describe("apiFetch", () => {
     server.use(http.get("*/api/v1/offline", () => HttpResponse.error()));
     await expect(apiFetch("/api/v1/offline", okSchema)).rejects.toMatchObject({ status: 0, message: "Server unreachable" });
   });
+
+  it("rejects malformed success JSON and ignores non-string error details", async () => {
+    server.use(
+      http.get("*/api/v1/malformed", () => new HttpResponse("<html>proxy</html>")),
+      http.delete("*/api/v1/no-detail", ({ request }) => {
+        expect(request.headers.get("x-csrf-token")).toBeNull();
+        expect(request.headers.get("content-type")).toBeNull();
+        return HttpResponse.json({ detail: { internal: "private" } }, { status: 500 });
+      }),
+    );
+    await expect(apiFetch("/api/v1/malformed", okSchema)).rejects.toMatchObject({ status: 0, message: "Unexpected server response" });
+    await expect(apiFetch("/api/v1/no-detail", okSchema, { method: "DELETE" })).rejects.toMatchObject({ status: 500, message: "Request failed (500)" });
+  });
 });
