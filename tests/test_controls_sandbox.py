@@ -34,6 +34,8 @@ def test_plan_has_verified_policies_and_never_accepts_unobserved_hardware(kind):
     scenarios = " ".join(plan["scenarios"])
     if kind == "USB":
         assert plan["physical_acceptance_required"] is True
+        assert plan["policies"][1]["body"]["usb_control"]["default_action"] == "block"
+        assert all("usb" not in assignment["body"] for assignment in plan["policies"])
         for topic in ("HID", "offline", "physical", "read-only", "allow", "block"):
             assert topic in scenarios
     else:
