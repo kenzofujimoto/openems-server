@@ -1,0 +1,32 @@
+﻿{
+    "passed":  false,
+    "checks":  [
+
+               ],
+    "durations":  [
+                      "/i: 122 s"
+                  ],
+    "transitions":  [
+
+                    ],
+    "signals":  {
+                    "cidr":  "172.28.53.170/20",
+                    "gateway_mac":  "00-15-5D-00-0E-00",
+                    "gateway":  "172.28.48.1"
+                },
+    "error":  "Unexpected MSI exit code 1603. Log: C:\\openems-locations-502894b8511540989ed3378f5ac564cd\\a7dc584ce88d4c4380430412a524227a.log",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-26T13:03:16.6139114Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "a2629b2becebc51fce6952473f084381b96eb69ad11b2f656349b503d8e1336a",
+                                                                       "bytes":  8237056
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "3d60def2153e4d341bb3070bffeb4b625dc59c1daddf12c5c260469cfbdd7834",
+                                                                            "bytes":  8237056
+                                                                        }
+                                         },
+                            "source_revision":  "872af7785a66014188870660994a2bcfabc4d503"
+                        }
+}

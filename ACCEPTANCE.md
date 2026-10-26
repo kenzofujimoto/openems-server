@@ -29,6 +29,10 @@ CiTool e ConfigCI precisam existir no guest. CiTool vem com Windows 11 22H2 e Wi
 
 Os roteiros gravam evidência parcial a cada etapa. `status: failed`, `cleanup_errors` preenchido, tempo esgotado ou serviço instalado ao final impedem o aceite. Não repita uma rodada no mesmo Sandbox: preserve os JSONs e descarte esse guest.
 
+Sessão e locais agora exportam os logs MSI e `agent.log` automaticamente para subpastas `results/session-diagnostics-*` e `results/locations-diagnostics-*`, inclusive em falha. Depois de terminar o CMD, confirme que a pasta apareceu no projeto antes de descartar o guest. Se aparecer aviso de falha ao exportar, mantenha o Sandbox aberto para recuperar os logs. A primeira rodada retornou MSI 1603; a reprodução com logs identificou DLL de runtime ausente (`vcruntime140.dll`, `0xC0000135`). O build foi corrigido para carregar a configuração de runtime estático também quando iniciado na raiz. Use somente os pacotes reconstruídos após essa correção.
+
+USB não exige enumeração de Code Integrity. No roteiro de aplicativos, enumeração WDAC indisponível deixa execução pendente e permite continuar o teste de rede; não constitui aceite de WDAC nem dispensa a VM suportada.
+
 ## USB físico: VM Windows com passthrough
 
 Uma pasta compartilhada não é um pendrive. A [configuração documentada do Sandbox](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file) não oferece um parâmetro de passthrough de armazenamento USB. Use uma VM Windows descartável com snapshot limpo e o pendrive de teste redirecionado para ela. Conecte somente dispositivos de teste; os dados físicos do pendrive não são revertidos pelo snapshot da VM.
