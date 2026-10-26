@@ -16,6 +16,62 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "deploy/test-controls-sandbox.ps1"
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell shared-folder publication contract")
+@pytest.mark.parametrize("script_name,writer", [
+    ("test-controls-sandbox.ps1", "Write-Json"),
+    ("test-session-sandbox.ps1", "Write-Report"),
+    ("test-locations-sandbox.ps1", "Write-Report"),
+    ("invoke-final-acceptance.ps1", "Write-Report"),
+])
+@pytest.mark.parametrize("shared_folder", [True, False])
+def test_report_updates_support_shared_folder_replace_without_changing_local_atomic_writes(
+    tmp_path, script_name, writer, shared_folder,
+):
+    command = r"""
+$ErrorActionPreference='Stop'
+Set-StrictMode -Version Latest
+$tokens=$null;$errors=$null
+$tree=[System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$tokens,[ref]$errors)
+$writer=$args[1]
+$definition=$tree.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $writer},$true)
+if ($null -eq $definition) { throw 'Missing report writer' }
+# Define only the trusted function AST: never run the Sandbox harness itself on this host.
+. ([scriptblock]::Create($definition.Extent.Text))
+$global:moves=0;$global:copies=0
+$global:shared=$args[3] -eq 'True'
+function Move-Item {
+    param([string]$LiteralPath,[string]$Destination,[switch]$Force)
+    $global:moves++
+    if ($global:shared -and (Test-Path -LiteralPath $Destination)) { throw 'VSMB: Cannot create a file when that file already exists.' }
+    Microsoft.PowerShell.Management\Move-Item @PSBoundParameters
+}
+function Copy-Item {
+    param([string]$LiteralPath,[string]$Destination,[switch]$Force)
+    $global:copies++
+    Microsoft.PowerShell.Management\Copy-Item @PSBoundParameters
+}
+$path=Join-Path $args[2] 'result.json'
+if ($global:shared) {
+    & $writer $path @{version=1} -SharedFolder
+    & $writer $path @{version=2} -SharedFolder
+} else {
+    & $writer $path @{version=1}
+    & $writer $path @{version=2}
+}
+@{moves=$global:moves;copies=$global:copies;report=(Get-Content -LiteralPath $path -Raw|ConvertFrom-Json)}|ConvertTo-Json -Depth 5 -Compress
+"""
+    script = ROOT / "deploy" / script_name
+    result = subprocess.run(["powershell.exe", "-NoProfile", "-Command",
+                             f"& {{ {command} }} '{script}' '{writer}' '{tmp_path}' '{shared_folder}'"],
+                            capture_output=True, text=True, timeout=60, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    observed = json.loads(result.stdout)
+    assert observed["report"] == {"version": 2}
+    assert observed["moves"] == (0 if shared_folder else 2)
+    assert observed["copies"] == (2 if shared_folder else 0)
+    assert {path.name for path in tmp_path.iterdir()} == {"result.json"}
+
+
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
 @pytest.mark.parametrize("phase", ["session", "locations"])
 def test_failed_installation_exports_logs_without_copying_configuration(tmp_path, phase):
