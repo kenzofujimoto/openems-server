@@ -95,7 +95,8 @@ def test_cli_refuses_a_plain_http_url(tmp_path):
 def test_image_and_compose_ship_the_daily_job():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     # app.categories imports agent.categories: the image must ship it or the server cannot start.
-    assert "COPY agent/categories.py ./agent/categories.py" in dockerfile
+    assert ("COPY agent ./agent" in dockerfile
+            or "COPY agent/categories.py ./agent/categories.py" in dockerfile)
     assert "COPY tools/update_categories.py ./tools/update_categories.py" in dockerfile
     assert "chown 10001:10001 /var/lib/openems/categories" in dockerfile
     compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
