@@ -1,0 +1,20 @@
+{
+  "inventory_failure": {
+    "source_revision": "1074510",
+    "usb_collector_exit": 1,
+    "application_collector_exit": 0,
+    "exception": "Get-Disk: No MSFT_Disk objects found with property Number equal to 0",
+    "fix_revision": "2733810",
+    "fix": "Require USB evidence before querying disk storage API; propagate failures for real USB"
+  },
+  "publication_failure": {
+    "source_revision": "2733810",
+    "exception": "Move-Item: cannot create a file when that file already exists",
+    "path": "C:\\openems-results\\usb-result.json",
+    "fix_revision": "779b483",
+    "fix": "Copy shared snapshots; retain atomic move for local guest reports",
+    "real_probe": "pending"
+  },
+  "windows_rust_passed": 205,
+  "harness_contracts_passed": 30
+}
