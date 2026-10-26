@@ -13,8 +13,23 @@ use std::time::Duration;
 
 /// One synchronize-enforce-report cycle. Ok(false) means enforcement failed.
 pub fn run_once(config: AgentConfig, log: Logger) -> Result<bool> {
+    validate_platform_options(&config, std::env::consts::OS)?;
     let runtime = Runtime::new(config, log, Arc::new(StopSignal::default()))?;
     Ok(runtime.cycle(0.0))
+}
+
+/// Reject unavailable machine integrations before creating listeners or changing local state.
+pub fn validate_platform_options(config: &AgentConfig, platform: &str) -> Result<()> {
+    if platform != "windows" && config.anti_bypass {
+        return Err(AgentError::Config("DNS anti-bypass and browser policies currently require Windows".into()));
+    }
+    if platform != "windows" && config.block_page_https {
+        return Err(AgentError::Config("automatic block-page trust currently requires Windows".into()));
+    }
+    if platform == "macos" && config.dns_filter && config.dns_port == 53 {
+        return Err(AgentError::Config("system DNS filtering on macOS requires the Network Extension".into()));
+    }
+    Ok(())
 }
 
 /// Stop and join every listener already started when a later one fails.
@@ -133,7 +148,11 @@ pub fn run(config: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<()
 }
 
 fn run_with(config: AgentConfig, log: Logger, stop: Arc<StopSignal>, as_service: bool) -> Result<()> {
+    validate_platform_options(&config, std::env::consts::OS)?;
     let runtime = Arc::new(Runtime::new(config.clone(), Arc::clone(&log), Arc::clone(&stop))?);
+    if as_service {
+        runtime.enable_inventory();
+    }
     // A marker left by the previous run means it never reached a graceful stop (killed or crashed).
     let marker = config.state_path.with_file_name("running.marker");
     if !config.dry_run {

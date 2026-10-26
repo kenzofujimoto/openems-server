@@ -104,6 +104,9 @@ pub struct Runtime {
     tamper_unsupported: std::sync::atomic::AtomicBool,
     /// Status and notices for the component in each user session (session.json).
     pub session: crate::session::SessionBoard,
+    controls: crate::controls::ControlManager,
+    inventory_unsupported: std::sync::atomic::AtomicBool,
+    control_events_unsupported: std::sync::atomic::AtomicBool,
 }
 
 /// What the Windows DNS cache depends on in DNS mode: the policy and which windows are open.
@@ -182,6 +185,7 @@ pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enfor
 impl Runtime {
     pub fn new(mut cfg: AgentConfig, log: Logger, stop: Arc<StopSignal>) -> Result<Self> {
         cfg.validate()?;
+        let controls = crate::controls::ControlManager::new(&cfg.state_path, Arc::new(crate::controls::Machine))?;
         let mut inner = Inner { device_token: cfg.device_token.clone(), ..Default::default() };
         if let Some(state) = EndpointState::load(&cfg.state_path, &cfg.server, &cfg.devid)? {
             let profile =
@@ -223,12 +227,20 @@ impl Runtime {
             tamper: Arc::new(crate::tamper::TamperLog::default()),
             tamper_unsupported: std::sync::atomic::AtomicBool::new(false),
             session: crate::session::SessionBoard::open(&crate::session::path_for(&cfg.state_path)),
+            controls,
+            inventory_unsupported: std::sync::atomic::AtomicBool::new(false),
+            control_events_unsupported: std::sync::atomic::AtomicBool::new(false),
             cfg,
         })
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(|poison| poison.into_inner())
+    }
+
+    /// The installed service reports inventories; diagnostic foreground runs only do so explicitly.
+    pub fn enable_inventory(&self) {
+        self.controls.enable_inventory();
     }
 
     pub fn client_id(&self) -> Option<String> {
@@ -363,6 +375,62 @@ impl Runtime {
         }
     }
 
+    /// Upload bounded control reports independently of policy ACKs: failed uploads remain local.
+    fn upload_controls(&self, client_id: &str, token: Option<&str>) {
+        use std::sync::atomic::Ordering;
+        if !self.control_events_unsupported.load(Ordering::Relaxed) {
+            let batch = self.controls.pending();
+            if !batch.events.is_empty() || batch.dropped > 0 {
+                let payload =
+                    json!({"client_id":client_id, "events":batch.events, "dropped":batch.dropped.min(1_000_000)});
+                match self.api.post("control_events", &payload, token) {
+                    Ok(_) => {
+                        if let Err(error) = self.controls.acknowledge(&batch) {
+                            (self.log)(&format!(
+                                "control report acknowledgment not saved ({}); retrying",
+                                error.kind()
+                            ));
+                        }
+                    }
+                    Err(AgentError::Status { code: 404 | 405, .. }) => {
+                        self.control_events_unsupported.store(true, Ordering::Relaxed);
+                        (self.log)("server does not support control events; reports remain in the bounded local queue");
+                    }
+                    Err(error) => {
+                        (self.log)(&format!("control event upload failed ({}); kept locally", error.summary()))
+                    }
+                }
+            }
+        }
+        if self.inventory_unsupported.load(Ordering::Relaxed) {
+            return;
+        }
+        let inventory = match self.controls.inventory_due(Instant::now()) {
+            Ok(Some(inventory)) => inventory,
+            Ok(None) => return,
+            Err(error) => {
+                (self.log)(&format!("inventory collection failed ({}); retrying after its interval", error.kind()));
+                return;
+            }
+        };
+        let mut payload = match serde_json::to_value(&inventory) {
+            Ok(payload) => payload,
+            Err(_) => {
+                (self.log)("inventory serialization failed");
+                return;
+            }
+        };
+        payload["client_id"] = json!(client_id);
+        match self.api.post("inventory", &payload, token) {
+            Ok(_) => self.controls.inventory_uploaded(&inventory),
+            Err(AgentError::Status { code: 404 | 405, .. }) => {
+                self.inventory_unsupported.store(true, Ordering::Relaxed);
+                (self.log)("server does not support device inventory");
+            }
+            Err(error) => (self.log)(&format!("inventory upload failed ({}); retrying", error.summary())),
+        }
+    }
+
     /// Register if needed, drain notifications and fetch the assigned policy.
     pub fn synchronize(&self, now: f64) -> bool {
         let (mut client_id, mut token) = {
@@ -415,6 +483,7 @@ impl Runtime {
                     self.sync_categories(client_id.as_deref().unwrap_or_default(), token.as_deref());
                     self.upload_block_log(client_id.as_deref().unwrap_or_default(), token.as_deref());
                     self.upload_tamper(client_id.as_deref().unwrap_or_default(), token.as_deref());
+                    self.upload_controls(client_id.as_deref().unwrap_or_default(), token.as_deref());
                     self.sync_uninstall(
                         client_id.as_deref().unwrap_or_default(),
                         token.as_deref(),
@@ -555,6 +624,18 @@ impl Runtime {
         let result = assignment
             .web_filter()
             .and_then(|rules| {
+                let body = assignment.body.clone().map_or_else(|| json!({}), serde_json::Value::Object);
+                let changed = self.controls.apply(&body, self.cfg.dry_run)?;
+                for event in changed {
+                    let text = match event.kind.as_str() {
+                        "usb_block" => "Armazenamento USB bloqueado pela política da empresa.",
+                        "usb_read_only" => "Armazenamento USB disponível somente para leitura.",
+                        "app_network_policy" => "A política de acesso de aplicativos à rede foi aplicada.",
+                        "app_control_applied" => "A política de execução de aplicativos foi aplicada.",
+                        _ => "Uma ação de proteção de aplicativos foi registrada.",
+                    };
+                    self.session.notice(&event.kind, text.to_owned(), now);
+                }
                 if !self.cfg.dry_run {
                     self.blocked_domains.replace(rules);
                 }
@@ -667,6 +748,11 @@ impl Runtime {
                 if let Some(outside) = self.lock().outside.as_ref() {
                     tags.pop();
                     tags.push(format!("vdom:{}", outside.vdom));
+                }
+                let group = tags.pop();
+                tags.extend(self.controls.capabilities());
+                if let Some(group) = group {
+                    tags.push(group);
                 }
                 self.api.post("host_tags", &json!({ "client_id": client_id, "tags": tags }), token.as_deref())?;
             }
@@ -862,18 +948,28 @@ mod tests {
 
     struct UnavailableControls;
     impl crate::controls::Backend for UnavailableControls {
-        fn apply(&self, _: &serde_json::Value, _: &std::path::Path) -> Result<Vec<crate::controls::ControlEvent>> {
-            Err(AgentError::Policy("control requires a reboot".into()))
+        fn apply(&self, _: &serde_json::Value, _: &std::path::Path) -> crate::controls::ApplyResult {
+            Err(AgentError::Policy("control requires a reboot".into()).into())
         }
-        fn inventory(&self, _: &std::path::Path) -> Result<crate::controls::Inventory> { unreachable!() }
-        fn capabilities(&self) -> Vec<String> { Vec::new() }
+        fn inventory(&self, _: &std::path::Path) -> Result<crate::controls::Inventory> {
+            unreachable!()
+        }
+        fn capabilities(&self) -> Vec<String> {
+            Vec::new()
+        }
     }
 
     #[test]
     fn unavailable_machine_controls_never_ack_success_or_replace_the_web_policy() {
         let (dir, mut runtime) = network_runtime();
-        runtime.controls = crate::controls::ControlManager::new(&runtime.cfg.state_path, Arc::new(UnavailableControls)).unwrap();
-        assert!(!runtime.enforce_observed(Default::default(), Instant::now()));
+        runtime.controls =
+            crate::controls::ControlManager::new(&runtime.cfg.state_path, Arc::new(UnavailableControls)).unwrap();
+        assert!(runtime.blocked_domains.contains("example.org"));
+        assert!(!runtime.enforce_observed(office_observation(), Instant::now()));
+        assert!(
+            runtime.blocked_domains.contains("example.org"),
+            "the failed inside policy must not release the previous DNS block"
+        );
         assert!(matches!(runtime.lock().pending.as_ref().unwrap().outcome, Outcome::Failed(_)));
         assert!(!std::fs::read_to_string(dir.path().join("hosts")).unwrap().contains("example.org"));
         let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();

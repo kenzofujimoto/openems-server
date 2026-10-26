@@ -22,6 +22,18 @@ enum Command {
     RunOnce(RunArgs),
     /// Run in the foreground until interrupted.
     Run(RunArgs),
+    /// Print a read-only snapshot of applications and USB devices.
+    Inventory {
+        #[arg(long)]
+        state_path: Option<PathBuf>,
+    },
+    /// Validate and explain controls using supplied fixtures, without changing the machine.
+    ControlsPlan {
+        #[arg(long)]
+        policy: PathBuf,
+        #[arg(long)]
+        inventory: Option<PathBuf>,
+    },
     /// Remove the managed block from the hosts file.
     CleanupHosts {
         #[arg(long)]
@@ -295,6 +307,36 @@ fn read_master_key(source: &str) -> Result<Vec<u8>> {
 
 fn execute(command: Command) -> Result<ExitCode> {
     match command {
+        Command::Inventory { state_path } => {
+            use openems_agent::controls::Backend;
+            let state = state_path.unwrap_or_else(|| openems_agent::config::data_dir().join("state.json"));
+            let inventory = openems_agent::controls::Machine.inventory(&state)?;
+            println!(
+                "{}",
+                serde_json::to_string(&inventory)
+                    .map_err(|_| AgentError::Local("cannot serialize inventory".into()))?
+            );
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::ControlsPlan { policy, inventory } => {
+            let read = |path: &std::path::Path| -> Result<serde_json::Value> {
+                let metadata = std::fs::metadata(path)?;
+                if metadata.len() > 2 * 1024 * 1024 {
+                    return Err(AgentError::Config("planning input exceeds 2 MiB".into()));
+                }
+                let text = openems_agent::fsutil::read_text_without_bom(path)?;
+                serde_json::from_str(&text).map_err(|_| AgentError::Config("planning input must be valid JSON".into()))
+            };
+            let body = read(&policy)?;
+            let inventory = inventory.as_deref().map(read).transpose()?;
+            let result = openems_agent::controls::plan(&body, inventory.as_ref())?;
+            println!(
+                "{}",
+                serde_json::to_string(&result)
+                    .map_err(|_| AgentError::Local("cannot serialize control plan".into()))?
+            );
+            Ok(ExitCode::SUCCESS)
+        }
         Command::RunOnce(args) => {
             let config = resolve(args)?;
             if config.block_page_https {

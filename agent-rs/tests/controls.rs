@@ -14,10 +14,10 @@ struct Fake {
     reject: bool,
 }
 impl Backend for Fake {
-    fn apply(&self, _: &Value, _: &Path) -> Result<Vec<ControlEvent>> {
+    fn apply(&self, _: &Value, _: &Path) -> openems_agent::controls::ApplyResult {
         self.calls.fetch_add(1, Ordering::Relaxed);
         if self.reject {
-            return Err(AgentError::Policy("enforcement unavailable".into()));
+            return Err(AgentError::Policy("enforcement unavailable".into()).into());
         }
         Ok(vec![event("one")])
     }

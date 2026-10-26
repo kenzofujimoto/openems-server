@@ -407,6 +407,8 @@ pub fn prepare_removal(config_path: &Path, uninstall_code: Option<&str>) -> Resu
 /// Undo what the agent set up on the machine: its HTTPS root, hosts block, NRPT rule, watchdog task,
 /// anti-bypass filters and browser policies.
 fn remove_protections(config: &AgentConfig) -> Result<()> {
+    // Undo owned device/application policies before deleting the binaries that restore them.
+    crate::controls::cleanup(&config.state_path)?;
     // The stopped service already closed them; this covers a component opened by hand.
     #[cfg(windows)]
     crate::session_launcher::stop_components()?;
@@ -596,6 +598,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
     fn external_file_edits_are_detected_before_rollback_mutates_anything() {
         let temporary = tempfile::tempdir().unwrap();
         let path = temporary.path().join("state.json");

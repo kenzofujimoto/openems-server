@@ -159,7 +159,12 @@ fn adapter_dns_servers() -> Result<Vec<SocketAddr>> {
     Err(crate::error::AgentError::Local("adapter list keeps growing; retry later".into()))
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+fn adapter_dns_servers() -> Result<Vec<SocketAddr>> {
+    Ok(crate::linux_support::upstream_servers()?.into_iter().map(|ip| SocketAddr::new(ip, 53)).collect())
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 fn adapter_dns_servers() -> Result<Vec<SocketAddr>> {
     let text = std::fs::read_to_string("/etc/resolv.conf")?;
     let candidates = text
