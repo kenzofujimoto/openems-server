@@ -28,7 +28,7 @@ describe("management pages", () => {
   it("edits assignment rule priority without changing typed conditions and sends CSRF", async () => {
     let saved: unknown;
     let csrf: string | null = null;
-    server.use(http.post("*/api/v1/assignment_rules", async ({ request }) => { saved = await request.json(); csrf = request.headers.get("x-csrf-token"); return HttpResponse.json(saved); }));
+    server.use(http.post("*/api/v1/assignment_rules", async ({ request }) => { saved = await request.json(); csrf = request.headers.get("x-csrf-token"); return HttpResponse.json({ ok: true }); }));
     const user = userEvent.setup();
     renderApp("/groups");
     await user.click(await screen.findByRole("button", { name: "Editar regra auditoria-strict" }));
@@ -41,7 +41,7 @@ describe("management pages", () => {
 
   it("creates an in condition as a list and previews matching endpoints", async () => {
     let saved: unknown;
-    server.use(http.post("*/api/v1/assignment_rules", async ({ request }) => { saved = await request.json(); return HttpResponse.json(saved); }));
+    server.use(http.post("*/api/v1/assignment_rules", async ({ request }) => { saved = await request.json(); return HttpResponse.json({ ok: true }); }));
     const user = userEvent.setup();
     renderApp("/groups");
     await screen.findByRole("button", { name: "Salvar regra" });
@@ -136,5 +136,47 @@ describe("management pages", () => {
     expect(await screen.findByRole("button", { name: "Ativar modo claro" })).toBeInTheDocument();
     localStorage.removeItem("openems-theme");
     document.documentElement.removeAttribute("data-theme");
+  });
+
+  it("distinguishes applied application policies from real block events", async () => {
+    server.use(http.get("*/api/v1/events", () => HttpResponse.json([
+      { id: "setup", at: "2026-10-25T12:00:00Z", devid: "pc", kind: "app_control_applied", detail: "rule-1" },
+      { id: "network", at: "2026-10-25T12:00:00Z", devid: "pc", kind: "app_network_policy", detail: "rule-2" },
+      { id: "readonly", at: "2026-10-25T12:00:00Z", devid: "pc", kind: "usb_read_only", detail: "Test Drive" },
+    ])));
+    renderApp("/events");
+    expect(await screen.findByRole("cell", { name: "Política de aplicativos aplicada" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Regra de rede aplicada" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "USB em somente leitura" })).toBeInTheDocument();
+  });
+
+  it("shows the authenticated device inventories in its detail sheet", async () => {
+    server.use(http.get("*/api/v1/endpoints/inventory", () => HttpResponse.json({ devid: "RSM-SP-001", collected_at: "2026-10-25T12:00:00Z", applications: [{ name: "Inventory App", path: "C:\\Test\\app.exe", sha256: "a".repeat(64), publisher: "Verified publisher", version: "1.0", running: true }], usb_devices: [{ instance_id: "USBSTOR\\INVENTORY", vid: "0781", pid: "1234", manufacturer: "Test", product: "Inventory Drive", serial: "SN1", class: "storage", drive_letters: ["E:"], present: true, first_seen: "2026-10-25T10:00:00Z", last_seen: "2026-10-25T12:00:00Z" }] })));
+    const user = userEvent.setup();
+    renderApp("/endpoints");
+    await user.click(await screen.findByRole("button", { name: "Abrir RSM-SP-001" }));
+    const sheet = await screen.findByRole("dialog", { name: "NB-FINANCEIRO-01" });
+    expect(await within(sheet).findByText("Inventory App")).toBeInTheDocument();
+    expect(within(sheet).getByText("Inventory Drive")).toBeInTheDocument();
+    expect(within(sheet).getByText(/Verified publisher/)).toBeInTheDocument();
+  });
+
+  it("requires confirmation before revoking a device and never stores a rotated credential in queries", async () => {
+    let revoked = false;
+    server.use(
+      http.post("*/api/v1/endpoints/revoke", () => { revoked = true; return HttpResponse.json({ ok: true }); }),
+      http.post("*/api/v1/endpoints/credentials/rotate", () => HttpResponse.json({ device_token: "one-time-device-token" })),
+    );
+    const user = userEvent.setup();
+    const rendered = renderApp("/endpoints");
+    await user.click(await screen.findByRole("button", { name: "Abrir RSM-SP-001" }));
+    await user.click(await screen.findByRole("button", { name: "Trocar credencial do agente" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar troca de credencial" }));
+    expect(await screen.findByText("one-time-device-token")).toBeInTheDocument();
+    expect(JSON.stringify(rendered.queryClient.getQueryCache().getAll().map((query) => query.state.data))).not.toContain("one-time-device-token");
+    await user.click(screen.getByRole("button", { name: "Revogar cadastro" }));
+    expect(revoked).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Confirmar revogação do cadastro" }));
+    await waitFor(() => expect(revoked).toBe(true));
   });
 });
