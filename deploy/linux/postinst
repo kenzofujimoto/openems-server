@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+if [ "$(uname -s)" != Linux ]; then echo 'This package requires Linux.' >&2; exit 1; fi
+install -d -o root -g root -m 0700 /etc/openems /var/lib/openems
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    if [ -f /var/lib/openems/packaging-was-active ] && [ -f /etc/openems/agent.json ]; then
+        systemctl restart openems-agent.service
+        rm -f /var/lib/openems/packaging-was-active
+    fi
+fi
+# Initial installation never starts an unenrolled or unconfigured endpoint.

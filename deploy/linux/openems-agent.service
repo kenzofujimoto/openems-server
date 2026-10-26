@@ -1,0 +1,32 @@
+[Unit]
+Description=OpenEMS endpoint policy agent
+Wants=network-online.target
+After=network-online.target systemd-resolved.service
+ConditionPathExists=/etc/openems/agent.json
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+StateDirectory=openems
+StateDirectoryMode=0700
+ExecStartPre=/usr/libexec/openems-platform dns-prepare --config /etc/openems/agent.json
+ExecStart=/usr/bin/openems-agent run --config /etc/openems/agent.json
+ExecStopPost=/usr/libexec/openems-platform dns-remove --config /etc/openems/agent.json
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# Root must atomically replace /etc/hosts and the owned policy snippets under /etc.
+# USBGuard/fapolicyd and systemd-resolved are reached through their existing privileged services.
+
+[Install]
+WantedBy=multi-user.target

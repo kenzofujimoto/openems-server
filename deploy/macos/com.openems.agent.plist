@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.openems.agent</string>
+  <key>ProgramArguments</key><array><string>/usr/local/libexec/openems-agent</string><string>run</string><string>--config</string><string>/etc/openems/agent.json</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>UserName</key><string>root</string>
+  <key>GroupName</key><string>wheel</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>Umask</key><integer>63</integer>
+  <key>StandardOutPath</key><string>/var/log/openems-agent.log</string>
+  <key>StandardErrorPath</key><string>/var/log/openems-agent.log</string>
+</dict></plist>

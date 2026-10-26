@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+if [ "$(uname -s)" != Linux ]; then echo 'This package requires Linux.' >&2; exit 1; fi
+case "${1:-remove}" in
+    remove|upgrade|deconfigure)
+        if [ -d /run/systemd/system ]; then
+            if systemctl is-active --quiet openems-agent.service; then
+                install -d -o root -g root -m 0700 /var/lib/openems
+                : > /var/lib/openems/packaging-was-active
+            fi
+            systemctl stop openems-agent.service
+        fi
+        if [ -f /etc/openems/agent.json ]; then
+            /usr/libexec/openems-platform dns-remove --config /etc/openems/agent.json
+            /usr/libexec/openems-platform policy-remove --config /etc/openems/agent.json
+            /usr/bin/openems-agent cleanup-hosts --config /etc/openems/agent.json
+        fi
+        ;;
+esac
+# Enrollment and counters remain private on disk for safe upgrades/reinstallation.
