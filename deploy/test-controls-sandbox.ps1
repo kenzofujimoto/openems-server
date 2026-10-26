@@ -102,10 +102,16 @@ if (Test-Path -LiteralPath $inputManifestPath) {
         if ($null -eq $entry -or -not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Sha256 $path) -ne $entry.Value.sha256) { throw ('Current acceptance input is missing or modified: ' + $name) }
     }
 }
-function Write-Json([string]$Path, $Value) {
+function Write-Json([string]$Path, $Value, [switch]$SharedFolder) {
     $temporary = $Path + '.tmp'
-    $Value | ConvertTo-Json -Depth 24 | Set-Content -LiteralPath $temporary -Encoding UTF8
-    Move-Item -LiteralPath $temporary -Destination $Path -Force
+    try {
+        $Value | ConvertTo-Json -Depth 24 | Set-Content -LiteralPath $temporary -Encoding UTF8
+        # VSMB shared folders cannot atomically replace an existing destination with Move-Item.
+        if ($SharedFolder) { Copy-Item -LiteralPath $temporary -Destination $Path -Force }
+        else { Move-Item -LiteralPath $temporary -Destination $Path -Force }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
 }
 if (-not $SystemPhase) {
     try { [IO.File]::Open(('C:\openems-' + $Kind.ToLowerInvariant() + '-acceptance.lock'), 'CreateNew', 'Write', 'None').Dispose() }
@@ -139,7 +145,7 @@ if (-not $SystemPhase) {
                 try { $outcome = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json } catch { }
             }
             if ($null -ne $outcome) {
-                Write-Json (Join-Path $OutputDirectory $reportName) $outcome
+                Write-Json (Join-Path $OutputDirectory $reportName) $outcome -SharedFolder
                 if (@($outcome.checks).Count -gt $printed) {
                     $outcome.checks | Select-Object -Skip $printed | ForEach-Object { Write-Host ($_.status + ': ' + $_.name) }
                     $printed = @($outcome.checks).Count

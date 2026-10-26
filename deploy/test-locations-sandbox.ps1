@@ -44,10 +44,16 @@ if (-not (Test-Path -LiteralPath 'C:\Users\WDAGUtilityAccount') -or $null -eq $e
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Sandbox acceptance requires Administrator rights.' }
-function Write-Report([string]$Path, $Value) {
+function Write-Report([string]$Path, $Value, [switch]$SharedFolder) {
     $temporary = $Path + '.tmp'
-    $Value | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $temporary -Encoding UTF8
-    Move-Item -LiteralPath $temporary -Destination $Path -Force
+    try {
+        $Value | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $temporary -Encoding UTF8
+        # VSMB shared folders cannot atomically replace an existing destination with Move-Item.
+        if ($SharedFolder) { Copy-Item -LiteralPath $temporary -Destination $Path -Force }
+        else { Move-Item -LiteralPath $temporary -Destination $Path -Force }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
 }
 if (-not $SystemPhase) {
     try { [IO.File]::Open('C:\openems-locations-acceptance.lock', 'CreateNew', 'Write', 'None').Dispose() }
@@ -74,7 +80,7 @@ if (-not $SystemPhase) {
             Start-Sleep -Milliseconds 500
         }
         $outcome = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
-        Write-Report (Join-Path $OutputDirectory $report) $outcome
+        Write-Report (Join-Path $OutputDirectory $report) $outcome -SharedFolder
         $outcome | ConvertTo-Json -Depth 12 | Write-Output
         if (-not $outcome.passed) { throw ('Locations acceptance failed. Logs remain in ' + $work + '.') }
     } finally {

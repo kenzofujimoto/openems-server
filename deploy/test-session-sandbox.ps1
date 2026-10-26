@@ -46,10 +46,16 @@ if (-not (Test-Path -LiteralPath 'C:\Users\WDAGUtilityAccount') -or $null -eq $e
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Sandbox acceptance requires Administrator rights.' }
-function Write-Report([string]$Path, $Value) {
+function Write-Report([string]$Path, $Value, [switch]$SharedFolder) {
     $temporary = $Path + '.tmp'
-    $Value | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $temporary -Encoding UTF8
-    Move-Item -LiteralPath $temporary -Destination $Path -Force
+    try {
+        $Value | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $temporary -Encoding UTF8
+        # VSMB shared folders cannot atomically replace an existing destination with Move-Item.
+        if ($SharedFolder) { Copy-Item -LiteralPath $temporary -Destination $Path -Force }
+        else { Move-Item -LiteralPath $temporary -Destination $Path -Force }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
 }
 $bootTime = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime()
 $marker = Join-Path $stateDirectory 'phase1.json'
@@ -85,7 +91,7 @@ if (-not $SystemPhase) {
             Start-Sleep -Milliseconds 500
         }
         $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
-        Write-Report (Join-Path $OutputDirectory $reportName) $result
+        Write-Report (Join-Path $OutputDirectory $reportName) $result -SharedFolder
         $result | ConvertTo-Json -Depth 8 | Write-Output
         if (-not $result.passed) { throw ('Session phase ' + $phase + ' failed; logs remain in ' + $stateDirectory + '.') }
         if ($phase -eq 1) { Write-Output 'Phase 1 passed. Restart the Sandbox now (Start > Power > Restart), then run RUN-SESSION-TEST.cmd again.' }

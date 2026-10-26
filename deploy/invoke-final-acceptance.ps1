@@ -15,6 +15,17 @@ function Get-Sha256([string]$Path) {
     try { return -join ($hash.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) }
     finally { $stream.Dispose(); $hash.Dispose() }
 }
+function Write-Report([string]$Path, $Value, [switch]$SharedFolder) {
+    $temporary = $Path + '.receipt.tmp'
+    try {
+        $Value | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $temporary -Encoding UTF8
+        # Receipt publication also targets VSMB and must support an existing report.
+        if ($SharedFolder) { Copy-Item -LiteralPath $temporary -Destination $Path -Force }
+        else { Move-Item -LiteralPath $temporary -Destination $Path -Force }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
+}
 foreach ($file in $manifest.files.PSObject.Properties) {
     if ([IO.Path]::GetFileName($file.Name) -ne $file.Name) { throw 'Manifest paths must be plain file names.' }
     $path = Join-Path $PSScriptRoot $file.Name
@@ -46,8 +57,6 @@ foreach ($report in $reports) {
     $value = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
     $receipt = @{ source_revision=$manifest.source_revision; packages=$manifest.packages; checked_at=[DateTime]::UtcNow.ToString('o') }
     $value | Add-Member -MemberType NoteProperty -Name package_receipt -Value $receipt -Force
-    $temporary = $path + '.receipt.tmp'
-    $value | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $temporary -Encoding UTF8
-    Move-Item -LiteralPath $temporary -Destination $path -Force
+    Write-Report $path $value -SharedFolder
 }
 exit $resultCode
