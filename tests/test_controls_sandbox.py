@@ -132,6 +132,27 @@ def test_success_from_another_build_never_accepts_the_current_build(tmp_path):
     assert summary["accepted"] == [] and summary["pending"] == [report.name]
 
 
+@pytest.mark.parametrize("extra", [{"cleanup_errors": ["rule remained"]}, {"error": "failed"}, {"status": "failed"}])
+def test_a_success_flag_cannot_hide_failure_or_incomplete_cleanup(tmp_path, extra):
+    sys.path.insert(0, str(ROOT / "tools"))
+    from build_final_acceptance import summarize_results
+
+    report = tmp_path / "applications-result.json"
+    report.write_text(json.dumps({"passed": True, **extra}), encoding="utf-8")
+    summary = summarize_results([report])
+    assert summary["passed"] is False and summary["failed"] == [report.name]
+
+
+def test_usb_success_requires_an_explicit_completed_physical_acceptance(tmp_path):
+    sys.path.insert(0, str(ROOT / "tools"))
+    from build_final_acceptance import summarize_results
+
+    report = tmp_path / "usb-result.json"
+    report.write_text(json.dumps({"passed": True, "automation_passed": True}), encoding="utf-8")
+    summary = summarize_results([report])
+    assert summary["passed"] is False and summary["pending"] == [report.name]
+
+
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell manifest verification")
 def test_wrapper_verifies_bytes_without_executing_the_harness_and_refuses_tampering(tmp_path):
     import hashlib
