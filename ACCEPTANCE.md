@@ -29,6 +29,15 @@ CiTool e ConfigCI precisam existir no guest. CiTool vem com Windows 11 22H2 e Wi
 
 Os roteiros gravam evidência parcial a cada etapa. `status: failed`, `cleanup_errors` preenchido, tempo esgotado ou serviço instalado ao final impedem o aceite. Não repita uma rodada no mesmo Sandbox: preserve os JSONs e descarte esse guest.
 
+Para repetir aplicativos em uma VM Windows descartável com CiTool funcionando, copie `applications-input` para `C:\openems-input` dentro da VM. Em PowerShell elevado, crie a mesma atestação de VM usada pelo roteiro USB e execute diretamente o roteiro de controles (o launcher de Sandbox não se aplica à VM):
+
+```powershell
+Set-Content -LiteralPath C:\openems-disposable-vm.txt -Value 'OPENEMS DISPOSABLE USB ACCEPTANCE' -Encoding ASCII
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\openems-input\test-controls-sandbox.ps1 -Kind Applications -DisposableVm -OutputDirectory C:\openems-results
+```
+
+A atestação é compartilhada pelos dois roteiros; aplicativos não exige pendrive. O teste ainda verifica modelo virtual e hipervisor. Preserve `applications-result.json` e confirme limpeza antes de descartar o guest.
+
 Sessão e locais agora exportam os logs MSI e `agent.log` automaticamente para subpastas `results/session-diagnostics-*` e `results/locations-diagnostics-*`, inclusive em falha. Depois de terminar o CMD, confirme que a pasta apareceu no projeto antes de descartar o guest. Se aparecer aviso de falha ao exportar, mantenha o Sandbox aberto para recuperar os logs. A primeira rodada retornou MSI 1603; a reprodução com logs identificou DLL de runtime ausente (`vcruntime140.dll`, `0xC0000135`). O build foi corrigido para carregar a configuração de runtime estático também quando iniciado na raiz. Use somente os pacotes reconstruídos após essa correção.
 
 USB não exige enumeração de Code Integrity. No roteiro de aplicativos, enumeração WDAC indisponível deixa execução pendente e permite continuar o teste de rede; não constitui aceite de WDAC nem dispensa a VM suportada.

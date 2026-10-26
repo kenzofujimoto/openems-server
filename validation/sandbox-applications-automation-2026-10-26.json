@@ -1,0 +1,63 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  false,
+    "automation_passed":  true,
+    "physical_acceptance_pending":  false,
+    "status":  "manual_required",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-26T18:22:00.5058148Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "the application inventory includes the running fixture with its path and SHA-256",
+                       "at":  "2026-10-26T18:22:00.5214994Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "both independent fixture paths start and reach the external network before policy",
+                       "at":  "2026-10-26T18:22:03.1598329Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network block kept the selected app runnable while its connection failed and the control copy connected",
+                       "at":  "2026-10-26T18:22:32.7613669Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network policy release restored the selected app connection",
+                       "at":  "2026-10-26T18:22:51.8193819Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "MSI removal restored owned controls and preserved unrelated firewall, HID and hosts state",
+                       "at":  "2026-10-26T18:23:25.1583766Z"
+                   }
+               ],
+    "pending":  [
+                    "Execution acceptance requires working Code Integrity policy enumeration in a supported disposable VM: Could not list Code Integrity policies.",
+                    "This guest has no supported CiTool/ConfigCI. Repeat execution acceptance on a supported disposable Windows 11 VM; network acceptance alone is not WDAC acceptance."
+                ],
+    "error":  null,
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-26T18:19:35.5495619Z",
+    "finished_utc":  "2026-10-26T18:23:25.3644656Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-26T18:23:27.2944329Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "fc69cfb8ede407afb5d66970c5fcd06e71fcfbcd53cbc36de1119e8c61739d06",
+                                                                       "bytes":  8445952
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "ac028a71daf227a36fe9de1ed63909dc47c646c9fddec4b785cf722efbee713a",
+                                                                            "bytes":  8445952
+                                                                        }
+                                         },
+                            "source_revision":  "779b4833bdb94bec8bd056648f717484d5fab5e5"
+                        }
+}

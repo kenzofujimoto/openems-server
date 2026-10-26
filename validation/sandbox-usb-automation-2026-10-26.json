@@ -1,0 +1,52 @@
+﻿{
+    "kind":  "Usb",
+    "passed":  false,
+    "automation_passed":  true,
+    "physical_acceptance_pending":  true,
+    "status":  "manual_required",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-26T18:16:08.2781571Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "storage block applied without disabling healthy keyboard, mouse or HID devices",
+                       "at":  "2026-10-26T18:16:24.7129757Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "offline restart retained the storage policy and healthy HID devices",
+                       "at":  "2026-10-26T18:16:48.6474339Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "MSI removal restored owned controls and preserved unrelated firewall, HID and hosts state",
+                       "at":  "2026-10-26T18:17:50.3462420Z"
+                   }
+               ],
+    "pending":  [
+                    "Physical USB allow/block/read-only and device replug require an attested disposable Windows VM with USB passthrough. Shared folders are not USB evidence."
+                ],
+    "error":  null,
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-26T18:13:36.6004918Z",
+    "finished_utc":  "2026-10-26T18:17:50.6109885Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-26T18:17:53.1732567Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "fc69cfb8ede407afb5d66970c5fcd06e71fcfbcd53cbc36de1119e8c61739d06",
+                                                                       "bytes":  8445952
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "ac028a71daf227a36fe9de1ed63909dc47c646c9fddec4b785cf722efbee713a",
+                                                                            "bytes":  8445952
+                                                                        }
+                                         },
+                            "source_revision":  "779b4833bdb94bec8bd056648f717484d5fab5e5"
+                        }
+}

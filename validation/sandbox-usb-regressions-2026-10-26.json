@@ -13,8 +13,20 @@
     "path": "C:\\openems-results\\usb-result.json",
     "fix_revision": "779b483",
     "fix": "Copy shared snapshots; retain atomic move for local guest reports",
-    "real_probe": "pending"
+    "real_probe": "passed in Windows Sandbox VSMB"
   },
   "windows_rust_passed": 205,
-  "harness_contracts_passed": 30
+  "harness_contracts_passed": 30,
+  "usb_automation": {
+    "checks_passed": 4,
+    "cleanup_errors": [],
+    "physical_acceptance_pending": true,
+    "source_revision": "779b4833bdb94bec8bd056648f717484d5fab5e5"
+  },
+  "ci_tool_guest": {
+    "operation_result": -2147009597,
+    "hex": "0x80073BC3",
+    "message": "The requested system device cannot be found",
+    "wdac_acceptance": "pending supported Windows VM"
+  }
 }
