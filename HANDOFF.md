@@ -1,8 +1,34 @@
 # Handoff — roadmap v2
 
+## Estado da continuação final — 2026-10-26
+
+Branch local: `feature/desktop-roadmap`, empilhada sobre a F6. Escopo autorizado até F8; F9 excluída. Nenhum push, PR ou execução de CI nesta continuação. Os registros anteriores abaixo são históricos; o roteiro atual é `ACCEPTANCE.md`.
+
+| Fase | Implementação atual | Aceite restante |
+|---|---|---|
+| F4 USB | Contrato Python/Rust; inventário de armazenamento Windows; regras ordenadas com seletores combinados, exceções e allow/block/read_only; proteção de HID e disco de sistema; journal de alterações próprias e reversão. | `usb.wsb` e VM Windows com pendrive físico redirecionado. Sandbox sem hardware não dá aceite físico. |
+| F3 aplicativos | Inventário de apps/processos; encerramento legado; WDAC por amostra local verificada/hash/editor/caminho/nome original e firewall por executável; journal e limpeza próprios. Falha de capacidade/reboot pendente não recebe ACK de sucesso. | `applications.wsb` ou VM compatível: recusa antes da execução, cópia renomeada, editor exclusivo, rede bloqueada sem impedir abertura, liberação e limpeza. |
+| F7 painel/servidor | React substitui o console antigo; políticas completas, inventários, grupos/regras, auditoria/eventos, convites, administradores e instaladores/configuração. CSRF, perfis por função, If-Match e preservação de seções. Persistência PostgreSQL, migrações 006/007 e revogação durável de convite bootstrap. | Homologação com agentes reais e revisão visual/teclado. O console antigo redireciona para `/panel/`. |
+| F8 Linux | Agente/helper compilados como ELF Linux; integração systemd/resolved com restauração, USBGuard allow/block e fapolicyd por caminho/hash. DEB gerado; recursos não suportados são recusados explicitamente. | VM Linux com systemd, USB passthrough e fapolicyd; instalação, reboot, offline, bloqueio e remoção. Build em contêiner não comprova enforcement. |
+| F8 macOS | Fontes de compatibilidade launchd e empacotamento assinado; pré-requisitos em `deploy/macos/SUPPORT.md`. | **Incompleta:** Network Extension e Endpoint Security precisam de implementação nativa, entitlements, assinatura/notarização e Mac para validação. Não marcar F8 integralmente concluída. |
+
+O runtime aplica controles antes de confirmar a política, preserva eventos offline em fila limitada, envia inventário autenticado e distingue instalação de política de tentativa de bloqueio real. Restrições Windows de CA/antiburla não são anunciadas como implementadas nas outras plataformas.
+
+Validação do painel final: **97 testes**, cobertura statements 91,27%, branches 83,47%, functions 88,31%, lines 95,09%; lint, tipos e build aprovados. **Cinco testes de navegador contra o bundle de produção e API real aprovados**, incluindo login cookie/CSRF, políticas, regras, XSS, leitor, mobile/teclado e tema. Build mantém aviso de bundle maior que 500 kB.
+
+Validação final do servidor/agente: **891 Python aprovados, cinco deselecionados** (`-m 'not windows_only'`, PostgreSQL/Redis descartáveis e agente release obrigatório), **202 Rust Windows** e **189 Rust Linux** aprovados. Ruff, fmt, clippy Windows com `-D warnings` e builds release passaram. O build Linux mantém dois avisos de código específico Windows não usado. A imagem Docker de produção foi compilada e iniciou com PostgreSQL/Redis descartáveis; painel, redirecionamento do console, login com cookie seguro e API autenticada funcionaram. Não houve execução de MSI/WDAC/USB/firewall/DNS de produção no host.
+
+As falhas encontradas e corrigidas na rodada completa foram: `$pid` colidindo com `$PID` no inventário USB, chave de registro Uninstall vazia retornando `$null`, expectativa antiga de cópia parcial do pacote Python no Dockerfile e asserção ambígua de conexão TCP após fechar o DNS no Linux. Os contratos novos reproduziram os erros antes da correção. A falha transitória de sessão foi repetida isoladamente e na suíte completa final, ambas aprovadas.
+
+Artefatos locais: `.venv/sandbox-acceptance/` contém os quatro perfis finais e os manifestos do código nativo `872af77`; MSI atual SHA-256 `a2629b2becebc51fce6952473f084381b96eb69ad11b2f656349b503d8e1336a`, upgrade `3d60def2153e4d341bb3070bffeb4b625dc59c1daddf12c5c260469cfbdd7834`. Os quatro launchers passaram em `-VerifyOnly`; nenhum harness foi executado. `.venv/linux-build/packages/` contém DEB/RPM 0.5.0 amd64 com manifestos, construídos e inspecionados em Debian 13; os ELF recompilados após a correção final têm os mesmos hashes dos empacotados. Compatibilidade e enforcement em outras distribuições exigem aceite próprio.
+
+Pacotes finais são preparados por `tools/build_final_acceptance.py`: um mesmo par de MSIs para sessão, locais, USB e aplicativos, com commit e SHA-256 verificados pelos launchers. Não executar roteiros de controle no host. Evidência ausente, falha de limpeza, reboot necessário ou hardware pendente continuam pendentes no consolidado.
+
+Pendências externas adicionais: assinatura de produção, Chrome/Firefox na segunda máquina, confirmação acessível da licença UT1 na fonte oficial e revisão operacional/LGPD. Nenhum desses itens foi convertido artificialmente em aceite por teste unitário.
+
 ## Aceites pendentes no Sandbox
 
-Decisão do usuário em 2026-10-25: as rodadas de Sandbox ficam para o fim, todas juntas. Cada fase nova acrescenta aqui o seu aceite. Nenhuma fase desta lista está aceita até o JSON de resultado dizer `passed: true`. Antes de rodar, gerar de novo os pacotes a partir do código final (MSIs com `tools/build-msi-fixtures.ps1 -Production` e `-Production -Next`, `DOTNET_ROOT=.venv/dotnet-sdk`, WiX `.venv/wix-tools/wix.exe`), porque o agente mudou depois de cada pacote.
+Decisão do usuário em 2026-10-25: as rodadas de Sandbox ficam para o fim, todas juntas. Nenhuma fase desta lista está aceita até o JSON de resultado dizer `passed: true`. Use os pacotes conjuntos de `tools/build_final_acceptance.py` e siga `ACCEPTANCE.md`, inclusive para USB e aplicativos; comandos e hashes individuais registrados nas seções históricas abaixo foram substituídos pela preparação final.
 
 | Fase | Roteiro | Pacote e perfil | Como rodar | Resultado |
 |---|---|---|---|---|

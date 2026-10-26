@@ -4,6 +4,8 @@ Objetivo: chegar perto do que o FortiClient EMS oferece nas funções que não d
 
 Status: aprovado em 2026-10-22, com o agente em Rust. Andamento de cada fase em `HANDOFF.md`.
 
+Atualização em 2026-10-26: F3/F4 e a migração completa do painel F7 foram implementadas; os aceites finais Windows estão preparados, ainda pendentes. F8 tem implementação e pacotes Linux para aceite em VM; a parte macOS permanece parcial, sem Network Extension/Endpoint Security. F9 foi explicitamente excluída pelo usuário. Consulte `ACCEPTANCE.md` para testar a versão final; compilação/testes locais não substituem esses aceites.
+
 ## Decisões que precisam da sua aprovação
 
 | Decisão | Recomendação | Alternativa |

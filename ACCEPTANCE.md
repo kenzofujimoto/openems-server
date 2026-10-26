@@ -65,6 +65,8 @@ Além dos roteiros Windows, use um ambiente de homologação com PostgreSQL/Redi
 
 Windows Sandbox não valida systemd, systemd-resolved, USBGuard ou fapolicyd. Compile agente e helper como ELF Linux compatíveis e gere DEB/RPM conforme `deploy/linux/SUPPORT.md`; RPM exige `rpmbuild`. Use uma VM com snapshot e instale somente o pacote apropriado à arquitetura/distribuição. Um build em contêiner sem privilégios valida compilação/empacotamento, não enforcement real.
 
+Os artefatos locais desta rodada ficam em `.venv/linux-build/packages/`, com manifestos SHA-256. Foram compilados em Debian 13 amd64; comece o aceite DEB nessa distribuição. Para outra distribuição, confira a compatibilidade de glibc ou recompile no ambiente correspondente. A geração do RPM não demonstra compatibilidade com todas as versões de Fedora/RHEL.
+
 Exemplo DEB dentro da VM, com perfil de homologação previamente publicado:
 
 ```bash

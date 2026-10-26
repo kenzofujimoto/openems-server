@@ -36,3 +36,12 @@ The previous agreement to defer all Sandbox acceptances remains in force.
   permissions; no stub or package is evidence that those controls have been accepted.
 - Final checks: Python suite excluding destructive host tests, Rust fmt/clippy/tests/release,
   React tests/coverage/lint/types/build, PostgreSQL contracts and a disposable Docker smoke test.
+
+## Local delivery status — 2026-10-26
+
+Steps 1–5 and 7–8 are implemented and locally verified; real operating-system acceptances are pending
+as recorded in ACCEPTANCE.md. Step 6 has Linux implementation, passing native Linux tests and built
+DEB/RPM packages. macOS compatibility packaging is present, but native Network Extension and Endpoint
+Security implementations remain incomplete and require the Mac/Apple environment. F8 must remain
+partial until those implementations and acceptance evidence exist. Exact local results and package
+manifests are recorded in validation/desktop-local-2026-10-26.json; HANDOFF.md summarizes the state.
