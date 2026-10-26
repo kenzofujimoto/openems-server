@@ -133,6 +133,57 @@ mod tests {
     }
 
     #[test]
+    fn usb_inventory_skips_virtual_non_usb_disks_before_querying_storage_management() {
+        let script = format!(
+            r#"function Get-PnpDevice {{ [pscustomobject]@{{InstanceId='SCSI\DISK&VEN_MSFT\VIRTUAL';Class='DiskDrive';FriendlyName='Virtual disk'}} }}
+function Get-CimInstance {{ [pscustomobject]@{{PNPDeviceID='SCSI\DISK&VEN_MSFT\VIRTUAL';Index=0;InterfaceType='SCSI'}} }}
+function Get-PnpDeviceProperty {{ [pscustomobject]@{{Data=$null}} }}
+function Get-Disk {{ throw 'Storage management is unavailable for the non-USB virtual disk' }}
+{USB}"#
+        );
+        let script: &'static str = Box::leak(script.into_boxed_str());
+        let result = run(script, &json!({"mode":"inventory"})).unwrap();
+        assert_eq!(result["inventory"], json!([]));
+    }
+
+    #[test]
+    fn usb_inventory_keeps_storage_identity_and_boot_protection_for_all_usb_evidence() {
+        for (instance, ancestor, interface) in [
+            (r"USBSTOR\DISK\sample", "", "SCSI"),
+            (r"SCSI\DISK\sample", r"USB\VID_0781&PID_5581\sample", "SCSI"),
+            (r"SCSI\DISK\sample", "", "USB"),
+        ] {
+            let script = format!(
+                r#"function Get-PnpDevice {{ [pscustomobject]@{{InstanceId='{instance}';Class='DiskDrive';FriendlyName='USB storage'}} }}
+function Get-CimInstance {{ [pscustomobject]@{{PNPDeviceID='{instance}';Index=2;InterfaceType='{interface}';SerialNumber='SERIAL';Manufacturer='Fixture';Model='Storage'}} }}
+function Get-PnpDeviceProperty {{ param($InstanceId,$KeyName) [pscustomobject]@{{Data=$(if ($KeyName -eq 'DEVPKEY_Device_Parent' -and $InstanceId -eq '{instance}') {{ '{ancestor}' }} else {{ '' }})}} }}
+function Get-Disk {{ [pscustomobject]@{{BusType='USB';Number=2;UniqueId='unique-fixture';IsBoot=$true;IsSystem=$true}} }}
+function Get-Partition {{ @() }}
+{USB}"#
+            );
+            let script: &'static str = Box::leak(script.into_boxed_str());
+            let result = run(script, &json!({"mode":"inventory"})).unwrap();
+            assert_eq!(result["inventory"][0]["class"], "storage");
+            assert_eq!(result["inventory"][0]["disk_unique_id"], "unique-fixture");
+            assert_eq!(result["inventory"][0]["is_boot"], true);
+            assert_eq!(result["inventory"][0]["is_system"], true);
+        }
+    }
+
+    #[test]
+    fn usb_inventory_does_not_hide_real_usb_storage_query_failures() {
+        let script = format!(
+            r#"function Get-PnpDevice {{ [pscustomobject]@{{InstanceId='USBSTOR\DISK\sample';Class='DiskDrive';FriendlyName='USB storage'}} }}
+function Get-CimInstance {{ [pscustomobject]@{{PNPDeviceID='USBSTOR\DISK\sample';Index=2;InterfaceType='USB'}} }}
+function Get-PnpDeviceProperty {{ [pscustomobject]@{{Data=$null}} }}
+function Get-Disk {{ throw 'Real USB storage identity cannot be verified' }}
+{USB}"#
+        );
+        let script: &'static str = Box::leak(script.into_boxed_str());
+        assert!(run(script, &json!({"mode":"inventory"})).is_err());
+    }
+
+    #[test]
     fn application_inventory_tolerates_empty_uninstall_registry_keys() {
         let script = format!(
             "function Get-CimInstance {{ @() }}\nfunction Test-Path {{ $true }}\nfunction Get-ChildItem {{ [pscustomobject]@{{PSPath='fixture';PSChildName='empty'}} }}\nfunction Get-ItemProperty {{ $null }}\n{APPLICATIONS}"
