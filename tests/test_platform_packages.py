@@ -86,6 +86,24 @@ def test_builder_refuses_mismatched_or_non_elf_binaries_before_writing_output(tm
     assert not (tmp_path / "out").exists()
 
 
+def test_debian_shell_scripts_work_after_a_windows_crlf_checkout(tmp_path, monkeypatch):
+    source = tmp_path / "sources"
+    source.mkdir()
+    for path in BUILDER.parent.iterdir():
+        if path.is_file():
+            (source / path.name).write_bytes(path.read_text(encoding="utf-8").replace("\n", "\r\n").encode())
+    monkeypatch.setitem(globals(), "BUILDER", source / "build_package.py")
+    elf(tmp_path / "agent")
+    elf(tmp_path / "helper")
+    result = build(tmp_path)
+    assert result.returncode == 0, result.stderr
+    members = ar_members((tmp_path / "out/openems-agent_0.5.0_amd64.deb").read_bytes())
+    with tarfile.open(fileobj=io.BytesIO(members["control.tar.gz"]), mode="r:gz") as archive:
+        for name in ("postinst", "prerm", "postrm"):
+            data = archive.extractfile(name).read()
+            assert data.startswith(b"#!/bin/sh\n") and b"\r" not in data
+
+
 def test_macos_sources_require_signed_binaries_and_do_not_claim_native_extensions():
     import plistlib
 
