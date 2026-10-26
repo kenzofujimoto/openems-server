@@ -16,6 +16,40 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "deploy/test-controls-sandbox.ps1"
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
+@pytest.mark.parametrize("kind,unavailable,calls,available", [
+    ("USB", True, 0, False), ("Applications", True, 1, False),
+    ("Applications", False, 1, True),
+])
+def test_execution_baseline_is_optional_without_fabricating_wdac_acceptance(kind, unavailable, calls, available):
+    command = r"""
+$ErrorActionPreference='Stop'
+$tokens=$null;$errors=$null
+$tree=[System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$tokens,[ref]$errors)
+$definition=$tree.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-ExecutionBaseline'},$true)
+if ($null -eq $definition) { throw 'Missing execution-capability baseline' }
+$script:calls=0
+function Code-Policies {
+    $script:calls++
+    if ($argsForTest[1] -eq 'True') { throw 'Could not list Code Integrity policies.' }
+    return @('foreign-policy')
+}
+$argsForTest=@($args[1],$args[2])
+$baseline=& $definition.Body.GetScriptBlock() $argsForTest[0]
+@{baseline=$baseline;calls=$script:calls}|ConvertTo-Json -Depth 5 -Compress
+"""
+    result = subprocess.run(["powershell.exe", "-NoProfile", "-Command",
+                             f"& {{ {command} }} '{SCRIPT}' '{kind}' '{unavailable}'"],
+                            capture_output=True, text=True, timeout=60, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    observed = json.loads(result.stdout)
+    assert observed["calls"] == calls
+    assert observed["baseline"]["available"] is available
+    assert observed["baseline"]["policies"] == (["foreign-policy"] if available else [])
+    if kind == "Applications" and unavailable:
+        assert "Could not list" in observed["baseline"]["reason"]
+
+
 def run(*arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["powershell.exe", "-NoProfile", "-File", str(SCRIPT), *arguments],
                           capture_output=True, text=True, timeout=60, check=False)
