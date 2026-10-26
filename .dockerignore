@@ -1,7 +1,8 @@
 .git
 .github
 tests
-tools
+tools/*
+!tools/update_categories.py
 __pycache__
 **/__pycache__
 .pytest_cache
@@ -11,4 +12,8 @@ __pycache__
 web/node_modules
 web/coverage
 app/panel_dist
+agent-rs
+captures
+.env
+.env.*
 LAB-CAPTURE.md
