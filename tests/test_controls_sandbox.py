@@ -130,3 +130,29 @@ def test_success_from_another_build_never_accepts_the_current_build(tmp_path):
     }}), encoding="utf-8")
     summary = summarize_results([report], {"source_revision": "current", "packages": {}})
     assert summary["accepted"] == [] and summary["pending"] == [report.name]
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell manifest verification")
+def test_wrapper_verifies_bytes_without_executing_the_harness_and_refuses_tampering(tmp_path):
+    import hashlib
+    import shutil
+
+    wrapper = tmp_path / "invoke-final-acceptance.ps1"
+    shutil.copyfile(ROOT / "deploy/invoke-final-acceptance.ps1", wrapper)
+    harness = tmp_path / "test-controls-sandbox.ps1"
+    harness.write_text("throw 'verification must never execute this harness'", encoding="utf-8")
+    package = tmp_path / "openems-agent.msi"
+    package.write_bytes(b"test-package-not-an-installer")
+    files = {path.name: {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size}
+             for path in (wrapper, harness, package)}
+    (tmp_path / "acceptance-manifest.json").write_text(json.dumps({
+        "phase": "usb", "source_revision": "current", "files": files,
+        "harness": harness.name, "arguments": ["-Kind", "USB"], "packages": {package.name: files[package.name]},
+    }), encoding="utf-8")
+    command = ["powershell.exe", "-NoProfile", "-File", str(wrapper), "-Phase", "usb", "-VerifyOnly"]
+    verified = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+    assert verified.returncode == 0, verified.stderr
+    assert json.loads(verified.stdout)["verified"] is True
+    package.write_bytes(b"modified")
+    refused = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+    assert refused.returncode != 0 and "input changed or is missing" in refused.stderr
