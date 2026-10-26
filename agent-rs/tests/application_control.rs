@@ -79,7 +79,8 @@ fn renaming_a_core_component_does_not_make_a_hash_deny_safe() {
     let mut renamed = application();
     renamed.path = "C:\\Tools\\renamed.exe".into();
     renamed.original_name = "services.exe".into();
-    let policy = validate(Some(&json!({"execution_rules":[{"id":"core","kind":"hash","value":renamed.sha256}]}))).unwrap();
+    let policy =
+        validate(Some(&json!({"execution_rules":[{"id":"core","kind":"hash","value":renamed.sha256}]}))).unwrap();
     assert!(resolve_rules(&policy, &[renamed]).is_err());
     assert!(validate(Some(&json!({"blocked":["services.exe"]}))).is_err());
 }
@@ -93,16 +94,37 @@ fn windows_paths_cannot_use_ads_or_normalization_to_target_a_protected_component
 
     fn plan(path: &str) -> bool {
         let root = std::env::var_os("SystemRoot").unwrap();
-        let mut process = Command::new(std::path::Path::new(&root).join("System32/WindowsPowerShell/v1.0/powershell.exe"))
-            .args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", include_str!("../../deploy/agent-applications.ps1")])
-            .creation_flags(0x0800_0000)
-            .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
-        process.stdin.take().unwrap().write_all(serde_json::to_string(&json!({"mode":"path-plan","paths":[path]})).unwrap().as_bytes()).unwrap();
+        let mut process =
+            Command::new(std::path::Path::new(&root).join("System32/WindowsPowerShell/v1.0/powershell.exe"))
+                .args([
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    include_str!("../../deploy/agent-applications.ps1"),
+                ])
+                .creation_flags(0x0800_0000)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+        process
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(serde_json::to_string(&json!({"mode":"path-plan","paths":[path]})).unwrap().as_bytes())
+            .unwrap();
         process.wait_with_output().unwrap().status.success()
     }
 
     assert!(plan("C:\\Tools\\allowed.exe"));
-    for path in ["/Tools/allowed.exe", "C:\\Tools\\allowed.exe:stream", "C:\\Windows.\\System32\\test.exe", "C:\\Tools\\.\\allowed.exe"] {
+    for path in [
+        "/Tools/allowed.exe",
+        "C:\\Tools\\allowed.exe:stream",
+        "C:\\Windows.\\System32\\test.exe",
+        "C:\\Tools\\.\\allowed.exe",
+    ] {
         assert!(!plan(path), "unsafe Windows path accepted: {path}");
     }
 }
