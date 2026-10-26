@@ -24,7 +24,9 @@ fn linux_observations_require_live_adapters_and_default_gateway_neighbors() {
 
 #[test]
 fn upstreams_never_forward_back_into_the_local_resolver() {
-    let servers = resolv_conf_servers("nameserver 127.0.0.53\nnameserver ::1\nnameserver 10.0.0.53 # LAN\nnameserver 2001:db8::53\nnameserver 10.0.0.53\nnameserver garbage\n");
+    let servers = resolv_conf_servers(
+        "nameserver 127.0.0.53\nnameserver ::1\nnameserver 10.0.0.53 # LAN\nnameserver 2001:db8::53\nnameserver 10.0.0.53\nnameserver garbage\n",
+    );
     assert_eq!(servers, vec!["10.0.0.53".parse::<IpAddr>().unwrap(), "2001:db8::53".parse().unwrap()]);
 }
 
@@ -32,13 +34,17 @@ fn upstreams_never_forward_back_into_the_local_resolver() {
 fn storage_rules_exempt_hid_and_translate_only_supported_linux_actions() {
     let plan = policy_plan(&json!({"usb_control":{"default_action":"block", "rules":[
         {"id":"trusted", "action":"allow", "vid":"0781", "pid":"5581", "serial":"TEST123"}
-    ]}})).unwrap();
+    ]}}))
+    .unwrap();
     let rules = plan.usbguard.unwrap();
     assert!(rules.starts_with("# Managed by openems\nallow with-interface one-of { 03:*:* 09:*:* }\n"));
     assert!(rules.contains("allow id 0781:5581 serial \"TEST123\" with-interface equals { 08:*:* }"));
     assert!(rules.ends_with("block with-interface equals { 08:*:* }\n"));
     assert!(policy_plan(&json!({"usb_control":{"default_action":"read_only","rules":[]}})).is_err());
-    assert!(policy_plan(&json!({"usb_control":{"rules":[{"id":"x","action":"block","instance_id":"USBSTOR\\X"}]}})).is_err());
+    assert!(
+        policy_plan(&json!({"usb_control":{"rules":[{"id":"x","action":"block","instance_id":"USBSTOR\\X"}]}}))
+            .is_err()
+    );
 }
 
 #[test]
@@ -47,11 +53,25 @@ fn fapolicyd_denies_paths_and_hashes_but_refuses_unsupported_identity_and_networ
     let plan = policy_plan(&json!({"app_control":{"execution_rules":[
         {"id":"hash", "kind":"hash", "value":hash},
         {"id":"path", "kind":"path", "value":"/opt/vendor/tool"}
-    ]}})).unwrap();
-    assert_eq!(plan.fapolicyd.unwrap(), format!("# Managed by openems\ndeny_audit perm=execute all : sha256hash={hash}\ndeny_audit perm=execute all : path=/opt/vendor/tool\n"));
-    assert!(policy_plan(&json!({"app_control":{"execution_rules":[{"id":"publisher","kind":"publisher","value":"ACME"}]}})).is_err());
+    ]}}))
+    .unwrap();
+    assert_eq!(
+        plan.fapolicyd.unwrap(),
+        format!(
+            "# Managed by openems\ndeny_audit perm=execute all : sha256hash={hash}\ndeny_audit perm=execute all : path=/opt/vendor/tool\n"
+        )
+    );
+    assert!(
+        policy_plan(&json!({"app_control":{"execution_rules":[{"id":"publisher","kind":"publisher","value":"ACME"}]}}))
+            .is_err()
+    );
     assert!(policy_plan(&json!({"app_control":{"network_blocked":["/opt/vendor/tool"]}})).is_err());
-    assert!(policy_plan(&json!({"app_control":{"execution_rules":[{"id":"path","kind":"path","value":"/opt/tool\nallow all"}]}})).is_err());
+    assert!(
+        policy_plan(
+            &json!({"app_control":{"execution_rules":[{"id":"path","kind":"path","value":"/opt/tool\nallow all"}]}})
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -92,6 +112,13 @@ fn file_transactions_refuse_foreign_files_and_journal_paths() {
 #[test]
 fn legacy_process_rules_without_owned_linux_configuration_are_a_noop() {
     let directory = tempfile::tempdir().unwrap();
-    assert!(openems_agent::linux_support::apply_policy(&json!({"app_control":{"blocked":["test-process"]}}), &directory.path().join("state.json")).unwrap().is_empty());
+    assert!(
+        openems_agent::linux_support::apply_policy(
+            &json!({"app_control":{"blocked":["test-process"]}}),
+            &directory.path().join("state.json")
+        )
+        .unwrap()
+        .is_empty()
+    );
     assert!(directory.path().read_dir().unwrap().next().is_none());
 }

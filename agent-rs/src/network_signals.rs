@@ -313,8 +313,13 @@ fn adapter_signals() -> Result<Observed> {
     Err(crate::error::AgentError::Local("network adapter list keeps growing; retry later".into()))
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn adapter_signals() -> Result<Observed> {
-    // Until F8 adds native interface enumeration, unsupported local signals remain unknown.
+    crate::linux_support::observed()
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+fn adapter_signals() -> Result<Observed> {
+    // macOS adapter enumeration awaits the native signed platform integration.
     Ok(Observed::default())
 }
