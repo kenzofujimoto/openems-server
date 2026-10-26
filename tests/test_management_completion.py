@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import io
+import zipfile
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +12,7 @@ from app.api import create_app
 from app.audit import InMemoryAuditLog
 from app.auth import AdminService
 from app.models import RegisterRequest
-from app.service import EmsService
+from app.service import EmsService, RegistrationError
 
 
 @pytest.fixture
@@ -72,7 +74,7 @@ def test_invitations_list_only_hash_ids_and_revoke_without_revealing_tokens(harn
     assert listing.json()[0]["id"] == identity and listing.json()[0]["remaining"] == 2
     assert client.delete(f"/api/v1/enrollment/invitations/{identity}", headers=writer).status_code == 200
     assert client.delete(f"/api/v1/enrollment/invitations/{identity}", headers=writer).status_code == 404
-    with pytest.raises(ValueError):
+    with pytest.raises(RegistrationError):
         service.register(RegisterRequest(devid="revoked-test", invitation=token))
     assert token not in str(audit.list())
 
@@ -93,3 +95,48 @@ def test_settings_are_read_only_and_installer_is_operator_supplied(harness, tmp_
         assert configured.get(metadata.json()["download_url"], headers=reader).status_code == 403
         download = configured.get(metadata.json()["download_url"], headers=writer)
         assert download.content == artifact.read_bytes() and download.headers["cache-control"] == "no-store"
+
+
+def test_installer_bundle_contains_a_scoped_one_time_invitation_without_audit_disclosure(harness, tmp_path):
+    service, admin, audit, _, writer, _ = harness
+    artifact = tmp_path / "trusted.msi"
+    artifact.write_bytes(b"test-msi")
+    app = create_app(service, admin_service=admin, audit_log=audit, installer_path=artifact,
+                     public_base_url="https://ems.example.com")
+    with TestClient(app) as client:
+        response = client.post("/api/v1/installers/windows/bundle", headers=writer,
+                               json={"vdom": "Default", "max_uses": 1, "ttl_seconds": 3600})
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            assert set(archive.namelist()) == {"openems-agent.msi", "install.ps1", "README.txt"}
+            assert archive.read("openems-agent.msi") == b"test-msi"
+            script = archive.read("install.ps1").decode("utf-8-sig")
+        assert "$server = 'https://ems.example.com'" in script
+        token = script.split("$invitation = '", 1)[1].split("'", 1)[0]
+        assert token not in str(audit.list())
+        service.register(RegisterRequest(devid="bundled", invitation=token))
+        with pytest.raises(RegistrationError):
+            service.register(RegisterRequest(devid="second", invitation=token))
+
+
+@pytest.mark.parametrize("base_url", [None, "http://public.example", "https://user:secret@ems.example", "https://ems.example/?secret=yes"])
+def test_installer_bundle_refuses_missing_or_unsafe_configuration(harness, tmp_path, base_url):
+    service, admin, _, _, writer, _ = harness
+    artifact = tmp_path / "trusted.msi"
+    artifact.write_bytes(b"test-msi")
+    with TestClient(create_app(service, admin_service=admin, installer_path=artifact, public_base_url=base_url)) as client:
+        response = client.post("/api/v1/installers/windows/bundle", headers=writer,
+                               json={"vdom": "Default", "max_uses": 1, "ttl_seconds": 3600})
+        assert response.status_code == 503
+        assert service.list_invitations() == []
+
+
+def test_account_mutations_keep_the_csrf_and_role_guards(harness):
+    _, admin, _, client, writer, _ = harness
+    session = admin.issue_session("operator", "admin")
+    client.cookies.set("openems_session", session["token"])
+    payload = {"username": "cookie-account", "password": "test-password", "role": "viewer"}
+    assert client.post("/api/v1/admins", json=payload).status_code == 403
+    assert client.post("/api/v1/admins", json=payload, headers={"X-CSRF-Token": session["csrf_token"]}).status_code == 200
+    assert client.post("/api/v1/admins", json={**payload, "role": "superadmin"}, headers=writer).status_code == 422
