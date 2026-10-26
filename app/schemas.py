@@ -86,7 +86,7 @@ class ControlEventPayload(InputModel):
     at: str = Field(min_length=1, max_length=40)
     kind: Literal["usb_block", "usb_read_only", "app_block", "app_network_block", "app_control_applied", "app_network_policy"]
     target: str = Field(min_length=1, max_length=2048)
-    rule_id: str = Field(default="", max_length=64)
+    rule_id: str = Field(min_length=1, max_length=64)
 
 
 class ControlEventsPayload(ClientPayload):

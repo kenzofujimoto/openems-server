@@ -140,3 +140,52 @@ def test_account_mutations_keep_the_csrf_and_role_guards(harness):
     assert client.post("/api/v1/admins", json=payload).status_code == 403
     assert client.post("/api/v1/admins", json=payload, headers={"X-CSRF-Token": session["csrf_token"]}).status_code == 200
     assert client.post("/api/v1/admins", json={**payload, "role": "superadmin"}, headers=writer).status_code == 422
+
+
+def test_account_and_installer_missing_resources_return_explicit_errors(harness, tmp_path):
+    service, admin, _, client, writer, _ = harness
+    assert client.put("/api/v1/admins/missing", json={"role": "viewer"}, headers=writer).status_code == 404
+    assert client.delete("/api/v1/admins/missing", headers=writer).status_code == 404
+    assert client.post("/api/v1/admins", json={"username": "bad/name", "password": "test-password", "role": "viewer"}, headers=writer).status_code == 422
+    assert client.get("/api/v1/installers/windows/download", headers=writer).status_code == 404
+    not_msi = tmp_path / "untrusted.exe"
+    not_msi.write_bytes(b"not-an-installer")
+    for artifact in (not_msi, tmp_path / "missing.msi"):
+        with TestClient(create_app(service, admin_service=admin, installer_path=artifact)) as configured:
+            assert configured.get("/api/v1/installers/windows", headers=writer).json() == {"available": False}
+
+
+def test_bundle_rejects_quoted_group_and_does_not_leave_an_invitation_on_read_failure(harness, tmp_path, monkeypatch):
+    service, admin, _, _, writer, _ = harness
+    artifact = tmp_path / "trusted.msi"
+    artifact.write_bytes(b"test-msi")
+    app = create_app(service, admin_service=admin, installer_path=artifact, public_base_url="https://ems.example.com")
+    with TestClient(app) as client:
+        payload = {"vdom": 'quoted"group', "max_uses": 1, "ttl_seconds": 3600}
+        assert client.post("/api/v1/installers/windows/bundle", json=payload, headers=writer).status_code == 422
+        assert service.list_invitations() == []
+
+        def unavailable(*args, **kwargs):
+            raise PermissionError("test artifact became unreadable")
+
+        monkeypatch.setattr(zipfile.ZipFile, "write", unavailable)
+        response = client.post("/api/v1/installers/windows/bundle", json={**payload, "vdom": "Default"}, headers=writer)
+        assert response.status_code == 503 and service.list_invitations() == []
+
+
+def test_installer_metadata_handles_an_unreadable_file_without_disclosing_its_path(harness, tmp_path, monkeypatch):
+    service, admin, _, _, writer, _ = harness
+    artifact = tmp_path / "trusted.msi"
+    artifact.write_bytes(b"test-msi")
+    app = create_app(service, admin_service=admin, installer_path=artifact)
+    original_open = type(artifact).open
+
+    def inaccessible(path, *args, **kwargs):
+        if path == artifact:
+            raise PermissionError("sensitive operator path")
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(type(artifact), "open", inaccessible)
+    with TestClient(app) as client:
+        response = client.get("/api/v1/installers/windows", headers=writer)
+        assert response.status_code == 503 and str(artifact) not in response.text
