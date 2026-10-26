@@ -9,7 +9,7 @@ use openems_agent::https_blockpage::BlockedDomains;
 use openems_agent::policy::WebRules;
 use openems_agent::runtime::StopSignal;
 use std::io::{Read, Write};
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -216,7 +216,10 @@ fn tcp_queries_are_answered_and_forwarded() {
     worker.join().unwrap();
     upstream_stop.stop();
     upstream_worker.join().unwrap();
-    assert!(TcpStream::connect(server).is_err());
+    // Assert ownership was released directly, without allocating an outgoing ephemeral port.
+    // On Linux a connect to a closed loopback port can select that same port and self-connect.
+    let rebound = TcpListener::bind(server).expect("stopped resolver must release its TCP listener");
+    assert_eq!(rebound.local_addr().unwrap(), server);
 }
 
 #[test]
