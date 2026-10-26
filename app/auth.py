@@ -94,6 +94,23 @@ class AdminService:
     def has_admins(self) -> bool:
         return self._store.has_any()
 
+    def accounts(self) -> list[dict[str, str]]:
+        return self._store.all()
+
+    def manage_account(self, username: str, password: str | None = None, role: str | None = None, *,
+                       create: bool = False, delete: bool = False, actor_role: str = "admin") -> bool:
+        if not username or len(username) > 256 or any(ord(character) < 32 for character in username):
+            raise ValueError("invalid username")
+        if password is not None and (not password or len(password) > 4096):
+            raise ValueError("invalid password length")
+        if role is not None and role not in {"admin", "viewer"}:
+            raise ValueError("unknown manageable role")
+        if create and password is None:
+            raise ValueError("new accounts require a password")
+        hashed = hash_password(password) if password is not None else None
+        return self._store.manage(username, hashed, role, create=create, delete=delete,
+                                  allow_superadmin=actor_role == "superadmin")
+
     @staticmethod
     def is_allowed(role: str, action: str) -> bool:
         return action in _PERMISSIONS.get(role, frozenset())

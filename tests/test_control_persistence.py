@@ -9,7 +9,13 @@ import pytest
 
 from app.enrollment import InMemoryEnrollmentStore, PostgresEnrollmentStore
 from app.inventory import InMemoryInventoryStore, PostgresInventoryStore
-from app.stores import InMemoryAdminStore, InMemoryProfileStore, PostgresAdminStore, PostgresProfileStore, ProfilePreconditionError
+from app.stores import (
+    InMemoryAdminStore,
+    InMemoryProfileStore,
+    PostgresAdminStore,
+    PostgresProfileStore,
+    ProfilePreconditionError,
+)
 
 
 @pytest.fixture(params=["memory", "postgres"])

@@ -20,8 +20,8 @@ sys.path.insert(0, str(ROOT / "agent"))
 from categories import build_category_file, parse_category_file
 from policy import (
     CATEGORIES,
-    block_reason,
     GOOGLE_DOMAINS,
+    block_reason,
     domain_blocked,
     domain_blocked_at,
     domain_hash,

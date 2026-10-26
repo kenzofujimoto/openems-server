@@ -11,6 +11,8 @@ from typing import Protocol
 class EnrollmentStore(Protocol):
     def add(self, token: str, vdom: str, max_uses: int, expires_at: datetime) -> None: ...
     def consume(self, token: str, vdom: str) -> bool: ...
+    def list(self) -> list[dict[str, object]]: ...
+    def revoke(self, identifier: str) -> bool: ...
 
 
 def _hash(token: str) -> str:
@@ -38,6 +40,15 @@ class InMemoryEnrollmentStore:
                 return False
             self._invitations[_hash(token)] = (scope, remaining - 1, expiry)
             return True
+
+    def list(self) -> list[dict[str, object]]:
+        with self._lock:
+            return [{"id": identifier, "vdom": item[0], "remaining": item[1], "expires_at": item[2].isoformat()}
+                    for identifier, item in sorted(self._invitations.items())]
+
+    def revoke(self, identifier: str) -> bool:
+        with self._lock:
+            return self._invitations.pop(identifier, None) is not None
 
 
 class PostgresEnrollmentStore:
@@ -68,6 +79,17 @@ class PostgresEnrollmentStore:
                 WHERE token_hash=%s AND vdom=%s AND used<max_uses AND expires_at>now()
                 RETURNING token_hash""", (_hash(token), vdom))
             return cur.fetchone() is not None
+
+    def list(self) -> list[dict[str, object]]:
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT token_hash,vdom,max_uses-used,expires_at FROM enrollment_invitations ORDER BY token_hash")
+            return [{"id": row[0], "vdom": row[1], "remaining": row[2], "expires_at": row[3].isoformat()}
+                    for row in cur.fetchall()]
+
+    def revoke(self, identifier: str) -> bool:
+        with self._conn.cursor() as cur:
+            cur.execute("DELETE FROM enrollment_invitations WHERE token_hash=%s", (identifier,))
+            return cur.rowcount > 0
 
     def close(self) -> None:
         self._conn.close()

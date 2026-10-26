@@ -15,6 +15,10 @@ from typing import Protocol, runtime_checkable
 from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, Profile
 
 
+class ProfilePreconditionError(ValueError):
+    """A profile changed after an editor read it."""
+
+
 @runtime_checkable
 class Store(Protocol):
     def create(self, endpoint: Endpoint) -> bool: ...
@@ -211,7 +215,7 @@ class PostgresStore:
 class ProfileStore(Protocol):
     def get(self, vdom: str) -> Profile | None: ...
     def put(self, profile: Profile) -> None: ...
-    def publish(self, vdom: str, body: dict[str, object]) -> Profile: ...
+    def publish(self, vdom: str, body: dict[str, object], expected_digest: str | None = None) -> Profile: ...
     def all(self) -> list[Profile]: ...
 
 
@@ -228,9 +232,11 @@ class InMemoryProfileStore:
         with self._lock:
             self._by_vdom[profile.vdom] = deepcopy(profile)
 
-    def publish(self, vdom: str, body: dict[str, object]) -> Profile:
+    def publish(self, vdom: str, body: dict[str, object], expected_digest: str | None = None) -> Profile:
         with self._lock:
             previous = self._by_vdom.get(vdom)
+            if expected_digest is not None and (previous is None or previous.digest != expected_digest):
+                raise ProfilePreconditionError("profile changed; reload before publishing")
             profile = Profile(vdom=vdom, version=previous.version + 1 if previous else 1,
                               body=deepcopy(body))
             self._by_vdom[vdom] = profile
@@ -260,6 +266,7 @@ class PostgresProfileStore:
 
         self._Jsonb = Jsonb
         self._conn = psycopg.connect(dsn, autocommit=True)
+        self._lock = RLock()
 
     def init_schema(self) -> None:
         with self._conn.cursor() as cur:
@@ -288,8 +295,13 @@ class PostgresProfileStore:
                 (profile.vdom, profile.version, self._Jsonb(profile.body), profile.updated_at),
             )
 
-    def publish(self, vdom: str, body: dict[str, object]) -> Profile:
-        with self._conn.cursor() as cur:
+    def publish(self, vdom: str, body: dict[str, object], expected_digest: str | None = None) -> Profile:
+        with self._lock, self._conn.transaction(), self._conn.cursor() as cur:
+            if expected_digest is not None:
+                cur.execute("SELECT vdom, version, body, updated_at FROM profiles WHERE vdom=%s FOR UPDATE", (vdom,))
+                previous = cur.fetchone()
+                if previous is None or self._row(previous).digest != expected_digest:
+                    raise ProfilePreconditionError("profile changed; reload before publishing")
             cur.execute(
                 """INSERT INTO profiles (vdom, version, body)
                 VALUES (%s, 1, %s)
@@ -426,11 +438,15 @@ class AdminStore(Protocol):
     def get(self, username: str) -> tuple[str, str] | None: ...  # (password_hash, role)
     def put(self, username: str, password_hash: str, role: str) -> None: ...
     def has_any(self) -> bool: ...
+    def all(self) -> list[dict[str, str]]: ...
+    def manage(self, username: str, password_hash: str | None, role: str | None, *,
+               create: bool = False, delete: bool = False, allow_superadmin: bool = False) -> bool: ...
 
 
 class InMemoryAdminStore:
     def __init__(self) -> None:
         self._admins: dict[str, tuple[str, str]] = {}
+        self._lock = RLock()
 
     def get(self, username: str) -> tuple[str, str] | None:
         return self._admins.get(username)
@@ -440,6 +456,29 @@ class InMemoryAdminStore:
 
     def has_any(self) -> bool:
         return bool(self._admins)
+
+    def all(self) -> list[dict[str, str]]:
+        with self._lock:
+            return [{"username": username, "role": record[1]} for username, record in sorted(self._admins.items())]
+
+    def manage(self, username: str, password_hash: str | None, role: str | None, *,
+               create: bool = False, delete: bool = False, allow_superadmin: bool = False) -> bool:
+        with self._lock:
+            previous = self._admins.get(username)
+            if create and previous is not None:
+                return False
+            if not create and previous is None:
+                return False
+            if previous and previous[1] == "superadmin" and not allow_superadmin:
+                raise PermissionError("superadministrator is protected")
+            writers = sum(record[1] in {"admin", "superadmin"} for record in self._admins.values())
+            if previous and previous[1] in {"admin", "superadmin"} and (delete or role == "viewer") and writers <= 1:
+                raise ValueError("the last administrator cannot be removed or demoted")
+            if delete:
+                del self._admins[username]
+            else:
+                self._admins[username] = (password_hash or (previous[0] if previous else ""), role or (previous[1] if previous else "admin"))
+            return True
 
 
 ADMIN_SCHEMA = """
@@ -456,6 +495,7 @@ class PostgresAdminStore:
         import psycopg
 
         self._conn = psycopg.connect(dsn, autocommit=True)
+        self._lock = RLock()
 
     def init_schema(self) -> None:
         with self._conn.cursor() as cur:
@@ -485,6 +525,36 @@ class PostgresAdminStore:
         with self._conn.cursor() as cur:
             cur.execute("SELECT 1 FROM admins LIMIT 1")
             return cur.fetchone() is not None
+
+    def all(self) -> list[dict[str, str]]:
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT username,role FROM admins ORDER BY username")
+            return [{"username": row[0], "role": row[1]} for row in cur.fetchall()]
+
+    def manage(self, username: str, password_hash: str | None, role: str | None, *,
+               create: bool = False, delete: bool = False, allow_superadmin: bool = False) -> bool:
+        with self._lock, self._conn.transaction(), self._conn.cursor() as cur:
+            # Serialize changes across processes, including the empty-table/create case.
+            cur.execute("LOCK TABLE admins IN SHARE ROW EXCLUSIVE MODE")
+            cur.execute("SELECT password_hash,role FROM admins WHERE username=%s", (username,))
+            previous = cur.fetchone()
+            if (create and previous is not None) or (not create and previous is None):
+                return False
+            if previous and previous[1] == "superadmin" and not allow_superadmin:
+                raise PermissionError("superadministrator is protected")
+            if previous and previous[1] in {"admin", "superadmin"} and (delete or role == "viewer"):
+                cur.execute("SELECT count(*) FROM admins WHERE role IN ('admin','superadmin')")
+                if cur.fetchone()[0] <= 1:
+                    raise ValueError("the last administrator cannot be removed or demoted")
+            if delete:
+                cur.execute("DELETE FROM admins WHERE username=%s", (username,))
+            elif create:
+                cur.execute("INSERT INTO admins(username,password_hash,role) VALUES(%s,%s,%s)",
+                            (username, password_hash, role or "admin"))
+            else:
+                cur.execute("UPDATE admins SET password_hash=%s,role=%s WHERE username=%s",
+                            (password_hash or previous[0], role or previous[1], username))
+            return True
 
     def close(self) -> None:
         self._conn.close()

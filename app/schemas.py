@@ -2,6 +2,7 @@
 
 import ipaddress
 import re
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -23,6 +24,91 @@ class RegisterPayload(InputModel):
 
 class ClientPayload(InputModel):
     client_id: str = Field(min_length=1, max_length=128)
+
+
+def _aware_time(value: str) -> str:
+    try:
+        timestamp = datetime.fromisoformat(value)
+    except ValueError as error:
+        raise ValueError("timestamp must be ISO 8601") from error
+    if timestamp.tzinfo is None:
+        raise ValueError("timestamp must include a timezone")
+    return timestamp.astimezone(UTC).isoformat()
+
+
+class ApplicationInventoryPayload(InputModel):
+    name: str = Field(default="", max_length=256)
+    path: str = Field(default="", max_length=2048)
+    sha256: str = Field(default="", pattern=r"^(?:[a-fA-F0-9]{64})?$")
+    publisher: str = Field(default="", max_length=2048)
+    version: str = Field(default="", max_length=128)
+    running: bool = False
+
+
+class UsbInventoryPayload(InputModel):
+    instance_id: str = Field(min_length=1, max_length=512)
+    vid: str = Field(default="", pattern=r"^(?:[a-fA-F0-9]{4})?$")
+    pid: str = Field(default="", pattern=r"^(?:[a-fA-F0-9]{4})?$")
+    manufacturer: str = Field(default="", max_length=256)
+    product: str = Field(default="", max_length=256)
+    serial: str = Field(default="", max_length=512)
+    device_class: str = Field(default="unknown", alias="class", max_length=64)
+    drive_letters: list[str] = Field(default_factory=list, max_length=32)
+    present: bool = True
+    first_seen: str = Field(default="", max_length=40)
+    last_seen: str = Field(default="", max_length=40)
+
+    @field_validator("first_seen", "last_seen")
+    @classmethod
+    def device_time(cls, value: str) -> str:
+        return _aware_time(value) if value else ""
+
+    @field_validator("drive_letters")
+    @classmethod
+    def bounded_drives(cls, values: list[str]) -> list[str]:
+        if any(not value or len(value) > 512 or any(ord(character) < 32 for character in value) for value in values):
+            raise ValueError("drive identifiers must be bounded nonempty strings")
+        return list(dict.fromkeys(values))
+
+
+class InventoryPayload(ClientPayload):
+    collected_at: str = Field(min_length=1, max_length=40)
+    applications: list[ApplicationInventoryPayload] = Field(default_factory=list, max_length=2000)
+    usb_devices: list[UsbInventoryPayload] = Field(default_factory=list, max_length=512)
+
+    @field_validator("collected_at")
+    @classmethod
+    def snapshot_time(cls, value: str) -> str:
+        return _aware_time(value)
+
+
+class ControlEventPayload(InputModel):
+    at: str = Field(min_length=1, max_length=40)
+    kind: Literal["usb_block", "usb_read_only", "app_block", "app_network_block", "app_control_applied", "app_network_policy"]
+    target: str = Field(min_length=1, max_length=2048)
+    rule_id: str = Field(default="", max_length=64)
+
+
+class ControlEventsPayload(ClientPayload):
+    events: list[ControlEventPayload] = Field(default_factory=list, max_length=500)
+    dropped: int = Field(default=0, ge=0, le=1_000_000)
+
+
+class AdminCreatePayload(InputModel):
+    username: str = Field(min_length=1, max_length=256)
+    password: str = Field(min_length=1, max_length=4096)
+    role: Literal["viewer", "admin"] = "admin"
+
+
+class AdminUpdatePayload(InputModel):
+    password: str | None = Field(default=None, min_length=1, max_length=4096)
+    role: Literal["viewer", "admin"] | None = None
+
+    @model_validator(mode="after")
+    def has_change(self) -> "AdminUpdatePayload":
+        if self.password is None and self.role is None:
+            raise ValueError("a password or role change is required")
+        return self
 
 
 class TagsPayload(ClientPayload):

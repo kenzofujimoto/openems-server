@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import os
+import re
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -33,16 +34,19 @@ from .events import (
     parse_tamper,
     validate_retention,
 )
+from .inventory import InMemoryInventoryStore, InventoryStore
 from .limits import RequestSizeLimitMiddleware
 from .models import AssignmentRule, Condition, Endpoint, EndpointStatus, RegisterRequest
 from .saml import SamlError, SamlSp, UnknownIdpError
 from .schemas import (
     AckPayload,
     ClientPayload,
+    ControlEventsPayload,
     DeliveryProofPayload,
     DevicePayload,
     EventsPayload,
     IdpPayload,
+    InventoryPayload,
     InvitationPayload,
     LocationPolicyPayload,
     LoginPayload,
@@ -60,6 +64,7 @@ from .service import (
     UnknownEndpointError,
     UnknownProfileError,
 )
+from .stores import ProfilePreconditionError
 from .uninstall_codes import (
     SecretAlreadyDeliveredError,
     UninstallCodes,
@@ -97,12 +102,14 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                close_resources: list[Any] | None = None, panel_dir: Path | None = None,
                category_dir: Path | None = None, event_store: EventStore | None = None,
                event_retention_days: int = DEFAULT_RETENTION_DAYS, uninstall_master_key: bytes | None = None,
-               uninstall_store: UninstallStore | None = None) -> FastAPI:
+               uninstall_store: UninstallStore | None = None, inventory_store: InventoryStore | None = None,
+               installer_path: Path | None = None, public_base_url: str | None = None) -> FastAPI:
     svc = service or EmsService(require_invitation=not lab_mode)
     saml = saml_sp or SamlSp('http://localhost:8013')
     admin = admin_service or AdminService()
     audit = audit_log or InMemoryAuditLog()
     events = event_store or InMemoryEventStore()
+    inventory = inventory_store or InMemoryInventoryStore()
     retention_days = validate_retention(event_retention_days)
     uninstall = UninstallCodes(svc, uninstall_store, uninstall_master_key)
     env_admin = os.environ.get('OPENEMS_ADMIN')
@@ -177,6 +184,12 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'desired_profile': {'vdom': desired.vdom, 'version': desired.version, 'digest': desired.digest} if desired else None,
             'missing_capabilities': missing_tags(desired.body, endpoint.host_tags) if desired else [],
         }
+
+    def purge_personal_data() -> None:
+        before = datetime.now(UTC) - timedelta(days=retention_days)
+        events.purge(current_hour(before))
+        events.purge_tamper(before)
+        inventory.purge(before)
 
     @app.middleware('http')
     async def security_guard(request: Request, call_next):
@@ -365,6 +378,47 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         endpoint = svc.ingest_host_tags(payload.client_id, payload.tags)
         return {'ok': True, 'devid': endpoint.devid, 'host_tags': endpoint.host_tags}
 
+    @app.post('/fct/api/public/v1/inventory/')
+    def report_inventory(payload: InventoryPayload):
+        endpoint = svc.get_endpoint_by_client_id(payload.client_id)
+        collected = datetime.fromisoformat(payload.collected_at)
+        now = datetime.now(UTC)
+        if not now - timedelta(days=retention_days) <= collected <= now + timedelta(hours=1):
+            raise HTTPException(status_code=422, detail='inventory timestamp is outside the retention window')
+        purge_personal_data()
+        snapshot = payload.model_dump(by_alias=True, exclude={'client_id'})
+        snapshot['devid'] = endpoint.devid
+        if not inventory.replace(snapshot):
+            raise HTTPException(status_code=409, detail='a newer inventory snapshot is already stored')
+        return {'accepted': True}
+
+    @app.get('/api/v1/endpoints/inventory')
+    def endpoint_inventory(request: Request, devid: str = Query(min_length=1, max_length=256)):
+        svc.get_endpoint(devid)
+        purge_personal_data()
+        record(request, 'inventory.read', devid)
+        return inventory.snapshot(devid) or {'devid': devid, 'collected_at': None, 'applications': [], 'usb_devices': []}
+
+    @app.post('/fct/api/public/v1/control_events/')
+    def report_control_events(payload: ControlEventsPayload):
+        devid = svc.get_endpoint_by_client_id(payload.client_id).devid
+        now = datetime.now(UTC)
+        purge_personal_data()
+        accepted = []
+        for row in payload.events:
+            try:
+                at = datetime.fromisoformat(row.at)
+            except ValueError:
+                continue
+            if at.tzinfo is None or not now - timedelta(days=retention_days) <= at <= now + timedelta(hours=1):
+                continue
+            accepted.append({**row.model_dump(), 'at': at.astimezone(UTC).isoformat(), 'devid': devid})
+        inventory.add_events(accepted)
+        if payload.dropped:
+            audit.record(AuditEntry(actor='device', action='controls.dropped', target=devid,
+                                    metadata={'count': payload.dropped}))
+        return {'accepted': len(accepted), 'rejected': len(payload.events) - len(accepted)}
+
     @app.get('/api/v1/endpoints/index')
     def endpoints_index():
         return [endpoint_view(endpoint) for endpoint in svc.list_endpoints()]
@@ -430,8 +484,15 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     def set_profile(vdom: str, payload: dict[str, Any], request: Request):
         if not vdom or len(vdom) > 128:
             raise HTTPException(status_code=422, detail='invalid group')
+        expected_digest = request.headers.get('if-match')
+        if expected_digest is not None:
+            expected_digest = expected_digest.strip('"')
+            if not re.fullmatch(r'[a-f0-9]{64}', expected_digest):
+                raise HTTPException(status_code=422, detail='If-Match must contain the current policy digest')
         try:
-            profile = svc.set_profile(vdom, payload)
+            profile = svc.set_profile(vdom, payload, expected_digest)
+        except ProfilePreconditionError as error:
+            raise HTTPException(status_code=412, detail='profile changed; reload before publishing') from error
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         record(request, 'profile.publish', vdom, version=profile.version)
@@ -563,22 +624,31 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     @app.get('/api/v1/events')
     def list_events(request: Request, limit: int = Query(default=50, ge=1, le=500)):
         record_view(request)
+        purge_personal_data()
         rows = [(event.hour, event_view(event)) for event in events.recent(limit)]
         rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(limit)]
+        rows += [(datetime.fromisoformat(event['at']), {
+            **event, 'detail': event['target'], 'reason': event['rule_id'], 'category': None, 'category_label': None,
+        }) for event in inventory.recent_events(limit)]
         rows.sort(key=lambda row: row[0], reverse=True)
         return [view for _, view in rows[:limit]]
 
     @app.get('/api/v1/stats/overview')
     def overview(request: Request):
         record_view(request)
+        purge_personal_data()
         today = current_hour().replace(hour=0)
         start, previous_start = today - timedelta(days=6), today - timedelta(days=13)
         totals = events.daily_totals(previous_start)
+        control_totals = inventory.daily_totals(previous_start)
         days = [(start + timedelta(days=offset)).date() for offset in range(7)]
         previous = sum(total for day, total in totals.items() if day < start.date())
+        previous += sum(counts['apps'] + counts['usb'] for day, counts in control_totals.items()
+                        if day < start.date().isoformat())
         return {
             'generated_at': datetime.now(UTC).isoformat(),
-            'blocks_by_day': [{'date': day.isoformat(), 'web': totals.get(day, 0), 'apps': 0, 'usb': 0} for day in days],
+            'blocks_by_day': [{'date': day.isoformat(), 'web': totals.get(day, 0),
+                              **control_totals.get(day.isoformat(), {'apps': 0, 'usb': 0})} for day in days],
             'top_domains': [{'domain': domain, 'count': count} for domain, count in events.top_domains(start, 5)],
             # No history of machine status is kept, so only blocks can be compared.
             'previous_period': {'blocks': previous},
@@ -596,6 +666,9 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     def get_audit(limit: int = Query(default=100, ge=1, le=1000)):
         return [{'ts': entry.ts.isoformat(), 'actor': entry.actor, 'action': entry.action,
                  'target': entry.target, 'metadata': entry.metadata} for entry in audit.list(limit)]
+
+    from .management import attach_management_routes
+    attach_management_routes(app, svc, admin, record, retention_days, installer_path, public_base_url)
 
     @app.get('/fct_saml/{prefix}/metadata')
     def saml_metadata(prefix: str):
@@ -665,6 +738,7 @@ def build() -> FastAPI:
     from .enrollment import PostgresEnrollmentStore
     from .events import PostgresEventStore
     from .idp_store import PostgresIdpStore
+    from .inventory import PostgresInventoryStore
     from .network_locations import PostgresLocationStore
     from .queue import RedisQueue
     from .replay import RedisPendingRequestStore, RedisReplayCache
@@ -690,7 +764,7 @@ def build() -> FastAPI:
         raise ValueError('OPENEMS_BASE_URL must use HTTPS outside loopback')
     resources = []
     store = profile_store = rule_store = admin_store = audit_log = enrollment_store = idp_store = session_store = None
-    event_store = uninstall_store = location_store = None
+    event_store = uninstall_store = location_store = inventory_store = None
     if dsn:
         store = PostgresStore(dsn)
         profile_store = PostgresProfileStore(dsn)
@@ -703,8 +777,9 @@ def build() -> FastAPI:
         event_store = PostgresEventStore(dsn)
         uninstall_store = PostgresUninstallStore(dsn)
         location_store = PostgresLocationStore(dsn)
+        inventory_store = PostgresInventoryStore(dsn)
         resources = [store, profile_store, rule_store, admin_store, audit_log, enrollment_store, idp_store, session_store,
-                     event_store, uninstall_store, location_store]
+                     event_store, uninstall_store, location_store, inventory_store]
         for resource in resources:
             resource.init_schema()
     redis_url = os.environ.get('OPENEMS_REDIS_URL')
@@ -742,4 +817,7 @@ def build() -> FastAPI:
                       lab_mode=lab_mode, close_resources=resources,
                       category_dir=Path(category_dir) if category_dir else None,
                       event_store=event_store, event_retention_days=int(retention),
-                      uninstall_master_key=uninstall_key, uninstall_store=uninstall_store)
+                      uninstall_master_key=uninstall_key, uninstall_store=uninstall_store,
+                      inventory_store=inventory_store,
+                      installer_path=Path(os.environ['OPENEMS_INSTALLER_PATH']) if os.environ.get('OPENEMS_INSTALLER_PATH') else None,
+                      public_base_url=base_url)

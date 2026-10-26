@@ -124,6 +124,12 @@ class EmsService:
         self._enrollment.add(token, vdom, max_uses, datetime.now(UTC) + timedelta(seconds=ttl_seconds))
         return token
 
+    def list_invitations(self) -> list[dict[str, object]]:
+        return self._enrollment.list()
+
+    def revoke_invitation(self, identifier: str) -> bool:
+        return self._enrollment.revoke(identifier)
+
     def rotate_device_token(self, devid: str) -> str:
         endpoint = self.get_endpoint(devid)
         if endpoint.status is EndpointStatus.UNREGISTERED:
@@ -192,7 +198,7 @@ class EmsService:
 
     # --- config / profile push ------------------------------------------
 
-    def set_profile(self, vdom: str, body: dict[str, Any]) -> Profile:
+    def set_profile(self, vdom: str, body: dict[str, Any], expected_digest: str | None = None) -> Profile:
         """Publish a new profile for a vdom and notify its endpoints.
 
         Bumps the version and enqueues a `config_update` message for every
@@ -200,7 +206,7 @@ class EmsService:
         profile via get_profile().
         """
         # The store assigns the version atomically so concurrent workers never collide.
-        profile = self._profile_store.publish(vdom, validate_policy(body))
+        profile = self._profile_store.publish(vdom, validate_policy(body), expected_digest)
         affected_groups = {mapping["vdom"] for mapping in self._locations.mappings()
                            if mapping["inside_vdom"] == vdom}
         affected_groups.add(vdom)
