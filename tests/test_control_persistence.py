@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import os
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from threading import Barrier
 
 import pytest
 
@@ -16,6 +18,14 @@ from app.stores import (
     PostgresProfileStore,
     ProfilePreconditionError,
 )
+
+
+def scoped_dsn(store):
+    from psycopg.conninfo import make_conninfo
+
+    # Connection.info deliberately redacts credentials; keep the disposable fixture's DSN.
+    return make_conninfo(os.environ["OPENEMS_TEST_DSN"],
+                         options=store._conn.info.get_parameters().get("options", ""))
 
 
 @pytest.fixture(params=["memory", "postgres"])
@@ -125,6 +135,24 @@ def test_revoked_bootstrap_invitation_cannot_be_reopened_by_server_restart(stora
     assert store.list() == []
 
 
+def test_revocation_survives_reopening_the_postgres_store(storage):
+    store = storage["invitations"]
+    expires = datetime.now(UTC) + timedelta(hours=1)
+    store.add("reopened-bootstrap", "Default", 2, expires)
+    [item] = store.list()
+    assert store.revoke(item["id"])
+    reopened = (PostgresEnrollmentStore(scoped_dsn(store))
+                if isinstance(store, PostgresEnrollmentStore) else store)
+    try:
+        reopened.init_schema() if isinstance(reopened, PostgresEnrollmentStore) else None
+        reopened.add("reopened-bootstrap", "Default", 2, expires)
+        assert not reopened.consume("reopened-bootstrap", "Default")
+        assert reopened.list() == []
+    finally:
+        if reopened is not store:
+            reopened.close()
+
+
 def test_profile_compare_and_swap_never_overwrites_a_newer_editor(storage):
     store = storage["profiles"]
     with pytest.raises(ProfilePreconditionError):
@@ -135,3 +163,55 @@ def test_profile_compare_and_swap_never_overwrites_a_newer_editor(storage):
     with pytest.raises(ProfilePreconditionError):
         store.publish("Default", {"lost": True}, first.digest)
     assert store.get("Default").body == {"b": 2}
+
+
+def test_concurrent_profile_editors_cannot_both_replace_the_same_digest(storage):
+    first_store = storage["profiles"]
+    second_store = (PostgresProfileStore(scoped_dsn(first_store))
+                    if isinstance(first_store, PostgresProfileStore) else first_store)
+    initial = first_store.publish("Concurrent", {"initial": True})
+    barrier = Barrier(2)
+
+    def publish(store, body):
+        barrier.wait(timeout=10)
+        try:
+            return store.publish("Concurrent", body, initial.digest)
+        except ProfilePreconditionError:
+            return None
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as workers:
+            one = workers.submit(publish, first_store, {"one": True})
+            two = workers.submit(publish, second_store, {"two": True})
+            results = [one.result(timeout=15), two.result(timeout=15)]
+        assert sum(result is not None for result in results) == 1
+        assert first_store.get("Concurrent").version == 2
+    finally:
+        if second_store is not first_store:
+            second_store.close()
+
+
+def test_concurrent_administrator_removals_always_leave_one_writer(storage):
+    first_store = storage["admins"]
+    second_store = (PostgresAdminStore(scoped_dsn(first_store))
+                    if isinstance(first_store, PostgresAdminStore) else first_store)
+    first_store.put("one", "hash-one", "admin")
+    first_store.put("two", "hash-two", "admin")
+    barrier = Barrier(2)
+
+    def remove(store, username):
+        barrier.wait(timeout=10)
+        try:
+            return store.manage(username, None, None, delete=True)
+        except ValueError:
+            return False
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as workers:
+            one = workers.submit(remove, first_store, "one")
+            two = workers.submit(remove, second_store, "two")
+            assert sum([one.result(timeout=15), two.result(timeout=15)]) == 1
+        assert len(first_store.all()) == 1
+    finally:
+        if second_store is not first_store:
+            second_store.close()

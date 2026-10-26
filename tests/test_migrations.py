@@ -49,7 +49,7 @@ def test_upgrades_legacy_schema_and_preserves_endpoint_and_profile(database):
             CREATE TABLE profiles (vdom TEXT PRIMARY KEY, version INTEGER NOT NULL DEFAULT 0,
             body JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
             INSERT INTO profiles(vdom,version,body) VALUES ('Default',8,'{"webfilter":{}}')""")
-    assert runner()(database) == ["001_initial.sql", "002_block_events.sql", "003_tamper_events.sql", "004_uninstall.sql", "005_network_locations.sql", "006_controls.sql"]
+    assert runner()(database) == ["001_initial.sql", "002_block_events.sql", "003_tamper_events.sql", "004_uninstall.sql", "005_network_locations.sql", "006_controls.sql", "007_enrollment_revocations.sql"]
     endpoints = PostgresStore(database)
     profiles = PostgresProfileStore(database)
     try:
