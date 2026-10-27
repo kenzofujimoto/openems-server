@@ -105,6 +105,29 @@ def test_policy_capabilities_cover_scheduled_actions_and_global_monitoring():
     assert "web-filter:actions" in required_tags({"web_filter": {"category_actions": {"games": "allow"}}})
 
 
+def test_old_agents_cannot_fetch_or_successfully_acknowledge_new_policy_actions():
+    store = InMemoryEventStore()
+    client, administrator = panel(store)
+    device = client.post("/fct/api/public/v1/register/", json={"devid": "old-pc"}).json()
+    auth = {"Authorization": f"Bearer {device['device_token']}"}
+    published = client.post("/api/v1/profiles/Default", headers=administrator, json={"web_filter": {
+        "category_actions": {"games": "monitor"},
+    }}).json()
+    assert "version" in published
+    assert client.get("/fct/api/public/v1/config/assigned/", headers=auth,
+                      params={"client_id": device["client_id"]}).status_code == 409
+    acknowledgement = {"client_id": device["client_id"], "version": published["version"],
+                       "vdom": "Default", "digest": published["digest"], "success": True}
+    assert client.post("/fct/api/public/v1/config/ack/", headers=auth, json=acknowledgement).status_code == 409
+    assert client.post("/fct/api/public/v1/host_tags/", headers=auth, json={
+        "client_id": device["client_id"], "tags": ["web-filter:actions", "web-filter:monitor",
+                                                       "web-filter:categories", "web-filter:dns"],
+    }).status_code == 200
+    assert client.get("/fct/api/public/v1/config/assigned/", headers=auth,
+                      params={"client_id": device["client_id"]}).status_code == 200
+    assert client.post("/fct/api/public/v1/config/ack/", headers=auth, json=acknowledgement).status_code == 200
+
+
 def test_postgres_actions_batches_and_upgrade(database):
     import psycopg
     from app.events import PostgresEventStore

@@ -105,8 +105,8 @@ class CategoryRepository:
         try:
             manifest = self.manifest()
             if not isinstance(manifest, dict) or not isinstance(manifest.get("version"), str):
-                raise ValueError("invalid publication shape")
-            published = datetime.fromisoformat(manifest["version"].replace("Z", "+00:00"))
+                raise TypeError("invalid publication shape")
+            published = datetime.fromisoformat(manifest["version"])
             if published.tzinfo is None or published.utcoffset() is None:
                 raise ValueError("publication requires a timezone")
             age = (checked - published).total_seconds()

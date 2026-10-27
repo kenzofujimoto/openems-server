@@ -1,7 +1,7 @@
 """Publication health distinguishes missing data from a verified empty or stale catalog."""
 
-from datetime import UTC, datetime, timedelta
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
