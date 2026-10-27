@@ -49,3 +49,21 @@ def apply_migrations(dsn: str, *, migration_dir: Path | None = None) -> list[str
                              (name, checksum))
                 applied.append(name)
     return applied
+
+
+def main() -> int:
+    """Apply pending migrations to OPENEMS_DATABASE_URL and list what was applied."""
+    import os
+    import sys
+
+    dsn = os.environ.get("OPENEMS_DATABASE_URL")
+    if not dsn:
+        print("OPENEMS_DATABASE_URL is required", file=sys.stderr)
+        return 2
+    applied = apply_migrations(dsn)
+    print("applied: " + (", ".join(applied) if applied else "none"))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

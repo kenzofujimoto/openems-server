@@ -14,6 +14,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+# Checksummed upgrades for existing databases: python -m app.migrations
+COPY migrations ./migrations
 COPY --from=panel /app/panel_dist ./app/panel_dist
 # Shared policy, categories and uninstall-code modules must ship together.
 COPY agent ./agent
