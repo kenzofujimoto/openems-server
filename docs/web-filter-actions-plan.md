@@ -1,6 +1,6 @@
 # Plano: Permitir, Bloquear e Monitorar
 
-Estado em 27/10/2026: **proposta para aprovação; não implementada**. A documentação foi solicitada para publicação na main. A mudança de política/agente/API/painel depende da aprovação deste plano, conforme o fluxo spec-driven do usuário.
+Estado em 27/10/2026: **plano aprovado pelo usuário; implementação e integração em andamento**. Os testes de contrato precedem as alterações de política/agente/API/painel. O aceite de navegadores e o empacotamento final devem identificar os novos bytes; os MSIs anteriores não comprovam esta entrega.
 
 ## Controles propostos
 
@@ -24,7 +24,7 @@ Não confundir ausência de log de navegação com ausência de auditoria: publi
 2. Quando o domínio pertence a várias categorias, Bloquear prevalece sobre Monitorar, e Monitorar sobre Permitir. Permitir uma categoria não deve liberar silenciosamente um site também classificado numa categoria bloqueada; usar a exceção por domínio para isso.
 3. Categoria ausente na política equivale a Permitir, preservando o comportamento atual. Domínio desconhecido/não classificado é um estado distinto de lista ausente ou desatualizada.
 4. Bloqueios de antiburla/DoH e controles de aplicativo permanecem independentes. A exceção web não deve desativar esses controles.
-5. Políticas antigas com `blocked_categories` conservam significado. Um campo novo de ações exigirá migração/normalização, rejeição de conflitos e capacidade explícita do agente; agente antigo não pode confirmar sucesso ignorando Monitorar. O download/cache deve incluir categorias monitoradas, não apenas bloqueadas.
+5. Políticas antigas com `blocked_categories` conservam significado. O campo `category_actions` exige migração/normalização, rejeição de conflitos e capacidade explícita do agente; agente antigo não pode confirmar sucesso ignorando Monitorar. O download/cache deve incluir também categorias permitidas: com monitoramento geral ativo, reconhecer uma exclusão depende dessa base. Uma política nova não deve ser ativada ou confirmada sem suas bases necessárias.
 6. Eventos devem distinguir `blocked` de `monitored`, motivo, categoria e origem da observação. Totais de bloqueios não podem incluir monitoramento. Não chamar consultas de visitas nem contagens de pessoas.
 
 Monitorar uma categoria registra somente as observações que correspondem a ela. Para observar também outros domínios, inclusive não classificados, é necessária uma opção global explícita e distinta, com o mesmo aviso de cobertura DNS. Essa coleta ampla não será ativada automaticamente ao trocar um checkbox por Monitorar.
@@ -42,7 +42,7 @@ Monitorar uma categoria registra somente as observações que correspondem a ela
 | Identificação por pessoa | Se necessária, especificar vínculo de sessão e acesso aos dados separadamente | O registro atual identifica máquina, não a pessoa responsável pela navegação |
 | Exceção de serviços como Netflix | Lista de dependências testada, por serviço/grupo, com revisão periódica e teste real de reprodução | Domínios/CDNs mudam e podem ser compartilhados |
 
-Extensão de navegador é um caminho futuro de maior visibilidade, não dependência escondida da primeira entrega DNS. A implementação deve declarar capacidades por plataforma e recusar configurações não suportadas. Não habilitar coleta ampla por padrão.
+Extensão de navegador tem [contrato próprio](../browser-extension/SPEC.md), com coleta desativada por padrão e decisão local antes de cada observação. Seu broker nativo, instalação gerenciada e aceite em navegadores reais são etapas separadas. Sem pareamento válido, a extensão deve permanecer inativa. A entrega DNS declara capacidades por plataforma e recusa configurações não suportadas.
 
 ## Ordem de implementação após aprovação
 
@@ -60,4 +60,4 @@ Executar as suítes Python/Rust/painel e os contratos PostgreSQL pertinentes; li
 - Volume maior de dados: filas limitadas, descarte contabilizado, filtros e retenção configurável. Proposta inicial preserva agregação por hora e retenção atual de 30 dias, sem usuário do Windows, URLs completas ou parâmetros.
 - Domínios associados a endpoint podem revelar hábitos e dados sensíveis. Coleta deve ser explícita, com finalidade comunicada, acesso restrito e auditoria; validação operacional/LGPD continua necessária antes da produção.
 - Não alterar CA, DNS ou agente do host de desenvolvimento para validar esta proposta. Aceites de enforcement pertencem ao ambiente descartável/homologação autorizado.
-- Ícones e prévia são proposta visual. A main atual ainda contém checkboxes e somente eventos de bloqueio web.
+- A imagem acima é uma proposta visual; o estado publicável do painel e os resultados das suítes devem ser registrados após a integração. Não usar a imagem como evidência de enforcement ou homologação.

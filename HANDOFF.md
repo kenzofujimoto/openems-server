@@ -1,6 +1,16 @@
 # Handoff — roadmap v2
 
-## Documentação e proposta de ações web — 27/10/2026
+## Ações web aprovadas — integração de 27/10/2026
+
+O usuário aprovou o plano com “pode fazer tudo”. A integração atual inclui ações `allow`/`block`/`monitor`, monitoramento DNS opcional, eventos separados e deduplicação por lote, capacidade explícita do agente, seletor acessível e saúde das publicações de categorias. Testes vermelhos foram registrados antes das implementações. A ampliação prevista é de 21 para 27 IDs, sem inventar Business/Entertainment gerais.
+
+Pontos de revisão obrigatórios: exceção de categoria Permitir com `monitor_all` depende da base local disponível; não ativar/confirmar a política nova sem essa base. Reenrollment deve reenviar capacidades antes da primeira consulta de política. Eventos monitorados e descartados não entram nos totais de bloqueio.
+
+A extensão opcional Chrome/Firefox tem contrato em [browser-extension/SPEC.md](browser-extension/SPEC.md). Broker nativo e aceite real permanecem pendentes; ela deve ficar inativa sem pareamento. Não anunciar extensão integrada, URLs completas ou histórico integral de navegação.
+
+Resultados finais das suítes, revisão publicada e novos recibos MSI devem ser registrados ao concluir a integração. **Os pacotes/ZIP e aceites de 26/10 abaixo pertencem à versão anterior e não validam as ações web novas.** Não aplicar alterações de DNS/CA/controles ao host para testá-las. F9 e CI continuam fora do escopo autorizado desta rodada.
+
+## Histórico: documentação e proposta anterior à aprovação — 27/10/2026
 
 O usuário solicitou salvar a matriz FortiGuard e atualizar/publicar a documentação na main. Referências atuais em [docs/README.md](docs/README.md) e [docs/web-filter-compatibility.md](docs/web-filter-compatibility.md); planos antigos de categorias/eventos e validação de navegador agora indicam seu caráter histórico.
 
