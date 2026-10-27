@@ -26,6 +26,8 @@ All referenced category sets, including allow exclusions, must be present and no
 
 `POST /fct/api/public/v1/events/` retains device authentication and legacy rows. The new optional envelope `batch_id` is 64 lowercase hexadecimal characters. It identifies an immutable batch; retries reuse its ID and payload. A repeated identical batch is not counted twice; reusing an ID for another payload receives HTTP 409. Legacy uploads without an ID retain legacy behavior.
 
+The in-memory store caps batch receipts at 100,000 and responds HTTP 429 when full; retention purges old receipts. PostgreSQL persists receipts transactionally and remains the deployment storage option for sustained fleet telemetry.
+
 Rows add `action` (`blocked` or `monitored`) and `source` (`dns`); omitted fields default to `blocked` and `dns`. Monitor-all events use reason `policy`; category observations use `category`. Blocked events cannot use `policy`, and monitored events cannot use `doh`. The `browser` source is not supported by this contract or migration 008.
 
 The native queue aggregates by machine, hour, domain, reason, category, action and source. Repeated matching observations are deduplicated per minute. Queue, pending upload and deduplication identities are bounded in memory; discarded observations are reported separately. Under saturation, dropped counts are not unique-domain or person counts. Queue contents are not a durable browser history.

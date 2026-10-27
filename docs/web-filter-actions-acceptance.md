@@ -29,6 +29,16 @@ Use um agente compilado desta entrega em guest descartável ou máquina de homol
 
 No painel, verificar o seletor por teclado, os três ícones com rótulos, o aviso de listas desatualizadas e os registros separados de bloqueio/monitoramento. Repetir uma navegação em Chrome e Firefox com perfis novos e testar resolução DNS diretamente. Cache e conexões já abertas podem impedir nova consulta; a navegação no navegador não substitui o teste DNS.
 
+Dentro da VM de homologação, com o agente em modo DNS e ACK confirmado, uma sonda pode ser executada em PowerShell:
+
+```powershell
+$testDomain = 'dominio-de-homologacao.example' # Replace with a real controlled domain in the test category.
+Clear-DnsClientCache
+Resolve-DnsName -Name $testDomain -Type A -DnsOnly -NoHostsFile -QuickTimeout
+```
+
+O nome acima é um exemplo reservado e precisa ser substituído. Use a resolução configurada pelo agente; não altere o servidor DNS para contornar seu enforcement. Compare a resposta com a matriz e aguarde o próximo envio de eventos. Monitorar deve manter a resposta permitida, enquanto Bloquear deve produzir a resposta de bloqueio. Sem domínio controlado e base publicada conhecida, o resultado não comprova classificação correta.
+
 ## Limites do aceite
 
 O DNS observa consultas, inclusive de aplicativos e pré-carregamento. Não comprova todas as páginas visitadas, reprodução de streaming, URLs completas ou autoria por pessoa. Para Netflix, testar login e reprodução separadamente, liberando apenas dependências verificadas.

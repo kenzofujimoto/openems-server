@@ -1,10 +1,10 @@
 # Plano: Permitir, Bloquear e Monitorar
 
-Estado em 27/10/2026: **plano aprovado pelo usuário; implementação e integração em andamento**. Os testes de contrato precedem as alterações de política/agente/API/painel. O aceite de navegadores e o empacotamento final devem identificar os novos bytes; os MSIs anteriores não comprovam esta entrega.
+Estado em 27/10/2026: **plano aprovado e implementação DNS concluída; aceite no guest e em navegadores reais pendente**. Os testes de contrato precederam as alterações de política/agente/API/painel. Novos MSIs e manifestos foram preparados em `.venv/web-actions-acceptance/`; os MSIs anteriores não comprovam esta entrega. A extensão permanece uma etapa separada sem broker integrado.
 
-## Controles propostos
+## Controles implementados
 
-| Ação | Ícone Lucide | Comportamento proposto |
+| Ação | Ícone Lucide | Comportamento |
 |---|---|---|
 | Permitir | `CircleCheck`, verde | Permite; não gera log de navegação para essa decisão |
 | Bloquear | `ShieldBan`, vermelho | Bloqueia e registra a tentativa observada |
@@ -48,7 +48,7 @@ Monitorar uma categoria registra somente as observações que correspondem a ela
 
 Extensão de navegador tem [contrato próprio](../browser-extension/SPEC.md), com coleta desativada por padrão e decisão local antes de cada observação. Seu broker nativo, instalação gerenciada e aceite em navegadores reais são etapas separadas. Sem pareamento válido, a extensão deve permanecer inativa. A entrega DNS declara capacidades por plataforma e recusa configurações não suportadas.
 
-## Ordem de implementação após aprovação
+## Etapas do plano aprovado
 
 1. **Contratos e TDD:** vetores Python/Rust para três ações, conflitos, sobreposição, exceções, horários, políticas antigas e agentes incompatíveis. Commit dos testes vermelhos antes da implementação.
 2. **Núcleo de política:** decisão única com ação, motivo e decisão de registrar. Preservar consistência entre resolver, bloqueio HTTP/HTTPS e referência Python.
@@ -58,6 +58,8 @@ Extensão de navegador tem [contrato próprio](../browser-extension/SPEC.md), co
 6. **Ampliação de cobertura:** categorias extras somente após validar fonte/licença e corpus; extensão em etapa própria com especificação e aceite próprios.
 
 Executar as suítes Python/Rust/painel e os contratos PostgreSQL pertinentes; lint/tipos/build. Publicar unidades concluídas na main conforme autorização do usuário, mantendo pendências e sem anunciar a funcionalidade antes do aceite.
+
+Etapas 1–4 implementadas. Etapa 5 possui novos pacotes e [matriz de aceite](web-filter-actions-acceptance.md), mas ainda precisa de execução em guest e Chrome/Firefox com esses bytes. Na etapa 6, o catálogo foi ampliado para 27 IDs com [auditoria das fontes](category-source-audit.md), e os pacotes da extensão têm testes próprios; publicação real das listas, broker nativo e aceite da extensão continuam pendentes. Resultados automatizados e recibos devem ser conferidos no HANDOFF e em `validation/`.
 
 ## Riscos e limites
 

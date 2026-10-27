@@ -4,7 +4,7 @@ Reviewed: 2026-10-27. The catalog contains 27 precise openems categories backed 
 
 The primary source is the [Université Toulouse Capitole catalog](https://dsi.ut-capitole.fr/blacklists/). Its indexed catalog identifies `ai`, `bank`, `financial`, `jobsearch`, `webhosting`, and `celebrity` as separate lists. Each now maps to its own category; banks and financial services remain separate. These additions do not provide a broad General Business or Entertainment classifier.
 
-The prior indexed snapshot listed 80 AI, 6,646 bank, 473 financial, 60,741 job-search, 45 web-hosting and 674 celebrity entries. These are historical source counts, not current openems coverage measurements. Direct catalog retrieval timed out during this review. Live archive freshness and actual published counts must be verified from the deployment's category health and manifest.
+The prior indexed snapshot listed 80 AI, 6,646 bank, 473 financial, 60,741 job-search, 45 web-hosting and 674 celebrity entries. These are historical source counts, not current openems coverage measurements. Direct catalog retrieval timed out during this review; a later catalog and license retrieval through the research tool returned HTTP 503. Live archive freshness and actual published counts must be verified from the deployment's category health and manifest.
 
 Source legal references: [LICENSE.pdf](https://dsi.ut-capitole.fr/blacklists/download/LICENSE.pdf) and [CC BY-SA 4.0 text](https://dsi.ut-capitole.fr/blacklists/download/cc-by-sa-4-0.pdf). The previous indexed legal review identified CC BY-SA 4.0; direct live archive/license fetch remains pending. Published manifests retain source attribution. Redistribution must preserve attribution and applicable share-alike terms.
 

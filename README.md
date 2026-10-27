@@ -21,7 +21,7 @@ Current desktop implementation and acceptance status (2026-10-27):
 - **Native Windows agent:** Rust/MSI, local DNS and HTTP/HTTPS block pages, 27 UT1 category IDs, domain exceptions, schedules, SafeSearch, anti-bypass, session UI, tamper protection, network locations, USB and application controls. Hardware and WDAC acceptance remain separate.
 - **React panel:** policies, web category selection, inventories, events, groups/rules and administration, served at `/panel/`.
 - **Platform limits:** Linux packages await real VM acceptance; macOS Network Extension/Endpoint Security remain incomplete. Mobile/F9 is out of scope.
-- **Web visibility:** Allow/Block/Monitor actions, optional DNS monitoring, separate event counts, publication health and batch deduplication are being integrated against the approved plan. DNS observations are not complete browsing history. See the [action acceptance matrix](docs/web-filter-actions-acceptance.md); prior MSI receipts do not cover these changes. Optional browser extension packages remain inactive without the pending native broker.
+- **Web visibility:** Allow/Block/Monitor actions, optional DNS monitoring, separate event counts, publication health and batch deduplication are implemented. DNS observations are not complete browsing history. New MSI packages have their own receipts and still require [guest and browser acceptance](docs/web-filter-actions-acceptance.md); prior receipts do not cover these changes. Optional browser extension packages remain inactive without the pending native broker.
 
 See the [documentation index](docs/README.md), [web category/FortiGuard comparison](docs/web-filter-compatibility.md), [current handoff](HANDOFF.md) and [acceptance guide](ACCEPTANCE.md).
 

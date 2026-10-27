@@ -1,5 +1,17 @@
 # Aceite final do roadmap desktop
 
+## Ações web — entrega de 27/10/2026
+
+Permitir/Bloquear/Monitorar usa [matriz de aceite própria](docs/web-filter-actions-acceptance.md). O build desta entrega é preparado separadamente em `.venv/web-actions-acceptance/`, preservando os pacotes e resultados anteriores. Os quatro roteiros abaixo continuam como regressões de sessão/locais/controles; não substituem o aceite das ações web nem dos navegadores.
+
+```powershell
+.venv\Scripts\python.exe tools\build_final_acceptance.py --output .venv/web-actions-acceptance
+```
+
+Use o manifesto dessa pasta para identificar a revisão e os hashes. Compilar e gerar os MSIs não equivale a executar a nova rodada de aceites; resultados de 26/10 só valem para seus próprios bytes.
+
+## Rodada anterior
+
 Estado inicial: **pendente**. Testes locais, compilação, inspeção de MSI e geração de pacote não equivalem a um aceite no sistema operacional. A F9 continua fora do escopo. O estado de implementação de cada fase está em `HANDOFF.md`.
 
 Rodada real concluída em **26/10/2026**, com os pacotes/manifestos `779b483`: sessão passou nas duas fases, com reboot real; locais passou 8/8. USB passou nos quatro checks automatizados e aplicativos nos seis checks de inventário/rede/limpeza. Permanecem pendentes o USB físico e o bloqueio antes da execução por WDAC em VM compatível. Ambos retornam `manual_required`, com `automation_passed: true`, sem erros de limpeza. O consolidado e os relatórios finais estão em `validation/`; os pacotes atuais já foram preparados.

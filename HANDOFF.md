@@ -2,13 +2,19 @@
 
 ## Ações web aprovadas — integração de 27/10/2026
 
-O usuário aprovou o plano com “pode fazer tudo”. A integração atual inclui ações `allow`/`block`/`monitor`, monitoramento DNS opcional, eventos separados e deduplicação por lote, capacidade explícita do agente, seletor acessível e saúde das publicações de categorias. Testes vermelhos foram registrados antes das implementações. A ampliação prevista é de 21 para 27 IDs, sem inventar Business/Entertainment gerais.
+O usuário aprovou o plano com “pode fazer tudo”. Implementados: ações `allow`/`block`/`monitor`, monitoramento DNS opcional, eventos separados e deduplicação por lote, capacidade explícita do agente, seletor acessível e saúde das publicações de categorias. Testes vermelhos foram registrados antes das implementações. O catálogo possui 27 IDs, sem inventar Business/Entertainment gerais. Matriz, fontes, contrato e captura do painel estão em [docs/README.md](docs/README.md).
 
 Pontos de revisão obrigatórios: exceção de categoria Permitir com `monitor_all` depende da base local disponível; não ativar/confirmar a política nova sem essa base. Reenrollment deve reenviar capacidades antes da primeira consulta de política. Eventos monitorados e descartados não entram nos totais de bloqueio.
 
 A extensão opcional Chrome/Firefox tem contrato em [browser-extension/SPEC.md](browser-extension/SPEC.md). Broker nativo e aceite real permanecem pendentes; ela deve ficar inativa sem pareamento. Não anunciar extensão integrada, URLs completas ou histórico integral de navegação.
 
-Resultados finais das suítes, revisão publicada e novos recibos MSI devem ser registrados ao concluir a integração. **Os pacotes/ZIP e aceites de 26/10 abaixo pertencem à versão anterior e não validam as ações web novas.** Não aplicar alterações de DNS/CA/controles ao host para testá-las. F9 e CI continuam fora do escopo autorizado desta rodada.
+Validação final: **917 testes Python aprovados, 57 ignorados; 222 Rust/31 suítes; 102 painel/14 arquivos; 46 com PostgreSQL real descartável; 22 extensão**. Build do painel, TypeScript, ESLint, Ruff, fmt e Clippy aprovados; Clippy executado com `-D warnings`. O build Vite mantém o aviso existente de chunk acima de 500 kB. O contêiner PostgreSQL dedicado foi encerrado. O consolidado está em [validation/web-actions-2026-10-27.json](validation/web-actions-2026-10-27.json).
+
+Código nativo: `def4ad7`; painel: `3977a7f`. O release/MSIs foi construído da revisão `50a7bf9`; as correções seguintes `e8ee9b2` e `19a21ee` alteram somente fixtures de integração. A comparação de fontes de produção com a revisão empacotada está limpa. Categorias agora usam canário DNS local e comprovam download rejeitado/ACK; tamper aguarda locks transitórios do arquivo temporário dentro do prazo original e preserva erro persistente. Nenhuma asserção foi removida nem prazo ampliado.
+
+Novos MSIs e perfis estão em `.venv/web-actions-acceptance/`, com os mesmos bytes para as quatro regressões de sessão/locais/USB/aplicativos. SHA-256 do agente: `5290604d7f008cb279c01ccca0d1664edfb4415ffc0d0200987bf6465ea8bf04`. Recibos dos dois MSIs no consolidado e no manifesto local. O pacote portátil `.venv/openems-web-actions-transfer-2026-10-27.zip` inclui somente MSIs, recibos, evidência e guia de teste, sem estado/credenciais/CA privada; SHA-256 `bead64f768609c9c1eb212a8ad77c32a845462d3f1d33be126c59cbf804a3176`.
+
+**Aceite dos novos bytes no guest e Chrome/Firefox permanece pendente.** Use [a matriz das ações web](docs/web-filter-actions-acceptance.md), atualizando servidor e painel para esta entrega. Não substituir o aceite por testes unitários, captura com dados sintéticos ou resultados dos pacotes anteriores. **Os pacotes/ZIP e aceites de 26/10 abaixo pertencem à versão anterior e não validam as ações web novas.** O agente instalado, DNS, CA e firewall do host não foram alterados. F9 e CI continuam fora do escopo autorizado desta rodada.
 
 ## Histórico: documentação e proposta anterior à aprovação — 27/10/2026
 
