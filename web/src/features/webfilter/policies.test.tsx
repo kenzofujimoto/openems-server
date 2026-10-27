@@ -66,6 +66,7 @@ describe("policy editors", () => {
     expect(screen.getByRole("radio", { name: "Monitorar Jogos" })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: "Permitir Jogos" }));
     await user.click(screen.getByRole("button", { name: "Adicionar horário" }));
+    expect(screen.getByRole("radio", { name: "Monitorar Conteúdo adulto no horário 1" })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: "Monitorar Jogos no horário 1" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));
