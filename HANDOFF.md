@@ -1,5 +1,17 @@
 # Handoff — roadmap v2
 
+## Aceite das ações web no guest — 27/10/2026
+
+Executado em três Windows Sandbox novos, um por rodada, com os bytes de `.venv/web-actions-acceptance/final-msi/` sem recompilar (MSI `20e9d24e…` conferido no host e em cada guest; agente instalado `5290604d…`). Nenhum guest anterior estava ativo (host reiniciado às 08:23). Evidência sanitizada: [validation/web-actions-guest-2026-10-27.json](validation/web-actions-guest-2026-10-27.json).
+
+- Servidor e painel reconstruídos da `main` `e5309a1`; checkpoint `pg_dump` antes. Migrações 001–008 aplicadas por `app.migrations.apply_migrations`; o banco legado não tinha histórico e preservou endpoint/perfil. **Achado:** a imagem de produção não inclui `migrations/`; o runner foi executado com os SQL da main montados só para leitura.
+- Políticas no grupo isolado `WebActionsSandbox`; o agente do host continua em `Default` v2, sem mudança. Listas de homologação publicadas pela ferramenta real (não são UT1). O servidor ficou exposto no Default Switch só durante as rodadas e voltou a loopback.
+- **Passou:** Permitir sem evento, Bloquear, Monitorar, monitoramento geral (fora das categorias e Permitir explícito), exceção sobre bloquear/monitorar, precedência, janela ativa/inativa e limite de início (8,9 s, `America/Sao_Paulo`), categoria ausente e digest inválido (sem ACK, digest anterior mantido, recuperação após arquivo válido), sonda DNS, Chrome 156 e Firefox 158 com perfis novos (rodada 3), remoção nos três guests. Netflix passou **só em DNS** (login e reprodução separados).
+- **Pendente:** Netflix real (conta/reprodução), reinício offline, token expirado/reenrollment, retry do mesmo lote, fila saturada e revisão visual/teclado do painel.
+- **Falhas registradas:** navegadores da rodada 1 (sem sessão de logon no guest; depois classificador e aba desanexada; Firefox `browsingContext.create` expirou) e caso permitido da rodada 2. Causa da rodada 2 e ressalva da rodada 1: o DNS NAT do Sandbox usa o resolvedor do host, e o agente do host responde `127.0.0.1` para `example.com`/`www.example.com`. As linhas afetadas foram repetidas na rodada 3 com `www.ietf.org`/`www.rfc-editor.org`. Em testes futuros no Sandbox, não usar domínios bloqueados pelo host e rejeitar respostas loopback.
+- O digest inválido foi injetado no relay do guest, porque o servidor recusa servir arquivo divergente. Uma notificação de status do agente retornou HTTPError durante a troca de versão e foi repetida.
+- Harness temporário em `.venv/web-actions-guest/` (orquestrador, relay, sonda e checks de navegador adaptados, com testes). Dados de homologação adicionados: grupo `WebActionsSandbox`, três endpoints de teste desinstalados e listas de teste no volume de categorias. F9, CI, push e PR fora do escopo.
+
 ## Ações web aprovadas — integração de 27/10/2026
 
 O usuário aprovou o plano com “pode fazer tudo”. Implementados: ações `allow`/`block`/`monitor`, monitoramento DNS opcional, eventos separados e deduplicação por lote, capacidade explícita do agente, seletor acessível e saúde das publicações de categorias. Testes vermelhos foram registrados antes das implementações. O catálogo possui 27 IDs, sem inventar Business/Entertainment gerais. Matriz, fontes, contrato e captura do painel estão em [docs/README.md](docs/README.md).
@@ -14,7 +26,7 @@ Código nativo: `def4ad7`; painel: `3977a7f`. O release/MSIs foi construído da 
 
 Novos MSIs e perfis estão em `.venv/web-actions-acceptance/`, com os mesmos bytes para as quatro regressões de sessão/locais/USB/aplicativos. SHA-256 do agente: `5290604d7f008cb279c01ccca0d1664edfb4415ffc0d0200987bf6465ea8bf04`. Recibos dos dois MSIs no consolidado e no manifesto local. O pacote portátil `.venv/openems-web-actions-transfer-2026-10-27.zip` inclui somente MSIs, recibos, evidência e guia de teste, sem estado/credenciais/CA privada; SHA-256 `bead64f768609c9c1eb212a8ad77c32a845462d3f1d33be126c59cbf804a3176`.
 
-**Aceite dos novos bytes no guest e Chrome/Firefox permanece pendente.** Use [a matriz das ações web](docs/web-filter-actions-acceptance.md), atualizando servidor e painel para esta entrega. Não substituir o aceite por testes unitários, captura com dados sintéticos ou resultados dos pacotes anteriores. **Os pacotes/ZIP e aceites de 26/10 abaixo pertencem à versão anterior e não validam as ações web novas.** O agente instalado, DNS, CA e firewall do host não foram alterados. F9 e CI continuam fora do escopo autorizado desta rodada.
+**Atualização:** o aceite no guest e Chrome/Firefox foi executado depois; resultado na seção acima. Use [a matriz das ações web](docs/web-filter-actions-acceptance.md), atualizando servidor e painel para esta entrega. Não substituir o aceite por testes unitários, captura com dados sintéticos ou resultados dos pacotes anteriores. **Os pacotes/ZIP e aceites de 26/10 abaixo pertencem à versão anterior e não validam as ações web novas.** O agente instalado, DNS, CA e firewall do host não foram alterados. F9 e CI continuam fora do escopo autorizado desta rodada.
 
 ## Histórico: documentação e proposta anterior à aprovação — 27/10/2026
 

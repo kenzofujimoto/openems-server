@@ -10,6 +10,8 @@ Permitir/Bloquear/Monitorar usa [matriz de aceite própria](docs/web-filter-acti
 
 Use o manifesto dessa pasta para identificar a revisão e os hashes. Compilar e gerar os MSIs não equivale a executar a nova rodada de aceites; resultados de 26/10 só valem para seus próprios bytes.
 
+**Resultado de 27/10/2026** ([evidência](validation/web-actions-guest-2026-10-27.json)): três Sandboxes novos com o MSI `20e9d24e…` e o agente `5290604d…`, servidor/painel da `main` e migração 008 aplicada. A matriz prioritária passou: Permitir, Bloquear, Monitorar, monitoramento geral, exceções, precedência, horários, categoria ausente e digest inválido. Também passaram a sonda DNS e Chrome/Firefox com perfis novos. Netflix passou só em DNS. Permanecem **pendentes**: login/reprodução real da Netflix, reinício offline, token expirado/reenrollment, retry do mesmo lote, fila saturada e revisão visual/teclado do painel. As falhas de harness das rodadas 1 e 2 estão registradas. No Sandbox, o DNS upstream é o resolvedor do host: não use domínios que o agente do host bloqueia (`example.com`) e trate respostas loopback como não atribuíveis.
+
 ## Rodada anterior
 
 Estado inicial: **pendente**. Testes locais, compilação, inspeção de MSI e geração de pacote não equivalem a um aceite no sistema operacional. A F9 continua fora do escopo. O estado de implementação de cada fase está em `HANDOFF.md`.
