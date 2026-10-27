@@ -9,6 +9,8 @@ const CODE = "QZJ9T-4Y3D1";
 
 async function openSheet(user: ReturnType<typeof userEvent.setup>, devid = "RSM-SP-001", name = "NB-FINANCEIRO-01") {
   renderApp("/endpoints");
+  // Wait for the session-gated page before its endpoint list, as App.test does; each step keeps the default timeout.
+  await screen.findByRole("heading", { name: "Endpoints" });
   await user.click(await screen.findByRole("button", { name: `Abrir ${devid}` }));
   return screen.findByRole("dialog", { name });
 }
