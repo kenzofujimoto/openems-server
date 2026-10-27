@@ -1,0 +1,203 @@
+{
+  "date": "2026-10-27",
+  "revision": "a306290",
+  "report": "docs/security-review-2026-10-27.md",
+  "tools": {
+    "gitleaks": "ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f",
+    "semgrep": "semgrep/semgrep@sha256:3db5c7af55eb1f512eac0abf0ab69a97b52c74b5e9a27314c221aee1a78d7ab2",
+    "trivy": "aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c",
+    "zap": "ghcr.io/zaproxy/zaproxy@sha256:030d3df57735dacbb83464854758e674dd9ad01d79d12a129a8e58b1fd384238",
+    "hadolint": "hadolint/hadolint@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d",
+    "osv_scanner": "ghcr.io/google/osv-scanner@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0",
+    "bandit_pip_audit_runtime": "python@sha256:82abc9f53600280b0757126f83c5a7d47088592d2acb6b4c0b9e97f76865508c (latest bandit/pip-audit from PyPI at run time)"
+  },
+  "gitleaks": {
+    "commits": 471,
+    "findings": 13,
+    "files": [
+      "contract/uninstall-vectors.json"
+    ],
+    "verdict": "test vectors derived from test-only-master-key"
+  },
+  "semgrep": {
+    "by_severity": {
+      "WARNING": 19,
+      "INFO": 75,
+      "ERROR": 3
+    },
+    "rules": {
+      "github-actions-mutable-action-tag": 16,
+      "unsafe-usage": 70,
+      "args": 1,
+      "current-exe": 4,
+      "dynamic-urllib-use-detected": 1,
+      "len-all-count": 1,
+      "sqlalchemy-execute-raw-query": 2,
+      "request-host-used": 1,
+      "use-defused-xml-parse": 1
+    }
+  },
+  "bandit": {
+    "by_severity": {
+      "LOW": 167,
+      "MEDIUM": 12
+    }
+  },
+  "pip_audit": {
+    "python-multipart==0.0.20": [
+      "PYSEC-2026-1852",
+      "PYSEC-2026-3036",
+      "PYSEC-2026-3037",
+      "PYSEC-2026-3038",
+      "PYSEC-2026-3039",
+      "PYSEC-2026-3040"
+    ],
+    "pytest==9.0.2": [
+      "PYSEC-2026-1845"
+    ],
+    "starlette==0.41.3": [
+      "PYSEC-2026-161",
+      "PYSEC-2026-1941",
+      "PYSEC-2026-1942",
+      "PYSEC-2026-2280",
+      "PYSEC-2026-2281",
+      "PYSEC-2026-248",
+      "PYSEC-2026-249"
+    ]
+  },
+  "osv_scanner": "Cargo.lock and web/package-lock.json without known vulnerabilities; Python transitive: anyio, certifi, idna, pygments, starlette, python-multipart, pytest",
+  "trivy_image": {
+    "image": "openems-server-server (main a306290)",
+    "results": {
+      "openems-server-server:latest": {
+        "by_severity": {
+          "LOW": 61,
+          "HIGH": 44,
+          "MEDIUM": 58,
+          "UNKNOWN": 1
+        },
+        "fixable": 0
+      },
+      "Node.js": {
+        "by_severity": {},
+        "fixable": 0
+      },
+      "Python": {
+        "by_severity": {
+          "HIGH": 10,
+          "MEDIUM": 7,
+          "LOW": 5
+        },
+        "fixable": 22
+      }
+    }
+  },
+  "zap_baseline": {
+    "target": "homologation server, passive",
+    "alerts": [
+      [
+        "10049",
+        "Non-Storable Content",
+        "Informational"
+      ],
+      [
+        "10049",
+        "Storable and Cacheable Content",
+        "Informational"
+      ],
+      [
+        "10055",
+        "CSP: style-src unsafe-inline",
+        "Medium"
+      ],
+      [
+        "10063",
+        "Permissions Policy Header Not Set",
+        "Low"
+      ],
+      [
+        "10109",
+        "Modern Web Application",
+        "Informational"
+      ],
+      [
+        "2",
+        "Private IP Disclosure",
+        "Low"
+      ],
+      [
+        "90004",
+        "Cross-Origin-Embedder-Policy Header Missing or Invalid",
+        "Low"
+      ],
+      [
+        "90004",
+        "Cross-Origin-Opener-Policy Header Missing or Invalid",
+        "Low"
+      ],
+      [
+        "90004",
+        "Cross-Origin-Resource-Policy Header Missing or Invalid",
+        "Low"
+      ]
+    ],
+    "fail": 0
+  },
+  "zap_api_active": {
+    "target": "disposable isolated stack, authenticated admin bearer",
+    "alerts": [
+      [
+        "100000",
+        "A Client Error response code was returned by the server",
+        "Informational"
+      ],
+      [
+        "100001",
+        "Unexpected Content-Type was returned",
+        "Low"
+      ],
+      [
+        "10049",
+        "Non-Storable Content",
+        "Informational"
+      ],
+      [
+        "10055",
+        "CSP: style-src unsafe-inline",
+        "Medium"
+      ],
+      [
+        "10063",
+        "Permissions Policy Header Not Set",
+        "Low"
+      ],
+      [
+        "10109",
+        "Modern Web Application",
+        "Informational"
+      ],
+      [
+        "10111",
+        "Authentication Request Identified",
+        "Informational"
+      ],
+      [
+        "90004",
+        "Cross-Origin-Embedder-Policy Header Missing or Invalid",
+        "Low"
+      ],
+      [
+        "90004",
+        "Cross-Origin-Opener-Policy Header Missing or Invalid",
+        "Low"
+      ],
+      [
+        "90004",
+        "Cross-Origin-Resource-Policy Header Missing or Invalid",
+        "Low"
+      ]
+    ],
+    "fail": 0,
+    "server_errors": 0
+  }
+}

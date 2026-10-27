@@ -14,6 +14,14 @@ Levar `.venv/openems-second-machine-2026-10-27.zip`, que fica fora do Git (SHA-2
 
 O ZIP não leva `.env`, senhas, convites, CA, estado nem perfis.
 
+## Revisão de segurança — 27/10/2026
+
+Relatório em [docs/security-review-2026-10-27.md](docs/security-review-2026-10-27.md); resumo com digests das ferramentas em [validation/security-review-2026-10-27.json](validation/security-review-2026-10-27.json).
+- Scanners: gitleaks, Semgrep, Bandit, pip-audit, osv-scanner, Trivy (sistema de arquivos e imagem), hadolint, ZAP baseline e ZAP API ativo autenticado numa pilha descartável.
+- DAST: 0 falhas.
+- O risco real está nas dependências Python do servidor (`starlette`, `python-multipart` com 3 HIGH, `anyio`, `certifi`, `urllib3`) e nas ferramentas de teste dentro da imagem.
+- Plano de correção, scanners e gates **aguarda aprovação do usuário**.
+
 ## Continuação do aceite — pendências, YouTube e painel (27/10/2026)
 
 Evidência: [validation/web-actions-followup-2026-10-27.json](validation/web-actions-followup-2026-10-27.json). Mesmos bytes (MSI `20e9d24e…`, agente `5290604d…`), um Sandbox novo por rodada, todos encerrados ao fim e com o agente removido.
@@ -27,12 +35,12 @@ Evidência: [validation/web-actions-followup-2026-10-27.json](validation/web-act
 - **YouTube (substituto da Netflix, sem conta):**
   - Liberando só o site/player, a página carrega, o vídeo fica em 0 s e há eventos `blocked` de `googlevideo.com`. Passou em Chrome e Firefox.
   - Liberando também o vídeo, ele toca no Chrome (2,2 s).
-  - **Firefox: reprodução pendente pelo critério automático.** Na rodada 6 avançou 1,28 s, abaixo do limite de 2 s; na 7 o vídeo de 19 s acabou e a página abriu o próximo. Repetir manualmente na segunda máquina.
+  - Firefox: na rodada 6 avançou 1,28 s, abaixo do limite de 2 s; na 7 o vídeo de 19 s acabou e a página abriu o próximo. **Rodada 8** trocou só o vídeo (*Big Buck Bunny*, ~10 min), com o mesmo limite e a mesma janela: 0 s com o CDN bloqueado e 17,1 s com ele liberado. Passou.
   - As rodadas 4 e 5 falharam por defeitos do harness: PID antigo após restart, nome de sonda inválido e `/embed/` com erro 153.
 - **Painel (navegador interno, só leitura):**
   - O seletor por teclado funcionou: setas, foco visível, Tab entre grupos e ícones com rótulo.
   - O modo escuro persiste após recarregar.
-  - O aviso de listas desatualizadas ficou pendente, porque a publicação estava atual.
+  - Aviso de listas desatualizadas: com o manifesto datado de 20/10, o painel mostrou o aviso; as listas foram republicadas em seguida.
   - Achados corrigidos com TDD:
     - 500 na primeira carga: purgas concorrentes aninhavam transações na conexão compartilhada do inventário (`7a572a7`);
     - página de Eventos vazia: pedia `limit=1000` e a API aceitava 500 (`2dda1d5`).
