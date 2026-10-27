@@ -72,6 +72,14 @@ def test_future_publication_does_not_claim_current_data(tmp_path):
     assert repository.health(now=NOW)["status"] == "invalid"
 
 
+def test_missing_attribution_is_invalid_publication(tmp_path):
+    repository = publication(tmp_path)
+    manifest = repository.manifest()
+    del manifest["attribution"]
+    (tmp_path / "published/manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    assert repository.health(now=NOW)["status"] == "invalid"
+
+
 def test_invalid_health_parameters_are_refused(tmp_path):
     repository = CategoryRepository(tmp_path)
     with pytest.raises(ValueError):
