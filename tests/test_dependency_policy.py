@@ -1,6 +1,7 @@
 """Supply-chain policy for the server image (2026-10-27 security review).
 
-The production image installs only runtime packages from a fully hashed lock; test tools live in
+The production image installs only runtime packages from a fully hashed lock (requirements.txt,
+compiled by pip-compile from requirements.in so Dependabot can regenerate it); test tools live in
 requirements-dev.txt. Minimum versions close the advisories found by pip-audit/osv/Trivy.
 """
 
@@ -31,25 +32,29 @@ def version(text: str) -> tuple[int, ...]:
 
 
 def test_runtime_requirements_exclude_test_tools():
-    runtime = pins(ROOT / "requirements.txt")
+    runtime = pins(ROOT / "requirements.in")
     assert not DEV_ONLY & set(runtime), "test tools must not be installed in the production image"
     dev = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
-    assert "-r requirements.txt" in dev
+    # Hash-checking mode would reject unhashed dev pins combined with the lock: start from the input.
+    assert "-r requirements.in" in dev
     assert {"pytest", "ruff"} <= set(pins(ROOT / "requirements-dev.txt"))
 
 
 def test_lock_pins_every_package_with_hashes():
-    lines = (ROOT / "requirements.lock").read_text(encoding="utf-8").replace("\\\n", " ").splitlines()
-    entries = [line for line in lines if PIN.match(line.strip())]
+    text = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    assert "pip-compile" in "\n".join(text.splitlines()[:6]), "Dependabot needs the pip-compile header"
+    entries = [line for line in text.replace("\\\n", " ").splitlines() if PIN.match(line.strip())]
     assert entries, "lock is empty"
     assert all("--hash=sha256:" in line for line in entries), "every locked package needs a hash"
-    locked = pins(ROOT / "requirements.lock")
-    assert set(pins(ROOT / "requirements.txt")) <= set(locked)
+    locked = pins(ROOT / "requirements.txt")
+    direct = pins(ROOT / "requirements.in")
+    assert set(direct) <= set(locked)
+    assert all(locked[name] == pinned for name, pinned in direct.items()), "lock is stale: run pip-compile"
     assert not DEV_ONLY & set(locked)
 
 
 def test_locked_versions_close_reviewed_advisories():
-    locked = pins(ROOT / "requirements.lock")
+    locked = pins(ROOT / "requirements.txt")
     assert {"fastapi", "starlette", "python-multipart"} <= set(locked)
     for name, minimum in MINIMUMS.items():
         # Transitive packages may leave the runtime entirely; when present they must be fixed.
@@ -59,8 +64,8 @@ def test_locked_versions_close_reviewed_advisories():
 
 def test_image_installs_the_hashed_lock_only():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-    assert "--require-hashes" in dockerfile and "requirements.lock" in dockerfile
-    assert "-r requirements.txt" not in dockerfile
+    assert "--require-hashes" in dockerfile and "-r /tmp/requirements.txt" in dockerfile
+    assert "requirements.in" not in dockerfile and "requirements-dev" not in dockerfile
 
 
 def test_base_images_are_pinned_by_digest():
