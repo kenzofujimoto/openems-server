@@ -56,6 +56,13 @@ def test_events_list_newest_rows_with_reason_category_and_count():
     assert client.get("/api/v1/events?limit=0", headers=auth).status_code == 422
 
 
+def test_events_page_limit_matches_the_panel_request():
+    # The Events page asks for up to 1000 rows (like the audit page); 2026-10-27 review saw a 422.
+    client, auth = panel()
+    assert client.get("/api/v1/events?limit=1000", headers=auth).status_code == 200
+    assert client.get("/api/v1/events?limit=1001", headers=auth).status_code == 422
+
+
 def test_overview_sums_seven_days_and_compares_with_the_week_before():
     store = InMemoryEventStore()
     today = current_hour().replace(hour=0)
