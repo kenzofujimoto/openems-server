@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-27",
+  "revision": "3522f0bc1ebd9b3909793e831b821993b02ab6b4",
+  "command": "python tools/security_scan.py --dast",
+  "passed": true,
+  "gates": [
+    {
+      "name": "secrets",
+      "passed": true,
+      "details": [
+        "gitleaks: 0 finding(s) across the Git history"
+      ]
+    },
+    {
+      "name": "sast",
+      "passed": true,
+      "details": [
+        "semgrep: {'INFO': 75, 'WARNING': 2}; ERROR blocks, WARNING/INFO are reported in SARIF"
+      ]
+    },
+    {
+      "name": "dependencies",
+      "passed": true,
+      "details": [
+        "cargo-deny: advisories, bans, licenses and sources ok",
+        "pip-audit runtime and dev, osv-scanner on requirements.txt, web/package-lock.json, agent-rs/Cargo.lock"
+      ]
+    },
+    {
+      "name": "container",
+      "passed": true,
+      "details": [
+        "image: fixable HIGH/CRITICAL block; 164 finding(s) without an upstream fix are reported only",
+        "SBOM: sbom.cdx.json (CycloneDX)"
+      ]
+    },
+    {
+      "name": "workflows",
+      "passed": true,
+      "details": [
+        "actionlint and zizmor (medium and above) over .github/workflows"
+      ]
+    },
+    {
+      "name": "dast",
+      "passed": true,
+      "details": [
+        "ZAP baseline (passive) and authenticated OpenAPI active scan; Low and above block unless accepted"
+      ]
+    },
+    {
+      "name": "accepted-findings",
+      "passed": true,
+      "details": []
+    }
+  ],
+  "reports_kept_locally": ".venv/security-reports/final-gates-2026-10-27 (JSON, SARIF, ZAP HTML, CycloneDX SBOM)"
+}

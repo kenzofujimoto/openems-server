@@ -1,0 +1,99 @@
+{
+  "date": "2026-10-27",
+  "scope": "Regression of the rebuilt MSI that removes the consumed enrollment invitation",
+  "msi_source_revision": "18cd81169d1d317ee070a4d02a7ac26e0c439296",
+  "msi_sha256": "762c931afe6c84934e02402f28f65776bd11ea1c56cfe829d4f4e12f315ef486",
+  "agent_sha256": "370aa1ace2fbc8c4a37f54efadaa29781293fb60c7c343d14451d5d6a814179c",
+  "verified_in_guest": {
+    "msi": "762C931AFE6C84934E02402F28F65776BD11EA1C56CFE829D4F4E12F315EF486",
+    "agent": "370AA1ACE2FBC8C4A37F54EFADAA29781293FB60C7C343D14451D5D6A814179C"
+  },
+  "final_round": {
+    "sandbox_id": "59a617a8-affb-4cbd-b347-546184ecb82f",
+    "devid": "sandbox-msi-v2-160937",
+    "rows": {
+      "msi_v2_enrollment_and_invitation_removed": {
+        "ack": true,
+        "dns": {
+          "www.example.net": {
+            "outcome": "blocked",
+            "answers": [
+              "0.0.0.0"
+            ],
+            "at": "2026-10-27T19:13:13.6488883Z"
+          },
+          "www.ietf.org": {
+            "outcome": "forwarded",
+            "answers": [
+              "104.16.44.99",
+              "104.16.45.99"
+            ],
+            "at": "2026-10-27T19:13:13.8384745Z"
+          }
+        },
+        "config_has_invitation": false,
+        "passed": true
+      },
+      "msi_v2_restart_keeps_enforcement": {
+        "dns": {
+          "www.example.net": {
+            "outcome": "blocked",
+            "answers": [
+              "0.0.0.0"
+            ],
+            "at": "2026-10-27T19:13:37.2943595Z"
+          }
+        },
+        "config_has_invitation": false,
+        "passed": true
+      },
+      "msi_v2_removal": {
+        "removal": {
+          "service_present": false,
+          "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+          "managed_nrpt": 0,
+          "exit_code": 0
+        },
+        "passed": true
+      }
+    },
+    "sandbox_stopped": true,
+    "agent_log": "enrollment invitation removed from the configuration (first registration)"
+  },
+  "harness_attempts": [
+    {
+      "devid": "sandbox-msi-v2",
+      "sandbox_id": "0ac7e7db-44a0-41c8-ad81-e6b4aeb406ce",
+      "rows": {},
+      "errors": [
+        "TimeoutExpired: Command '['docker', 'exec', 'openems-server-postgres-1', 'psql', '-U', 'postgres', '-d', 'openems', '-At', '-F', '|', '-c', \"SELECT config_versi"
+      ]
+    },
+    {
+      "devid": "sandbox-msi-v2",
+      "sandbox_id": "4c57d989-a3bd-445c-921e-e2eaef85b51b",
+      "rows": {
+        "msi_v2_enrollment_and_invitation_removed": false,
+        "msi_v2_restart_keeps_enforcement": false,
+        "msi_v2_removal": true
+      },
+      "errors": []
+    },
+    {
+      "devid": "sandbox-msi-v2-160416",
+      "sandbox_id": "a131ad94-1919-4841-8bde-2482b7183a2a",
+      "rows": {
+        "msi_v2_enrollment_and_invitation_removed": false,
+        "msi_v2_restart_keeps_enforcement": false,
+        "msi_v2_removal": true
+      },
+      "errors": []
+    }
+  ],
+  "notes": [
+    "Attempt 1: psql timed out under host load from a parallel cargo build (harness).",
+    "Attempt 2: reused device id was refused with 'device proof of possession is required' (correct server behavior); the invitation stayed because enrollment did not happen.",
+    "Attempt 3: enrollment, ACK, blocking and removal passed and agent.log recorded the invitation removal; the probe read a missing JSON property under StrictMode as null (harness).",
+    "Attempt 4 (final): probe checks the property explicitly; all rows passed."
+  ]
+}
