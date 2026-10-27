@@ -657,7 +657,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         return {'removed': rule_id}
 
     @app.get('/api/v1/events')
-    def list_events(request: Request, limit: int = Query(default=50, ge=1, le=500),
+    def list_events(request: Request, limit: int = Query(default=50, ge=1, le=1000),
                     action: str | None = Query(default=None, pattern='^(blocked|monitored)$')):
         record_view(request)
         purge_personal_data()
