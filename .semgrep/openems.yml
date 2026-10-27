@@ -1,0 +1,90 @@
+# Project rules on top of the Semgrep registry packs (tools/security_scan.py --only sast).
+# ERROR blocks the gate; each rule encodes a decision from the 2026-10-27 security review.
+rules:
+  - id: openems-untrusted-xml-must-use-defusedxml
+    languages: [python]
+    severity: ERROR
+    message: Parse untrusted XML with defusedxml (forbid_dtd=True); the standard parsers accept DTDs in wide encodings.
+    paths:
+      include: [app/]
+    pattern-either:
+      - pattern: xml.etree.ElementTree.fromstring(...)
+      - pattern: xml.etree.ElementTree.parse(...)
+      - pattern: xml.etree.ElementTree.XMLParser(...)
+      - pattern: xml.dom.minidom.parseString(...)
+
+  - id: openems-lxml-parser-must-disable-entities
+    languages: [python]
+    severity: ERROR
+    message: lxml parsers must set resolve_entities=False and no_network=True.
+    patterns:
+      - pattern: lxml.etree.fromstring($DATA, ...)
+      - pattern-not: lxml.etree.fromstring($DATA, parser=lxml.etree.XMLParser(..., resolve_entities=False, ..., no_network=True, ...), ...)
+      - pattern-not: lxml.etree.fromstring($DATA, parser=lxml.etree.XMLParser(..., no_network=True, ..., resolve_entities=False, ...), ...)
+
+  - id: openems-no-shell-subprocess
+    languages: [python]
+    severity: ERROR
+    message: Never run subprocesses through a shell; pass an argument list.
+    pattern-either:
+      - pattern: subprocess.$FUNC(..., shell=True, ...)
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+
+  - id: openems-no-tls-verification-bypass
+    languages: [python]
+    severity: ERROR
+    message: TLS verification must stay enabled.
+    pattern-either:
+      - pattern: $CALL(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+      - pattern: ssl.create_default_context(...).check_hostname = False
+
+  - id: openems-no-dynamic-sql
+    languages: [python]
+    severity: ERROR
+    message: Bind values as query parameters; only module-level constant fragments may be formatted into SQL.
+    paths:
+      include: [app/]
+    patterns:
+      - pattern-either:
+          - pattern: $CUR.execute(f"...{$X}...", ...)
+          - pattern: $CUR.execute("..." % $X, ...)
+          - pattern: $CUR.execute("...".format(...), ...)
+      - metavariable-regex:
+          metavariable: $X
+          regex: ^(?!_COLUMNS$|self\._SELECT$).*
+
+  - id: openems-no-raw-html-in-panel
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: Render text through React; raw HTML and dynamic code evaluation are not allowed in the panel.
+    paths:
+      include: [web/src/, browser-extension/src/]
+    pattern-either:
+      - pattern: <$EL dangerouslySetInnerHTML={...} />
+      - pattern: $X.innerHTML = $Y
+      - pattern: $X.outerHTML = $Y
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: document.write(...)
+
+  - id: openems-rust-no-tls-bypass
+    languages: [rust]
+    severity: ERROR
+    message: The agent must validate server certificates; no dangerous verifier or invalid-certificate switch.
+    pattern-either:
+      - pattern: $B.danger_accept_invalid_certs(true)
+      - pattern: $B.danger_accept_invalid_hostnames(true)
+      - pattern: $C.dangerous()
+
+  - id: openems-workflow-no-pull-request-target
+    languages: [yaml]
+    severity: ERROR
+    message: pull_request_target runs untrusted code with write tokens; use pull_request.
+    paths:
+      include: [.github/workflows/]
+    pattern: |
+      on:
+        ...
+        pull_request_target: ...

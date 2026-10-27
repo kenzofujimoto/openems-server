@@ -1,0 +1,10 @@
+# Generated, vendored or test-only trees; tests are linted by ruff with their own exceptions.
+.venv/
+**/node_modules/
+agent-rs/target/
+web/dist/
+app/panel_dist/
+validation/
+tests/
+agent/test_*.py
+browser-extension/dist/

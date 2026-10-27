@@ -1,0 +1,11 @@
+{
+  "_comment": "Findings reviewed and accepted. Each entry expires and must be re-reviewed; an expired entry fails the scan.",
+  "findings": [
+    {"tool": "zap", "id": "10055", "reason": "CSP style-src 'unsafe-inline': React and Radix set inline style attributes; script-src stays 'self'", "expires": "2027-01-31"},
+    {"tool": "zap", "id": "2", "reason": "Private IP disclosure is the 192.168.1.0/24 example placeholder of the network location form", "expires": "2027-04-30"},
+    {"tool": "zap", "id": "100001", "reason": "Unexpected content type: the API scan expects JSON from HTML panel routes and the SPA fallback", "expires": "2027-04-30"},
+    {"tool": "zap", "id": "10049", "reason": "Non-storable content: API and panel responses are intentionally no-store", "expires": "2027-04-30"},
+    {"tool": "zap", "id": "10109", "reason": "Modern web application is informational for the React panel", "expires": "2027-04-30"},
+    {"tool": "zap", "id": "90004", "reason": "COEP require-corp would block nothing useful and breaks no-cors assets; COOP and CORP are set", "expires": "2027-01-31"}
+  ]
+}

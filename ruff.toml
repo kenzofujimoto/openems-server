@@ -30,6 +30,8 @@ max-complexity = 15
 "agent/openems_agent.py" = ["S603", "S607", "S104"]
 # Developer build tools run cargo/wix/powershell from the operator's PATH on purpose.
 "tools/build_*.py" = ["S603", "S607"]
+# The security gate orchestrates git and digest-pinned docker images by design.
+"tools/security_scan.py" = ["S603", "S607"]
 # Repository tools put the checkout on sys.path before importing project modules.
 "tools/gen_*.py" = ["E402"]
 "tools/update_categories.py" = ["E402"]

@@ -1,0 +1,9 @@
+# Secret scanning of the full Git history (tools/security_scan.py --only secrets, security.yml).
+title = "openems-server"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deterministic uninstall vectors derived from the public test-only master key (tools/gen_uninstall_vectors.py)"
+paths = ['''^contract/uninstall-vectors\.json$''']
