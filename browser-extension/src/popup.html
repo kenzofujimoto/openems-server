@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenEMS — Visibilidade</title><link rel="stylesheet" href="popup.css"></head><body>
+<h1>Visibilidade do navegador</h1>
+<p>Registra apenas navegações autorizadas para monitoramento pela política do agente.</p>
+<form id="settings"><label><input id="enabled" type="checkbox"> Ativar observação neste navegador</label><label><input id="includePath" type="checkbox"> Incluir caminhos quando a política permitir</label><p>Caminhos podem conter dados sensíveis. Parâmetros e fragmentos são sempre removidos.</p><button type="submit" disabled>Salvar</button></form>
+<p id="status" role="status">Consultando configuração…</p><p id="error" role="alert"></p>
+<script type="module" src="popup.mjs"></script></body></html>
