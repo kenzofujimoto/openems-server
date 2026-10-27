@@ -82,13 +82,14 @@ def mount(path: Path) -> str:
 
 
 def run(command: list[str], *, log: Path, timeout: int = 1800, env: dict | None = None,
-        check: bool = False) -> subprocess.CompletedProcess:
+        check: bool = False, quiet: bool = False) -> subprocess.CompletedProcess:
+    """Run a command and append it to the log; `quiet` withholds its output (credentials)."""
     started = time.monotonic()
     result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, env=env, check=False,
                             encoding="utf-8", errors="replace")
     with log.open("a", encoding="utf-8") as handle:
         handle.write(f"$ {' '.join(command[:6])} ... ({time.monotonic() - started:.0f}s, exit {result.returncode})\n")
-        handle.write(result.stdout[-20000:] + result.stderr[-20000:] + "\n")
+        handle.write("(output withheld)\n" if quiet else result.stdout[-20000:] + result.stderr[-20000:] + "\n")
     if check and result.returncode != 0:
         raise RuntimeError(f"{command[0]} {command[1] if len(command) > 1 else ''} failed (exit {result.returncode}); see {log}")
     return result
@@ -378,25 +379,46 @@ def gate_dast(out: Path, src: Path, accepted: Accepted, log: Path) -> Gate:
                       "import json; from app.api import create_app; print(json.dumps(create_app(lab_mode=True).openapi()))"],
                      log=log, env=env)
         (out / "openapi.json").write_text(schema.stdout, encoding="utf-8")
-        login = run([*compose, "exec", "-T", "-e", "DAST_LOGIN=" + admin_password, "server", "python", "-c",
+        # Credentials travel through the environment (`-e NAME` inherits), never argv or the log.
+        login = run([*compose, "exec", "-T", "-e", "DAST_ADMIN_PASSWORD", "server", "python", "-c",
                      "import json, os, urllib.request; request = urllib.request.Request('http://127.0.0.1:8013/api/v1/auth/login', "
-                     "data=json.dumps({'username': 'dastadmin', 'password': os.environ['DAST_LOGIN']}).encode(), "
+                     "data=json.dumps({'username': 'dastadmin', 'password': os.environ['DAST_ADMIN_PASSWORD']}).encode(), "
                      "headers={'Content-Type': 'application/json'}); print(json.load(urllib.request.urlopen(request))['token'])"],
-                    log=log, env=env)
+                    log=log, env=env, quiet=True)
         token = login.stdout.strip()
         if login.returncode != 0 or not token:
             gate.fail("could not obtain an administrator token from the disposable stack")
             return gate
+        # Prove the token opens a protected route; otherwise an "authenticated" scan would only see 401s.
+        session = run([*compose, "exec", "-T", "-e", "DAST_TOKEN", "server", "python", "-c",
+                       "import os, urllib.error, urllib.request\n"
+                       "request = urllib.request.Request('http://127.0.0.1:8013/api/v1/auth/session', "
+                       "headers={'Authorization': 'Bearer ' + os.environ['DAST_TOKEN']})\n"
+                       "try:\n    print(urllib.request.urlopen(request).status)\n"
+                       "except urllib.error.HTTPError as error:\n    print(error.code)"],
+                      log=log, env={**env, "DAST_TOKEN": token}, quiet=True)
+        if session.stdout.strip() != "200":
+            status = session.stdout.strip() or f"exit {session.returncode}"
+            gate.fail(f"the administrator token does not authenticate (session check returned {status})")
+            return gate
         network = project + "_dast"
-        docker(IMAGES["zap"], ["zap-baseline.py", "-t", "http://server:8013/panel/", "-J", "zap-baseline.json",
-                               "-r", "zap-baseline.html", "-I", "-m", "3"], volumes={out: "/zap/wrk:rw"}, log=log,
-               network=network, user_root=True, timeout=1800)
         auth = ("-config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true "
                 "-config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Authorization "
                 "-config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=Bearer " + token)
-        docker(IMAGES["zap"], ["zap-api-scan.py", "-t", "/zap/wrk/openapi.json", "-f", "openapi", "-O", "http://server:8013",
-                               "-J", "zap-api.json", "-r", "zap-api.html", "-I", "-z", auth], volumes={out: "/zap/wrk:rw"},
-               log=log, network=network, user_root=True, timeout=3600)
+        scans = {
+            "zap-baseline.json": ["zap-baseline.py", "-t", "http://server:8013/panel/", "-J", "zap-baseline.json",
+                                  "-r", "zap-baseline.html", "-I", "-m", "3"],
+            "zap-api.json": ["zap-api-scan.py", "-t", "/zap/wrk/openapi.json", "-f", "openapi", "-O", "http://server:8013",
+                             "-J", "zap-api.json", "-r", "zap-api.html", "-I", "-z", auth],
+        }
+        for report_name, args in scans.items():
+            # A report left by an earlier run must never stand in for this one.
+            (out / report_name).unlink(missing_ok=True)
+            result = docker(IMAGES["zap"], args, volumes={out: "/zap/wrk:rw"}, log=log, network=network,
+                            user_root=True, timeout=3600)
+            # ZAP exits 0 (pass), 1 (FAIL rules) or 2 (WARN rules); anything else is an error of the scan itself.
+            if result.returncode not in (0, 1, 2):
+                gate.fail(f"{report_name}: ZAP did not complete (exit {result.returncode})")
         logs = run([*compose, "logs", "server"], log=log, env=env)
         crashes = logs.stdout.count("Traceback") + logs.stdout.count("Exception in ASGI")
         if crashes:
@@ -413,8 +435,9 @@ def gate_dast(out: Path, src: Path, accepted: Accepted, log: Path) -> Gate:
                         gate.fail(f"{name}: {alert['pluginid']} {alert['name']} ({alert['riskdesc']})")
         gate.note("ZAP baseline (passive) and authenticated OpenAPI active scan; Low and above block unless accepted")
     finally:
-        run([*compose, "down", "-v", "--remove-orphans"], log=log, env=env, timeout=600)
-        (out / "zap-token.txt").unlink(missing_ok=True)
+        down = run([*compose, "down", "-v", "--remove-orphans"], log=log, env=env, timeout=600)
+        if down.returncode != 0:
+            gate.fail("compose down -v did not remove the disposable stack; clean it with: docker compose -p " + project + " down -v")
     return gate
 
 

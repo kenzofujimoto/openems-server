@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import date
@@ -107,6 +108,9 @@ def test_teardown_failure_fails_the_gate(dast):
 def test_quiet_run_keeps_stdout_out_of_the_log(tmp_path):
     log = tmp_path / "scan.log"
     original = scanner.run.__wrapped__ if hasattr(scanner.run, "__wrapped__") else scanner.run
-    result = original([sys.executable, "-c", f"print('{TOKEN}')"], log=log, quiet=True)
+    # Like the gate, the secret arrives through the environment, not argv (argv heads are logged).
+    environment = {**os.environ, "SCAN_SECRET": TOKEN}
+    result = original([sys.executable, "-c", "import os; print(os.environ['SCAN_SECRET'])"], log=log,
+                      quiet=True, env=environment)
     assert TOKEN in result.stdout
     assert TOKEN not in log.read_text(encoding="utf-8")
