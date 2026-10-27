@@ -122,6 +122,42 @@ def test_allow_category_exclusions_require_category_data_during_global_monitorin
     assert "web-filter:categories" in tags
 
 
+def test_tamper_write_cannot_join_another_threads_web_batch_transaction():
+    from contextlib import contextmanager
+    import threading
+    from app.events import PostgresEventStore, TamperEvent
+
+    accessed = threading.Event()
+    started = threading.Event()
+
+    class Connection:
+        @contextmanager
+        def cursor(self):
+            accessed.set()
+            yield self
+
+        def executemany(self, *_args):
+            pass
+
+    store = object.__new__(PostgresEventStore)
+    store._conn = Connection()
+    store._lock = threading.RLock()
+
+    def write():
+        started.set()
+        store.add_tamper([TamperEvent(devid="pc", at=current_hour(), kind="hosts_restored", detail="")])
+
+    with store._lock:
+        thread = threading.Thread(target=write)
+        thread.start()
+        assert started.wait(1)
+        joined_transaction = accessed.wait(0.1)
+    thread.join(timeout=1)
+    assert not thread.is_alive()
+    assert not joined_transaction
+    assert accessed.is_set()
+
+
 def test_old_agents_cannot_fetch_or_successfully_acknowledge_new_policy_actions():
     store = InMemoryEventStore()
     client, administrator = panel(store)
