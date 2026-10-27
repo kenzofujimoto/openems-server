@@ -186,3 +186,12 @@ test('opt-out invalidates authorization before awaiting storage', async () => {
   assert.equal(f.sent.some((message) => message.type === 'observation'), false);
   finishSave(); await saving;
 });
+
+test('an older configure completion cannot override a newer opt-out', async () => {
+  const f = fixture(); await f.controller.initialize();
+  const saves = []; f.api.storage.local.set = () => new Promise((resolve) => saves.push(resolve));
+  const enabling = f.controller.configure({enabled:true, includePath:false});
+  const disabling = f.controller.configure({enabled:false, includePath:false});
+  saves[1](); await disabling; saves[0](); await enabling;
+  assert.equal(f.controller.status().enabled, false); assert.equal(f.connectCount(), 0);
+});
