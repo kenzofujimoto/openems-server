@@ -27,11 +27,52 @@ describe("policy editors", () => {
     const blocked = await screen.findByLabelText("Domínios bloqueados");
     await user.clear(blocked);
     await user.click(blocked); await user.paste("*.games.example");
-    await user.click(screen.getByRole("checkbox", { name: "Bloquear Jogos" }));
+    await user.click(screen.getByRole("radio", { name: "Bloquear Jogos", exact: true }));
     await user.click(screen.getByRole("checkbox", { name: "Google" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     expect(await screen.findByRole("status")).toHaveTextContent("v5");
-    expect(writes).toEqual([{ body: { ...body, web_filter: { blocked: ["*.games.example"], allowed: ["safe.example"], blocked_categories: ["games"], safe_search: { engines: ["google"], youtube: "strict" } } }, match: profile.digest, csrf: "mock-csrf-token" }]);
+    expect(writes).toEqual([{ body: { ...body, web_filter: { blocked: ["*.games.example"], allowed: ["safe.example"], category_actions: { games: "block" }, safe_search: { engines: ["google"], youtube: "strict" } } }, match: profile.digest, csrf: "mock-csrf-token" }]);
+  });
+
+  it("migrates legacy blocks and allows selecting monitor without retaining conflicting legacy fields", async () => {
+    const writes = backend();
+    server.use(http.get("*/api/v1/profiles", () => HttpResponse.json([{ ...profile, body: { ...body, web_filter: { ...body.web_filter, blocked_categories: ["games"] } } }])));
+    const user = userEvent.setup();
+    renderApp("/policies/web");
+    expect(await screen.findByRole("radio", { name: "Bloquear Jogos", exact: true })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Permitir Conteúdo adulto", exact: true })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Monitorar Jogos", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Publicar política" }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.body).toMatchObject({ web_filter: { category_actions: { games: "monitor" } }, app_control: body.app_control });
+    expect((writes[0]?.body as typeof body).web_filter).not.toHaveProperty("blocked_categories");
+  });
+
+  it("keeps broad DNS monitoring opt-in and publishes scheduled category actions", async () => {
+    const writes = backend();
+    const user = userEvent.setup();
+    renderApp("/policies/web");
+    const global = await screen.findByRole("checkbox", { name: "Monitorar todos os domínios observados pelo DNS" });
+    expect(global).not.toBeChecked();
+    expect(screen.getByText(/não representa todas as páginas visitadas/i)).toBeInTheDocument();
+    await user.click(global);
+    await user.click(screen.getByRole("button", { name: "Adicionar horário" }));
+    await user.click(screen.getByRole("radio", { name: "Monitorar Jogos no horário 1", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Publicar política" }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.body).toMatchObject({ web_filter: { monitor_all: true, scheduled: [{ category_actions: { games: "monitor" } }] } });
+  });
+
+  it("supports keyboard radio selection and read-only action controls", async () => {
+    backend();
+    const user = userEvent.setup();
+    renderApp("/policies/web");
+    const allow = await screen.findByRole("radio", { name: "Permitir Jogos", exact: true });
+    allow.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("radio", { name: "Bloquear Jogos", exact: true })).toBeChecked();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("radio", { name: "Monitorar Jogos", exact: true })).toBeChecked();
   });
 
   it("creates a schedule with an IANA timezone and keeps category windows", async () => {
