@@ -15,6 +15,16 @@ register, send posture/telemetry, and be managed by a free server.
 > validate with a lawyer before distributing. Not affiliated with Fortinet.
 
 ## What works today
+
+Current desktop implementation and acceptance status (2026-10-27):
+
+- **Native Windows agent:** Rust/MSI, local DNS and HTTP/HTTPS block pages, 21 UT1 category groups, domain exceptions, schedules, SafeSearch, anti-bypass, session UI, tamper protection, network locations, USB and application controls. Hardware and WDAC acceptance remain separate.
+- **React panel:** policies, web category selection, inventories, events, groups/rules and administration, served at `/panel/`.
+- **Platform limits:** Linux packages await real VM acceptance; macOS Network Extension/Endpoint Security remain incomplete. Mobile/F9 is out of scope.
+- **Web visibility:** current events record observed DNS blocks, not complete browsing history. Allow/Block/Monitor selectors are a documented proposal, not an implemented feature.
+
+See the [documentation index](docs/README.md), [web category/FortiGuard comparison](docs/web-filter-compatibility.md), [current handoff](HANDOFF.md) and [acceptance guide](ACCEPTANCE.md).
+
 - `EmsService` core (no web deps): register / refresh / update_client_id,
   host-tag ingestion, endpoint listing — fully unit-tested.
 - Storage: `InMemoryStore` (default) and `PostgresStore` (psycopg 3), both held to
@@ -56,7 +66,7 @@ register, send posture/telemetry, and be managed by a free server.
   sensitive headers. Point a lab endpoint at the server and capture its real wire
   format in cleartext — no TLS interception. `tools/analyze_capture.py` summarizes
   the capture (paths, JSON keys, sample bodies). See
-  [`../LAB-CAPTURE.md`](../LAB-CAPTURE.md).
+  [`LAB-CAPTURE.md`](LAB-CAPTURE.md).
 - **Admin authentication** (`app/auth.py`): PBKDF2-SHA256 password hashing and
   stateless HMAC-signed bearer tokens. A middleware gates every `/api/v1/*` route
   (except `/api/v1/auth/login`) once any admin exists — until then it runs in open
@@ -110,7 +120,7 @@ Wire real backends via env: `OPENEMS_DATABASE_URL` (Postgres),
 
 ## Test
 ```bash
-python -m pytest -q          # core + in-memory + FastAPI integration (18 pass)
+python -m pytest -q -m "not windows_only"  # native contracts require a built agent; optional infrastructure tests need their services
 
 # also exercise the PostgreSQL store:
 docker run --rm -e POSTGRES_PASSWORD=pw -p 5432:5432 postgres:16

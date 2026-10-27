@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Documentação e proposta de ações web — 27/10/2026
+
+O usuário solicitou salvar a matriz FortiGuard e atualizar/publicar a documentação na main. Referências atuais em [docs/README.md](docs/README.md) e [docs/web-filter-compatibility.md](docs/web-filter-compatibility.md); planos antigos de categorias/eventos e validação de navegador agora indicam seu caráter histórico.
+
+Novo pedido: substituir os checkboxes por Permitir (sem log de navegação), Bloquear (bloqueia e registra) e Monitorar (permite e registra). O [plano](docs/web-filter-actions-plan.md) detalha precedência, compatibilidade de agentes/políticas antigas, telemetria, testes, categorias ausentes e uma eventual extensão de navegador. **Ainda não implementado; aguarda aprovação do plano antes dos testes vermelhos e código**, conforme o AGENTS.md fornecido pelo usuário. A primeira entrega recomendada observa domínios DNS, sem prometer URLs completas, autoria por pessoa ou todas as páginas visitadas. Auditoria administrativa permanece independente do log de navegação.
+
+Documentação não exige reconstruir os MSIs: recibos dos pacotes e aceites nativos anteriores continuam válidos para os mesmos bytes. CI permanece adiado. Prioridade de aceite Windows Chrome/Firefox no agente final e exclusão da F9 permanecem.
+
 ## Troca de máquina e publicação da main — 27/10/2026
 
 O usuário autorizou atualizar a `main` do GitHub com todo o trabalho concluído para continuar em outra máquina. A branch `feature/desktop-roadmap` contém todas as branches locais; a `main` remota era ancestral, permitindo avanço direto sem reescrita. CI continua adiado nesta transferência (`[skip ci]`).

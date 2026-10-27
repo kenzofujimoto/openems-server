@@ -1,5 +1,7 @@
 # F2 — registro de bloqueios e painel (recorte 4b)
 
+> Documento histórico: as rotas e o editor descritos abaixo já foram implementados. Os eventos atuais representam bloqueios DNS observados, não histórico completo de navegação. Consulte o [manual atual](docs/web-filter-compatibility.md), o [plano de monitoramento](docs/web-filter-actions-plan.md) e o [HANDOFF](HANDOFF.md).
+
 Plano para aprovação, parte 4b de `web-categories.md` (aprovado em 2026-10-23, com retenção de 30 dias, agregação por hora e sem usuário do Windows). Nada será implementado antes do aceite.
 
 ## O que já existe

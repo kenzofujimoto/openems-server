@@ -1,5 +1,7 @@
 # Browser validation — 2026-10-22
 
+> Historical evidence for the installed build on that date. Later CA/Edge acceptances and the incomplete final Chrome/Firefox trial are recorded in [HANDOFF](HANDOFF.md) and [ACCEPTANCE](ACCEPTANCE.md). Do not apply the environment limitations below to a newer build without checking those records. The [web-filter manual](docs/web-filter-compatibility.md) describes current policy semantics.
+
 Validation used the user's authenticated Chrome session and the installed agent. No policies, certificates, service configuration, DNS settings or installed executables were changed.
 
 ## Observed results

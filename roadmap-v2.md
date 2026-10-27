@@ -4,7 +4,9 @@ Objetivo: chegar perto do que o FortiClient EMS oferece nas funções que não d
 
 Status: aprovado em 2026-10-22, com o agente em Rust. Andamento de cada fase em `HANDOFF.md`.
 
-Atualização em 2026-10-26: F3/F4 e a migração completa do painel F7 foram implementadas; os aceites finais Windows estão preparados, ainda pendentes. F8 tem implementação e pacotes Linux para aceite em VM; a parte macOS permanece parcial, sem Network Extension/Endpoint Security. F9 foi explicitamente excluída pelo usuário. Consulte `ACCEPTANCE.md` para testar a versão final; compilação/testes locais não substituem esses aceites.
+Atualização em 2026-10-27: F3/F4 e o painel F7 foram implementados. Sessão com reboot e locais passaram em Sandbox; USB e aplicativos passaram nos checks automatizados, permanecendo USB físico e WDAC em VM compatível. Chrome/Firefox com o agente final continuam pendentes após rodada incompleta. F8 tem implementação e pacotes Linux aguardando VM; macOS permanece parcial, sem Network Extension/Endpoint Security. F9 foi excluída. Consulte [ACCEPTANCE](ACCEPTANCE.md) e [HANDOFF](HANDOFF.md) para o alcance dos aceites.
+
+Documentação atual: [índice](docs/README.md) e [compatibilidade conceitual FortiGuard](docs/web-filter-compatibility.md). A seleção Permitir/Bloquear/Monitorar e a ampliação de categorias são [propostas para aprovação](docs/web-filter-actions-plan.md), sem implementação nesta atualização.
 
 ## Decisões que precisam da sua aprovação
 
