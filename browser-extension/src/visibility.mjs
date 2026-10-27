@@ -20,6 +20,7 @@ export function createVisibilityController(api, dependencies = {}) {
   let port = null;
   let pairing = null;
   let generation = 0;
+  let configurationRevision = 0;
   let dropped = 0;
   let code = 'disabled';
   let handshakeTimer = null;
@@ -74,8 +75,10 @@ export function createVisibilityController(api, dependencies = {}) {
     async configure(value) {
       if (typeof value?.enabled !== 'boolean' || typeof value?.includePath !== 'boolean') throw Error('Invalid visibility settings');
       const next = {enabled:value.enabled, includePath:value.includePath};
+      const revision = ++configurationRevision;
       settings = {enabled:false, includePath:false}; disconnect(next.enabled ? 'saving' : 'disabled');
-      try { await api.storage.local.set(next); } catch { settings = {enabled:false, includePath:false}; disconnect('storage_error'); throw Error('Could not save visibility settings'); }
+      try { await api.storage.local.set(next); } catch { if (revision === configurationRevision) { settings = {enabled:false, includePath:false}; disconnect('storage_error'); } throw Error('Could not save visibility settings'); }
+      if (revision !== configurationRevision) return;
       disconnect(next.enabled ? 'inactive' : 'disabled'); settings = next;
       if (settings.enabled) connect();
     },
