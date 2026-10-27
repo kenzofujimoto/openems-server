@@ -18,7 +18,7 @@ from .schemas import AdminCreatePayload, AdminUpdatePayload, InvitationPayload
 from .service import EmsService
 
 
-def attach_management_routes(app: FastAPI, service: EmsService, admin: AdminService, record: Callable,
+def attach_management_routes(app: FastAPI, service: EmsService, admin: AdminService, record: Callable,  # noqa: C901 - route/assertion table; new functions must stay under the gate
                              retention_days: int, installer_path: Path | None, public_base_url: str | None) -> None:
     def require_writer(request: Request) -> dict[str, str]:
         claims = getattr(request.state, "admin", {})

@@ -49,7 +49,7 @@ def session_binary(native: Path) -> Path:
 @pytest.mark.skipif(os.name != "nt", reason="uses a copy of PING.EXE as the blocked application")
 def test_a_closed_application_reaches_the_session_board(native, tmp_path):
     dummy = tmp_path / APP
-    shutil.copyfile(Path(os.environ["SystemRoot"]) / "System32" / "PING.EXE", dummy)
+    shutil.copyfile(Path(os.environ["SYSTEMROOT"]) / "System32" / "PING.EXE", dummy)
     with live_server() as (_, origin, client):
         response = client.post("/api/v1/profiles/Default", json={"web_filter": {"blocked": []},
                                                                  "app_control": {"blocked": [APP]}})
@@ -59,7 +59,8 @@ def test_a_closed_application_reaches_the_session_board(native, tmp_path):
         try:
             assert wait_for(lambda: board(tmp_path).get("protected") is True, 30), stop(agent)
             victim = subprocess.Popen([str(dummy), "-n", "120", "127.0.0.1"], stdout=subprocess.DEVNULL)
-            closed = lambda: any(APP in notice["text"].lower() for notice in board(tmp_path).get("notices", []))
+            def closed():
+                return any(APP in notice["text"].lower() for notice in board(tmp_path).get("notices", []))
             if not wait_for(closed, 30):
                 raise AssertionError(f"no notice: {board(tmp_path)}\n" + stop(agent))
             assert victim.wait(timeout=10) is not None, "the application was closed"

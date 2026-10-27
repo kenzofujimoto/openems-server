@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import sys
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from pathlib import Path
 
 CRITICAL = {
@@ -20,7 +20,7 @@ SERVICES = {
 
 def check(junit: Path, coverage: Path | None = None) -> list[str]:
     failures: list[str] = []
-    root = ET.parse(junit).getroot()
+    root = ET.parse(junit).getroot()  # defusedxml refuses DTDs and entities in CI reports
     for suite in root.iter("testsuite"):
         for attribute in ("skipped", "errors", "failures"):
             count = int(suite.attrib.get(attribute, 0))
@@ -30,9 +30,7 @@ def check(junit: Path, coverage: Path | None = None) -> list[str]:
         return failures
     report = json.loads(coverage.read_text(encoding="utf-8"))
     files = {name.replace("\\", "/"): data for name, data in report["files"].items()}
-    for name in sorted(CRITICAL | SERVICES):
-        if name not in files:
-            failures.append(f"{name}: coverage was not measured")
+    failures.extend(f"{name}: coverage was not measured" for name in sorted(CRITICAL | SERVICES) if name not in files)
     for name, data in sorted(files.items()):
         threshold = 95 if name in CRITICAL else 90 if name in SERVICES else 80
         percent = float(data["summary"]["percent_covered"])

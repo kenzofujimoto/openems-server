@@ -118,7 +118,7 @@ def run_periodically(job: Callable[[], object], interval_seconds: float, *,
     while True:
         try:
             job()
-        except Exception as error:  # noqa: BLE001 - one failed refresh must not stop the daily job
+        except Exception as error:
             print(f"category update failed: {error}; the last publication stays in place", file=sys.stderr, flush=True)
         completed += 1
         if rounds is not None and completed >= rounds:

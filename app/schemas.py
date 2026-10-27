@@ -105,7 +105,7 @@ class AdminUpdatePayload(InputModel):
     role: Literal["viewer", "admin"] | None = None
 
     @model_validator(mode="after")
-    def has_change(self) -> "AdminUpdatePayload":
+    def has_change(self) -> AdminUpdatePayload:
         if self.password is None and self.role is None:
             raise ValueError("a password or role change is required")
         return self
@@ -234,7 +234,7 @@ class NetworkLocationPayload(InputModel):
         return list(dict.fromkeys(_hostname(value) for value in values))
 
     @model_validator(mode="after")
-    def enough_signals(self) -> "NetworkLocationPayload":
+    def enough_signals(self) -> NetworkLocationPayload:
         if not self.public_cidrs and sum(bool(signal) for signal in (
             self.cidrs, self.gateway_macs, self.dns_suffixes, self.probe
         )) < 2:
@@ -254,7 +254,7 @@ class ConditionPayload(InputModel):
     value: str | list[str]
 
     @model_validator(mode="after")
-    def operator_type(self) -> "ConditionPayload":
+    def operator_type(self) -> ConditionPayload:
         if self.op == "in" and not isinstance(self.value, list):
             raise ValueError("in requires a list of strings")
         if self.op != "in" and not isinstance(self.value, str):

@@ -193,7 +193,7 @@ def test_built_msi_hides_the_uninstall_code(tmp_path):
     )
     tables = subprocess.run(["powershell", "-NoProfile", "-Command", f"& {{ {query} }} '{package}'"],
                             capture_output=True, text=True, timeout=120, check=False)
-    hidden, action_type, session_file = (tables.stdout.strip().splitlines() + ["", "", ""])[:3]
+    hidden, action_type, session_file = [*tables.stdout.strip().splitlines(), "", "", ""][:3]
     assert "openems-session.exe" in session_file, "the package installs the session component"
     assert "UNINSTALLCODE" in hidden.split(";"), tables.stdout + tables.stderr
     assert int(action_type) & 0x2000, "msidbCustomActionTypeHideTarget"

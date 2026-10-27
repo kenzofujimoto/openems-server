@@ -507,7 +507,7 @@ def _validate_app_extensions(settings: dict[str, Any]) -> None:
 
 def validate_policy(body: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(body, dict):
-        raise ValueError("policy body must be an object")  # noqa: TRY004 - shared API validation contract
+        raise ValueError("policy body must be an object")
     try:
         normalized = json.loads(json.dumps(body, ensure_ascii=False, allow_nan=False))
     except (TypeError, ValueError) as exc:
@@ -523,7 +523,7 @@ def validate_policy(body: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(settings, dict) or not isinstance(
             settings.get(key, []), list
         ):
-            raise ValueError(f"{section}.{key} must be a list")  # noqa: TRY004 - shared API validation contract
+            raise ValueError(f"{section}.{key} must be a list")
         # "blocked" is always materialized; "allowed" only when the policy sets it.
         if key != "blocked" and key not in settings:
             continue

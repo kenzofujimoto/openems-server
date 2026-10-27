@@ -24,7 +24,7 @@ class RequestSizeLimitMiddleware:
         while True:
             message = await receive()
             if message["type"] != "http.request":
-                return
+                return None
             body.extend(message.get("body", b""))
             if len(body) > self.max_bytes:
                 return await JSONResponse({"detail": "request body too large"}, status_code=413)(scope, receive, send)
@@ -40,3 +40,4 @@ class RequestSizeLimitMiddleware:
             return {"type": "http.request", "body": bytes(body), "more_body": False}
 
         await self.app(scope, replay, send)
+        return None

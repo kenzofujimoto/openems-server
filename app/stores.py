@@ -130,7 +130,7 @@ class PostgresStore:
                      reg_ip, host_tags, last_seen, created_at, credential_hash,
                      config_version, applied_vdom, applied_digest, last_error, last_applied, location)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (devid) """ + conflict,
+                ON CONFLICT (devid) """ + conflict,  # noqa: S608 - both clauses are constants, values bound
                 (
                     endpoint.devid,
                     endpoint.client_id,

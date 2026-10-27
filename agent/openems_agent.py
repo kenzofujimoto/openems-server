@@ -308,7 +308,8 @@ def _api(url: str, data: dict | None = None, *, token: str | None = None):
     headers = {"content-type": "application/json"}
     if token:
         headers["Authorization"] = "Bearer " + token
-    request = urllib.request.Request(
+    # The server origin is validated as https (or loopback/explicit http) when the config loads.
+    request = urllib.request.Request(  # noqa: S310
         url, data=body, headers=headers, method="POST" if data is not None else "GET"
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
@@ -437,7 +438,7 @@ def _validated_profile(value: object) -> dict:
         raise ValueError("invalid assignment identity")
     version = value.get("version")
     if isinstance(version, bool) or not isinstance(version, int):
-        raise ValueError("invalid assignment version")  # noqa: TRY004 - invalid wire schema
+        raise ValueError("invalid assignment version")
     if value.get("unassigned") is True:
         if version != 0 or value.get("body") is not None or value.get("digest") != "":
             raise ValueError("invalid policy release")
@@ -584,7 +585,7 @@ class AgentRuntime:
                 self.failures += 1
                 self.next_sync = now + min(
                     300, self.cfg.interval * 2 ** min(self.failures, 8)
-                ) * random.uniform(0.8, 1.2)
+                ) * random.uniform(0.8, 1.2)  # noqa: S311 - retry jitter, not a secret
                 if isinstance(exc, urllib.error.HTTPError) and exc.code == 404:
                     self.client_id = None
             self.log(
@@ -643,7 +644,7 @@ def run(
                 if runtime._synchronize(time.monotonic()):
                     runtime._report_pending()
                 stop.wait(min(cfg.interval, 1))
-        except BaseException as exc:  # noqa: BLE001 - transfer fatal thread errors to main
+        except BaseException as exc:
             worker_errors.append(exc)
             stop.set()
 

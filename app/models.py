@@ -17,7 +17,7 @@ def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-class EndpointStatus(str, Enum):
+class EndpointStatus(str, Enum):  # noqa: UP042 - str() of members is persisted; StrEnum changes it
     REGISTERED = "registered"
     UNREGISTERED = "unregistered"
     QUARANTINED = "quarantined"

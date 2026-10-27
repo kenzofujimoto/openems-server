@@ -76,7 +76,7 @@ def parse_row(devid: str, row: Any, *, now: datetime, retention_days: int) -> Bl
     action, source = row.action, row.source
     if row.reason not in REASONS or source != "dns" or action not in ("blocked", "monitored"):
         return None
-    if action == "blocked" and row.reason == "policy" or action == "monitored" and row.reason == "doh":
+    if (action == "blocked" and row.reason == "policy") or (action == "monitored" and row.reason == "doh"):
         return None
     return BlockEvent(devid=devid, hour=hour, domain=domain, reason=row.reason, category=category,
                       count=row.count, action=action, source=source)
@@ -247,7 +247,7 @@ class PostgresEventStore:
             return
         with self._lock, self._conn.cursor() as cur:
             cur.executemany(
-                f"INSERT INTO block_events ({_COLUMNS}) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                f"INSERT INTO block_events ({_COLUMNS}) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "  # noqa: S608 - constant columns, values bound
                 "ON CONFLICT (devid, hour, domain, reason, category, action, source) "
                 "DO UPDATE SET count = block_events.count + EXCLUDED.count",
                 [(event.devid, event.hour, event.domain, event.reason, event.category, event.count,
@@ -278,7 +278,7 @@ class PostgresEventStore:
 
     def recent(self, limit: int, *, action: str | None = None) -> list[BlockEvent]:
         with self._lock, self._conn.cursor() as cur:
-            cur.execute(f"SELECT {_COLUMNS} FROM block_events WHERE (%s::text IS NULL OR action=%s) "
+            cur.execute(f"SELECT {_COLUMNS} FROM block_events WHERE (%s::text IS NULL OR action=%s) "  # noqa: S608 - constant columns
                         "ORDER BY hour DESC, count DESC, domain LIMIT %s", (action, action, limit))
             return [BlockEvent(devid=r[0], hour=r[1].astimezone(UTC), domain=r[2], reason=r[3], category=r[4],
                                count=r[5], action=r[6], source=r[7])

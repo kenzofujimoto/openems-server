@@ -1,0 +1,35 @@
+# Lint gate for server, legacy agent and tools (CI: `ruff check app agent tools tests`).
+# Security (S, bandit-equivalent) and bug-prone patterns (B) block merges; layout stays as written.
+target-version = "py314"
+extend-exclude = ["web", "agent-rs", "browser-extension"]
+
+[lint]
+select = [
+    "E4", "E7", "E9", "F",  # pycodestyle errors and pyflakes (previous default)
+    "B",                    # flake8-bugbear
+    "S",                    # flake8-bandit security rules
+    "UP",                   # pyupgrade
+    "SIM",                  # simplifications
+    "PIE", "RET", "PERF",   # small correctness and performance smells
+    "C90",                  # cyclomatic complexity
+    "PLE", "PLW",           # pylint errors and warnings
+    "RUF",                  # ruff-specific correctness rules
+]
+
+[lint.mccabe]
+max-complexity = 15
+
+[lint.per-file-ignores]
+# Tests assert, use fixture secrets and launch fixed local processes by design.
+"tests/**" = ["S101", "S105", "S106", "S107", "S108", "S311", "S603", "S607", "PLW0108"]
+"agent/test_*.py" = ["S101", "S105", "S106", "S107", "S108", "S310", "S311", "S603", "S607", "PLW0108"]
+# Tests parse XML they produced themselves (JUnit, MSI tables, signed fixtures).
+"tests/test_native_*.py" = ["S314"]
+"tests/test_saml_security.py" = ["S314"]
+# Superseded Python agent (the Rust agent ships): fixed OS tools by name, 0.0.0.0 is the hosts sink.
+"agent/openems_agent.py" = ["S603", "S607", "S104"]
+# Developer build tools run cargo/wix/powershell from the operator's PATH on purpose.
+"tools/build_*.py" = ["S603", "S607"]
+# Repository tools put the checkout on sys.path before importing project modules.
+"tools/gen_*.py" = ["E402"]
+"tools/update_categories.py" = ["E402"]

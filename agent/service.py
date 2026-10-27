@@ -37,7 +37,7 @@ def load_config(path: str = CONFIG_PATH) -> agent.AgentConfig:
     with open(path, encoding="utf-8-sig") as fh:
         data = json.load(fh)
     if not isinstance(data, dict):
-        raise ValueError("Agent configuration must be an object")  # noqa: TRY004 - configuration validation contract
+        raise ValueError("Agent configuration must be an object")
     text_fields = {"server", "devid", "vdom", "hosts_path", "state_path", "invitation", "device_token"}
     bool_fields = {"block_page", "dry_run", "allow_insecure_http"}
     int_fields = {"interval", "block_page_port"}
@@ -112,7 +112,7 @@ def supervise(stop_event: threading.Event, wait: Callable[[], object], wake: Cal
             run_loop(stop_event)
             if not stop_event.is_set():
                 raise _UnexpectedWorkerExit("Agent worker exited unexpectedly")
-        except Exception as exc:  # noqa: BLE001 - forward worker failures to the SCM thread
+        except Exception as exc:
             failures.append(exc)
         finally:
             wake()
@@ -156,7 +156,7 @@ if HAVE_PYWIN32:
                     lambda: win32event.WaitForSingleObject(self._wait, win32event.INFINITE),
                     lambda: win32event.SetEvent(self._wait),
                 )
-            except Exception as exc:  # noqa: BLE001 - sanitize failures at the native SCM boundary
+            except Exception as exc:
                 message = f"openems agent service failed ({type(exc).__name__}); inspect configuration and logs"
                 log(message)
                 servicemanager.LogErrorMsg(message)

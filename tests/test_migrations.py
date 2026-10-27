@@ -125,7 +125,7 @@ def test_symlink_migration_cannot_escape_tree(database, tmp_path, monkeypatch):
     path_type = type(migration)
     original = path_type.is_symlink
     monkeypatch.setattr(path_type, "is_symlink", lambda path: path == migration or original(path))
-    with pytest.raises(ValueError, match="outside|symlink"):
+    with pytest.raises(ValueError, match=r"outside|symlink"):
         runner()(database, migration_dir=migration_dir)
 
 

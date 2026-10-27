@@ -105,7 +105,7 @@ def test_get_config_unknown_vdom_is_404(client: TestClient) -> None:
 
 # --- SAML SP ---------------------------------------------------------------
 
-import base64
+import base64  # noqa: E402 - section-local import kept with the SAML tests
 
 _IDP_METADATA = (
     '<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" '

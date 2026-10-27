@@ -27,8 +27,8 @@ from app.recording import safe_body
 
 def load(path: str) -> Iterable[dict[str, Any]]:
     with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
+        for raw in fh:
+            line = raw.strip()
             if line:
                 yield json.loads(line)
 

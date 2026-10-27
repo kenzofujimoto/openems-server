@@ -43,7 +43,7 @@ BODIES: list[dict[str, Any]] = [
     {"web_filter": {"blocked": ["facebook.com", "tiktok.com"]}, "app_control": {"blocked": ["utorrent.exe"]}},
     {"b": 1, "a": 2, "B": 3, "aa": [3, 2, 1], "_": None},
     {"unicode": "ação ✓ 日本 😀",
-     "escapes": "quote\" backslash\\ newline\n tab\t cr\r bell\u0007 nul\u0000 del\u007f sep "},
+     "escapes": "quote\" backslash\\ newline\n tab\t cr\r bell\u0007 nul\u0000 del\u007f sep "},  # noqa: RUF001 - U+2028 is part of the canonical JSON vector
     {"numbers": [0, -1, 42, 9007199254740993, 0.5, -0.25, 1.0, 100.0, 1e-05, 0.0001, 1e16, 1.5e300, 123456789.123]},
     {"booleans": [True, False], "nested": {"z": {"y": {"x": []}}, "a": {}}},
     {"web_filter": {"blocked": [], "mode": "explicit"},
