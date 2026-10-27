@@ -27,6 +27,8 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Must exceed the 5 s Testing Library wait in setup.ts so a slow find fails with its own message.
+    testTimeout: 15000,
     css: false,
     coverage: {
       provider: "v8",
