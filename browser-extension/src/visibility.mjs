@@ -21,6 +21,7 @@ export function createVisibilityController(api, dependencies = {}) {
   let pairing = null;
   let generation = 0;
   let configurationRevision = 0;
+  let storageQueue = Promise.resolve();
   let dropped = 0;
   let code = 'disabled';
   let handshakeTimer = null;
@@ -77,7 +78,10 @@ export function createVisibilityController(api, dependencies = {}) {
       const next = {enabled:value.enabled, includePath:value.includePath};
       const revision = ++configurationRevision;
       settings = {enabled:false, includePath:false}; disconnect(next.enabled ? 'saving' : 'disabled');
-      try { await api.storage.local.set(next); } catch { if (revision === configurationRevision) { settings = {enabled:false, includePath:false}; disconnect('storage_error'); } throw Error('Could not save visibility settings'); }
+      const write = storageQueue.then(() => api.storage.local.set(next));
+      // The caller handles write errors below; keep later opt-out writes runnable.
+      storageQueue = write.catch(() => {});
+      try { await write; } catch { if (revision === configurationRevision) { settings = {enabled:false, includePath:false}; disconnect('storage_error'); } throw Error('Could not save visibility settings'); }
       if (revision !== configurationRevision) return;
       disconnect(next.enabled ? 'inactive' : 'disabled'); settings = next;
       if (settings.enabled) connect();
