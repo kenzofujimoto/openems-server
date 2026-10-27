@@ -1,0 +1,2581 @@
+{
+  "date": "2026-10-27",
+  "scope": "Web actions Allow/Block/Monitor guest acceptance in fresh Windows Sandbox guests with the packaged MSI, real homologation server and Chrome/Firefox fresh profiles",
+  "repository_revision": "e5309a1004432bdd02517dabd6920b4e4e450dbf",
+  "package_source_revision": "50a7bf9ca6a124b307ae6b241b1d725c558f6063",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "20e9d24e1a9b59fb96eec25fbd66e3c67bea82a33b27efbe1183db0f098a17c4",
+      "bytes": 8511488,
+      "verified_on_host": true,
+      "verified_in_each_guest": true
+    },
+    "openems-agent-next.msi": {
+      "sha256": "b141538816a0f49ed6c0585842cbebb162100bb116e7fbf834714424fb84e29f",
+      "bytes": 8511488,
+      "verified_on_host": true,
+      "used": false
+    },
+    "installed_agent_sha256": "5290604d7f008cb279c01ccca0d1664edfb4415ffc0d0200987bf6465ea8bf04",
+    "rebuilt": false
+  },
+  "server": {
+    "image": "sha256:b5f7aff1a9ef3b4f6e58d6223a406f18909a28bc0254d557969a2a54ce39a5a0",
+    "built_from": "main e5309a1 (server and panel bundle)",
+    "previous_image_built": "2026-10-22",
+    "database_checkpoint": "pg_dump before migration, kept under .venv (not committed)",
+    "migrations": {
+      "runner": "app.migrations.apply_migrations (checksummed, one transaction)",
+      "applied_at": "2026-10-27T13:41:12Z",
+      "applied": {
+        "001_initial.sql": "cc275f9e8d682ccfbe539df24628bf55c1061cb7178ee8ffb28021afa4cf2c3f",
+        "002_block_events.sql": "aedc89649dce653b347663bb1afca646907f72d78b7d0596a1e889b9ed443fe0",
+        "003_tamper_events.sql": "f279e1e6301ae6833337b2589ba17785025704c0d78186f708a30eaa9b6aaeb8",
+        "004_uninstall.sql": "82497f4d484cb422fae9daa72dc849ac3af7b686bbb6223a9c8c88c0ffd48846",
+        "005_network_locations.sql": "2281dcc6028fbd39a24404b3d2d69a7c06ac306cfa0af23c71b97e5874ad1429",
+        "006_controls.sql": "52df1c268f81c15a2c0a30cb0f17b870a5ae23151069d784563905e4d9c99ceb",
+        "007_enrollment_revocations.sql": "8c0e19d5066355c671fae93ce50977eec4754f6253a48b34a8347e6013f37694",
+        "008_web_event_actions.sql": "ec054aba38ab352f6a7b95fe4476e63953a8c573204f407ff56918c59879dcd6"
+      },
+      "legacy_schema": "database had no schema_migrations history (created by startup init_schema); runner recorded 001-008 and preserved the existing endpoint and Default profile",
+      "finding": "The production image does not ship migrations/; the runner failed inside the image (directory missing) and was run with the main SQL files mounted read-only"
+    },
+    "group": "WebActionsSandbox (isolated; the host agent stays in Default v2 and received no test policy)",
+    "temporary_exposure": "server published on the Hyper-V Default Switch address for the guests during the rounds, then restored to loopback only"
+  },
+  "category_publication": {
+    "tool": "tools/update_categories.py (real publisher) from homologation-only lists, not UT1 data; the manifest attribution text is the tool constant",
+    "rounds_1_2_manifest": {
+      "version": "2026-10-27T13:41:35Z",
+      "games": "05ba4593990b9a9ead87e96e366c6e57f62153ebdcd3242eaa89a2821c4696b5",
+      "streaming": "db14ac32938c06d0edc87fc12388a691cab48322685c1f7efbd62b7fd747fe97",
+      "shopping": "c2858c861239678381866cb63a182f33e2be5bc0b1d52ed5e535308c9ade6e13",
+      "sports": "6fc9c1b8a7a414f3557c1a995aa1a0865001b9dd6b1b00839c982f4e8a00a157"
+    },
+    "round_3_manifest": {
+      "version": "2026-10-27T14:36:47Z",
+      "games": "05ba4593990b9a9ead87e96e366c6e57f62153ebdcd3242eaa89a2821c4696b5",
+      "streaming": "db14ac32938c06d0edc87fc12388a691cab48322685c1f7efbd62b7fd747fe97",
+      "shopping": "e27e6ba60c480a1e100d132150b95b0bac1d2cff4011dc37548ac97fd359d298",
+      "sports": "6fc9c1b8a7a414f3557c1a995aa1a0865001b9dd6b1b00839c982f4e8a00a157"
+    },
+    "lists": {
+      "games": [
+        "www.example.net",
+        "iana.org",
+        "www.iana.org"
+      ],
+      "streaming": [
+        "www.example.org",
+        "www.icann.org",
+        "iana.org",
+        "netflix.com",
+        "nflxvideo.net"
+      ],
+      "shopping_rounds_1_2": [
+        "www.example.com",
+        "www.icann.org",
+        "iana.org"
+      ],
+      "shopping_round_3": [
+        "www.ietf.org",
+        "www.icann.org",
+        "iana.org"
+      ],
+      "sports": [
+        "sports.homolog.example"
+      ],
+      "bank": "deliberately not published"
+    },
+    "panel_health": "current"
+  },
+  "method": {
+    "agent_mode": "MSI with DNSFILTER=1, VDOM=WebActionsSandbox, server via guest-loopback HTTP relay to the homologation server; no block page, CA, anti-bypass, USB or application controls",
+    "dns_probe": "Clear-DnsClientCache; Resolve-DnsName -Type A -DnsOnly -NoHostsFile -QuickTimeout through the system resolver (agent NRPT); block answer is 0.0.0.0",
+    "ack": "endpoint applied_digest/config_version/last_error read from PostgreSQL after each publication",
+    "events": "block_events deltas per domain/action/reason/category plus web_event_batches count/received_at; each scenario policy adds a unique blocked canary probed last, so a no-event claim is accepted only after a later event reached the server",
+    "dedup": "same domain re-probed only after 65 s (agent deduplicates per minute)",
+    "invalid_digest_injection": "the server refuses to serve a category file whose bytes do not match its digest, so the guest relay flipped the last byte of the sports file while a guest-local flag existed",
+    "browsers": "retail Chrome (CDP) and Firefox 158.0.1 (BiDi), fresh profiles on the guest local disk (C:\\openems-browser-profiles), outputs on the mapped results folder, 180 s global deadline, TLS validation unchanged",
+    "sandbox_rule": "three fresh guests, one per round; no round repeated in the same guest; each guest removed the agent before being stopped"
+  },
+  "isolation_finding": "The Sandbox NAT DNS forwards to the host resolver. The host's own agent (Default policy, hosts file) answers 127.0.0.1 for example.com/www.example.com/neverssl.com. In rounds 1-2 every example.com/www.example.com answer is therefore loopback from upstream: the guest agent did forward them (no 0.0.0.0, no event), but those rows were not attributable and were repeated in round 3 with www.ietf.org and www.rfc-editor.org. The probe now classifies loopback answers separately.",
+  "matrix": [
+    {
+      "row": "Categoria Permitir; monitoramento geral desligado",
+      "status": "passed",
+      "evidence": "round 3 allow_no_event: www.ietf.org forwarded to real addresses, ACK, no event after the canary arrived",
+      "note": "round 1 (www.example.com) not attributable: loopback upstream answer from the host resolver"
+    },
+    {
+      "row": "Categoria Bloquear",
+      "status": "passed",
+      "evidence": "round 1 block: www.example.net 0.0.0.0, blocked/category/games event, batch received; also Chrome and Firefox in round 3"
+    },
+    {
+      "row": "Categoria Monitorar",
+      "status": "passed",
+      "evidence": "round 1 monitor: www.example.org forwarded, monitored/category/streaming event; also Chrome and Firefox in round 3"
+    },
+    {
+      "row": "Monitoramento geral ligado; domínio fora das categorias",
+      "status": "passed",
+      "evidence": "round 3 monitor_all: www.rfc-editor.org forwarded, monitored/policy event",
+      "note": "round 1 example.com produced the monitored/policy event but with a loopback upstream answer"
+    },
+    {
+      "row": "Monitoramento geral ligado; categoria explicitamente Permitir",
+      "status": "passed",
+      "evidence": "round 3 monitor_all: www.ietf.org forwarded, no event while the monitored/policy event of the same batch window arrived"
+    },
+    {
+      "row": "Exceção explícita prevalece sobre categoria bloqueada/monitorada",
+      "status": "passed",
+      "evidence": "round 1 exception: www.iana.org (games=block) and www.example.org (streaming=monitor) forwarded without events; www.example.net still blocked"
+    },
+    {
+      "row": "Netflix: login (exceção *.netflix.com com streaming bloqueado)",
+      "status": "passed_dns_only",
+      "evidence": "round 1 netflix_login: www.netflix.com forwarded without event; nflxvideo.net blocked with blocked/streaming event"
+    },
+    {
+      "row": "Netflix: reprodução (exceção adicional nflxvideo.net)",
+      "status": "passed_dns_only",
+      "evidence": "round 1 netflix_playback: nflxvideo.net and www.netflix.com forwarded without events; www.example.org still blocked by streaming"
+    },
+    {
+      "row": "Netflix: login e reprodução reais no navegador",
+      "status": "pending",
+      "evidence": "requires a Netflix account and real playback; DNS does not prove streaming"
+    },
+    {
+      "row": "Domínio em duas categorias: Bloquear > Monitorar > Permitir",
+      "status": "passed",
+      "evidence": "round 1 precedence: iana.org (games/streaming/shopping) blocked with games event; www.icann.org (streaming/shopping) forwarded with monitored/streaming event"
+    },
+    {
+      "row": "Janela de horário ativa/inativa",
+      "status": "passed",
+      "evidence": "round 1 schedule: active window games=block added to permanent shopping=monitor, inactive window streaming=block ignored; boundary: forwarded before 11:03 America/Sao_Paulo, blocked 8.9 s after start",
+      "note": "guest timezone equals policy timezone; DST change and window end not exercised"
+    },
+    {
+      "row": "Categoria necessária ausente",
+      "status": "passed",
+      "evidence": "round 1 missing_category: bank not published, ACK not successful (enforcement failed: PolicyError), previous digest kept, www.example.net still blocked, example.com without monitored event although monitor_all was requested"
+    },
+    {
+      "row": "Digest inválido",
+      "status": "passed",
+      "evidence": "round 1 invalid_digest: relay delivered corrupted sports bytes, agent logged category not updated, no successful ACK, previous digest kept, no monitor_all activation; recovery ACK and sports/policy events after the valid file",
+      "note": "corruption injected in the guest relay; one policy status report returned HTTPError and was retried"
+    },
+    {
+      "row": "Reinício offline com cache completo/incompleto",
+      "status": "pending",
+      "evidence": "not executed in this round"
+    },
+    {
+      "row": "Token expirado e novo enrollment",
+      "status": "pending",
+      "evidence": "only fresh enrollments were exercised (capabilities were present before the first action policy and its ACK succeeded); expiry and reenrollment not executed"
+    },
+    {
+      "row": "Retry do mesmo lote após perda da resposta",
+      "status": "pending",
+      "evidence": "not executed in the guest; batch receipts were stored per upload"
+    },
+    {
+      "row": "Fila saturada",
+      "status": "pending",
+      "evidence": "not executed; dropped_by_day stayed 0"
+    },
+    {
+      "row": "Sonda DNS Resolve-DnsName",
+      "status": "passed",
+      "evidence": "every scenario of the three rounds"
+    },
+    {
+      "row": "Chrome com perfil novo",
+      "status": "passed",
+      "evidence": "round 3: blocked www.example.net (ERR_NAME_NOT_RESOLVED, blocked event), monitored www.example.org (HTTP 200, secure, monitored event), allowed www.ietf.org (HTTP 200, secure, no event)",
+      "earlier_failures": [
+        "round 1: no logged-on guest session (0x80070520), browser never started",
+        "round 1 resumed: classifier required body text absent from the current example page and the reused tab detached after the blocked case",
+        "round 2: allowed www.example.com refused (loopback answer from the host resolver)"
+      ]
+    },
+    {
+      "row": "Firefox com perfil novo",
+      "status": "passed",
+      "evidence": "round 3: blocked (NS_ERROR_UNKNOWN_HOST, blocked event), monitored (HTTP 200, monitored event), allowed www.ietf.org (HTTP 200, no event)",
+      "earlier_failures": [
+        "round 1 resumed: browsingContext.create timed out",
+        "round 2: allowed www.example.com refused (loopback answer from the host resolver)"
+      ]
+    },
+    {
+      "row": "Painel: seletor por teclado, ícones, aviso de listas, registros separados",
+      "status": "pending",
+      "evidence": "only the API was checked: separate monitored/blocked records, monitoring_by_day separate from blocks, category health current; visual and keyboard review not executed"
+    },
+    {
+      "row": "Remoção do agente no guest",
+      "status": "passed",
+      "evidence": "all three guests: msiexec exit 0, service absent, no managed NRPT rule, hosts hash equal to baseline"
+    }
+  ],
+  "host_changes": {
+    "installed_agent": "unchanged (still Default v2, reporting)",
+    "dns_ca_firewall_profiles": "unchanged",
+    "antivirus": "not bypassed",
+    "server_container": "rebuilt from main, migrated, temporarily exposed on the Default Switch address, restored to loopback",
+    "homologation_data_added": "group WebActionsSandbox with test policies, three uninstalled test endpoints, homologation category lists in the categories volume"
+  },
+  "excluded": [
+    "F9",
+    "CI",
+    "push",
+    "PR"
+  ],
+  "rounds": [
+    {
+      "label": "1-full-matrix",
+      "sandbox_id": "202b5222-17fb-4816-ab98-8d0424704f3d",
+      "devid": "sandbox-web-actions",
+      "started_at": "2026-10-27T13:48:03.176768+00:00",
+      "finished_at": "2026-10-27T14:24:19.522751+00:00",
+      "guest": {
+        "timezone": "E. South America Standard Time",
+        "model": "Virtual Machine",
+        "computer": "BEC1B7A5-6D08-4",
+        "os": "10.0.26100"
+      },
+      "setup_steps": [
+        "2026-10-27T13:48:25.7812917Z guest gate passed",
+        "2026-10-27T13:48:26.3953959Z MSI hash and production package verified",
+        "2026-10-27T13:48:30.5223393Z relay reaches homologation server",
+        "2026-10-27T13:48:31.2274046Z upstream DNS baseline recorded",
+        "2026-10-27T13:50:34.2820266Z MSI installed",
+        "2026-10-27T13:50:39.1837433Z agent running in DNS mode with verified hash"
+      ],
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "agent_dns_listener": [
+        "::1",
+        "127.0.0.1"
+      ],
+      "install_seconds": 123,
+      "initial_ack": true,
+      "capabilities": [
+        "os:win32",
+        "app-control:clean",
+        "web-filter:1-blocked",
+        "web-filter:v2",
+        "web-filter:categories",
+        "web-filter:actions",
+        "web-filter:dns",
+        "web-filter:monitor",
+        "usb-control:v1",
+        "usb:storage",
+        "usb:polling",
+        "app-control:network",
+        "app-control:firewall",
+        "app-control:wdac",
+        "device-inventory:v1",
+        "vdom:WebActionsSandbox"
+      ],
+      "scenarios": [
+        {
+          "key": "allow_no_event",
+          "title": "Categoria Permitir; monitoramento geral desligado",
+          "policy": {
+            "category_actions": {
+              "shopping": "allow"
+            },
+            "monitor_all": false,
+            "blocked": [
+              "c01-9051.canary.example"
+            ]
+          },
+          "published": {
+            "version": 2,
+            "digest": "8de998e33b036d30cb53ee96898810a798916c3b23be7378c5c482d207a09e25",
+            "at": "2026-10-27T13:50:52.320345+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:51:11.221140+00:00",
+            "applied_digest": "8de998e33b036d30cb53ee96898810a798916c3b23be7378c5c482d207a09e25",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:51:10.185804+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.example.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "127.0.0.1"
+              ],
+              "probed_at": "2026-10-27T13:51:16.5384671Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            }
+          ],
+          "canary": {
+            "domain": "c01-9051.canary.example",
+            "arrived": true,
+            "wait_seconds": 30.7,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 0,
+            "count_after": 1,
+            "last_received_at": "2026-10-27 13:51:25.361195+00"
+          }
+        },
+        {
+          "key": "block",
+          "title": "Categoria Bloquear",
+          "policy": {
+            "category_actions": {
+              "games": "block"
+            },
+            "monitor_all": false,
+            "blocked": [
+              "c02-9107.canary.example"
+            ]
+          },
+          "published": {
+            "version": 3,
+            "digest": "daff58cc07804d3a2d639bf8030d4ae026d01d0a3dc1ade0dd4bd9d3e6beead2",
+            "at": "2026-10-27T13:51:48.290409+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:52:11.855614+00:00",
+            "applied_digest": "daff58cc07804d3a2d639bf8030d4ae026d01d0a3dc1ade0dd4bd9d3e6beead2",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:52:10.875266+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.example.net",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T13:52:17.0743238Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c02-9107.canary.example",
+            "arrived": true,
+            "wait_seconds": 30.6,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 1,
+            "count_after": 2,
+            "last_received_at": "2026-10-27 13:52:26.087741+00"
+          }
+        },
+        {
+          "key": "monitor",
+          "title": "Categoria Monitorar",
+          "policy": {
+            "category_actions": {
+              "streaming": "monitor"
+            },
+            "monitor_all": false,
+            "blocked": [
+              "c03-9168.canary.example"
+            ]
+          },
+          "published": {
+            "version": 4,
+            "digest": "927d225bd06ed6a28bcd83ebfd5f20e2f0c482090e921325aaaa687af894b0bd",
+            "at": "2026-10-27T13:52:48.800338+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:53:12.499627+00:00",
+            "applied_digest": "927d225bd06ed6a28bcd83ebfd5f20e2f0c482090e921325aaaa687af894b0bd",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:53:11.577581+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.example.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "172.66.157.237",
+                "104.20.26.136"
+              ],
+              "probed_at": "2026-10-27T13:53:17.9909077Z",
+              "expected_event": "monitored",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "streaming",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c03-9168.canary.example",
+            "arrived": true,
+            "wait_seconds": 30.6,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 2,
+            "count_after": 3,
+            "last_received_at": "2026-10-27 13:53:26.787164+00"
+          }
+        },
+        {
+          "key": "monitor_all",
+          "title": "Monitoramento geral ligado: fora das categorias e categoria Permitir explícita",
+          "policy": {
+            "category_actions": {
+              "shopping": "allow"
+            },
+            "monitor_all": true,
+            "blocked": [
+              "c04-9229.canary.example"
+            ]
+          },
+          "published": {
+            "version": 5,
+            "digest": "eb6a1b04d07ddbdeed0c0d67a8e80ff3fd1b9de566611b307adca316d729ebc0",
+            "at": "2026-10-27T13:53:49.814449+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:54:13.457941+00:00",
+            "applied_digest": "eb6a1b04d07ddbdeed0c0d67a8e80ff3fd1b9de566611b307adca316d729ebc0",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:54:12.326271+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "example.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "127.0.0.1"
+              ],
+              "probed_at": "2026-10-27T13:54:19.0078542Z",
+              "expected_event": "monitored",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "policy",
+                  "category": "",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "127.0.0.1"
+              ],
+              "probed_at": "2026-10-27T13:54:19.1336707Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            }
+          ],
+          "canary": {
+            "domain": "c04-9229.canary.example",
+            "arrived": true,
+            "wait_seconds": 30.7,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 3,
+            "count_after": 5,
+            "last_received_at": "2026-10-27 13:54:42.764794+00"
+          }
+        },
+        {
+          "key": "exception",
+          "title": "Exceção explícita prevalece sobre categoria bloqueada e monitorada",
+          "policy": {
+            "category_actions": {
+              "games": "block",
+              "streaming": "monitor"
+            },
+            "monitor_all": false,
+            "allowed": [
+              "www.iana.org",
+              "www.example.org"
+            ],
+            "blocked": [
+              "c05-9290.canary.example"
+            ]
+          },
+          "published": {
+            "version": 6,
+            "digest": "c5b4f18be84a885cff0624d7f1e79b7b49c9e7f0cdd33e6ee0f1b5b11d10bc13",
+            "at": "2026-10-27T13:54:50.831208+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:55:13.970518+00:00",
+            "applied_digest": "c5b4f18be84a885cff0624d7f1e79b7b49c9e7f0cdd33e6ee0f1b5b11d10bc13",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:55:13.252656+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.iana.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "104.18.24.232",
+                "104.18.25.232"
+              ],
+              "probed_at": "2026-10-27T13:55:24.5266906Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "www.example.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "172.66.157.237",
+                "104.20.26.136"
+              ],
+              "probed_at": "2026-10-27T13:55:25.0194488Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "www.example.net",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T13:55:25.0355940Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c05-9290.canary.example",
+            "arrived": true,
+            "wait_seconds": 24.3,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 5,
+            "count_after": 6,
+            "last_received_at": "2026-10-27 13:55:28.525895+00"
+          }
+        },
+        {
+          "key": "netflix_login",
+          "title": "Netflix: exceção só do login com streaming bloqueado",
+          "policy": {
+            "category_actions": {
+              "streaming": "block"
+            },
+            "monitor_all": false,
+            "allowed": [
+              "*.netflix.com"
+            ],
+            "blocked": [
+              "c06-9350.canary.example"
+            ]
+          },
+          "published": {
+            "version": 7,
+            "digest": "3f03ce0e89a930fc494901aeceacf19f58c2d691b12d42374b0ebff2fb6559c1",
+            "at": "2026-10-27T13:55:50.434114+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:56:16.676459+00:00",
+            "applied_digest": "3f03ce0e89a930fc494901aeceacf19f58c2d691b12d42374b0ebff2fb6559c1",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:56:16.42065+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.netflix.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "207.45.72.1",
+                "207.45.73.1"
+              ],
+              "probed_at": "2026-10-27T13:56:21.9978096Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "nflxvideo.net",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T13:56:22.2028673Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "streaming",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c06-9350.canary.example",
+            "arrived": true,
+            "wait_seconds": 30.6,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 6,
+            "count_after": 7,
+            "last_received_at": "2026-10-27 13:56:31.585774+00"
+          }
+        },
+        {
+          "key": "netflix_playback",
+          "title": "Netflix: exceção adicional da reprodução",
+          "policy": {
+            "category_actions": {
+              "streaming": "block"
+            },
+            "monitor_all": false,
+            "allowed": [
+              "*.netflix.com",
+              "nflxvideo.net",
+              "*.nflxvideo.net"
+            ],
+            "blocked": [
+              "c07-9413.canary.example"
+            ]
+          },
+          "published": {
+            "version": 8,
+            "digest": "32c8d6aa57cb208ce537b070d21813d714a20381cf15231d11bc25e52d793ea4",
+            "at": "2026-10-27T13:56:53.808828+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:57:17.300907+00:00",
+            "applied_digest": "32c8d6aa57cb208ce537b070d21813d714a20381cf15231d11bc25e52d793ea4",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:57:16.993487+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "nflxvideo.net",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "107.20.175.192",
+                "34.252.74.1",
+                "18.236.7.30"
+              ],
+              "probed_at": "2026-10-27T13:57:32.0847014Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "www.netflix.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "207.45.72.1",
+                "207.45.73.1"
+              ],
+              "probed_at": "2026-10-27T13:57:32.2349484Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "www.example.org",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T13:57:32.2923192Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "streaming",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c07-9413.canary.example",
+            "arrived": true,
+            "wait_seconds": 37.2,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 7,
+            "count_after": 8,
+            "last_received_at": "2026-10-27 13:57:47.323267+00"
+          }
+        },
+        {
+          "key": "precedence",
+          "title": "Precedência Bloquear > Monitorar > Permitir",
+          "policy": {
+            "category_actions": {
+              "games": "block",
+              "streaming": "monitor",
+              "shopping": "allow"
+            },
+            "monitor_all": false,
+            "blocked": [
+              "c08-9490.canary.example"
+            ]
+          },
+          "published": {
+            "version": 9,
+            "digest": "3ca027fbb07a94c93b4510a74be79c4d744a52d5d7945188e32e1f742f24e606",
+            "at": "2026-10-27T13:58:10.439711+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:58:33.907020+00:00",
+            "applied_digest": "3ca027fbb07a94c93b4510a74be79c4d744a52d5d7945188e32e1f742f24e606",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:58:32.796595+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "iana.org",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T13:58:39.2044347Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.icann.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "104.18.3.93",
+                "104.18.2.93"
+              ],
+              "probed_at": "2026-10-27T13:58:39.3236142Z",
+              "expected_event": "monitored",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "streaming",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c08-9490.canary.example",
+            "arrived": true,
+            "wait_seconds": 30.6,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 8,
+            "count_after": 9,
+            "last_received_at": "2026-10-27 13:58:47.936734+00"
+          }
+        },
+        {
+          "key": "schedule",
+          "title": "Janela ativa soma às regras permanentes; janela inativa não atua",
+          "policy": {
+            "category_actions": {
+              "shopping": "monitor"
+            },
+            "monitor_all": false,
+            "timezone": "America/Sao_Paulo",
+            "scheduled": [
+              {
+                "days": [
+                  "tue"
+                ],
+                "from": "09:50",
+                "to": "11:50",
+                "category_actions": {
+                  "games": "block"
+                }
+              },
+              {
+                "days": [
+                  "tue"
+                ],
+                "from": "12:50",
+                "to": "13:50",
+                "category_actions": {
+                  "streaming": "block"
+                }
+              }
+            ],
+            "blocked": [
+              "c09-9550.canary.example"
+            ]
+          },
+          "published": {
+            "version": 10,
+            "digest": "f4e820d4e6d81fe9268ed3a9a29cc0d718f38f6b2d0a36dd4b03aff6fc2532e7",
+            "at": "2026-10-27T13:59:11.013525+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T13:59:34.735825+00:00",
+            "applied_digest": "f4e820d4e6d81fe9268ed3a9a29cc0d718f38f6b2d0a36dd4b03aff6fc2532e7",
+            "last_error": null,
+            "last_applied": "2026-10-27 13:59:33.410068+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.example.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "127.0.0.1"
+              ],
+              "probed_at": "2026-10-27T13:59:49.8066439Z",
+              "expected_event": "monitored",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "shopping",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.net",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T13:59:49.9137098Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "104.20.26.136",
+                "172.66.157.237"
+              ],
+              "probed_at": "2026-10-27T13:59:49.9295036Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "iana.org",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T13:59:49.9612925Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c09-9550.canary.example",
+            "arrived": true,
+            "wait_seconds": 37.3,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 9,
+            "count_after": 10,
+            "last_received_at": "2026-10-27 14:00:03.778644+00"
+          }
+        },
+        {
+          "key": "schedule_boundary",
+          "title": "Limite de início da janela no fuso da política",
+          "policy": {
+            "category_actions": {},
+            "monitor_all": false,
+            "timezone": "America/Sao_Paulo",
+            "scheduled": [
+              {
+                "days": [
+                  "tue"
+                ],
+                "from": "11:03",
+                "to": "11:33",
+                "category_actions": {
+                  "games": "block"
+                }
+              }
+            ],
+            "blocked": [
+              "c10.canary.example"
+            ]
+          },
+          "published": {
+            "version": 11,
+            "digest": "434060b7090f94f67cf1dac9834c31d685063379989fc1b92989fa1ad928b421",
+            "at": null
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T14:01:00.935246+00:00",
+            "applied_digest": "434060b7090f94f67cf1dac9834c31d685063379989fc1b92989fa1ad928b421",
+            "last_error": null,
+            "last_applied": "2026-10-27 14:01:00.449955+00"
+          },
+          "passed": true,
+          "window_start_local": "2026-10-27T11:03:00-03:00",
+          "before_probe": [
+            {
+              "domain": "www.example.net",
+              "at": "2026-10-27T14:01:05.4441696Z",
+              "outcome": "forwarded",
+              "answers": [
+                "104.20.21.8",
+                "172.66.175.59"
+              ]
+            }
+          ],
+          "before_probe_preceded_start": true,
+          "after_probes": [
+            {
+              "at": "2026-10-27T14:03:08.5878061Z",
+              "outcome": "blocked"
+            }
+          ],
+          "seconds_after_start_to_block": 8.944178
+        },
+        {
+          "key": "baseline_before_failures",
+          "title": "Proteção anterior válida",
+          "policy": {
+            "category_actions": {
+              "games": "block"
+            },
+            "monitor_all": false,
+            "blocked": [
+              "c11-9788.canary.example"
+            ]
+          },
+          "published": {
+            "version": 12,
+            "digest": "12857998ee30b4fc74c1eb366324e4dd37de0ac51060d2767a231af02c133550",
+            "at": "2026-10-27T14:03:09.261024+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T14:03:37.441355+00:00",
+            "applied_digest": "12857998ee30b4fc74c1eb366324e4dd37de0ac51060d2767a231af02c133550",
+            "last_error": null,
+            "last_applied": "2026-10-27 14:03:36.088628+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.example.net",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T14:04:18.4467084Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c11-9788.canary.example",
+            "arrived": true,
+            "wait_seconds": 23.9,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 11,
+            "count_after": 12,
+            "last_received_at": "2026-10-27 14:04:21.593034+00"
+          }
+        },
+        {
+          "key": "missing_category",
+          "title": "Categoria necessária ausente (bank não publicada) com Permitir sob monitoramento geral",
+          "policy": {
+            "category_actions": {
+              "games": "block",
+              "bank": "allow"
+            },
+            "monitor_all": true,
+            "blocked": [
+              "c12-9883.canary.example"
+            ]
+          },
+          "published": {
+            "version": 13,
+            "digest": "1e221c6f3b635911cc996ece463baf7af68ccb2aac28029a8221814d76d8f3e6",
+            "at": "2026-10-27T14:04:43.475109+00:00"
+          },
+          "ack": {
+            "acknowledged": false,
+            "seen_at": "2026-10-27T14:05:43.636904+00:00",
+            "applied_digest": "12857998ee30b4fc74c1eb366324e4dd37de0ac51060d2767a231af02c133550",
+            "last_error": "enforcement failed: PolicyError",
+            "last_applied": "2026-10-27 14:03:36.088628+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "example.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "127.0.0.1"
+              ],
+              "probed_at": "2026-10-27T14:05:48.6830208Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "www.example.net",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T14:05:48.8094387Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c12-9883.canary.example",
+            "arrived": true,
+            "wait_seconds": 24.0,
+            "dns": "error"
+          },
+          "batches": {
+            "count_before": 12,
+            "count_after": 13,
+            "last_received_at": "2026-10-27 14:05:52.500214+00"
+          },
+          "previous_applied_digest": "12857998ee30b4fc74c1eb366324e4dd37de0ac51060d2767a231af02c133550",
+          "previous_policy_kept": true
+        },
+        {
+          "key": "invalid_digest",
+          "title": "Digest inválido (arquivo sports corrompido no relay do guest)",
+          "policy": {
+            "category_actions": {
+              "games": "block",
+              "sports": "block"
+            },
+            "monitor_all": true,
+            "blocked": [
+              "c13-9973.canary.example"
+            ]
+          },
+          "published": {
+            "version": 14,
+            "digest": "cab1b6f0c2ae5a176269d685d85bc93addaaa219ff3ce7e6550a88ce329eaf44",
+            "at": "2026-10-27T14:06:18.066658+00:00"
+          },
+          "ack": {
+            "acknowledged": false,
+            "seen_at": "2026-10-27T14:07:18.203610+00:00",
+            "applied_digest": "12857998ee30b4fc74c1eb366324e4dd37de0ac51060d2767a231af02c133550",
+            "last_error": "enforcement failed: PolicyError",
+            "last_applied": "2026-10-27 14:03:36.088628+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "example.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "127.0.0.1"
+              ],
+              "probed_at": "2026-10-27T14:07:23.9364845Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "www.example.net",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T14:07:24.0623292Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c13-9973.canary.example",
+            "arrived": true,
+            "wait_seconds": 37.4,
+            "dns": "error"
+          },
+          "batches": {
+            "count_before": 13,
+            "count_after": 14,
+            "last_received_at": "2026-10-27 14:07:38.618214+00"
+          },
+          "previous_applied_digest": "12857998ee30b4fc74c1eb366324e4dd37de0ac51060d2767a231af02c133550",
+          "previous_policy_kept": true
+        },
+        {
+          "key": "invalid_digest_recovery",
+          "title": "Recuperação após arquivo válido (relay sem corrupção)",
+          "policy": {
+            "category_actions": {
+              "games": "block",
+              "sports": "block"
+            },
+            "monitor_all": true,
+            "blocked": [
+              "c14-10082.canary.example"
+            ]
+          },
+          "published": {
+            "version": 15,
+            "digest": "b6e29d8669aa3952f335caec70222343ab9e5864de18abdc76e663e6f6dc4c40",
+            "at": "2026-10-27T14:08:07.012874+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T14:08:25.905691+00:00",
+            "applied_digest": "b6e29d8669aa3952f335caec70222343ab9e5864de18abdc76e663e6f6dc4c40",
+            "last_error": null,
+            "last_applied": "2026-10-27 14:08:24.08385+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "example.com",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "127.0.0.1"
+              ],
+              "probed_at": "2026-10-27T14:08:34.5415004Z",
+              "expected_event": "monitored",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "policy",
+                  "category": "",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "sports.homolog.example",
+              "expected_dns": "blocked",
+              "dns": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "probed_at": "2026-10-27T14:08:34.6575588Z",
+              "expected_event": "blocked",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "sports",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c14-10082.canary.example",
+            "arrived": true,
+            "wait_seconds": 27.2,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 14,
+            "count_after": 15,
+            "last_received_at": "2026-10-27 14:08:39.248303+00"
+          }
+        }
+      ],
+      "browser_policy": {
+        "policy": {
+          "category_actions": {
+            "games": "block",
+            "streaming": "monitor",
+            "shopping": "allow"
+          },
+          "monitor_all": false
+        },
+        "digest": "753081a2c3319c958fa513f1b433b99419cdfb9fa61c853adf7d5d62b20ae6cf",
+        "dns_probe": {
+          "www.example.net": "blocked",
+          "www.example.org": "forwarded",
+          "www.example.com": "forwarded"
+        },
+        "acknowledged": true
+      },
+      "browsers_without_session": [
+        {
+          "browser": "chrome",
+          "version": null,
+          "started_at": "2026-10-27T14:10:36.208067+00:00",
+          "report_passed": false,
+          "passed": false,
+          "launch_error": "wsb exec ExistingLogin: no logged-on guest session (0x80070520)",
+          "report_error": null,
+          "cases": [],
+          "server_events": [
+            {
+              "domain": "www.example.net",
+              "expected_event": "blocked",
+              "passed": false,
+              "events": []
+            },
+            {
+              "domain": "www.example.org",
+              "expected_event": "monitored",
+              "passed": false,
+              "events": []
+            },
+            {
+              "domain": "www.example.com",
+              "expected_event": null,
+              "passed": true,
+              "events": []
+            }
+          ]
+        }
+      ],
+      "browsers": [
+        {
+          "browser": "chrome",
+          "version": "Chrome/156.0.8078.48",
+          "started_at": "2026-10-27T14:20:32.587348+00:00",
+          "report_passed": false,
+          "passed": false,
+          "launch_error": null,
+          "report_error": null,
+          "cases": [
+            {
+              "case": "blocked",
+              "target_host": "www.example.net",
+              "passed": false,
+              "failures": null,
+              "navigation_error": "net::ERR_NAME_NOT_RESOLVED",
+              "title": null,
+              "status": null,
+              "secure_context": null,
+              "error": "Error: {\"code\":-32000,\"message\":\"Not attached to an active page\"}"
+            },
+            {
+              "case": "monitored",
+              "target_host": "www.example.org",
+              "passed": false,
+              "failures": [
+                "Origin page absent"
+              ],
+              "navigation_error": null,
+              "title": "Example Domain",
+              "status": 200,
+              "secure_context": true,
+              "error": null
+            },
+            {
+              "case": "allowed",
+              "target_host": "www.example.com",
+              "passed": false,
+              "failures": null,
+              "navigation_error": "net::ERR_CONNECTION_REFUSED",
+              "title": null,
+              "status": null,
+              "secure_context": null,
+              "error": "Error: {\"code\":-32000,\"message\":\"Not attached to an active page\"}"
+            }
+          ],
+          "server_events": [
+            {
+              "domain": "www.example.net",
+              "expected_event": "blocked",
+              "passed": true,
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.org",
+              "expected_event": "monitored",
+              "passed": true,
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "streaming",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.com",
+              "expected_event": null,
+              "passed": true,
+              "events": []
+            }
+          ]
+        },
+        {
+          "browser": "firefox",
+          "version": "158.0.1",
+          "started_at": "2026-10-27T14:22:10.266590+00:00",
+          "report_passed": false,
+          "passed": false,
+          "launch_error": null,
+          "report_error": "Error: browsingContext.create timed out",
+          "cases": [],
+          "server_events": [
+            {
+              "domain": "www.example.net",
+              "expected_event": "blocked",
+              "passed": false,
+              "events": []
+            },
+            {
+              "domain": "www.example.org",
+              "expected_event": "monitored",
+              "passed": false,
+              "events": []
+            },
+            {
+              "domain": "www.example.com",
+              "expected_event": null,
+              "passed": true,
+              "events": []
+            }
+          ]
+        }
+      ],
+      "panel_api": {
+        "monitored": [
+          {
+            "kind": "web_monitor",
+            "detail": "www.example.org",
+            "reason": "category",
+            "category": "streaming",
+            "count": 2,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "bec1b7a5-6d08-4.mshome.net",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "example.com",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "bec1b7a5-6d08-4.mshome.net",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "example.com",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "settings-win.data.microsoft.com",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "www.example.com",
+            "reason": "category",
+            "category": "shopping",
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "www.example.org",
+            "reason": "category",
+            "category": "streaming",
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "www.icann.org",
+            "reason": "category",
+            "category": "streaming",
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          }
+        ],
+        "blocked": [
+          {
+            "kind": "web_block",
+            "detail": "www.example.net",
+            "reason": "category",
+            "category": "games",
+            "count": 6,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c11-9788.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c14-10082.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "sports.homolog.example",
+            "reason": "category",
+            "category": "sports",
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "www.example.net",
+            "reason": "category",
+            "category": "games",
+            "count": 3,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "iana.org",
+            "reason": "category",
+            "category": "games",
+            "count": 2,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c01-9051.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c02-9107.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c03-9168.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c04-9229.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c05-9290.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c06-9350.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c07-9413.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c08-9490.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c09-9550.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "nflxvideo.net",
+            "reason": "category",
+            "category": "streaming",
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "www.example.org",
+            "reason": "category",
+            "category": "streaming",
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          }
+        ],
+        "overview": {
+          "blocks_by_day": [
+            {
+              "date": "2026-10-21",
+              "web": 0,
+              "apps": 0,
+              "usb": 0
+            },
+            {
+              "date": "2026-10-22",
+              "web": 0,
+              "apps": 0,
+              "usb": 0
+            },
+            {
+              "date": "2026-10-23",
+              "web": 0,
+              "apps": 0,
+              "usb": 0
+            },
+            {
+              "date": "2026-10-24",
+              "web": 0,
+              "apps": 0,
+              "usb": 0
+            },
+            {
+              "date": "2026-10-25",
+              "web": 0,
+              "apps": 0,
+              "usb": 0
+            },
+            {
+              "date": "2026-10-26",
+              "web": 0,
+              "apps": 0,
+              "usb": 0
+            },
+            {
+              "date": "2026-10-27",
+              "web": 25,
+              "apps": 0,
+              "usb": 0
+            }
+          ],
+          "monitoring_by_day": [
+            {
+              "date": "2026-10-21",
+              "web": 0
+            },
+            {
+              "date": "2026-10-22",
+              "web": 0
+            },
+            {
+              "date": "2026-10-23",
+              "web": 0
+            },
+            {
+              "date": "2026-10-24",
+              "web": 0
+            },
+            {
+              "date": "2026-10-25",
+              "web": 0
+            },
+            {
+              "date": "2026-10-26",
+              "web": 0
+            },
+            {
+              "date": "2026-10-27",
+              "web": 10
+            }
+          ],
+          "dropped_by_day": [
+            {
+              "date": "2026-10-21",
+              "web": 0
+            },
+            {
+              "date": "2026-10-22",
+              "web": 0
+            },
+            {
+              "date": "2026-10-23",
+              "web": 0
+            },
+            {
+              "date": "2026-10-24",
+              "web": 0
+            },
+            {
+              "date": "2026-10-25",
+              "web": 0
+            },
+            {
+              "date": "2026-10-26",
+              "web": 0
+            },
+            {
+              "date": "2026-10-27",
+              "web": 0
+            }
+          ]
+        },
+        "categories_health_status": "current"
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": [
+        17,
+        "2026-10-27 14:21:02.693978+00"
+      ],
+      "errors": []
+    },
+    {
+      "label": "2-browsers",
+      "sandbox_id": "bf4fa7a1-cbb0-4977-89be-6471cf4aa009",
+      "devid": "sandbox-web-actions-b",
+      "started_at": "2026-10-27T14:26:58.190886+00:00",
+      "finished_at": "2026-10-27T14:34:20.858076+00:00",
+      "guest": {
+        "timezone": "E. South America Standard Time",
+        "model": "Virtual Machine",
+        "computer": "BEC1B7A5-6D08-4",
+        "os": "10.0.26100"
+      },
+      "setup_steps": [
+        "2026-10-27T14:27:23.6466165Z guest gate passed",
+        "2026-10-27T14:27:25.8514471Z MSI hash and production package verified",
+        "2026-10-27T14:27:31.2139797Z relay reaches homologation server",
+        "2026-10-27T14:27:32.0932759Z upstream DNS baseline recorded",
+        "2026-10-27T14:29:35.4125771Z MSI installed",
+        "2026-10-27T14:29:41.5593011Z agent running in DNS mode with verified hash"
+      ],
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "agent_dns_listener": [
+        "::1",
+        "127.0.0.1"
+      ],
+      "install_seconds": 123,
+      "initial_ack": null,
+      "capabilities": null,
+      "scenarios": [],
+      "browser_policy": {
+        "policy": {
+          "category_actions": {
+            "games": "block",
+            "streaming": "monitor",
+            "shopping": "allow"
+          },
+          "monitor_all": false
+        },
+        "digest": "753081a2c3319c958fa513f1b433b99419cdfb9fa61c853adf7d5d62b20ae6cf",
+        "dns_probe": {
+          "www.example.net": "blocked",
+          "www.example.org": "forwarded",
+          "www.example.com": "forwarded"
+        },
+        "acknowledged": true
+      },
+      "browsers_without_session": [],
+      "browsers": [
+        {
+          "browser": "chrome",
+          "version": "Chrome/156.0.8078.48",
+          "started_at": "2026-10-27T14:31:08.620119+00:00",
+          "report_passed": false,
+          "passed": false,
+          "launch_error": null,
+          "report_error": null,
+          "cases": [
+            {
+              "case": "blocked",
+              "target_host": "www.example.net",
+              "passed": true,
+              "failures": [],
+              "navigation_error": "net::ERR_NAME_NOT_RESOLVED",
+              "title": null,
+              "status": null,
+              "secure_context": null,
+              "error": null
+            },
+            {
+              "case": "monitored",
+              "target_host": "www.example.org",
+              "passed": true,
+              "failures": [],
+              "navigation_error": null,
+              "title": "Example Domain",
+              "status": 200,
+              "secure_context": true,
+              "error": null
+            },
+            {
+              "case": "allowed",
+              "target_host": "www.example.com",
+              "passed": false,
+              "failures": [
+                "Navigation failed: net::ERR_CONNECTION_REFUSED",
+                "Origin mismatch",
+                "Main document is not HTTP 200",
+                "Insecure TLS context",
+                "Origin page absent"
+              ],
+              "navigation_error": "net::ERR_CONNECTION_REFUSED",
+              "title": null,
+              "status": null,
+              "secure_context": null,
+              "error": null
+            }
+          ],
+          "server_events": [
+            {
+              "domain": "www.example.net",
+              "expected_event": "blocked",
+              "passed": true,
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.org",
+              "expected_event": "monitored",
+              "passed": true,
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "streaming",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.com",
+              "expected_event": null,
+              "passed": true,
+              "events": []
+            }
+          ]
+        },
+        {
+          "browser": "firefox",
+          "version": "158.0.1",
+          "started_at": "2026-10-27T14:32:43.899498+00:00",
+          "report_passed": false,
+          "passed": false,
+          "launch_error": null,
+          "report_error": null,
+          "cases": [
+            {
+              "case": "blocked",
+              "target_host": "www.example.net",
+              "passed": true,
+              "failures": [],
+              "navigation_error": "Error: unknown error: Error: NS_ERROR_UNKNOWN_HOST",
+              "title": "Problema ao carregar página",
+              "status": null,
+              "secure_context": true,
+              "error": null
+            },
+            {
+              "case": "monitored",
+              "target_host": "www.example.org",
+              "passed": true,
+              "failures": [],
+              "navigation_error": null,
+              "title": "Example Domain",
+              "status": 200,
+              "secure_context": true,
+              "error": null
+            },
+            {
+              "case": "allowed",
+              "target_host": "www.example.com",
+              "passed": false,
+              "failures": [
+                "Navigation failed: Error: unknown error: Error: NS_ERROR_CONNECTION_REFUSED",
+                "Internal browser error",
+                "Main document is not HTTP 200",
+                "Origin page absent"
+              ],
+              "navigation_error": "Error: unknown error: Error: NS_ERROR_CONNECTION_REFUSED",
+              "title": "",
+              "status": null,
+              "secure_context": true,
+              "error": null
+            }
+          ],
+          "server_events": [
+            {
+              "domain": "www.example.net",
+              "expected_event": "blocked",
+              "passed": true,
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.org",
+              "expected_event": "monitored",
+              "passed": true,
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "streaming",
+                  "added": 2
+                }
+              ]
+            },
+            {
+              "domain": "www.example.com",
+              "expected_event": null,
+              "passed": true,
+              "events": []
+            }
+          ]
+        }
+      ],
+      "panel_api": {
+        "monitored": [
+          {
+            "kind": "web_monitor",
+            "detail": "www.example.org",
+            "reason": "category",
+            "category": "streaming",
+            "count": 4,
+            "action": "monitored",
+            "source": "dns"
+          }
+        ],
+        "blocked": [
+          {
+            "kind": "web_block",
+            "detail": "www.example.net",
+            "reason": "category",
+            "category": "games",
+            "count": 3,
+            "action": "blocked",
+            "source": "dns"
+          }
+        ]
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": [
+        4,
+        "2026-10-27 14:33:15.297987+00"
+      ],
+      "errors": []
+    },
+    {
+      "label": "3-isolated-domains",
+      "sandbox_id": "a7fcef99-6eb8-4e23-825c-0fd33e1a168f",
+      "devid": "sandbox-web-actions-c",
+      "started_at": "2026-10-27T14:37:27.967401+00:00",
+      "finished_at": "2026-10-27T14:47:44.046104+00:00",
+      "guest": {
+        "timezone": "E. South America Standard Time",
+        "model": "Virtual Machine",
+        "computer": "BEC1B7A5-6D08-4",
+        "os": "10.0.26100"
+      },
+      "setup_steps": [
+        "2026-10-27T14:37:49.2089027Z guest gate passed",
+        "2026-10-27T14:37:51.5236017Z MSI hash and production package verified",
+        "2026-10-27T14:37:56.1270324Z relay reaches homologation server",
+        "2026-10-27T14:37:57.0154548Z upstream DNS baseline recorded",
+        "2026-10-27T14:39:59.9178324Z MSI installed",
+        "2026-10-27T14:40:06.4559442Z agent running in DNS mode with verified hash"
+      ],
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "agent_dns_listener": [
+        "::1",
+        "127.0.0.1"
+      ],
+      "install_seconds": 123,
+      "initial_ack": true,
+      "capabilities": null,
+      "scenarios": [
+        {
+          "key": "allow_no_event",
+          "title": "Categoria Permitir; monitoramento geral desligado",
+          "policy": {
+            "category_actions": {
+              "shopping": "allow"
+            },
+            "monitor_all": false,
+            "blocked": [
+              "c01-12024.canary.example"
+            ]
+          },
+          "published": {
+            "version": 19,
+            "digest": "d9566b1b5b570591b8152cda98d0934735a326fbeec6aed679455043471ab667",
+            "at": "2026-10-27T14:40:24.444150+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T14:40:54.953525+00:00",
+            "applied_digest": "d9566b1b5b570591b8152cda98d0934735a326fbeec6aed679455043471ab667",
+            "last_error": null,
+            "last_applied": "2026-10-27 14:40:52.813272+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.ietf.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "104.16.44.99",
+                "104.16.45.99"
+              ],
+              "probed_at": "2026-10-27T14:41:00.4528775Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            }
+          ],
+          "canary": {
+            "domain": "c01-12024.canary.example",
+            "arrived": true,
+            "wait_seconds": 31.9,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 0,
+            "count_after": 1,
+            "last_received_at": "2026-10-27 14:41:07.979305+00"
+          }
+        },
+        {
+          "key": "monitor_all",
+          "title": "Monitoramento geral ligado: fora das categorias e categoria Permitir explícita",
+          "policy": {
+            "category_actions": {
+              "shopping": "allow"
+            },
+            "monitor_all": true,
+            "blocked": [
+              "c02-12093.canary.example"
+            ]
+          },
+          "published": {
+            "version": 20,
+            "digest": "3ffc5c11f1c95f4e57f49e9dd4cf72c257ffdbab0703c21dbbe4dea347fa16b2",
+            "at": "2026-10-27T14:41:33.591692+00:00"
+          },
+          "ack": {
+            "acknowledged": true,
+            "seen_at": "2026-10-27T14:41:54.860955+00:00",
+            "applied_digest": "3ffc5c11f1c95f4e57f49e9dd4cf72c257ffdbab0703c21dbbe4dea347fa16b2",
+            "last_error": null,
+            "last_applied": "2026-10-27 14:41:53.46051+00"
+          },
+          "passed": true,
+          "checks": [
+            {
+              "domain": "www.ietf.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "104.16.44.99",
+                "104.16.45.99"
+              ],
+              "probed_at": "2026-10-27T14:42:10.5433488Z",
+              "expected_event": null,
+              "passed": true,
+              "failures": [],
+              "events": []
+            },
+            {
+              "domain": "www.rfc-editor.org",
+              "expected_dns": "forwarded",
+              "dns": "forwarded",
+              "answers": [
+                "104.18.20.81",
+                "104.18.21.81"
+              ],
+              "probed_at": "2026-10-27T14:42:10.7012216Z",
+              "expected_event": "monitored",
+              "passed": true,
+              "failures": [],
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "policy",
+                  "category": "",
+                  "source": "dns",
+                  "added": 1
+                }
+              ]
+            }
+          ],
+          "canary": {
+            "domain": "c02-12093.canary.example",
+            "arrived": true,
+            "wait_seconds": 33.9,
+            "dns": null
+          },
+          "batches": {
+            "count_before": 1,
+            "count_after": 3,
+            "last_received_at": "2026-10-27 14:42:23.824905+00"
+          }
+        }
+      ],
+      "browser_policy": {
+        "policy": {
+          "category_actions": {
+            "games": "block",
+            "streaming": "monitor",
+            "shopping": "allow"
+          },
+          "monitor_all": false
+        },
+        "digest": "753081a2c3319c958fa513f1b433b99419cdfb9fa61c853adf7d5d62b20ae6cf",
+        "dns_probe": {
+          "www.example.net": [
+            "blocked",
+            [
+              "0.0.0.0"
+            ]
+          ],
+          "www.example.org": [
+            "forwarded",
+            [
+              "104.20.26.136",
+              "172.66.157.237"
+            ]
+          ],
+          "www.ietf.org": [
+            "forwarded",
+            [
+              "104.16.44.99",
+              "104.16.45.99"
+            ]
+          ]
+        },
+        "acknowledged": true
+      },
+      "browsers_without_session": [],
+      "browsers": [
+        {
+          "browser": "chrome",
+          "version": "Chrome/156.0.8078.48",
+          "started_at": "2026-10-27T14:44:26.469462+00:00",
+          "report_passed": true,
+          "passed": true,
+          "launch_error": null,
+          "report_error": null,
+          "cases": [
+            {
+              "case": "blocked",
+              "target_host": "www.example.net",
+              "passed": true,
+              "failures": [],
+              "navigation_error": "net::ERR_NAME_NOT_RESOLVED",
+              "title": null,
+              "status": null,
+              "secure_context": null,
+              "error": null
+            },
+            {
+              "case": "monitored",
+              "target_host": "www.example.org",
+              "passed": true,
+              "failures": [],
+              "navigation_error": null,
+              "title": "Example Domain",
+              "status": 200,
+              "secure_context": true,
+              "error": null
+            },
+            {
+              "case": "allowed",
+              "target_host": "www.ietf.org",
+              "passed": true,
+              "failures": [],
+              "navigation_error": null,
+              "title": "IETF | Internet Engineering Task Force",
+              "status": 200,
+              "secure_context": true,
+              "error": null
+            }
+          ],
+          "server_events": [
+            {
+              "domain": "www.example.net",
+              "expected_event": "blocked",
+              "passed": true,
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.org",
+              "expected_event": "monitored",
+              "passed": true,
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "streaming",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.ietf.org",
+              "expected_event": null,
+              "passed": true,
+              "events": []
+            }
+          ]
+        },
+        {
+          "browser": "firefox",
+          "version": "158.0.1",
+          "started_at": "2026-10-27T14:46:03.461970+00:00",
+          "report_passed": true,
+          "passed": true,
+          "launch_error": null,
+          "report_error": null,
+          "cases": [
+            {
+              "case": "blocked",
+              "target_host": "www.example.net",
+              "passed": true,
+              "failures": [],
+              "navigation_error": "Error: unknown error: Error: NS_ERROR_UNKNOWN_HOST",
+              "title": "Problema ao carregar página",
+              "status": null,
+              "secure_context": true,
+              "error": null
+            },
+            {
+              "case": "monitored",
+              "target_host": "www.example.org",
+              "passed": true,
+              "failures": [],
+              "navigation_error": null,
+              "title": "Example Domain",
+              "status": 200,
+              "secure_context": true,
+              "error": null
+            },
+            {
+              "case": "allowed",
+              "target_host": "www.ietf.org",
+              "passed": true,
+              "failures": [],
+              "navigation_error": null,
+              "title": "IETF | Internet Engineering Task Force",
+              "status": 200,
+              "secure_context": true,
+              "error": null
+            }
+          ],
+          "server_events": [
+            {
+              "domain": "www.example.net",
+              "expected_event": "blocked",
+              "passed": true,
+              "events": [
+                {
+                  "action": "blocked",
+                  "reason": "category",
+                  "category": "games",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.example.org",
+              "expected_event": "monitored",
+              "passed": true,
+              "events": [
+                {
+                  "action": "monitored",
+                  "reason": "category",
+                  "category": "streaming",
+                  "added": 1
+                }
+              ]
+            },
+            {
+              "domain": "www.ietf.org",
+              "expected_event": null,
+              "passed": true,
+              "events": []
+            }
+          ]
+        }
+      ],
+      "panel_api": {
+        "monitored": [
+          {
+            "kind": "web_monitor",
+            "detail": "www.example.org",
+            "reason": "category",
+            "category": "streaming",
+            "count": 3,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "bec1b7a5-6d08-4.mshome.net",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "msedge.b.tlu.dl.delivery.mp.microsoft.com",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          },
+          {
+            "kind": "web_monitor",
+            "detail": "www.rfc-editor.org",
+            "reason": "policy",
+            "category": null,
+            "count": 1,
+            "action": "monitored",
+            "source": "dns"
+          }
+        ],
+        "blocked": [
+          {
+            "kind": "web_block",
+            "detail": "www.example.net",
+            "reason": "category",
+            "category": "games",
+            "count": 3,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c01-12024.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          },
+          {
+            "kind": "web_block",
+            "detail": "c02-12093.canary.example",
+            "reason": "rule",
+            "category": null,
+            "count": 1,
+            "action": "blocked",
+            "source": "dns"
+          }
+        ]
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": [
+        6,
+        "2026-10-27 14:46:26.457658+00"
+      ],
+      "errors": []
+    }
+  ]
+}
