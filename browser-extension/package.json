@@ -1,0 +1,11 @@
+{
+  "name": "openems-browser-visibility",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node tools/build.mjs"
+  },
+  "engines": { "node": ">=24" }
+}
