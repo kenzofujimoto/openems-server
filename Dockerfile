@@ -29,7 +29,7 @@ COPY agent ./agent
 COPY tools/update_categories.py ./tools/update_categories.py
 # No package installer remains in the runtime layer. A new named volume copies this owner,
 # so the daily category job can publish as the unprivileged user.
-RUN python -m pip uninstall -y pip \
+RUN /usr/local/bin/python -m pip uninstall -y pip \
     && useradd --system --uid 10001 --no-create-home openems \
     && mkdir -p /var/lib/openems/categories && chown 10001:10001 /var/lib/openems/categories
 USER 10001:10001
