@@ -176,3 +176,13 @@ test('failed opt-out storage write still stops collection in memory', async () =
   assert.equal(f.controller.status().paired, false);
   assert.equal(f.connectCount(), 1);
 });
+
+test('opt-out invalidates authorization before awaiting storage', async () => {
+  const f = await enabledFixture();
+  const work = f.controller.observe(navigation()); await turn(); const request = f.sent.at(-1);
+  let finishSave; f.api.storage.local.set = () => new Promise((resolve) => { finishSave = resolve; });
+  const saving = f.controller.configure({enabled:false, includePath:false});
+  f.decide(request, 'monitor'); await work;
+  assert.equal(f.sent.some((message) => message.type === 'observation'), false);
+  finishSave(); await saving;
+});
