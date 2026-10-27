@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from xml.etree import ElementTree as ET
 
+from defusedxml.ElementTree import fromstring as _safe_fromstring
+
 SAMLP_RESPONSE = "{urn:oasis:names:tc:SAML:2.0:protocol}Response"
 
 
@@ -39,7 +41,8 @@ def make_signxml_verifier(cert_pem: str) -> Callable[[bytes], ET.Element | None]
             signed = result.signed_xml
             if signed.tag != SAMLP_RESPONSE or signed.get("ID") != document.get("ID"):
                 return None
-            return ET.fromstring(etree.tostring(signed))
+            # Re-parse only the verified subtree, through the same DTD-refusing parser as the ACS.
+            return _safe_fromstring(etree.tostring(signed), forbid_dtd=True)
         except (
             SignXMLException,
             etree.LxmlError,

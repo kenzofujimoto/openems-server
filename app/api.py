@@ -75,6 +75,9 @@ from .uninstall_codes import (
 _PANEL_DIR = Path(__file__).parent / 'panel_dist'
 _COOKIE = 'openems_session'
 _SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+# The panel needs no powerful browser feature; deny them all explicitly.
+_PERMISSIONS_POLICY = ('accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), '
+                       'microphone=(), payment=(), usb=(), interest-cohort=()')
 
 
 def _actor(request: Request) -> str:
@@ -95,7 +98,7 @@ def _bearer(request: Request) -> str:
     return header[7:] if header[:7].lower() == 'bearer ' else ''
 
 
-def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
+def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,  # noqa: C901 - route/assertion table; new functions must stay under the gate
                record_path: str | None = None, admin_service: AdminService | None = None,
                audit_log: AuditLog | None = None, *, lab_mode: bool = False,
                close_resources: list[Any] | None = None, panel_dir: Path | None = None,
@@ -126,7 +129,10 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             if close:
                 close()
 
-    app = FastAPI(title='openems-server', version='0.2.0', lifespan=lifespan)
+    # The schema maps every management route: only laboratory mode (loopback clients) serves it.
+    docs_paths = ('/docs', '/redoc', '/openapi.json') if lab_mode else (None, None, None)
+    docs = dict(zip(('docs_url', 'redoc_url', 'openapi_url'), docs_paths, strict=True))
+    app = FastAPI(title='openems-server', version='0.2.0', lifespan=lifespan, **docs)
     app.state.service = svc
     app.state.admin = admin
     app.state.saml = saml
@@ -197,6 +203,10 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         response = await authorize(request, call_next)
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+        response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+        response.headers['Permissions-Policy'] = _PERMISSIONS_POLICY
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
         if request.url.path.startswith(('/api/', '/fct/api/', '/fct_saml/')):
             response.headers['Cache-Control'] = 'no-store'

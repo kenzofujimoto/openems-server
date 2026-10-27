@@ -43,11 +43,15 @@ def test_every_response_isolates_the_browsing_context():
     assert rejected.status_code == 401 and rejected.headers["Cross-Origin-Resource-Policy"] == "same-origin"
 
 
-@pytest.mark.parametrize("encoding,codec", [("UTF-16", "utf-16"), ("UTF-16BE", "utf-16-be"), ("UTF-32", "utf-32")])
-def test_saml_response_rejects_a_dtd_in_any_encoding(encoding, codec):
+@pytest.mark.parametrize("encoding,codec,reason", [
+    ("UTF-16", "utf-16", "DTD"), ("UTF-16BE", "utf-16-be", "DTD"),
+    # Expat cannot decode UTF-32, so the document is refused before any DTD is read.
+    ("UTF-32", "utf-32", "not well-formed"),
+])
+def test_saml_response_rejects_a_dtd_in_any_encoding(encoding, codec, reason):
     # A byte-level "<!DOCTYPE" check misses wide encodings; parsing must refuse the DTD itself.
     payload = base64.b64encode(DTD.format(encoding=encoding).encode(codec)).decode()
-    with pytest.raises(SamlError, match="DTD"):
+    with pytest.raises(SamlError, match=reason):
         parse_saml_response(payload, require_signature=False)
 
 

@@ -21,6 +21,9 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 from xml.etree import ElementTree as ET
 
+from defusedxml import DefusedXmlException
+from defusedxml.ElementTree import fromstring as _safe_fromstring
+
 from .idp_store import IdpStore, InMemoryIdpStore
 from .replay import (
     InMemoryPendingRequestStore,
@@ -73,6 +76,15 @@ class SamlAssertion:
     subject_expiry: datetime | None = None
     response_id: str | None = None
     audience_restrictions: list[list[str]] = field(default_factory=list)
+
+
+def _parse_untrusted(xml: bytes | str, label: str) -> ET.Element:
+    try:
+        return _safe_fromstring(xml, forbid_dtd=True, forbid_entities=True, forbid_external=True)
+    except DefusedXmlException as err:
+        raise SamlError(f"{label} contains a DTD or entity declarations") from err
+    except ET.ParseError as err:
+        raise SamlError(f"{label} is not well-formed XML") from err
 
 
 def _utcnow_iso() -> str:
@@ -141,7 +153,7 @@ def build_authn_request(
 # --- SAMLResponse parsing (IdP -> SP ACS, HTTP-POST) --------------------
 
 
-def parse_saml_response(
+def parse_saml_response(  # noqa: C901 - route/assertion table; new functions must stay under the gate
     saml_response_b64: str,
     *,
     verify_signature: Callable[[bytes], ET.Element | None] | None = None,
@@ -154,21 +166,17 @@ def parse_saml_response(
     except (ValueError, TypeError) as err:
         raise SamlError("SAMLResponse is not valid base64") from err
 
-    if (
-        len(xml_bytes) > 1_000_000
-        or b"<!DOCTYPE" in xml_bytes.upper()
-        or b"<!ENTITY" in xml_bytes.upper()
-    ):
-        raise SamlError("SAMLResponse XML exceeds limits or contains a DTD")
+    if len(xml_bytes) > 1_000_000:
+        raise SamlError("SAMLResponse XML exceeds limits")
+    # Parse before any signature work: defusedxml refuses DTDs and entities in every declared
+    # encoding (a byte search for "<!DOCTYPE" misses UTF-16/UTF-32 documents).
+    parsed = _parse_untrusted(xml_bytes, "SAMLResponse")
     if require_signature:
         root = verify_signature(xml_bytes) if verify_signature is not None else None
         if not isinstance(root, ET.Element):
             raise SamlError("SAMLResponse signature could not be verified")
     else:
-        try:
-            root = ET.fromstring(xml_bytes)
-        except ET.ParseError as err:
-            raise SamlError("SAMLResponse is not well-formed XML") from err
+        root = parsed
 
     if root.tag != f"{{{SAMLP}}}Response":
         raise SamlError("Expected a SAML Response root")
@@ -314,16 +322,9 @@ def validate_conditions(
 
 
 def parse_idp_metadata(xml_text: str) -> IdpConfig:
-    if (
-        len(xml_text) > 1_000_000
-        or "<!DOCTYPE" in xml_text.upper()
-        or "<!ENTITY" in xml_text.upper()
-    ):
-        raise SamlError("IdP metadata exceeds limits or contains a DTD")
-    try:
-        ed = ET.fromstring(xml_text)
-    except ET.ParseError as err:
-        raise SamlError("IdP metadata is not well-formed XML") from err
+    if len(xml_text) > 1_000_000:
+        raise SamlError("IdP metadata exceeds limits")
+    ed = _parse_untrusted(xml_text, "IdP metadata")
 
     entity_id = ed.get("entityID")
     idp_desc = ed.find(f"{{{MD}}}IDPSSODescriptor")
