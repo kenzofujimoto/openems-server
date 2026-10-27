@@ -1,5 +1,15 @@
 # Handoff — roadmap v2
 
+## Prioridade Chrome/Firefox — continuação de 26 para 27/10/2026
+
+O usuário autorizou testar no Sandbox desta máquina e ofereceu outra máquina física para a validação posterior. O ensaio no host foi bloqueado pelo antivírus antes da execução do controlador; serviço, confiança e perfis pessoais do host não foram alterados. Evidência sanitizada: `validation/host-browser-security-block-2026-10-26.json`. Não reconstruir o controlador bloqueado para contornar a segurança.
+
+Plano atualizado em `host-browser-acceptance.md`. QA temporário em `.venv/sandbox-browser-checks`: Chrome retail via CDP, Firefox oficial via BiDi, TLS estrito, perfis novos, hash/processo/listeners verificados no guest. Seis contratos passaram, incluindo rejeição de origem com porta incorreta, perfil local e prazo global.
+
+Primeiro guest próprio (`10aca1be-6855-40c5-a5fa-d3d7b453fac2`) aplicou a política e produziu uma captura Chrome HTTPS correta, mas deixou de responder durante a sequência. **Aceite incompleto:** não há relatório final dos navegadores nem limpeza comprovada; o prazo do helper e `wsb stop` não produziram confirmação. O perfil Chrome estava em pasta VSMB; essa é uma hipótese do travamento, ainda não comprovada. A segunda rodada foi preparada com perfis no disco local do guest, execução assíncrona, relatório incremental e prazo global de 180 segundos. Não iniciar outro Sandbox enquanto o anterior continuar ativo.
+
+Recuperação em andamento: listagem HCS elevada identificou uma VM WindowsSandbox e uma WSL separada. O ID HCS difere do ID wsb; confirmar o vínculo antes de encerramento direcionado. Não parar WSL, serviços genéricos nem VMs alheias. A rodada incompleta está em `.venv/sandbox-browser-checks/results`; nova rodada deve usar `results-round2`. Até resultado final e limpeza, Chrome/Firefox permanecem pendentes.
+
 ## Estado da continuação final — 2026-10-26
 
 ### Resultado final da correção dos Sandboxes — 26/10/2026

@@ -1,0 +1,16 @@
+{
+  "environment": "development-host",
+  "status": "blocked_before_execution",
+  "error_id": "ScriptContainedMaliciousContent",
+  "attempt": "PowerShell controller self-test",
+  "script_sha256": null,
+  "hash_unavailable_reason": "Script was no longer present when the hash was requested; it was not reconstructed.",
+  "service_stop_attempted": false,
+  "candidate_process_started": false,
+  "runner_host_mutations": false,
+  "security_settings_modified": false,
+  "post_block_execution_attempts": 0,
+  "browser_acceptance": "not_run",
+  "authorized_next_environment": "windows-sandbox",
+  "physical_machine_acceptance": "pending"
+}
