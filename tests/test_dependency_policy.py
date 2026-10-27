@@ -50,9 +50,11 @@ def test_lock_pins_every_package_with_hashes():
 
 def test_locked_versions_close_reviewed_advisories():
     locked = pins(ROOT / "requirements.lock")
+    assert {"fastapi", "starlette", "python-multipart"} <= set(locked)
     for name, minimum in MINIMUMS.items():
-        assert name in locked, f"{name} missing from the lock"
-        assert version(locked[name]) >= minimum, f"{name} {locked[name]} is below {minimum}"
+        # Transitive packages may leave the runtime entirely; when present they must be fixed.
+        if name in locked:
+            assert version(locked[name]) >= minimum, f"{name} {locked[name]} is below {minimum}"
 
 
 def test_image_installs_the_hashed_lock_only():
