@@ -42,3 +42,36 @@ Confirmados como corretos:
 | 9 | Info | Debian base com 164 CVEs sem correção | Monitorar com gate só para corrigíveis; avaliar base mínima |
 
 Não houve achado crítico explorável no código próprio. O risco concreto hoje está nas dependências do servidor.
+
+## Correções aplicadas (mesmo dia)
+
+Aprovadas pelo usuário. Cada correção tem teste escrito antes e falhando, além da suíte completa.
+
+| # | Situação | O que mudou |
+|---|---|---|
+| 1 | Corrigido | FastAPI 0.162 e Starlette 1.10; `python-multipart` 0.0.32. Lock pip-compile com hashes em todas as dependências (`requirements.in` → `requirements.txt`), instalado com `--require-hashes` |
+| 2 | Corrigido | Ferramentas de teste foram para `requirements-dev.txt`. A imagem perdeu pytest, playwright, Node.js, ruff, pip e setuptools e ficou só com o venv de runtime |
+| 3 | Corrigido | `/docs`, `/redoc` e `/openapi.json` só em modo laboratório (loopback) |
+| 4 | Corrigido | Actions fixadas por SHA, bases Docker por digest, Dependabot com *cooldown* de 7 dias nos 5 ecossistemas |
+| 5 | Corrigido | SAML e metadata com `defusedxml` (`forbid_dtd`); DTD em UTF-16 recusado com teste |
+| 6 | Corrigido | O agente remove o convite após o registro e na inicialização (`18cd811`). MSI v2 `762c931a…` validado em Sandbox novo |
+| 7 | Corrigido | X-Frame-Options, COOP, CORP e Permissions-Policy no servidor; nginx também |
+| 8 | Corrigido | nginx com `$host` |
+| 9 | Risco residual | 164 CVEs do Debian base sem correção publicada (36 das 44 HIGH vêm de 4 CVEs da util-linux, que o servidor não usa). O gate bloqueia apenas as corrigíveis; avaliar uma base mínima (distroless/Wolfi) |
+
+Achados novos durante a implementação:
+- `pip uninstall` na camada final falhava porque o `PATH` prioriza o venv. Corrigido e coberto por teste.
+- O verificador de pinning do agente (`network_signals.rs`) foi revisado: exige o SHA-256 exato e delega as assinaturas ao rustls. Não é vulnerável.
+
+### Depois
+
+| Medida | Antes | Depois |
+|---|---|---|
+| Vulnerabilidades Python na imagem (Trivy) | 22 corrigíveis (10 HIGH) | 0 |
+| Dependências Python conhecidas (pip-audit/OSV) | 28+ avisos em 10 pacotes | 0 |
+| Rust e painel (OSV, cargo-deny, npm audit) | 0 | 0; cargo-deny: advisories, bans, licenses e sources ok |
+| Segredos no histórico (gitleaks) | 13 falsos positivos | 0 (allowlist restrita aos vetores gerados) |
+| Semgrep ERROR | 3 (falsos positivos) | 0 (2 anotados com motivo; regras próprias novas) |
+| DAST (ZAP passivo + ativo autenticado) | 0 FAIL, avisos de cabeçalho | 0 FAIL, sem alerta Low+ não aceito |
+
+O gate local e o do CI usam o mesmo `tools/security_scan.py` ([guia](security-tooling.md)). No CI rodam também CodeQL, Scorecard, dependency-review e npm audit.

@@ -5,13 +5,13 @@ Roteiro para o notebook com pendrive, Chrome e Firefox. Ele cobre o que o Window
 ## O que levar
 
 1. Clone a `main`: `git clone https://github.com/kenzofujimoto/openems-server.git`.
-2. Copie o pacote `openems-second-machine-2026-10-27.zip` (pendrive ou nuvem). Antes de usar, confira o SHA-256 informado no HANDOFF:
+2. Copie o pacote `openems-second-machine-2026-10-27-v2.zip` (pendrive ou nuvem). Antes de usar, confira o SHA-256 informado no HANDOFF:
 
    ```powershell
-   Get-FileHash .\openems-second-machine-2026-10-27.zip -Algorithm SHA256
+   Get-FileHash .\openems-second-machine-2026-10-27-v2.zip -Algorithm SHA256
    ```
 
-3. Extraia em `.venv\second-machine\` dentro do clone. A pasta `.venv/` é ignorada pelo Git. Confira `msi\openems-agent.msi` contra `20e9d24e1a9b59fb96eec25fbd66e3c67bea82a33b27efbe1183db0f098a17c4`. Não recompile; os aceites valem para esses bytes.
+3. Extraia em `.venv\second-machine\` dentro do clone. A pasta `.venv/` é ignorada pelo Git. Confira `msi\openems-agent.msi` contra `762c931afe6c84934e02402f28f65776bd11ea1c56cfe829d4f4e12f315ef486`. É o MSI v2, da revisão `18cd811`, que remove o convite usado do `agent.json`. Não recompile; os aceites valem para esses bytes.
 
 O pacote não tem `.env`, senhas, convites, CA, estado de agente nem perfis pessoais. Cada máquina gera os próprios segredos.
 
@@ -22,7 +22,7 @@ O agente será instalado de verdade no notebook e passará a filtrar o DNS dele 
 1. **Servidor local.** Com Docker Desktop, na pasta do clone:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File deploy\new-env.ps1
+   powershell -ExecutionPolicy Bypass -File deploy\new-env.ps1 -Uses 1
    docker compose up -d --build
    docker compose run --rm --no-deps server python -m app.migrations
    ```
@@ -49,7 +49,7 @@ O agente será instalado de verdade no notebook e passará a filtrar o DNS dele 
    Remove-Variable plain, invitation
    ```
 
-   Confira o SHA-256 do executável instalado (`5290604d7f008cb279c01ccca0d1664edfb4415ffc0d0200987bf6465ea8bf04`):
+   Confira o SHA-256 do executável instalado (`370aa1ace2fbc8c4a37f54efadaa29781293fb60c7c343d14451d5d6a814179c`). Confira também que o convite não ficou no `agent.json`: em PowerShell elevado, `Select-String invitation C:\ProgramData\openems\agent.json` não deve achar nada.
 
    ```powershell
    Get-FileHash 'C:\Program Files\openems\openems-agent.exe'

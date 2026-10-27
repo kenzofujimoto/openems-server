@@ -11,17 +11,17 @@
 
 ## Próximo passo: segunda máquina
 
-O usuário vai continuar no notebook com pendrive, Chrome, Firefox e Claude. Roteiro em [docs/second-machine-acceptance.md](docs/second-machine-acceptance.md).
+O usuário vai continuar no notebook com pendrive, Chrome, Firefox e Claude. O roteiro está em [docs/second-machine-acceptance.md](docs/second-machine-acceptance.md).
 - **Parte A:** agente real no Windows físico, servidor local por Docker, painel, Chrome/Firefox e YouTube manual.
 - **Parte B:** USB físico e WDAC em VM descartável com passthrough. Nunca no Windows físico.
 
-Levar `.venv/openems-second-machine-2026-10-27.zip`, que fica fora do Git (SHA-256 `8643445fe8832168d81dcc1a3dbf92a17e486acb4628caa0aad33bfca6e37b92`, 30,6 MB). Ele contém:
-- os dois MSIs e o manifesto;
+Levar `.venv/openems-second-machine-2026-10-27-v2.zip`, que fica fora do Git (SHA-256 `51760378d5af1db860bc3574b7437adb6928ed749c07a9d0269b932ad62af387`). Ele contém:
+- o **MSI v2** (`762c931a…`, agente `370aa1ac…`, revisão `18cd811`), que remove o convite usado do `agent.json`;
 - `usb-input` e `applications-input` com os mesmos bytes;
 - as listas de homologação, incluindo YouTube;
 - o roteiro e o `RECEIPT.json`.
 
-O ZIP não leva `.env`, senhas, convites, CA, estado nem perfis.
+O ZIP v1 foi descartado. Os aceites do Sandbox de 27/10 valem para o MSI v1 (`20e9d24e…`). O v2 passou na regressão em Sandbox novo: cadastro, ACK, bloqueio, convite removido, reinício e remoção ([evidência](validation/msi-v2-regression-2026-10-27.json)). Depois de `18cd811`, o `agent-rs` só recebeu comentário e metadados de licença no Cargo.toml.
 
 ## Revisão de segurança — 27/10/2026
 
@@ -29,7 +29,29 @@ Relatório em [docs/security-review-2026-10-27.md](docs/security-review-2026-10-
 - Scanners: gitleaks, Semgrep, Bandit, pip-audit, osv-scanner, Trivy (sistema de arquivos e imagem), hadolint, ZAP baseline e ZAP API ativo autenticado numa pilha descartável.
 - DAST: 0 falhas.
 - O risco real está nas dependências Python do servidor (`starlette`, `python-multipart` com 3 HIGH, `anyio`, `certifi`, `urllib3`) e nas ferramentas de teste dentro da imagem.
-- Plano de correção, scanners e gates **aguarda aprovação do usuário**.
+- **Aprovado e implementado** no mesmo dia: dependências atualizadas com lock de hashes, imagem só com runtime e sem pip, docs da API fechadas, cabeçalhos de isolamento, SAML com `defusedxml`, convite removido pelo agente (MSI v2) e nginx com `$host`. Antes/depois no relatório.
+- **Gates:**
+  - `tools/security_scan.py`, local e CI, com os gates secrets, sast, dependencies, container, workflows e dast;
+  - workflows `security.yml`, `codeql.yml` e `scorecard.yml`;
+  - Dependabot com cooldown;
+  - ruff com regras S/B/C90;
+  - ESLint com plugin de segurança e zero avisos;
+  - cargo-deny;
+  - pre-commit;
+  - `SECURITY.md`.
+  - Guia em [docs/security-tooling.md](docs/security-tooling.md).
+- CI ativado com a proteção da `main` (decisão do usuário). Exceções revisadas em `security/accepted-findings.json`, com validade.
+- **Revisão paralela do Codex** (seção acima):
+  - As correções do executor entraram em `84c7411`.
+  - O actionlint passou a receber os workflows explicitamente (`25b521b`).
+  - As recomendações de DAST foram implementadas em `3522f0b`:
+    - a prova de sessão autenticada é exigida;
+    - código de erro ou relatório antigo do ZAP reprova;
+    - o token e a senha da pilha descartável não aparecem no `argv` nem no `scan.log`;
+    - falha no `compose down -v` reprova.
+  - O DAST real passou e a pilha foi removida.
+- **Painel:** dois specs (`uninstall`, `controls.interactions`) falhavam de forma intermitente por timeout de 1 s em rotas *lazy*. A espera do Testing Library passou para 5 s e o `testTimeout` para 15 s (`651cfe6`): 5/5 e 3/3 com cobertura verdes.
+- **Instabilidade conhecida:** a falha intermitente de `test_the_agent_stores_its_secret_and_confirms_delivery` (`PermissionError` lendo `state.json`), registrada pelo Codex, não se repetiu nas suítes desta sessão. Continua sem correção.
 
 ## Continuação do aceite — pendências, YouTube e painel (27/10/2026)
 
