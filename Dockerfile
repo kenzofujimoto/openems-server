@@ -10,9 +10,9 @@ RUN npm run build
 # Runtime dependencies come only from the hashed lock, installed into a venv copied below.
 FROM python:3.14-slim@sha256:82abc9f53600280b0757126f83c5a7d47088592d2acb6b4c0b9e97f76865508c AS builder
 ENV PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1
-COPY requirements.lock /tmp/requirements.lock
+COPY requirements.txt /tmp/requirements.txt
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir --require-hashes --no-deps -r /tmp/requirements.lock \
+    && /opt/venv/bin/pip install --no-cache-dir --require-hashes --no-deps -r /tmp/requirements.txt \
     && /opt/venv/bin/pip uninstall -y pip
 
 FROM python:3.14-slim@sha256:82abc9f53600280b0757126f83c5a7d47088592d2acb6b4c0b9e97f76865508c
