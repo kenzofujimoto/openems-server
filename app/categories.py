@@ -106,6 +106,8 @@ class CategoryRepository:
             manifest = self.manifest()
             if not isinstance(manifest, dict) or not isinstance(manifest.get("version"), str):
                 raise TypeError("invalid publication shape")
+            if not isinstance(manifest.get("attribution"), str) or not manifest["attribution"].strip():
+                raise ValueError("invalid publication attribution")
             published = datetime.fromisoformat(manifest["version"])
             if published.tzinfo is None or published.utcoffset() is None:
                 raise ValueError("publication requires a timezone")
@@ -115,7 +117,9 @@ class CategoryRepository:
             entries = manifest.get("categories")
             if not isinstance(entries, list) or any(
                 not isinstance(entry, dict) or entry.get("id") not in CATEGORIES
-                or type(entry.get("count")) is not int or entry["count"] < 0 for entry in entries
+                or type(entry.get("count")) is not int or entry["count"] < 0
+                or any(not isinstance(entry.get(field), str) or not entry[field].strip()
+                       or len(entry[field]) > 256 for field in ("label", "group")) for entry in entries
             ):
                 raise ValueError("invalid publication categories")
             if len({entry["id"] for entry in entries}) != len(entries):

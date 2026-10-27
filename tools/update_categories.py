@@ -27,9 +27,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 # The repository root must be importable before the app package.
+from agent.policy import CATEGORIES
 from app.categories import build_categories
 
-LIST_NAME = re.compile(r"^[a-z0-9_]+$")
+LIST_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 2 * 1024 * 1024 * 1024
 CHUNK = 1024 * 1024
@@ -103,7 +104,11 @@ def extract_lists(archive: Path, work: Path, *, max_bytes: int = MAX_EXTRACTED_B
 
 
 def update(archive: Path, output: Path, work: Path) -> dict[str, Any]:
-    return build_categories(extract_lists(archive, work), output, now=datetime.now(UTC))
+    source = extract_lists(archive, work)
+    if not any((source / name / "domains").is_file()
+               for category in CATEGORIES.values() for name in category["sources"]):
+        raise ValueError("archive contains no supported category lists; the last publication is preserved")
+    return build_categories(source, output, now=datetime.now(UTC))
 
 
 def run_periodically(job: Callable[[], object], interval_seconds: float, *,

@@ -217,6 +217,12 @@ def _web_actions() -> list[dict[str, Any]]:
     cases.extend(({"category_actions": {"streaming": action}}, "watch.example", "2026-10-26T12:00:00")
                  for action in ("allow", "monitor", "block"))
     cases.extend([
+        ({"category_actions": {"streaming": "monitor", "games": "monitor"}}, "watch.example", "2026-10-26T12:00:00"),
+        ({"category_actions": {"games": "monitor", "streaming": "monitor"}}, "watch.example", "2026-10-26T12:00:00"),
+        ({"blocked_categories": ["streaming", "games"]}, "watch.example", "2026-10-26T12:00:00"),
+        ({"category_actions": {"adult": "block"}, "timezone": "UTC", "scheduled": [
+            {"days": ["mon"], "from": "08:00", "to": "18:00", "blocked_categories": ["streaming", "games"]}]},
+         "watch.example", "2026-10-26T12:00:00"),
         ({"category_actions": {"streaming": "allow", "games": "monitor"}}, "watch.example", "2026-10-26T12:00:00"),
         ({"category_actions": {"streaming": "monitor", "adult": "block"}}, "watch.example", "2026-10-26T12:00:00"),
         ({"category_actions": {"streaming": "allow"}, "monitor_all": True}, "watch.example", "2026-10-26T12:00:00"),

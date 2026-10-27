@@ -921,7 +921,13 @@
       "shopping",
       "sports",
       "press",
-      "ads"
+      "ads",
+      "ai",
+      "bank",
+      "financial",
+      "jobsearch",
+      "webhosting",
+      "celebrity"
     ],
     "labels": {
       "adult": "Conteúdo adulto",
@@ -944,7 +950,13 @@
       "shopping": "Compras",
       "sports": "Esportes",
       "press": "Notícias",
-      "ads": "Publicidade"
+      "ads": "Publicidade",
+      "ai": "Inteligência artificial",
+      "bank": "Bancos",
+      "financial": "Serviços financeiros",
+      "jobsearch": "Empregos",
+      "webhosting": "Hospedagem web",
+      "celebrity": "Celebridades"
     },
     "hashes": [
       {
@@ -1185,6 +1197,127 @@
         "category_actions": {
           "streaming": "block"
         }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "block",
+        "reason": "category",
+        "category": "streaming",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "monitor",
+          "games": "monitor"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "monitor",
+        "reason": "category",
+        "category": "games",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "games": "monitor",
+          "streaming": "monitor"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "monitor",
+        "reason": "category",
+        "category": "games",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "blocked_categories": [
+          "streaming",
+          "games"
+        ]
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "block",
+        "reason": "category",
+        "category": "streaming",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "adult": "block"
+        },
+        "timezone": "UTC",
+        "scheduled": [
+          {
+            "days": [
+              "mon"
+            ],
+            "from": "08:00",
+            "to": "18:00",
+            "blocked_categories": [
+              "streaming",
+              "games"
+            ]
+          }
+        ]
       },
       "sets": {
         "games": [

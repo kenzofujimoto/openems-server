@@ -82,6 +82,12 @@ CATEGORIES: dict[str, dict[str, Any]] = {
     "sports": {"label": "Esportes", "group": "Interesse geral", "sources": ["sports"]},
     "press": {"label": "Notícias", "group": "Interesse geral", "sources": ["press"]},
     "ads": {"label": "Publicidade", "group": "Interesse geral", "sources": ["publicite", "marketingware"]},
+    "ai": {"label": "Inteligência artificial", "group": "Negócios e tecnologia", "sources": ["ai"]},
+    "bank": {"label": "Bancos", "group": "Negócios e tecnologia", "sources": ["bank"]},
+    "financial": {"label": "Serviços financeiros", "group": "Negócios e tecnologia", "sources": ["financial"]},
+    "jobsearch": {"label": "Empregos", "group": "Negócios e tecnologia", "sources": ["jobsearch"]},
+    "webhosting": {"label": "Hospedagem web", "group": "Negócios e tecnologia", "sources": ["webhosting"]},
+    "celebrity": {"label": "Celebridades", "group": "Consumo de banda e lazer", "sources": ["celebrity"]},
 }
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 _CLOCK = re.compile(r"([01][0-9]|2[0-3]):[0-5][0-9]")
@@ -294,12 +300,19 @@ def active_category_actions(web_filter: dict[str, Any], when: datetime) -> dict[
     """Permanent and active-window actions combine without weakening stronger actions."""
     priority = {"allow": 0, "monitor": 1, "block": 2}
     actions: dict[str, str] = {}
-    for settings in [web_filter, *_open_windows(web_filter, when)]:
+    sources = [web_filter, *_open_windows(web_filter, when)]
+    for settings in sources:
         for category in settings.get("blocked_categories", []):
             actions[category] = "block"
+    selected: dict[str, str] = {}
+    for settings in sources:
         for category, action in settings.get("category_actions", {}).items():
-            if category not in actions or priority[action] > priority[actions[category]]:
-                actions[category] = action
+            if category not in selected or priority[action] > priority[selected[category]]:
+                selected[category] = action
+    # Legacy lists retain their historical tie order; JSON object key order is not semantic.
+    for category in sorted(selected):
+        if category not in actions or priority[selected[category]] > priority[actions[category]]:
+            actions[category] = selected[category]
     return actions
 
 
