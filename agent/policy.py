@@ -203,13 +203,26 @@ def _validate_categories(value: object) -> list[str]:
     return value
 
 
+def _validate_category_actions(settings: dict[str, Any]) -> None:
+    if "category_actions" not in settings:
+        return
+    actions = settings["category_actions"]
+    if (not isinstance(actions, dict) or len(actions) > len(CATEGORIES)
+            or any(category not in CATEGORIES or action not in ("allow", "block", "monitor")
+                   for category, action in actions.items())):
+        raise ValueError("category_actions must map known categories to allow, block or monitor")
+    if any(category in actions and actions[category] != "block"
+           for category in settings.get("blocked_categories", [])):
+        raise ValueError("category action conflicts with legacy blocked_categories")
+
+
 def _validate_window(value: object) -> dict[str, Any]:
-    keys = {"blocked", "blocked_categories", "days", "from", "to"}
+    keys = {"blocked", "blocked_categories", "category_actions", "days", "from", "to"}
     if (
         not isinstance(value, dict)
         or set(value) - keys
         or not {"days", "from", "to"} <= set(value)
-        or not {"blocked", "blocked_categories"} & set(value)
+        or not {"blocked", "blocked_categories", "category_actions"} & set(value)
     ):
         raise ValueError("schedule window needs days, from, to and blocked rules or categories")
     blocked, days = value.get("blocked", []), value["days"]
@@ -231,12 +244,16 @@ def _validate_window(value: object) -> dict[str, Any]:
         value["blocked"] = list(dict.fromkeys(normalize_domain_rule(rule) for rule in blocked))
     if "blocked_categories" in value:
         _validate_categories(value["blocked_categories"])
+    _validate_category_actions(value)
     return value
 
 
 def _validate_web_extensions(settings: dict[str, Any]) -> None:
     if "blocked_categories" in settings:
         _validate_categories(settings["blocked_categories"])
+    _validate_category_actions(settings)
+    if "monitor_all" in settings and type(settings["monitor_all"]) is not bool:
+        raise ValueError("monitor_all must be a boolean")
     if "safe_search" in settings:
         _validate_safe_search(settings["safe_search"])
     if "timezone" in settings:
@@ -269,10 +286,30 @@ def active_rules(web_filter: dict[str, Any], when: datetime) -> list[str]:
 
 
 def active_categories(web_filter: dict[str, Any], when: datetime) -> list[str]:
-    categories = list(web_filter.get("blocked_categories", []))
-    for window in _open_windows(web_filter, when):
-        categories.extend(window.get("blocked_categories", []))
-    return list(dict.fromkeys(categories))
+    """Blocked categories active at this instant; monitoring does not imply blocking."""
+    return [category for category, action in active_category_actions(web_filter, when).items() if action == "block"]
+
+
+def active_category_actions(web_filter: dict[str, Any], when: datetime) -> dict[str, str]:
+    """Permanent and active-window actions combine without weakening stronger actions."""
+    priority = {"allow": 0, "monitor": 1, "block": 2}
+    actions: dict[str, str] = {}
+    for settings in [web_filter, *_open_windows(web_filter, when)]:
+        for category in settings.get("blocked_categories", []):
+            actions[category] = "block"
+        for category, action in settings.get("category_actions", {}).items():
+            if category not in actions or priority[action] > priority[actions[category]]:
+                actions[category] = action
+    return actions
+
+
+def referenced_categories(web_filter: dict[str, Any]) -> list[str]:
+    """All categories required for decisions, including explicit allow and monitor."""
+    categories: dict[str, None] = {}
+    for settings in [web_filter, *web_filter.get("scheduled", [])]:
+        for category in [*settings.get("blocked_categories", []), *settings.get("category_actions", {})]:
+            categories[category] = None
+    return list(categories)
 
 
 def domain_hash(name: object) -> int:
@@ -301,20 +338,37 @@ def block_reason(name: object, web_filter: dict[str, Any], when: datetime,
     `web_filter` comes from validate_policy. `categories` maps category ids to sorted hash lists;
     a category without data never blocks.
     """
-    if domain_blocked(name, active_rules(web_filter, when), web_filter.get("allowed", [])):
-        return {"reason": "rule"}
-    data = categories or {}
-    category = next((category for category in active_categories(web_filter, when)
-                     if category in data and in_category(name, data[category])), None)
-    if category is None:
+    decision = web_decision(name, web_filter, when, categories)
+    if decision["action"] != "block":
         return None
+    reason = {"reason": decision["reason"]}
+    if decision["category"] is not None:
+        reason["category"] = decision["category"]
+    return reason
+
+
+def web_decision(name: object, web_filter: dict[str, Any], when: datetime,
+                 categories: dict[str, list[int]] | None = None) -> dict[str, Any]:
+    """Decide a domain action and whether its DNS observation should be recorded."""
+    allowed = {"action": "allow", "reason": None, "category": None, "log": False}
     try:
         domain = normalize_domain(name)
     except ValueError:
-        return None
+        return allowed
     if any(_rule_matches(normalize_domain_rule(rule), domain) for rule in web_filter.get("allowed", [])):
-        return None
-    return {"reason": "category", "category": category}
+        return allowed
+    if domain_blocked(domain, active_rules(web_filter, when), []):
+        return {"action": "block", "reason": "rule", "category": None, "log": True}
+    data = categories or {}
+    matched = [(category, action) for category, action in active_category_actions(web_filter, when).items()
+               if category in data and in_category(domain, data[category])]
+    for action in ("block", "monitor", "allow"):
+        category = next((category for category, selected in matched if selected == action), None)
+        if category is not None:
+            return {"action": action, "reason": "category", "category": category, "log": action != "allow"}
+    if web_filter.get("monitor_all", False):
+        return {"action": "monitor", "reason": "observation", "category": None, "log": True}
+    return allowed
 
 
 def domain_blocked_at(name: object, web_filter: dict[str, Any], when: datetime,

@@ -32,10 +32,10 @@ def test_three_actions_select_behavior_and_log(action, logged):
 
 
 def test_explicit_domain_exception_wins_rules_categories_schedules_and_global_monitoring():
-    web = dict(blocked=["*.watch.example"], allowed=["*.watch.example"], monitor_all=True,
-               category_actions={"streaming": "block"}, timezone="UTC",
-               scheduled=[{"days": ["mon"], "from": "08:00", "to": "18:00",
-                           "category_actions": {"streaming": "block"}}])
+    web = {"blocked": ["*.watch.example"], "allowed": ["*.watch.example"], "monitor_all": True,
+           "category_actions": {"streaming": "block"}, "timezone": "UTC",
+           "scheduled": [{"days": ["mon"], "from": "08:00", "to": "18:00",
+                          "category_actions": {"streaming": "block"}}]}
     assert decide(name="api.watch.example", categories=category_data(streaming=["watch.example"]), **web) == {
         "action": "allow", "reason": None, "category": None, "log": False,
     }

@@ -1057,6 +1057,429 @@
       ]
     }
   },
+  "web_actions": [
+    {
+      "web_filter": {},
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "allow",
+        "reason": null,
+        "category": null,
+        "log": false
+      }
+    },
+    {
+      "web_filter": {
+        "monitor_all": true
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "monitor",
+        "reason": "observation",
+        "category": null,
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "monitor_all": true
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "not a domain",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "allow",
+        "reason": null,
+        "category": null,
+        "log": false
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "allow"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "allow",
+        "reason": "category",
+        "category": "streaming",
+        "log": false
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "monitor"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "monitor",
+        "reason": "category",
+        "category": "streaming",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "block"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "block",
+        "reason": "category",
+        "category": "streaming",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "allow",
+          "games": "monitor"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "monitor",
+        "reason": "category",
+        "category": "games",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "monitor",
+          "adult": "block"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "block",
+        "reason": "category",
+        "category": "adult",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "allow"
+        },
+        "monitor_all": true
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "allow",
+        "reason": "category",
+        "category": "streaming",
+        "log": false
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "block"
+        },
+        "allowed": [
+          "*.watch.example"
+        ],
+        "monitor_all": true
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "api.watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "allow",
+        "reason": null,
+        "category": null,
+        "log": false
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "allow"
+        },
+        "blocked": [
+          "watch.example"
+        ]
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "block",
+        "reason": "rule",
+        "category": null,
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "blocked_categories": [
+          "games"
+        ],
+        "category_actions": {
+          "streaming": "monitor"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "block",
+        "reason": "category",
+        "category": "games",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "monitor"
+        }
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "other.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "allow",
+        "reason": null,
+        "category": null,
+        "log": false
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "monitor"
+        },
+        "timezone": "UTC",
+        "scheduled": [
+          {
+            "days": [
+              "mon"
+            ],
+            "from": "08:00",
+            "to": "18:00",
+            "category_actions": {
+              "streaming": "block"
+            }
+          }
+        ]
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T12:00:00",
+      "decision": {
+        "action": "block",
+        "reason": "category",
+        "category": "streaming",
+        "log": true
+      }
+    },
+    {
+      "web_filter": {
+        "category_actions": {
+          "streaming": "monitor"
+        },
+        "timezone": "UTC",
+        "scheduled": [
+          {
+            "days": [
+              "mon"
+            ],
+            "from": "08:00",
+            "to": "18:00",
+            "category_actions": {
+              "streaming": "block"
+            }
+          }
+        ]
+      },
+      "sets": {
+        "games": [
+          "watch.example"
+        ],
+        "streaming": [
+          "watch.example"
+        ],
+        "adult": [
+          "watch.example"
+        ]
+      },
+      "name": "watch.example",
+      "when": "2026-10-26T20:00:00",
+      "decision": {
+        "action": "monitor",
+        "reason": "category",
+        "category": "streaming",
+        "log": true
+      }
+    }
+  ],
   "hosts_names": [
     {
       "blocked": [
@@ -1171,6 +1594,169 @@
     }
   ],
   "validate": [
+    {
+      "input": {
+        "web_filter": {
+          "category_actions": {
+            "games": "allow",
+            "streaming": "monitor",
+            "adult": "block"
+          },
+          "monitor_all": true
+        }
+      },
+      "normalized": {
+        "web_filter": {
+          "category_actions": {
+            "games": "allow",
+            "streaming": "monitor",
+            "adult": "block"
+          },
+          "monitor_all": true,
+          "blocked": []
+        }
+      }
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked_categories": [
+            "games"
+          ],
+          "category_actions": {
+            "games": "block"
+          }
+        }
+      },
+      "normalized": {
+        "web_filter": {
+          "blocked_categories": [
+            "games"
+          ],
+          "category_actions": {
+            "games": "block"
+          },
+          "blocked": []
+        }
+      }
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked_categories": [
+            "games"
+          ],
+          "category_actions": {
+            "games": "monitor"
+          }
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "blocked_categories": [
+            "games"
+          ],
+          "category_actions": {
+            "games": "allow"
+          }
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "category_actions": {
+            "unknown": "block"
+          }
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "category_actions": {
+            "games": "deny"
+          }
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "category_actions": {
+            "games": []
+          }
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "category_actions": []
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "monitor_all": "true"
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "monitor_all": 1
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "web_filter": {
+          "timezone": "UTC",
+          "scheduled": [
+            {
+              "days": [
+                "mon"
+              ],
+              "from": "08:00",
+              "to": "18:00",
+              "category_actions": {
+                "games": "monitor"
+              }
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "web_filter": {
+          "timezone": "UTC",
+          "scheduled": [
+            {
+              "days": [
+                "mon"
+              ],
+              "from": "08:00",
+              "to": "18:00",
+              "category_actions": {
+                "games": "monitor"
+              }
+            }
+          ],
+          "blocked": []
+        }
+      }
+    },
     {
       "input": {
         "usb_control": {}
