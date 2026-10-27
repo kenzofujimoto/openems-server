@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Troca de máquina e publicação da main — 27/10/2026
+
+O usuário autorizou atualizar a `main` do GitHub com todo o trabalho concluído para continuar em outra máquina. A branch `feature/desktop-roadmap` contém todas as branches locais; a `main` remota era ancestral, permitindo avanço direto sem reescrita. CI continua adiado nesta transferência (`[skip ci]`).
+
+Na outra máquina, clone `https://github.com/kenzofujimoto/openems-server.git` ou, em uma cópia limpa existente, execute `git switch main` e `git pull --ff-only origin main`. Leia primeiro este handoff e `ACCEPTANCE.md`. A prioridade continua Chrome/Firefox com o agente final no Windows real; não reutilize o controlador de host bloqueado pelo antivírus. O teste deve usar perfis novos, certificados verificados normalmente e o servidor de homologação configurado para a nova máquina. F9 permanece excluída.
+
+Artefatos compilados e ferramentas em `.venv/` são ignorados pelo Git. Foi preparado separadamente `.venv/openems-transfer-2026-10-27.zip`, contendo somente o par MSI já testado, recibo SHA-256 e estes roteiros de aceite/documentos. Copie esse ZIP se quiser reutilizar os mesmos bytes sem recompilar. Não contém `.env`, credenciais, estado do agente, CA nem perfis pessoais. Os roteiros de controles continuam restritos a Sandbox/VM descartável; não executá-los diretamente no Windows físico de uso diário. A instalação/configuração do agente na nova máquina é uma etapa posterior, com o endereço e convite de homologação próprios.
+
 ## Prioridade Chrome/Firefox — continuação de 26 para 27/10/2026
 
 O usuário autorizou testar no Sandbox desta máquina e ofereceu outra máquina física para a validação posterior. O ensaio no host foi bloqueado pelo antivírus antes da execução do controlador; serviço, confiança e perfis pessoais do host não foram alterados. Evidência sanitizada: `validation/host-browser-security-block-2026-10-26.json`. Não reconstruir o controlador bloqueado para contornar a segurança.
