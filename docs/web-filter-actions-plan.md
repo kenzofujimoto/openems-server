@@ -16,6 +16,10 @@ Prévia visual dos componentes propostos, sem alteração da aplicação atual:
 
 ![Proposta de ícones e seletor Permitir, Bloquear e Monitorar](assets/web-filter-actions-proposal.png)
 
+Captura do painel implementado, com servidor/API descartáveis e listas sintéticas de um domínio por categoria (não representa a cobertura das listas reais):
+
+![Painel com ações web implementadas](assets/web-filter-actions-panel.png)
+
 Não confundir ausência de log de navegação com ausência de auditoria: publicar/alterar políticas continua sendo uma ação administrativa auditada.
 
 ## Semântica recomendada

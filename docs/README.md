@@ -10,6 +10,7 @@ Referência atualizada em 27/10/2026. Os documentos de planejamento na raiz pres
 | Categorias, exceções e comparação FortiGuard | [Filtro web e compatibilidade](web-filter-compatibility.md) |
 | Permitir/Bloquear/Monitorar e lacunas | [Plano das ações de filtro web](web-filter-actions-plan.md) |
 | Matriz de testes das novas ações | [Aceite das ações web](web-filter-actions-acceptance.md) |
+| Contrato de política, capacidades e eventos | [Web action contract](web-filter-actions-contract.md) |
 | Fontes, licença e limites das categorias | [Auditoria de fontes](category-source-audit.md) |
 | Extensão opcional e integração pendente | [Browser visibility](../browser-extension/README.md) |
 | Objetivos e limites por fase | [Roadmap desktop](../roadmap-v2.md) |

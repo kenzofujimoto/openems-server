@@ -1,6 +1,6 @@
 # F2 — categorias e registro de bloqueios (recorte 4)
 
-> Documento histórico de planejamento. Categorias e registro de bloqueios foram implementados posteriormente. Estado atual, matriz FortiGuard e limites: [manual do filtro web](docs/web-filter-compatibility.md). Permitir/Bloquear/Monitorar é uma [proposta separada ainda não implementada](docs/web-filter-actions-plan.md). Aceites vigentes em [HANDOFF](HANDOFF.md) e [ACCEPTANCE](ACCEPTANCE.md).
+> Documento histórico de planejamento. Categorias e registro de bloqueios foram implementados posteriormente. Estado atual, matriz FortiGuard e limites: [manual do filtro web](docs/web-filter-compatibility.md). Permitir/Bloquear/Monitorar segue o [plano aprovado em integração](docs/web-filter-actions-plan.md) e o [contrato atual](docs/web-filter-actions-contract.md). Aceites vigentes em [HANDOFF](HANDOFF.md) e [ACCEPTANCE](ACCEPTANCE.md).
 
 Proposta para aprovação. Nada será implementado antes do aceite deste documento. Parte do resolvedor DNS (recortes 1 a 3), já aceito em Sandbox.
 
