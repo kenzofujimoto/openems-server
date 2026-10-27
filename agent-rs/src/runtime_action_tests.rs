@@ -127,3 +127,61 @@ fn global_monitoring_requires_legacy_category_data_too() {
     assert!(!runtime.enforce_local());
     assert!(runtime.blocked_domains.contains("example.org"));
 }
+
+#[test]
+fn successful_registration_removes_the_consumed_invitation_from_the_config_file() {
+    // 2026-10-27 review: the MSI-installed agent.json kept the one-time invitation after enrollment.
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        let mut request = Vec::new();
+        let mut byte = [0; 1];
+        while !request.ends_with(b"\r\n\r\n") {
+            stream.read_exact(&mut byte).unwrap();
+            request.push(byte[0]);
+        }
+        let headers = String::from_utf8(request).unwrap();
+        let length = headers
+            .lines()
+            .find_map(|line| {
+                line.to_ascii_lowercase().strip_prefix("content-length:").map(|n| n.trim().parse::<usize>().unwrap())
+            })
+            .unwrap_or(0);
+        stream.read_exact(&mut vec![0; length]).unwrap();
+        let body = br#"{"client_id":"enrolled-client","device_token":"enrolled-token"}"#;
+        let head = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+        stream.write_all(head.as_bytes()).unwrap();
+        stream.write_all(body).unwrap();
+        assert!(headers.starts_with("POST /fct/api/public/v1/register/"));
+    });
+    let (dir, mut runtime) = network_runtime();
+    let path = dir.path().join("agent.json");
+    runtime.cfg.invitation = Some("one-time-invitation-value".into());
+    runtime.cfg.write_file(&path).unwrap();
+    let mut on_disk: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    on_disk["custom_operator_field"] = json!("kept");
+    std::fs::write(&path, serde_json::to_vec(&on_disk).unwrap()).unwrap();
+    runtime.cfg.config_path = Some(path.clone());
+    runtime.api = ApiClient::new(&format!("http://{address}"));
+    runtime.lock().client_id = None;
+    let _ = runtime.synchronize(0.0);
+    server.join().unwrap();
+    assert_eq!(runtime.lock().client_id.as_deref(), Some("enrolled-client"));
+    let saved = std::fs::read_to_string(&path).unwrap();
+    assert!(!saved.contains("one-time-invitation-value"), "consumed invitation left in agent.json");
+    let saved: serde_json::Value = serde_json::from_str(&saved).unwrap();
+    assert_eq!(saved["custom_operator_field"], json!("kept"), "only the invitation may be removed");
+    assert_eq!(saved["server"], json!(runtime.cfg.server));
+    assert_eq!(AgentConfig::from_file(&path).unwrap().invitation, None);
+}
+
+#[test]
+fn config_loaded_from_a_file_remembers_its_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.json");
+    AgentConfig::new("https://ems.example", "pc").write_file(&path).unwrap();
+    assert_eq!(AgentConfig::from_file(&path).unwrap().config_path.as_deref(), Some(path.as_path()));
+}
