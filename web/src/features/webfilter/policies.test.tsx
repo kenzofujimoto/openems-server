@@ -63,11 +63,13 @@ describe("policy editors", () => {
     expect(global).not.toBeChecked();
     expect(screen.getByText(/não representa todas as páginas visitadas/i)).toBeInTheDocument();
     await user.click(global);
+    expect(screen.getByRole("radio", { name: "Monitorar Jogos" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Permitir Jogos" }));
     await user.click(screen.getByRole("button", { name: "Adicionar horário" }));
     await user.click(screen.getByRole("radio", { name: "Monitorar Jogos no horário 1" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));
-    expect(writes[0]?.body).toMatchObject({ web_filter: { monitor_all: true, scheduled: [{ category_actions: { games: "monitor" } }] } });
+    expect(writes[0]?.body).toMatchObject({ web_filter: { monitor_all: true, category_actions: { games: "allow" }, scheduled: [{ category_actions: { games: "monitor" } }] } });
   });
 
   it("supports keyboard radio selection", async () => {
