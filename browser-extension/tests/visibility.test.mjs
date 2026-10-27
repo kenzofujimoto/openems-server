@@ -192,6 +192,7 @@ test('an older configure completion cannot override a newer opt-out', async () =
   const saves = []; f.api.storage.local.set = () => new Promise((resolve) => saves.push(resolve));
   const enabling = f.controller.configure({enabled:true, includePath:false});
   const disabling = f.controller.configure({enabled:false, includePath:false});
-  saves[1](); await disabling; saves[0](); await enabling;
+  await turn(); assert.equal(saves.length, 1);
+  saves[0](); await enabling; await turn(); saves[1](); await disabling;
   assert.equal(f.controller.status().enabled, false); assert.equal(f.connectCount(), 0);
 });
