@@ -1,0 +1,42 @@
+version: 2
+# Security updates arrive as soon as advisories publish; version updates are batched weekly.
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-runtime:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    groups:
+      panel:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "cargo"
+    directory: "/agent-rs"
+    schedule:
+      interval: "weekly"
+    groups:
+      agent:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]

@@ -41,7 +41,7 @@ def test_workflows_default_to_read_only_tokens(workflow):
 def test_container_scanner_images_are_pinned_by_digest():
     source = (ROOT / "tools" / "security_scan.py").read_text(encoding="utf-8")
     images = ast.literal_eval(re.search(r"^IMAGES = (\{.*?^\})", source, flags=re.MULTILINE | re.DOTALL).group(1))
-    for tool in ("gitleaks", "semgrep", "trivy", "osv-scanner", "hadolint", "zap", "actionlint", "cargo-deny"):
+    for tool in ("gitleaks", "semgrep", "trivy", "osv-scanner", "hadolint", "zap", "actionlint", "zizmor", "python"):
         assert re.fullmatch(r"[\w./-]+@sha256:[0-9a-f]{64}", images[tool]), f"{tool} image is not digest-pinned"
 
 
@@ -50,6 +50,13 @@ def test_security_workflow_gates_every_scanner_family():
     for job in ("secrets:", "sast:", "dependencies:", "container:", "workflows:", "dast:"):
         assert f"\n  {job}" in text, f"security.yml misses the {job[:-1]} job"
     assert "tools/security_scan.py" in text
+    # cargo-deny has no official image: CI uses its pinned action, local runs use the cargo binary.
+    assert "EmbarkStudios/cargo-deny-action@" in text
+    assert "\"cargo\", \"deny\"" in source_of_scanner() or "'cargo', 'deny'" in source_of_scanner()
+
+
+def source_of_scanner() -> str:
+    return (ROOT / "tools" / "security_scan.py").read_text(encoding="utf-8")
 
 
 def test_dependabot_covers_every_ecosystem():

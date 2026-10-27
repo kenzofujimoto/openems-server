@@ -1,0 +1,136 @@
+name: Security
+
+# Same gates as `python tools/security_scan.py` locally; every scanner runs in a digest-pinned image.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 6 * * 1"  # weekly: new advisories appear without code changes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: gitleaks over the full history
+        run: python3 tools/security_scan.py --only secrets --output reports
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        if: always() && hashFiles('reports/gitleaks.sarif') != ''
+        with:
+          sarif_file: reports/gitleaks.sarif
+          category: gitleaks
+
+  sast:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Semgrep registry packs and project rules
+        run: python3 tools/security_scan.py --only sast --output reports
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        if: always() && hashFiles('reports/semgrep.sarif') != ''
+        with:
+          sarif_file: reports/semgrep.sarif
+          category: semgrep
+
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: pip-audit and osv-scanner on every lockfile
+        run: python3 tools/security_scan.py --only dependencies --no-cargo-deny --output reports
+      - name: cargo-deny (advisories, bans, licenses, sources)
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          manifest-path: agent-rs/Cargo.toml
+          command: check advisories bans licenses sources
+      - name: npm audit (panel runtime dependencies)
+        working-directory: web
+        run: npm audit --omit=dev --audit-level=high
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: dependency-reports
+          path: reports/*.json
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+
+  container:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: hadolint, Trivy config/image and CycloneDX SBOM
+        run: python3 tools/security_scan.py --only container --output reports
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        if: always() && hashFiles('reports/trivy-image.sarif') != ''
+        with:
+          sarif_file: reports/trivy-image.sarif
+          category: trivy-image
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: sbom
+          path: reports/sbom.cdx.json
+
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: actionlint and zizmor
+        run: python3 tools/security_scan.py --only workflows --output reports
+
+  dast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: ZAP baseline and authenticated API scan on a disposable stack
+        run: python3 tools/security_scan.py --only dast --output reports
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: dast-reports
+          path: |
+            reports/zap-*.html
+            reports/zap-*.json
+            reports/summary.json
