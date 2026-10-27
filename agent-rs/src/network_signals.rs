@@ -186,9 +186,12 @@ impl Write for DeadlineSocket {
 fn probe_before(probe: &Probe, deadline: Instant) -> Option<String> {
     let server_name = ServerName::try_from(probe.host.clone()).ok()?;
     let addresses = resolve(probe, deadline)?;
+    // nosemgrep: openems-rust-no-tls-bypass
     let config = rustls::ClientConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
         .with_safe_default_protocol_versions()
         .ok()?
+        // Certificate pinning: PinVerifier requires the exact end-entity SHA-256 and delegates both
+        // handshake signature checks to rustls, so a replayed public certificate cannot pass.
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(PinVerifier { pin: probe.sha256.clone() }))
         .with_no_client_auth();

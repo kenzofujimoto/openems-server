@@ -326,8 +326,9 @@ def gate_container(out: Path, src: Path, accepted: Accepted, log: Path) -> Gate:
 
 def gate_workflows(out: Path, src: Path, accepted: Accepted, log: Path) -> Gate:
     gate = Gate("workflows")
-    # actionlint reads .github/workflows relative to its working directory.
-    result = run(["docker", "run", "--rm", "-v", f"{mount(src)}:/repo:ro", "-w", "/repo", IMAGES["actionlint"]],
+    # The snapshot has no .git, so actionlint gets the workflow files explicitly.
+    workflows = sorted(f".github/workflows/{path.name}" for path in (src / ".github" / "workflows").glob("*.yml"))
+    result = run(["docker", "run", "--rm", "-v", f"{mount(src)}:/repo:ro", "-w", "/repo", IMAGES["actionlint"], *workflows],
                  log=log, timeout=600)
     if result.returncode != 0:
         gate.fail("actionlint: " + (result.stdout + result.stderr).strip()[:600])

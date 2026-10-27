@@ -123,7 +123,8 @@ class PostgresStore:
             applied_digest=EXCLUDED.applied_digest, last_error=EXCLUDED.last_error,
             last_applied=EXCLUDED.last_applied, location=EXCLUDED.location"""
         with self._conn.cursor() as cur:
-            cur.execute(
+            # psycopg, not SQLAlchemy: constant clauses only, every value is a bound parameter.
+            cur.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                 """
                 INSERT INTO endpoints
                     (devid, client_id, hostname, os, fctver, vdom, status,
@@ -178,7 +179,8 @@ class PostgresStore:
 
     def _one(self, where: str, params: tuple[object, ...]) -> Endpoint | None:
         with self._conn.cursor() as cur:
-            cur.execute(self._SELECT + where, params)
+            # `where` is always a literal clause from this class; values travel in `params`.
+            cur.execute(self._SELECT + where, params)  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
             row = cur.fetchone()
             return self._row(row) if row else None
 

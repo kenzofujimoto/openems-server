@@ -1,10 +1,13 @@
 version: 2
-# Security updates arrive as soon as advisories publish; version updates are batched weekly.
+# Security updates arrive as soon as advisories publish; version updates are batched weekly and
+# wait a cooldown so a freshly published (possibly malicious) release is not adopted immediately.
 updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       python-runtime:
         patterns: ["*"]
@@ -14,6 +17,8 @@ updates:
     directory: "/web"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       panel:
         patterns: ["*"]
@@ -23,6 +28,8 @@ updates:
     directory: "/agent-rs"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       agent:
         patterns: ["*"]
@@ -32,11 +39,15 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
