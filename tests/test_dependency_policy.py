@@ -72,5 +72,6 @@ def test_final_stage_is_minimal_and_observable():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     final = re.split(r"^FROM .+$", dockerfile, flags=re.MULTILINE)[-1]
     assert "HEALTHCHECK" in final
-    assert re.search(r"pip uninstall -y pip", final), "the runtime layer must not keep an installer"
+    # PATH prefers the venv, whose pip is already gone: the system interpreter must be named.
+    assert re.search(r"/usr/local/bin/python -m pip uninstall -y pip", final), "the runtime layer must not keep an installer"
     assert re.search(r"^USER 10001:10001$", final, flags=re.MULTILINE)
