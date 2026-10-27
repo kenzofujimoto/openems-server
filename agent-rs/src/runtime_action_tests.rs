@@ -118,3 +118,12 @@ fn empty_allow_category_does_not_make_monitoring_safe_to_activate() {
     assert!(!runtime.enforce_local());
     assert!(runtime.blocked_domains.contains("example.org"));
 }
+
+#[test]
+fn global_monitoring_requires_legacy_category_data_too() {
+    let (_dir, mut runtime) = network_runtime();
+    runtime.cfg.dns_filter = true;
+    runtime.lock().outside = Some(action_assignment(json!({"monitor_all":true,"blocked_categories":["games"]})));
+    assert!(!runtime.enforce_local());
+    assert!(runtime.blocked_domains.contains("example.org"));
+}
