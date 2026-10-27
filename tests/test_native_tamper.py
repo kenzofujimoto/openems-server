@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import os
 import subprocess
 import time
@@ -27,6 +28,29 @@ def kinds(store: InMemoryEventStore) -> list[str]:
     return [event.kind for event in store.recent_tamper(50)]
 
 
+def wait_for_hosts(path: Path, domain: str, seconds: float) -> bool:
+    """Poll a disposable hosts file through Windows replacement sharing conflicts."""
+    deadline = time.monotonic() + seconds
+    last_sharing_error: PermissionError | None = None
+    while time.monotonic() < deadline:
+        try:
+            text = path.read_text(encoding="utf-8")
+            last_sharing_error = None
+            if domain in text:
+                return True
+        except PermissionError as error:
+            winerror = getattr(error, "winerror", None)
+            # CRT/pathlib can expose sharing violations as plain EACCES without winerror.
+            # Retry only Windows reads here, never writes, ACL changes or unrelated errors.
+            if os.name != "nt" or not (winerror in {32, 33} or (winerror is None and error.errno == errno.EACCES)):
+                raise
+            last_sharing_error = error
+        time.sleep(min(0.3, max(0, deadline - time.monotonic())))
+    if last_sharing_error is not None:
+        raise last_sharing_error
+    return False
+
+
 def test_a_killed_agent_reports_its_unexpected_exit_after_restart(native, tmp_path):
     store = InMemoryEventStore()
     (tmp_path / "hosts").write_text("127.0.0.1 localhost\n", encoding="utf-8")
@@ -35,7 +59,7 @@ def test_a_killed_agent_reports_its_unexpected_exit_after_restart(native, tmp_pa
         first = start(native, origin, tmp_path)
         try:
             assert wait_for(lambda: (tmp_path / "running.marker").exists(), 15), "run marker was not created"
-            assert wait_for(lambda: "example.com" in (tmp_path / "hosts").read_text(encoding="utf-8"), 20)
+            assert wait_for_hosts(tmp_path / "hosts", "example.com", 20)
         finally:
             first.kill()
             first.wait(timeout=15)
@@ -58,7 +82,7 @@ def test_an_edited_managed_hosts_block_is_rewritten_and_reported(native, tmp_pat
         assert client.post("/api/v1/profiles/Default", json={"web_filter": {"blocked": ["example.com"]}}).status_code == 200
         agent = start(native, origin, tmp_path)
         try:
-            assert wait_for(lambda: "example.com" in hosts.read_text(encoding="utf-8"), 20)
+            assert wait_for_hosts(hosts, "example.com", 20)
             # Let at least one more cycle confirm the block before tampering with it.
             assert wait_for(lambda: (tmp_path / "state.json").exists(), 10)
             original = hosts.read_text(encoding="utf-8")
@@ -79,9 +103,9 @@ def test_a_policy_change_is_not_reported_as_tampering(native, tmp_path):
         assert client.post("/api/v1/profiles/Default", json={"web_filter": {"blocked": ["example.com"]}}).status_code == 200
         agent = start(native, origin, tmp_path)
         try:
-            assert wait_for(lambda: "example.com" in hosts.read_text(encoding="utf-8"), 20)
+            assert wait_for_hosts(hosts, "example.com", 20)
             assert client.post("/api/v1/profiles/Default", json={"web_filter": {"blocked": ["example.org"]}}).status_code == 200
-            assert wait_for(lambda: "example.org" in hosts.read_text(encoding="utf-8"), 20)
+            assert wait_for_hosts(hosts, "example.org", 20)
             time.sleep(3)  # give the agent time to upload anything it recorded
             assert "hosts_restored" not in kinds(store)
         finally:
