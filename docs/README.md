@@ -10,6 +10,7 @@ Referência atualizada em 27/10/2026. Os documentos de planejamento na raiz pres
 | Categorias, exceções e comparação FortiGuard | [Filtro web e compatibilidade](web-filter-compatibility.md) |
 | Permitir/Bloquear/Monitorar e lacunas | [Plano das ações de filtro web](web-filter-actions-plan.md) |
 | Matriz de testes das novas ações | [Aceite das ações web](web-filter-actions-acceptance.md) |
+| Roteiro do notebook com pendrive, Chrome e Firefox | [Aceite na segunda máquina](second-machine-acceptance.md) |
 | Contrato de política, capacidades e eventos | [Web action contract](web-filter-actions-contract.md) |
 | Fontes, licença e limites das categorias | [Auditoria de fontes](category-source-audit.md) |
 | Extensão opcional e integração pendente | [Browser visibility](../browser-extension/README.md) |
@@ -25,7 +26,7 @@ Referência atualizada em 27/10/2026. Os documentos de planejamento na raiz pres
 - Painel: React com políticas, categorias, exceções por domínio, horários, SafeSearch, inventários, eventos, grupos/regras e administração.
 - Categorias: 27 IDs UT1, dependentes da publicação das listas no servidor, com estado de saúde. Sem uso da base ou dos IDs proprietários FortiGuard.
 - Eventos web: bloqueios e monitoramentos DNS separados, agregados por máquina/domínio/hora, com deduplicação de lotes e descartes separados. Não representam histórico completo de páginas visitadas.
-- Permitir/Bloquear/Monitorar: implementado com seletor acessível e compatibilidade explícita de agentes. Novos MSIs preparados; aceite no guest e nos navegadores permanece pendente.
+- Permitir/Bloquear/Monitorar: implementado com seletor acessível e compatibilidade explícita de agentes. Aceito no Windows Sandbox com Chrome/Firefox (27/10, ver HANDOFF). Pendentes: Windows físico, reprodução do YouTube no Firefox pelo critério automático e aviso de listas desatualizadas no painel.
 - Extensão Chrome/Firefox: pacotes separados e testes de contrato; broker nativo e aceite real pendentes. Inativa sem pareamento, coleta desligada por padrão.
 - Linux: implementação/pacotes aguardam aceite em VM. macOS permanece incompleto em Network Extension/Endpoint Security. F9 excluída.
 

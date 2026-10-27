@@ -1,5 +1,47 @@
 # Handoff — roadmap v2
 
+## Próximo passo: segunda máquina
+
+O usuário vai continuar no notebook com pendrive, Chrome, Firefox e Claude. Roteiro em [docs/second-machine-acceptance.md](docs/second-machine-acceptance.md).
+- **Parte A:** agente real no Windows físico, servidor local por Docker, painel, Chrome/Firefox e YouTube manual.
+- **Parte B:** USB físico e WDAC em VM descartável com passthrough. Nunca no Windows físico.
+
+Levar `.venv/openems-second-machine-2026-10-27.zip`, que fica fora do Git (SHA-256 `8643445fe8832168d81dcc1a3dbf92a17e486acb4628caa0aad33bfca6e37b92`, 30,6 MB). Ele contém:
+- os dois MSIs e o manifesto;
+- `usb-input` e `applications-input` com os mesmos bytes;
+- as listas de homologação, incluindo YouTube;
+- o roteiro e o `RECEIPT.json`.
+
+O ZIP não leva `.env`, senhas, convites, CA, estado nem perfis.
+
+## Continuação do aceite — pendências, YouTube e painel (27/10/2026)
+
+Evidência: [validation/web-actions-followup-2026-10-27.json](validation/web-actions-followup-2026-10-27.json). Mesmos bytes (MSI `20e9d24e…`, agente `5290604d…`), um Sandbox novo por rodada, todos encerrados ao fim e com o agente removido.
+
+- **Rodada 4 (`sandbox-web-actions-d`), tudo passou:**
+  - reinício offline com cache completo;
+  - reinício offline com cache incompleto: a política nova com digest corrompido não ativou e o digest anterior foi mantido;
+  - retry do mesmo lote: o `batch_id` foi reenviado após perder a resposta, com 1 recibo e contagem 1;
+  - fila saturada: de 5.600 nomes, 5.000 linhas foram guardadas e 600 foram descartadas, sem inflar o monitoramento;
+  - token rotacionado seguido de novo enrollment: o agente mandou `register → host_tags → config/assigned → ACK`, sem 409.
+- **YouTube (substituto da Netflix, sem conta):**
+  - Liberando só o site/player, a página carrega, o vídeo fica em 0 s e há eventos `blocked` de `googlevideo.com`. Passou em Chrome e Firefox.
+  - Liberando também o vídeo, ele toca no Chrome (2,2 s).
+  - **Firefox: reprodução pendente pelo critério automático.** Na rodada 6 avançou 1,28 s, abaixo do limite de 2 s; na 7 o vídeo de 19 s acabou e a página abriu o próximo. Repetir manualmente na segunda máquina.
+  - As rodadas 4 e 5 falharam por defeitos do harness: PID antigo após restart, nome de sonda inválido e `/embed/` com erro 153.
+- **Painel (navegador interno, só leitura):**
+  - O seletor por teclado funcionou: setas, foco visível, Tab entre grupos e ícones com rótulo.
+  - O modo escuro persiste após recarregar.
+  - O aviso de listas desatualizadas ficou pendente, porque a publicação estava atual.
+  - Achados corrigidos com TDD:
+    - 500 na primeira carga: purgas concorrentes aninhavam transações na conexão compartilhada do inventário (`7a572a7`);
+    - página de Eventos vazia: pedia `limit=1000` e a API aceitava 500 (`2dda1d5`).
+
+  Reverificado na imagem nova.
+- **Imagem do servidor:** agora inclui `migrations/` e `python -m app.migrations` (`43e5e23`). Na imagem real, o comando respondeu `applied: none`.
+- **Achado aberto (segurança, baixo):** o convite de enrollment consumido continua em `C:\ProgramData\openems\agent.json` depois da instalação pelo MSI. Com o padrão de 10 usos do `new-env.ps1`, quem lê o arquivo poderia cadastrar outras máquinas. Correção no agente exige MSI novo; não foi feita para preservar os bytes aceitos.
+- Suíte Python: 916 aprovados, 57 ignorados, 5 `windows_only` desmarcados. Painel e Rust sem mudança de código nesta continuação. O servidor de homologação voltou a escutar só em loopback; dados de teste (grupo `WebActionsSandbox`, endpoints de teste e listas) permanecem.
+
 ## Aceite das ações web no guest — 27/10/2026
 
 Executado em três Windows Sandbox novos, um por rodada, com os bytes de `.venv/web-actions-acceptance/final-msi/` sem recompilar (MSI `20e9d24e…` conferido no host e em cada guest; agente instalado `5290604d…`). Nenhum guest anterior estava ativo (host reiniciado às 08:23). Evidência sanitizada: [validation/web-actions-guest-2026-10-27.json](validation/web-actions-guest-2026-10-27.json).
