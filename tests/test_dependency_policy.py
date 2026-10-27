@@ -61,3 +61,16 @@ def test_image_installs_the_hashed_lock_only():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "--require-hashes" in dockerfile and "requirements.lock" in dockerfile
     assert "-r requirements.txt" not in dockerfile
+
+
+def test_base_images_are_pinned_by_digest():
+    froms = re.findall(r"^FROM\s+(\S+)", (ROOT / "Dockerfile").read_text(encoding="utf-8"), flags=re.MULTILINE)
+    assert froms and all(re.search(r"@sha256:[0-9a-f]{64}$", image) for image in froms if image not in {"builder", "panel"})
+
+
+def test_final_stage_is_minimal_and_observable():
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    final = re.split(r"^FROM .+$", dockerfile, flags=re.MULTILINE)[-1]
+    assert "HEALTHCHECK" in final
+    assert re.search(r"pip uninstall -y pip", final), "the runtime layer must not keep an installer"
+    assert re.search(r"^USER 10001:10001$", final, flags=re.MULTILINE)
