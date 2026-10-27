@@ -107,3 +107,44 @@ def test_control_events_require_a_rule_identity_including_batch_setup(harness):
     assert client.post(url, json={**payload, "events": [{**row, "rule_id": "execution-policy"}]}, headers=device).status_code == 200
     overview = client.get("/api/v1/stats/overview", headers=management).json()
     assert sum(day["apps"] for day in overview["blocks_by_day"]) == 0
+
+
+def test_postgres_inventory_serializes_concurrent_purges(monkeypatch):
+    # 2026-10-27 panel review: overview and events load in parallel, both purge, and two
+    # transactions on the one shared connection nested (psycopg OutOfOrderTransactionNesting).
+    import contextlib
+    import threading
+    import time
+
+    import psycopg
+
+    from app.inventory import PostgresInventoryStore
+
+    class SharedConnection:
+        def __init__(self):
+            self.active = 0
+            self.overlaps = 0
+
+        @contextlib.contextmanager
+        def transaction(self):
+            self.active += 1
+            if self.active > 1:
+                self.overlaps += 1
+            try:
+                time.sleep(0.05)
+                yield
+            finally:
+                self.active -= 1
+
+        def execute(self, *args):
+            time.sleep(0.01)
+
+    connection = SharedConnection()
+    monkeypatch.setattr(psycopg, "connect", lambda *args, **kwargs: connection)
+    store = PostgresInventoryStore("postgresql://fake")
+    workers = [threading.Thread(target=store.purge, args=(datetime.now(UTC),)) for _ in range(4)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join()
+    assert connection.overlaps == 0
