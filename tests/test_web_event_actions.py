@@ -93,6 +93,16 @@ def test_memory_store_keeps_actions_separate_and_purges_monitoring():
     assert store.recent(10) == []
 
 
+def test_dropped_rows_are_reported_separately_from_observed_blocks_or_monitoring():
+    store = InMemoryEventStore()
+    store.add([BlockEvent(devid="pc", hour=current_hour(), domain="", reason="dropped", category="", count=9)])
+    reader, auth = panel(store)
+    overview = reader.get("/api/v1/stats/overview", headers=auth).json()
+    assert sum(day["web"] for day in overview["blocks_by_day"]) == 0
+    assert sum(day["web"] for day in overview["monitoring_by_day"]) == 0
+    assert sum(day["web"] for day in overview["dropped_by_day"]) == 9
+
+
 def test_policy_capabilities_cover_scheduled_actions_and_global_monitoring():
     tags = required_tags({"web_filter": {"category_actions": {"games": "monitor"}}})
     assert {"web-filter:actions", "web-filter:monitor", "web-filter:categories", "web-filter:dns"} <= set(tags)
