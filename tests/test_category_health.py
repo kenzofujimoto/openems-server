@@ -6,6 +6,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.categories import CategoryRepository, build_categories
+from tests.test_update_categories import archive
+from tools.update_categories import extract_lists
 
 NOW = datetime(2026, 10, 27, 12, tzinfo=UTC)
 
@@ -75,3 +77,13 @@ def test_invalid_health_parameters_are_refused(tmp_path):
         repository.health(now=NOW.replace(tzinfo=None))
     with pytest.raises(ValueError):
         repository.health(now=NOW, max_age_hours=0)
+
+
+def test_official_hyphenated_ut1_list_names_are_extracted(tmp_path):
+    bundle = archive(tmp_path, {
+        "blacklists/audio-video/domains": b"video.example\n",
+        "blacklists/residential-proxies/domains": b"proxy.example\n",
+    })
+    extracted = extract_lists(bundle, tmp_path / "work")
+    assert (extracted / "audio-video/domains").read_text() == "video.example\n"
+    assert (extracted / "residential-proxies/domains").read_text() == "proxy.example\n"
