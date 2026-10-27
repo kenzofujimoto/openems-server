@@ -93,12 +93,15 @@ class PostgresInventoryStore:
 
         self._conn = psycopg.connect(dsn, autocommit=True)
         self._Jsonb = Jsonb
+        # Request threads share this connection; a transaction must never interleave with another.
+        self._lock = RLock()
 
     def init_schema(self) -> None:
-        self._conn.execute(SCHEMA)
+        with self._lock:
+            self._conn.execute(SCHEMA)
 
     def replace(self, snapshot: dict[str, Any]) -> bool:
-        with self._conn.cursor() as cursor:
+        with self._lock, self._conn.cursor() as cursor:
             cursor.execute("INSERT INTO endpoint_inventory (devid, collected_at, snapshot) VALUES (%s,%s,%s) "
                            "ON CONFLICT (devid) DO UPDATE SET collected_at=EXCLUDED.collected_at,snapshot=EXCLUDED.snapshot "
                            "WHERE endpoint_inventory.collected_at <= EXCLUDED.collected_at RETURNING devid",
@@ -106,25 +109,25 @@ class PostgresInventoryStore:
             return cursor.fetchone() is not None
 
     def snapshot(self, devid: str) -> dict[str, Any] | None:
-        with self._conn.cursor() as cursor:
+        with self._lock, self._conn.cursor() as cursor:
             cursor.execute("SELECT snapshot FROM endpoint_inventory WHERE devid=%s", (devid,))
             row = cursor.fetchone()
             return dict(row[0]) if row else None
 
     def add_events(self, events: list[dict[str, Any]]) -> None:
-        with self._conn.cursor() as cursor:
+        with self._lock, self._conn.cursor() as cursor:
             cursor.executemany("INSERT INTO control_events(id,devid,at,kind,payload) VALUES(%s,%s,%s,%s,%s) "
                                "ON CONFLICT(id) DO NOTHING", [
                                    (event_identity(event), event["devid"], event["at"], event["kind"],
                                     self._Jsonb({**event, "id": event_identity(event)})) for event in events])
 
     def recent_events(self, limit: int) -> list[dict[str, Any]]:
-        with self._conn.cursor() as cursor:
+        with self._lock, self._conn.cursor() as cursor:
             cursor.execute("SELECT payload FROM control_events ORDER BY at DESC,id DESC LIMIT %s", (limit,))
             return [dict(row[0]) for row in cursor.fetchall()]
 
     def daily_totals(self, since: datetime) -> dict[str, dict[str, int]]:
-        with self._conn.cursor() as cursor:
+        with self._lock, self._conn.cursor() as cursor:
             cursor.execute("SELECT (at AT TIME ZONE 'UTC')::date, "
                            "count(*) FILTER (WHERE kind IN ('app_block','app_network_block'))," 
                            "count(*) FILTER (WHERE kind IN ('usb_block','usb_read_only')) "
@@ -133,9 +136,10 @@ class PostgresInventoryStore:
             return {row[0].isoformat(): {"apps": row[1], "usb": row[2]} for row in cursor.fetchall()}
 
     def purge(self, before: datetime) -> None:
-        with self._conn.transaction():
+        with self._lock, self._conn.transaction():
             self._conn.execute("DELETE FROM endpoint_inventory WHERE collected_at < %s", (before,))
             self._conn.execute("DELETE FROM control_events WHERE at < %s", (before,))
 
     def close(self) -> None:
-        self._conn.close()
+        with self._lock:
+            self._conn.close()
