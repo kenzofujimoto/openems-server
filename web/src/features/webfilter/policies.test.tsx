@@ -20,6 +20,13 @@ function backend() {
 }
 
 describe("policy editors", () => {
+  it("warns when category publication is stale", async () => {
+    backend();
+    server.use(http.get("*/api/v1/categories", () => HttpResponse.json({ version: "2026-10-20T00:00:00Z", attribution: "UT1", categories: [], health: { status: "stale" } })));
+    renderApp("/policies/web");
+    expect(await screen.findByText(/listas de categorias estão desatualizadas/i)).toBeInTheDocument();
+  });
+
   it("publishes web rules and categories while preserving apps and USB with a digest precondition", async () => {
     const writes = backend();
     const user = userEvent.setup();
@@ -27,7 +34,7 @@ describe("policy editors", () => {
     const blocked = await screen.findByLabelText("Domínios bloqueados");
     await user.clear(blocked);
     await user.click(blocked); await user.paste("*.games.example");
-    await user.click(screen.getByRole("radio", { name: "Bloquear Jogos", exact: true }));
+    await user.click(screen.getByRole("radio", { name: "Bloquear Jogos" }));
     await user.click(screen.getByRole("checkbox", { name: "Google" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     expect(await screen.findByRole("status")).toHaveTextContent("v5");
@@ -39,9 +46,9 @@ describe("policy editors", () => {
     server.use(http.get("*/api/v1/profiles", () => HttpResponse.json([{ ...profile, body: { ...body, web_filter: { ...body.web_filter, blocked_categories: ["games"] } } }])));
     const user = userEvent.setup();
     renderApp("/policies/web");
-    expect(await screen.findByRole("radio", { name: "Bloquear Jogos", exact: true })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Permitir Conteúdo adulto", exact: true })).toBeChecked();
-    await user.click(screen.getByRole("radio", { name: "Monitorar Jogos", exact: true }));
+    expect(await screen.findByRole("radio", { name: "Bloquear Jogos" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Permitir Conteúdo adulto" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Monitorar Jogos" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]?.body).toMatchObject({ web_filter: { category_actions: { games: "monitor" } }, app_control: body.app_control });
@@ -57,22 +64,22 @@ describe("policy editors", () => {
     expect(screen.getByText(/não representa todas as páginas visitadas/i)).toBeInTheDocument();
     await user.click(global);
     await user.click(screen.getByRole("button", { name: "Adicionar horário" }));
-    await user.click(screen.getByRole("radio", { name: "Monitorar Jogos no horário 1", exact: true }));
+    await user.click(screen.getByRole("radio", { name: "Monitorar Jogos no horário 1" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]?.body).toMatchObject({ web_filter: { monitor_all: true, scheduled: [{ category_actions: { games: "monitor" } }] } });
   });
 
-  it("supports keyboard radio selection and read-only action controls", async () => {
+  it("supports keyboard radio selection", async () => {
     backend();
     const user = userEvent.setup();
     renderApp("/policies/web");
-    const allow = await screen.findByRole("radio", { name: "Permitir Jogos", exact: true });
+    const allow = await screen.findByRole("radio", { name: "Permitir Jogos" });
     allow.focus();
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("radio", { name: "Bloquear Jogos", exact: true })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Bloquear Jogos" })).toBeChecked();
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("radio", { name: "Monitorar Jogos", exact: true })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Monitorar Jogos" })).toBeChecked();
   });
 
   it("creates a schedule with an IANA timezone and keeps category windows", async () => {
