@@ -115,6 +115,13 @@ def test_policy_capabilities_cover_scheduled_actions_and_global_monitoring():
     assert "web-filter:actions" in required_tags({"web_filter": {"category_actions": {"games": "allow"}}})
 
 
+def test_allow_category_exclusions_require_category_data_during_global_monitoring():
+    tags = required_tags({"web_filter": {
+        "monitor_all": True, "category_actions": {"games": "allow"},
+    }})
+    assert "web-filter:categories" in tags
+
+
 def test_old_agents_cannot_fetch_or_successfully_acknowledge_new_policy_actions():
     store = InMemoryEventStore()
     client, administrator = panel(store)
