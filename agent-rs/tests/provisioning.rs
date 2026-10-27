@@ -12,7 +12,7 @@ fn fresh_install_requires_bootstrap_and_does_not_create_authority() {
     let installed = configure_install(&path, Some(config), false, true, false, false).unwrap();
     assert!(installed.block_page && installed.block_page_https);
     assert!(!installed.authority_path.exists());
-    assert_eq!(AgentConfig::from_file(&path).unwrap(), installed);
+    assert_eq!(AgentConfig::from_file(&path).unwrap(), AgentConfig { config_path: Some(path.clone()), ..installed });
 }
 
 #[test]

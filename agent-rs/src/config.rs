@@ -29,6 +29,9 @@ pub struct AgentConfig {
     pub device_token: Option<String>,
     pub state_path: PathBuf,
     pub allow_insecure_http: bool,
+    /// File this configuration was read from; never serialized. Lets the service remove the
+    /// one-time invitation once enrollment succeeded.
+    pub config_path: Option<PathBuf>,
 }
 
 /// ProgramData\openems on Windows, /etc/openems elsewhere.
@@ -66,6 +69,7 @@ impl AgentConfig {
             device_token: None,
             state_path: data_dir().join("state.json"),
             allow_insecure_http: false,
+            config_path: None,
         }
     }
 
@@ -141,6 +145,7 @@ impl AgentConfig {
             .filter(|port| *port > 0)
             .ok_or_else(|| AgentError::Config("block page port is out of range".into()))?;
         config.validate()?;
+        config.config_path = Some(path.to_path_buf());
         Ok(config)
     }
 
@@ -201,6 +206,27 @@ impl AgentConfig {
             data["invitation"] = invitation.clone().into();
         }
         data
+    }
+
+    /// Remove a consumed enrollment invitation from the file this configuration came from.
+    /// Edits the stored object in place so every other key (legacy ones included) is preserved;
+    /// returns whether the file changed.
+    pub fn forget_invitation(&self) -> Result<bool> {
+        let Some(path) = &self.config_path else { return Ok(false) };
+        let raw = std::fs::read(path)?;
+        let text = read_text_without_bom(path)?;
+        let mut stored: Value =
+            serde_json::from_str(&text).map_err(|_| AgentError::Config("configuration is not valid JSON".into()))?;
+        let Some(object) = stored.as_object_mut() else {
+            return Err(AgentError::Config("agent configuration must be an object".into()));
+        };
+        if object.remove("invitation").is_none() {
+            return Ok(false);
+        }
+        let encoded = serde_json::to_vec_pretty(&stored).map_err(|error| AgentError::Local(error.to_string()))?;
+        // Refuse to overwrite a file someone changed since it was read.
+        crate::fsutil::atomic_write(path, &encoded, Some(&raw), true)?;
+        Ok(true)
     }
 
     /// Write a protected agent.json that `from_file` accepts.
@@ -286,7 +312,7 @@ mod tests {
         config.write_file(&path).unwrap();
         assert!(!std::fs::read_to_string(&path).unwrap().contains("secret-token"));
         let loaded = AgentConfig::from_file(&path).unwrap();
-        assert_eq!(loaded, AgentConfig { device_token: None, ..config });
+        assert_eq!(loaded, AgentConfig { device_token: None, config_path: Some(path.clone()), ..config });
     }
 
     #[test]

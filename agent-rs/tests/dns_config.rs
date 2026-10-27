@@ -26,7 +26,10 @@ fn dns_configuration_roundtrips_and_legacy_files_default_off() {
     config.dns_filter = true;
     config.dns_port = 15353;
     config.write_file(&path).unwrap();
-    assert_eq!(AgentConfig::from_file(&path).unwrap(), config);
+    assert_eq!(
+        AgentConfig::from_file(&path).unwrap(),
+        AgentConfig { config_path: Some(path.clone()), ..config.clone() }
+    );
     std::fs::write(&path, r#"{"server": "http://127.0.0.1:8000", "devid": "test"}"#).unwrap();
     assert!(!AgentConfig::from_file(&path).unwrap().dns_filter);
     std::fs::write(&path, r#"{"server": "http://127.0.0.1:8000", "devid": "test", "dns_filter": "yes"}"#).unwrap();
@@ -139,7 +142,10 @@ fn anti_bypass_is_opt_in_requires_dns_filter_and_reports_a_tag() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("agent.json");
     config.write_file(&path).unwrap();
-    assert_eq!(AgentConfig::from_file(&path).unwrap(), config);
+    assert_eq!(
+        AgentConfig::from_file(&path).unwrap(),
+        AgentConfig { config_path: Some(path.clone()), ..config.clone() }
+    );
     let assignment = scheduled_assignment(1);
     let enforcement = openems_agent::runtime::Enforcement::default();
     let tags = openems_agent::runtime::host_tags(&config, &assignment, &enforcement);

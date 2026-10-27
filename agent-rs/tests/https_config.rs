@@ -27,5 +27,5 @@ fn https_configuration_roundtrips_in_disposable_directory() {
     config.authority_path = directory.path().join("authority.json");
     config.write_file(&path).unwrap();
     let loaded = AgentConfig::from_file(&path).unwrap();
-    assert_eq!(loaded, config);
+    assert_eq!(loaded, AgentConfig { config_path: Some(path.clone()), ..config });
 }

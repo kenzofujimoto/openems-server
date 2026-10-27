@@ -211,6 +211,17 @@ impl Runtime {
             inner.outside = profile.clone();
             inner.profile = profile;
         }
+        if inner.client_id.is_some() && cfg.invitation.is_some() && !cfg.dry_run {
+            // Enrolled before invitations were removed after registration: drop the leftover copy.
+            match cfg.forget_invitation() {
+                Ok(true) => {
+                    log("enrollment invitation removed from the configuration");
+                    cfg.invitation = None;
+                }
+                Ok(false) => {}
+                Err(error) => log(&format!("could not remove the used invitation ({})", error.summary())),
+            }
+        }
         let api = ApiClient::new(&cfg.server);
         let blocked_domains = Arc::new(crate::https_blockpage::BlockedDomains::default());
         if !cfg.dry_run
@@ -475,6 +486,16 @@ impl Runtime {
                 inner.device_token = Some(registration.device_token.clone());
                 inner.last_ack = None;
                 self.save(&inner)?;
+                drop(inner);
+                // The invitation is single-purpose: once the device holds its own token, keep no copy.
+                match self.cfg.forget_invitation() {
+                    Ok(true) => (self.log)("enrollment invitation removed from the configuration"),
+                    Ok(false) => {}
+                    Err(error) => (self.log)(&format!(
+                        "could not remove the used invitation ({}); retrying at next start",
+                        error.summary()
+                    )),
+                }
                 client_id = Some(registration.client_id);
                 token = Some(registration.device_token);
             }

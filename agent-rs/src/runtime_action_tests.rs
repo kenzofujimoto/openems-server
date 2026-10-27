@@ -162,7 +162,8 @@ fn successful_registration_removes_the_consumed_invitation_from_the_config_file(
     runtime.cfg.invitation = Some("one-time-invitation-value".into());
     runtime.cfg.write_file(&path).unwrap();
     let mut on_disk: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
-    on_disk["custom_operator_field"] = json!("kept");
+    // A legacy key that write_file never emits: removing the invitation must not rewrite the rest.
+    on_disk["device_token"] = json!("legacy-device-token");
     std::fs::write(&path, serde_json::to_vec(&on_disk).unwrap()).unwrap();
     runtime.cfg.config_path = Some(path.clone());
     runtime.api = ApiClient::new(&format!("http://{address}"));
@@ -173,7 +174,7 @@ fn successful_registration_removes_the_consumed_invitation_from_the_config_file(
     let saved = std::fs::read_to_string(&path).unwrap();
     assert!(!saved.contains("one-time-invitation-value"), "consumed invitation left in agent.json");
     let saved: serde_json::Value = serde_json::from_str(&saved).unwrap();
-    assert_eq!(saved["custom_operator_field"], json!("kept"), "only the invitation may be removed");
+    assert_eq!(saved["device_token"], json!("legacy-device-token"), "only the invitation may be removed");
     assert_eq!(saved["server"], json!(runtime.cfg.server));
     assert_eq!(AgentConfig::from_file(&path).unwrap().invitation, None);
 }
@@ -184,4 +185,19 @@ fn config_loaded_from_a_file_remembers_its_path() {
     let path = dir.path().join("agent.json");
     AgentConfig::new("https://ems.example", "pc").write_file(&path).unwrap();
     assert_eq!(AgentConfig::from_file(&path).unwrap().config_path.as_deref(), Some(path.as_path()));
+}
+
+#[test]
+fn already_enrolled_agent_drops_a_leftover_invitation_at_start() {
+    // Agents enrolled before this fix still hold the invitation; the service removes it on start.
+    let (dir, runtime) = network_runtime();
+    assert!(runtime.lock().client_id.is_some());
+    let path = dir.path().join("agent.json");
+    let mut cfg = runtime.cfg.clone();
+    cfg.invitation = Some("leftover-invitation".into());
+    cfg.write_file(&path).unwrap();
+    cfg.config_path = Some(path.clone());
+    drop(runtime);
+    let _restarted = Runtime::new(cfg, Arc::new(|_| {}), Arc::new(StopSignal::default())).unwrap();
+    assert!(!std::fs::read_to_string(&path).unwrap().contains("leftover-invitation"));
 }
