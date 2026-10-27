@@ -47,6 +47,14 @@ impl BlockedDomains {
         )
     }
 
+    pub fn decision(&self, name: &str) -> crate::policy::WebDecision {
+        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).decision_at(
+            name,
+            jiff::Timestamp::now(),
+            &self.categories,
+        )
+    }
+
     /// Display name of the category blocking `name`; None for rules and unblocked names.
     pub fn category_label(&self, name: &str) -> Option<&'static str> {
         match self.reason(name)? {

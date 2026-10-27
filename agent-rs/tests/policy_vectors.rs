@@ -198,3 +198,21 @@ fn category_decisions_match_python() {
     let monday_night: jiff::Timestamp = "2026-10-26T19:00:00Z".parse().unwrap();
     assert!(!filter.blocks_at_with("api.steampowered.com", monday_night, &empty));
 }
+
+#[test]
+fn web_action_decisions_match_python() {
+    use openems_agent::categories::{CategorySet, CategoryStore};
+    for case in cases(&vectors(), "web_actions") {
+        let filter = web_filter(&case["web_filter"]);
+        let store = CategoryStore::default();
+        for (category, domains) in case["sets"].as_object().unwrap() {
+            store.insert(category, CategorySet::from_domains(&strings(domains)));
+        }
+        let when: jiff::Timestamp = format!("{}Z", case["when"].as_str().unwrap()).parse().unwrap();
+        assert_eq!(
+            filter.decision_at(case["name"].as_str().unwrap(), when, &store).to_json(),
+            case["decision"],
+            "{case}"
+        );
+    }
+}

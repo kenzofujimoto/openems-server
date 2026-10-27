@@ -99,6 +99,7 @@ pub struct Runtime {
     pub blocked_domains: Arc<crate::https_blockpage::BlockedDomains>,
     /// Logged once: the server has no block log route.
     block_log_unsupported: std::sync::atomic::AtomicBool,
+    capabilities_sent: std::sync::atomic::AtomicBool,
     /// Protections found altered and restored, uploaded with each synchronization.
     pub tamper: Arc<crate::tamper::TamperLog>,
     tamper_unsupported: std::sync::atomic::AtomicBool,
@@ -107,6 +108,12 @@ pub struct Runtime {
     controls: crate::controls::ControlManager,
     inventory_unsupported: std::sync::atomic::AtomicBool,
     control_events_unsupported: std::sync::atomic::AtomicBool,
+}
+
+/// Legacy block-only policies keep their historical best-effort behavior. Explicit actions
+/// require complete data, including allow categories that suppress global observation.
+fn category_data_ready(rules: &crate::policy::WebFilter, categories: &crate::categories::CategoryStore) -> bool {
+    !rules.requires_category_data() || rules.referenced_categories().iter().all(|id| categories.has_data(id))
 }
 
 /// What the Windows DNS cache depends on in DNS mode: the policy and which windows are open.
@@ -138,7 +145,11 @@ pub fn enforce_at(
     when: jiff::Timestamp,
 ) -> Result<Enforcement> {
     let (_, apps) = assignment.blocked_lists()?;
-    let rules = assignment.web_filter()?.rules_at(when);
+    let filter = assignment.web_filter()?;
+    if filter.requires_monitoring() && !cfg.dns_filter {
+        return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()));
+    }
+    let rules = filter.rules_at(when);
     let sites = rules.blocked().to_vec();
     let release = assignment.unassigned && assignment.body.is_none();
     if cfg.dry_run {
@@ -170,10 +181,12 @@ pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enfor
         // Understands safe_search and scheduled windows; the panel warns before publishing them otherwise.
         "web-filter:v2".into(),
         "web-filter:categories".into(),
+        "web-filter:actions".into(),
     ];
     // Lets the panel warn before publishing wildcards to groups whose agents only use hosts.
     if cfg.dns_filter {
         tags.push("web-filter:dns".into());
+        tags.push("web-filter:monitor".into());
     }
     if cfg.anti_bypass {
         tags.push("web-filter:anti-bypass".into());
@@ -203,7 +216,6 @@ impl Runtime {
         if !cfg.dry_run
             && let Some(profile) = &inner.profile
         {
-            blocked_domains.replace(profile.web_filter()?);
             // Offline start: categories downloaded earlier keep blocking before the server answers.
             let directory = crate::categories::cache_dir(&cfg.state_path);
             for id in Self::referenced_categories(profile) {
@@ -216,6 +228,12 @@ impl Runtime {
                     None => log(&format!("category {id} has no cached copy yet; it does not block until downloaded")),
                 }
             }
+            let rules = profile.web_filter()?;
+            if category_data_ready(&rules, blocked_domains.categories()) {
+                blocked_domains.replace(rules);
+            } else {
+                log("cached action policy awaits required category data; monitoring remains inactive");
+            }
         }
         Ok(Runtime {
             api,
@@ -224,6 +242,7 @@ impl Runtime {
             stop,
             blocked_domains,
             block_log_unsupported: std::sync::atomic::AtomicBool::new(false),
+            capabilities_sent: std::sync::atomic::AtomicBool::new(false),
             tamper: Arc::new(crate::tamper::TamperLog::default()),
             tamper_unsupported: std::sync::atomic::AtomicBool::new(false),
             session: crate::session::SessionBoard::open(&crate::session::path_for(&cfg.state_path)),
@@ -327,22 +346,24 @@ impl Runtime {
     /// Send the block log; a failed upload keeps its rows (within the limit) for the next cycle.
     fn upload_block_log(&self, client_id: &str, token: Option<&str>) {
         let log = self.blocked_domains.block_log();
-        let batch = log.take();
+        let batch = log.begin_upload();
         if batch.is_empty() {
             return;
         }
         let mut payload = batch.to_json();
         payload["client_id"] = json!(client_id);
         match self.api.post("events", &payload, token) {
-            Ok(_) => {}
+            Ok(_) => {
+                log.finish_upload(payload["batch_id"].as_str().unwrap_or_default());
+            }
             // A server without the block log would refuse these rows forever.
             Err(AgentError::Status { code: 404 | 405, .. }) => {
+                log.finish_upload(payload["batch_id"].as_str().unwrap_or_default());
                 if !self.block_log_unsupported.swap(true, std::sync::atomic::Ordering::Relaxed) {
                     (self.log)("server does not accept the block log; blocked answers are not reported");
                 }
             }
             Err(error) => {
-                log.restore(batch);
                 (self.log)(&format!("block log upload failed ({}); kept for the next cycle", error.summary()));
             }
         }
@@ -460,6 +481,28 @@ impl Runtime {
             let id = client_id.clone().unwrap_or_default();
             self.api.post("messages/pull", &json!({ "client_id": id }), token.as_deref())?;
             self.api.post("refresh", &json!({ "client_id": id }), token.as_deref())?;
+            if !self.capabilities_sent.load(std::sync::atomic::Ordering::Relaxed) {
+                // The server can reject unsupported actions before delivering them. Advertise
+                // capabilities first, retaining the outside group used by assignment rules.
+                let group =
+                    self.lock().outside.as_ref().map_or_else(|| self.cfg.vdom.clone(), |outside| outside.vdom.clone());
+                let mut tags = vec![
+                    format!("os:{}", platform_name()),
+                    "web-filter:v2".into(),
+                    "web-filter:categories".into(),
+                    "web-filter:actions".into(),
+                ];
+                if self.cfg.dns_filter {
+                    tags.extend(["web-filter:dns".into(), "web-filter:monitor".into()]);
+                }
+                if self.cfg.anti_bypass {
+                    tags.push("web-filter:anti-bypass".into());
+                }
+                tags.extend(self.controls.capabilities());
+                tags.push(format!("vdom:{group}"));
+                self.api.post("host_tags", &json!({"client_id":id,"tags":tags}), token.as_deref())?;
+                self.capabilities_sent.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
             let assignment =
                 validate_assignment(&self.api.get("config/assigned", &[("client_id", &id)], token.as_deref())?)?;
             self.stopping()?;
@@ -501,6 +544,7 @@ impl Runtime {
                 // recreated): enroll again, presenting the old credential as proof of possession.
                 if matches!(error, AgentError::Status { code: 401 | 404, .. }) {
                     inner.client_id = None;
+                    self.capabilities_sent.store(false, std::sync::atomic::Ordering::Relaxed);
                 }
                 drop(inner);
                 (self.log)(&format!("synchronization failed ({}); cached enforcement continues", error.summary()));
@@ -516,8 +560,6 @@ impl Runtime {
             CategorySet, MAX_FILE_SIZE, cache_dir, file_digest, load_cached, store_cached, valid_digest,
         };
         let referenced = self.lock().outside.as_ref().map(Self::referenced_categories).unwrap_or_default();
-        self.blocked_domains.categories().retain(&referenced);
-        self.lock().category_digests.retain(|id, _| referenced.contains(id));
         if referenced.is_empty() {
             return;
         }
@@ -624,6 +666,12 @@ impl Runtime {
         let result = assignment
             .web_filter()
             .and_then(|rules| {
+                if rules.requires_monitoring() && !self.cfg.dns_filter {
+                    return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()));
+                }
+                if !category_data_ready(&rules, self.blocked_domains.categories()) {
+                    return Err(AgentError::Policy("web action policy requires all referenced category data".into()));
+                }
                 let body = assignment.body.clone().map_or_else(|| json!({}), serde_json::Value::Object);
                 let changed = self.controls.apply(&body, self.cfg.dry_run)?;
                 for event in changed {
@@ -638,6 +686,9 @@ impl Runtime {
                 }
                 if !self.cfg.dry_run {
                     self.blocked_domains.replace(rules);
+                    let referenced = Self::referenced_categories(&outside);
+                    self.blocked_domains.categories().retain(&referenced);
+                    self.lock().category_digests.retain(|id, _| referenced.contains(id));
                 }
                 enforce_at(&self.cfg, &assignment, &self.log, now)
             })
@@ -852,6 +903,7 @@ mod tests {
                 "web-filter:1-blocked".into(),
                 "web-filter:v2".into(),
                 "web-filter:categories".into(),
+                "web-filter:actions".into(),
                 "vdom:Empty".into()
             ]
         );
@@ -975,4 +1027,5 @@ mod tests {
         let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();
         assert!(!board.protected);
     }
+    include!("runtime_action_tests.rs");
 }

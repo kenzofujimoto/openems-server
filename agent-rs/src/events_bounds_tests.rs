@@ -9,6 +9,6 @@ fn one_minute_unique_domain_flood_keeps_deduplication_bounded() {
     }
     let state = log.lock();
     assert!(state.recent.len() <= 4, "deduplication cache must obey its hard limit");
-    assert_eq!(state.rows.len(),2);
-    assert_eq!(state.dropped,998);
+    assert_eq!(state.rows.len(), 2);
+    assert_eq!(state.dropped, 998);
 }

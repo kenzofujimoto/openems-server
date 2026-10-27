@@ -151,6 +151,11 @@ impl CategoryStore {
         self.0.write().unwrap_or_else(|poison| poison.into_inner()).retain(|id, _| ids.contains(id));
     }
 
+    /// Empty publications cannot provide classification guarantees for action policies.
+    pub fn has_data(&self, id: &str) -> bool {
+        self.0.read().unwrap_or_else(|poison| poison.into_inner()).get(id).is_some_and(|set| !set.is_empty())
+    }
+
     pub fn loaded(&self) -> Vec<String> {
         let mut ids: Vec<String> = self.0.read().unwrap_or_else(|poison| poison.into_inner()).keys().cloned().collect();
         ids.sort();

@@ -4,13 +4,14 @@ use crate::canonical::canonical_json;
 use crate::error::{AgentError, Result};
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 
 const MAX_ENTRIES: usize = 10_000;
 const MAX_WINDOWS: usize = 50;
 const SAFE_SEARCH_ENGINES: [&str; 4] = ["google", "bing", "youtube", "duckduckgo"];
 const DAYS: [&str; 7] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 /// Display names of the reference taxonomy, for the block page; pinned by the vectors.
-const CATEGORY_LABELS: [(&str, &str); 21] = [
+const CATEGORY_LABELS: [(&str, &str); 27] = [
     ("adult", "Conteúdo adulto"),
     ("dating", "Relacionamentos"),
     ("gambling", "Jogos de azar"),
@@ -32,6 +33,12 @@ const CATEGORY_LABELS: [(&str, &str); 21] = [
     ("sports", "Esportes"),
     ("press", "Notícias"),
     ("ads", "Publicidade"),
+    ("ai", "Inteligência artificial"),
+    ("bank", "Bancos"),
+    ("financial", "Serviços financeiros"),
+    ("jobsearch", "Empregos"),
+    ("webhosting", "Hospedagem web"),
+    ("celebrity", "Celebridades"),
 ];
 
 pub fn category_label(id: &str) -> Option<&'static str> {
@@ -39,7 +46,7 @@ pub fn category_label(id: &str) -> Option<&'static str> {
 }
 
 /// Category ids of the reference taxonomy (agent/policy.py CATEGORIES), pinned by the vectors.
-pub const CATEGORY_IDS: [&str; 21] = [
+pub const CATEGORY_IDS: [&str; 27] = [
     "adult",
     "dating",
     "gambling",
@@ -61,6 +68,12 @@ pub const CATEGORY_IDS: [&str; 21] = [
     "sports",
     "press",
     "ads",
+    "ai",
+    "bank",
+    "financial",
+    "jobsearch",
+    "webhosting",
+    "celebrity",
 ];
 const ZONE_PUNCTUATION: &str = "_+-";
 const YOUTUBE_NAMES: [&str; 5] = [
@@ -637,10 +650,33 @@ fn validate_categories(value: &Value) -> Result<()> {
         .ok_or_else(|| invalid("blocked_categories must list distinct known categories"))
 }
 
+fn validate_category_actions(settings: &Map<String, Value>) -> Result<()> {
+    let Some(value) = settings.get("category_actions") else { return Ok(()) };
+    let actions = value
+        .as_object()
+        .filter(|actions| actions.len() <= CATEGORY_IDS.len())
+        .ok_or_else(|| invalid("category_actions must map known categories to allow, block or monitor"))?;
+    let legacy = text_list(settings.get("blocked_categories"));
+    for (category, action) in actions {
+        if !CATEGORY_IDS.contains(&category.as_str()) || !matches!(action.as_str(), Some("allow" | "block" | "monitor"))
+        {
+            return Err(invalid("category_actions must map known categories to allow, block or monitor"));
+        }
+        if legacy.contains(category) && action.as_str() != Some("block") {
+            return Err(invalid("category action conflicts with blocked_categories"));
+        }
+    }
+    Ok(())
+}
+
 /// Port of `_validate_web_extensions`: categories, safe_search, timezone and scheduled windows.
 fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
     if let Some(value) = settings.get("blocked_categories") {
         validate_categories(value)?;
+    }
+    validate_category_actions(settings)?;
+    if settings.get("monitor_all").is_some_and(|value| !value.is_boolean()) {
+        return Err(invalid("monitor_all must be a boolean"));
     }
     if let Some(value) = settings.get("safe_search") {
         let Some(safe) = value.as_object().filter(|safe| safe.keys().all(|key| key == "engines" || key == "youtube"))
@@ -667,11 +703,13 @@ fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
     }
     let mut normalized = Vec::with_capacity(windows.len());
     for window in windows {
-        let allowed = ["blocked", "blocked_categories", "days", "from", "to"];
+        let allowed = ["blocked", "blocked_categories", "category_actions", "days", "from", "to"];
         let Some(mut window) = window.as_object().cloned().filter(|window| {
             window.keys().all(|key| allowed.contains(&key.as_str()))
                 && ["days", "from", "to"].iter().all(|key| window.contains_key(*key))
-                && (window.contains_key("blocked") || window.contains_key("blocked_categories"))
+                && (window.contains_key("blocked")
+                    || window.contains_key("blocked_categories")
+                    || window.contains_key("category_actions"))
         }) else {
             return Err(invalid("schedule window needs days, from, to and blocked rules or categories"));
         };
@@ -694,6 +732,7 @@ fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
         if let Some(categories) = window.get("blocked_categories") {
             validate_categories(categories)?;
         }
+        validate_category_actions(&window)?;
         normalized.push(Value::Object(window));
     }
     settings.insert("scheduled".to_owned(), Value::Array(normalized));
@@ -704,6 +743,7 @@ fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
 struct Window {
     blocked: Vec<String>,
     categories: Vec<String>,
+    actions: BTreeMap<String, WebAction>,
     days: [bool; 7],
     from: u16,
     to: u16,
@@ -714,6 +754,42 @@ struct Window {
 pub enum BlockReason {
     Rule,
     Category(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum WebAction {
+    Allow,
+    Monitor,
+    Block,
+}
+
+impl WebAction {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Allow => "allow",
+            Self::Monitor => "monitor",
+            Self::Block => "block",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebDecision {
+    pub action: WebAction,
+    pub reason: Option<BlockReason>,
+    pub log: bool,
+}
+
+impl WebDecision {
+    pub fn to_json(&self) -> Value {
+        let (reason, category) = match &self.reason {
+            Some(BlockReason::Rule) => (Some("rule"), None),
+            Some(BlockReason::Category(id)) => (Some("category"), Some(id.as_str())),
+            None if self.action == WebAction::Monitor => (Some("observation"), None),
+            None => (None, None),
+        };
+        serde_json::json!({"action":self.action.name(), "reason":reason,"category":category,"log":self.log})
+    }
 }
 
 impl BlockReason {
@@ -732,6 +808,8 @@ pub struct WebFilter {
     blocked: Vec<String>,
     allowed: Vec<String>,
     categories: Vec<String>,
+    actions: BTreeMap<String, WebAction>,
+    monitor_all: bool,
     windows: Vec<Window>,
     timezone: Option<jiff::tz::TimeZone>,
     engines: Vec<String>,
@@ -751,6 +829,24 @@ fn text_list(value: Option<&Value>) -> Vec<String> {
         .unwrap_or_default()
 }
 
+fn category_actions(settings: &Value) -> BTreeMap<String, WebAction> {
+    settings
+        .get("category_actions")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .filter_map(|(category, action)| {
+            let action = match action.as_str()? {
+                "allow" => WebAction::Allow,
+                "monitor" => WebAction::Monitor,
+                "block" => WebAction::Block,
+                _ => return None,
+            };
+            Some((category.clone(), action))
+        })
+        .collect()
+}
+
 impl WebFilter {
     /// Build from a `web_filter` object that already passed `validate_policy` (or null).
     pub fn from_settings(settings: &Value) -> Result<Self> {
@@ -768,6 +864,7 @@ impl WebFilter {
             windows.push(Window {
                 blocked: WebRules::new(&text_list(window.get("blocked")), &[])?.blocked,
                 categories: text_list(window.get("blocked_categories")),
+                actions: category_actions(window),
                 days,
                 from: bound("from")?,
                 to: bound("to")?,
@@ -778,6 +875,8 @@ impl WebFilter {
             blocked: rules.blocked,
             allowed: rules.allowed,
             categories: text_list(settings.get("blocked_categories")),
+            actions: category_actions(settings),
+            monitor_all: settings.get("monitor_all").and_then(Value::as_bool).unwrap_or(false),
             windows,
             timezone: settings.get("timezone").map(time_zone).transpose()?,
             engines: text_list(safe.and_then(|safe| safe.get("engines"))),
@@ -815,8 +914,13 @@ impl WebFilter {
         for (window, open) in self.windows.iter().zip(self.active_windows(when)) {
             if open {
                 categories.extend(window.categories.iter().cloned());
+                categories.extend(
+                    window.actions.iter().filter(|(_, action)| **action == WebAction::Block).map(|(id, _)| id.clone()),
+                );
             }
         }
+        categories
+            .extend(self.actions.iter().filter(|(_, action)| **action == WebAction::Block).map(|(id, _)| id.clone()));
         categories.dedup();
         categories
     }
@@ -829,6 +933,8 @@ impl WebFilter {
             .chain(self.windows.iter().flat_map(|window| window.categories.iter()))
             .cloned()
             .collect();
+        categories.extend(self.actions.keys().cloned());
+        categories.extend(self.windows.iter().flat_map(|window| window.actions.keys().cloned()));
         categories.sort();
         categories.dedup();
         categories
@@ -851,15 +957,84 @@ impl WebFilter {
         when: jiff::Timestamp,
         lookup: &dyn crate::categories::CategoryLookup,
     ) -> Option<BlockReason> {
-        if self.rules_at(when).blocks(name) {
-            return Some(BlockReason::Rule);
-        }
-        let domain = normalize_domain(name).ok()?;
-        let category = self.active_categories(when).into_iter().find(|category| lookup.contains(category, &domain))?;
+        let decision = self.decision_at(name, when, lookup);
+        if decision.action == WebAction::Block { decision.reason } else { None }
+    }
+
+    pub fn decision_at(
+        &self,
+        name: &str,
+        when: jiff::Timestamp,
+        lookup: &dyn crate::categories::CategoryLookup,
+    ) -> WebDecision {
+        let allow = || WebDecision { action: WebAction::Allow, reason: None, log: false };
+        let Ok(domain) = normalize_domain(name) else { return allow() };
         if self.allowed.iter().any(|rule| rule_matches(rule, &domain)) {
-            return None;
+            return allow();
         }
-        Some(BlockReason::Category(category))
+        if self.rules_at(when).blocks(&domain) {
+            return WebDecision { action: WebAction::Block, reason: Some(BlockReason::Rule), log: true };
+        }
+        let mut actions = BTreeMap::new();
+        let mut order = Vec::new();
+        let mut set = |category: &String, action: WebAction| {
+            if !actions.contains_key(category) {
+                order.push(category.clone());
+            }
+            let value = actions.entry(category.clone()).or_insert(action);
+            *value = (*value).max(action);
+        };
+        for category in &self.categories {
+            set(category, WebAction::Block)
+        }
+        let active: Vec<_> = self
+            .windows
+            .iter()
+            .zip(self.active_windows(when))
+            .filter_map(|(window, open)| open.then_some(window))
+            .collect();
+        for window in &active {
+            for category in &window.categories {
+                set(category, WebAction::Block)
+            }
+        }
+        for (category, action) in &self.actions {
+            set(category, *action)
+        }
+        for window in &active {
+            for (category, action) in &window.actions {
+                set(category, *action)
+            }
+        }
+        let mut selected: Option<(String, WebAction)> = None;
+        for category in order {
+            let action = actions[&category];
+            if lookup.contains(&category, &domain) && selected.as_ref().is_none_or(|(_, current)| action > *current) {
+                selected = Some((category, action));
+            }
+        }
+        if let Some((category, action)) = selected {
+            return WebDecision {
+                action,
+                reason: Some(BlockReason::Category(category)),
+                log: action != WebAction::Allow,
+            };
+        }
+        if self.monitor_all { WebDecision { action: WebAction::Monitor, reason: None, log: true } } else { allow() }
+    }
+
+    /// Action policies must not activate with incomplete classification data.
+    pub fn requires_category_data(&self) -> bool {
+        self.monitor_all || !self.actions.is_empty() || self.windows.iter().any(|window| !window.actions.is_empty())
+    }
+
+    pub fn requires_monitoring(&self) -> bool {
+        self.monitor_all
+            || self
+                .actions
+                .values()
+                .chain(self.windows.iter().flat_map(|window| window.actions.values()))
+                .any(|action| *action == WebAction::Monitor)
     }
 
     pub fn has_schedule(&self) -> bool {

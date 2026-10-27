@@ -15,6 +15,8 @@ pub enum EventReason {
     Category(String),
     /// A public DNS over HTTPS service refused by anti-bypass.
     Doh,
+    /// Explicit monitoring of DNS observations, without claiming a site category.
+    Policy,
 }
 
 impl From<BlockReason> for EventReason {
@@ -32,6 +34,7 @@ impl EventReason {
             EventReason::Rule => "rule",
             EventReason::Category(_) => "category",
             EventReason::Doh => "doh",
+            EventReason::Policy => "policy",
         }
     }
 
@@ -50,14 +53,16 @@ struct Key {
     domain: String,
     reason: &'static str,
     category: Option<String>,
+    action: &'static str,
 }
 
 #[derive(Default)]
 struct State {
     rows: BTreeMap<Key, u64>,
     /// Last minute each (domain, reason) was counted: repeated queries in a minute count once.
-    recent: HashMap<(String, &'static str, Option<String>), i64>,
+    recent: HashMap<(String, &'static str, Option<String>, &'static str), i64>,
     dropped: u64,
+    pending: Option<Batch>,
 }
 
 pub struct BlockLog {
@@ -72,10 +77,11 @@ impl Default for BlockLog {
 }
 
 /// Rows taken for one upload.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Batch {
     rows: Vec<(Key, u64)>,
     pub dropped: u64,
+    batch_id: String,
 }
 
 impl Batch {
@@ -94,10 +100,14 @@ impl Batch {
                 if let Some(category) = &key.category {
                     row["category"] = json!(category);
                 }
+                if key.action == "monitored" {
+                    row["action"] = json!("monitored");
+                    row["source"] = json!("dns");
+                }
                 row
             })
             .collect();
-        json!({"events": events, "dropped": self.dropped})
+        json!({"events": events, "dropped": self.dropped, "batch_id":self.batch_id})
     }
 }
 
@@ -116,22 +126,35 @@ impl BlockLog {
     }
 
     pub fn record_at(&self, domain: &str, reason: &EventReason, when: jiff::Timestamp) {
+        self.record_action_at(domain, reason, "blocked", when);
+    }
+
+    pub fn monitor(&self, domain: &str, reason: &EventReason) {
+        self.record_action_at(domain, reason, "monitored", jiff::Timestamp::now());
+    }
+
+    fn record_action_at(&self, domain: &str, reason: &EventReason, action: &'static str, when: jiff::Timestamp) {
         let second = when.as_second();
         let minute = second.div_euclid(60);
         let mut state = self.lock();
-        let identity = (domain.to_owned(), reason.name(), reason.category());
+        let identity = (domain.to_owned(), reason.name(), reason.category(), action);
         if state.recent.get(&identity) == Some(&minute) {
             return;
         }
         if state.recent.len() >= self.capacity.saturating_mul(2) {
             state.recent.retain(|_, counted| *counted == minute);
         }
-        state.recent.insert(identity, minute);
+        // Under a flood of unique domains in one minute, retaining current entries alone
+        // does not free space. Keep counting drops without allocating more identities.
+        if state.recent.len() < self.capacity.saturating_mul(2) {
+            state.recent.insert(identity, minute);
+        }
         let key = Key {
             hour: second.div_euclid(3600) * 3600,
             domain: domain.to_owned(),
             reason: reason.name(),
             category: reason.category(),
+            action,
         };
         let capacity = self.capacity;
         add(&mut state, key, 1, capacity);
@@ -141,7 +164,31 @@ impl BlockLog {
     pub fn take(&self) -> Batch {
         let mut state = self.lock();
         let rows = std::mem::take(&mut state.rows).into_iter().collect();
-        Batch { rows, dropped: std::mem::take(&mut state.dropped) }
+        Batch { rows, dropped: std::mem::take(&mut state.dropped), batch_id: new_batch_id() }
+    }
+
+    /// Freeze a batch until acknowledged; retrying cannot merge later observations into it.
+    pub fn begin_upload(&self) -> Batch {
+        let mut state = self.lock();
+        if let Some(batch) = &state.pending {
+            return batch.clone();
+        }
+        let batch = Batch {
+            rows: std::mem::take(&mut state.rows).into_iter().collect(),
+            dropped: std::mem::take(&mut state.dropped),
+            batch_id: new_batch_id(),
+        };
+        if !batch.is_empty() {
+            state.pending = Some(batch.clone())
+        }
+        batch
+    }
+
+    pub fn finish_upload(&self, batch_id: &str) {
+        let mut state = self.lock();
+        if state.pending.as_ref().is_some_and(|batch| batch.batch_id == batch_id) {
+            state.pending = None
+        }
     }
 
     /// Put back a batch whose upload failed; rows that no longer fit become `dropped`.
@@ -158,9 +205,18 @@ impl BlockLog {
 fn add(state: &mut State, key: Key, count: u64, capacity: usize) {
     if let Some(existing) = state.rows.get_mut(&key) {
         *existing = existing.saturating_add(count);
-    } else if state.rows.len() < capacity {
+    } else if state.rows.len() + state.pending.as_ref().map_or(0, |batch| batch.rows.len()) < capacity {
         state.rows.insert(key, count);
     } else {
         state.dropped = state.dropped.saturating_add(count);
     }
 }
+
+fn new_batch_id() -> String {
+    // This is a deduplication identifier, not a credential or authorization token.
+    format!("{:032x}{:032x}", fastrand::u128(..), fastrand::u128(..))
+}
+
+#[cfg(test)]
+#[path = "events_bounds_tests.rs"]
+mod bounds_tests;

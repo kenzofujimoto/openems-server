@@ -208,7 +208,13 @@ pub fn decide(bytes: &[u8], blocked: &BlockedDomains, redirect: bool) -> Decisio
         blocked.block_log().record(&name, &crate::events::EventReason::Doh);
         return encode(reply(&request, ResponseCode::NXDomain));
     }
-    let Some(reason) = blocked.reason(&name) else {
+    let decision = blocked.decision(&name);
+    if decision.action == crate::policy::WebAction::Monitor && decision.log {
+        let reason = decision.reason.clone().map(Into::into).unwrap_or(crate::events::EventReason::Policy);
+        blocked.block_log().monitor(&name, &reason);
+    }
+    let reason = if decision.action == crate::policy::WebAction::Block { decision.reason } else { None };
+    let Some(reason) = reason else {
         // Allowed engines keep SafeSearch: "allowed" means not blocked, not unfiltered.
         return match blocked.safe_search_target(&name) {
             Some(target) if matches!(question.query_type(), RecordType::A | RecordType::AAAA) => {
