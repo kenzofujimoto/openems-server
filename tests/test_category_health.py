@@ -8,6 +8,7 @@ import pytest
 from app.categories import CategoryRepository, build_categories
 from tests.test_update_categories import archive
 from tools.update_categories import extract_lists
+from tools.update_categories import update as update_archive
 
 NOW = datetime(2026, 10, 27, 12, tzinfo=UTC)
 
@@ -87,3 +88,24 @@ def test_official_hyphenated_ut1_list_names_are_extracted(tmp_path):
     extracted = extract_lists(bundle, tmp_path / "work")
     assert (extracted / "audio-video/domains").read_text() == "video.example\n"
     assert (extracted / "residential-proxies/domains").read_text() == "proxy.example\n"
+
+
+@pytest.mark.parametrize("field,value", [("label", None), ("group", None), ("label", ""), ("group", [])])
+def test_invalid_display_metadata_does_not_break_the_panel(tmp_path, field, value):
+    repository = publication(tmp_path)
+    manifest_path = tmp_path / "published/manifest.json"
+    manifest = repository.manifest()
+    manifest["categories"][0][field] = value
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert repository.health(now=NOW)["status"] == "invalid"
+
+
+def test_archive_without_supported_lists_preserves_last_publication(tmp_path):
+    repository = publication(tmp_path)
+    before = repository.manifest()
+    before_files = {path.name: path.read_bytes() for path in (tmp_path / "published").glob("*.bin")}
+    bundle = archive(tmp_path, {"blacklists/unknown/domains": b"unknown.example\n"})
+    with pytest.raises(ValueError, match="supported category"):
+        update_archive(bundle, tmp_path / "published", tmp_path / "refresh")
+    assert repository.manifest() == before
+    assert {path.name: path.read_bytes() for path in (tmp_path / "published").glob("*.bin")} == before_files
