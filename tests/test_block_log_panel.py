@@ -70,9 +70,10 @@ def test_overview_sums_seven_days_and_compares_with_the_week_before():
     overview = client.get("/api/v1/stats/overview", headers=auth).json()
     days = overview["blocks_by_day"]
     assert len(days) == 7 and days[-1]["date"] == today.date().isoformat()
-    assert days[-1] == {"date": today.date().isoformat(), "web": 14, "apps": 0, "usb": 0}
+    assert days[-1] == {"date": today.date().isoformat(), "web": 10, "apps": 0, "usb": 0}
     assert days[-2]["web"] == 5 and days[0]["web"] == 7
-    # Dropped rows count as blocks but have no domain to rank.
+    # Lost observations cannot be inferred to be either blocks or monitored requests.
+    assert overview["dropped_by_day"][-1] == {"date": today.date().isoformat(), "web": 4}
     assert overview["top_domains"] == [{"domain": "tiktok.com", "count": 15}, {"domain": "facebook.com", "count": 7}]
     # The server keeps no history of machine status: only blocks can be compared.
     assert overview["previous_period"] == {"blocks": 9}
@@ -103,7 +104,9 @@ def test_categories_route_lists_published_categories_with_attribution(tmp_path):
     assert "CC BY-SA 4.0" in published["attribution"]
     assert published["categories"] == [{"id": "games", "label": "Jogos", "group": "Consumo de banda e lazer", "count": 2}]
     empty, empty_auth = panel()
-    assert empty.get("/api/v1/categories", headers=empty_auth).json() == {"version": None, "attribution": "", "categories": []}
+    empty_manifest = empty.get("/api/v1/categories", headers=empty_auth).json()
+    assert empty_manifest["version"] is None and empty_manifest["attribution"] == "" and empty_manifest["categories"] == []
+    assert empty_manifest["health"]["status"] == "missing"
 
 
 @pytest.mark.parametrize(("web_filter", "tags"), [

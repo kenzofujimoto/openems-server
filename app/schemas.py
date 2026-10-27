@@ -125,14 +125,17 @@ class TagsPayload(ClientPayload):
 class EventRowPayload(InputModel):
     hour: str = Field(min_length=1, max_length=40)
     domain: str = Field(min_length=1, max_length=255)
-    reason: Literal["rule", "category", "doh"]
+    reason: Literal["rule", "category", "doh", "policy"]
     category: str | None = Field(default=None, max_length=32)
     count: int = Field(ge=1, le=100_000)
+    action: Literal["blocked", "monitored"] = "blocked"
+    source: Literal["dns"] = "dns"
 
 
 class EventsPayload(ClientPayload):
     events: list[EventRowPayload] = Field(default_factory=list, max_length=5000)
     dropped: int = Field(default=0, ge=0, le=10_000_000)
+    batch_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class TamperRowPayload(InputModel):

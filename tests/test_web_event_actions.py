@@ -83,7 +83,7 @@ def test_batch_id_is_bounded_and_device_auth_remains_required():
 def test_memory_store_keeps_actions_separate_and_purges_monitoring():
     store = InMemoryEventStore()
     now = current_hour()
-    common = dict(devid="pc", hour=now, domain="same.example", reason="category", category="games")
+    common = {"devid": "pc", "hour": now, "domain": "same.example", "reason": "category", "category": "games"}
     store.add([BlockEvent(**common, count=2), BlockEvent(**common, count=9, action="monitored")])
     assert len(store.recent(10)) == 2
     assert store.daily_totals(now) == {now.date(): 2}
@@ -123,8 +123,9 @@ def test_allow_category_exclusions_require_category_data_during_global_monitorin
 
 
 def test_tamper_write_cannot_join_another_threads_web_batch_transaction():
-    from contextlib import contextmanager
     import threading
+    from contextlib import contextmanager
+
     from app.events import PostgresEventStore, TamperEvent
 
     accessed = threading.Event()
@@ -181,8 +182,9 @@ def test_old_agents_cannot_fetch_or_successfully_acknowledge_new_policy_actions(
     assert client.post("/fct/api/public/v1/config/ack/", headers=auth, json=acknowledgement).status_code == 200
 
 
-def test_postgres_actions_batches_and_upgrade(database):
+def test_postgres_actions_batches_and_upgrade(database):  # noqa: F811 - imported pytest fixture
     import psycopg
+
     from app.events import PostgresEventStore
     from app.migrations import apply_migrations
 
@@ -196,7 +198,7 @@ def test_postgres_actions_batches_and_upgrade(database):
     store = PostgresEventStore(database)
     try:
         now = current_hour()
-        common = dict(devid="pc", hour=now, domain="same.example", reason="category", category="games")
+        common = {"devid": "pc", "hour": now, "domain": "same.example", "reason": "category", "category": "games"}
         store.add([BlockEvent(**common, count=2), BlockEvent(**common, count=9, action="monitored")])
         assert store.daily_totals(now) == {now.date(): 5}
         assert store.daily_totals(now, action="monitored") == {now.date(): 9}

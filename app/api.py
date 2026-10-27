@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
+import json
 import os
 import re
 from contextlib import asynccontextmanager
@@ -20,8 +21,8 @@ from agent.uninstall import master_key_from_text
 
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService, LoginRateLimited
-from .capabilities import missing_tags
-from .categories import CategoryRepository
+from .capabilities import missing_tags, required_tags
+from .categories import CategoryRepository, missing_category_health
 from .events import (
     DEFAULT_RETENTION_DAYS,
     BlockEvent,
@@ -146,14 +147,15 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         record(request, 'events.read', request.url.path)
 
     def event_view(event: BlockEvent) -> dict[str, Any]:
-        identity = f'{event.devid}|{event.hour.isoformat()}|{event.domain}|{event.reason}|{event.category}'
+        identity = f'{event.devid}|{event.hour.isoformat()}|{event.domain}|{event.reason}|{event.category}|{event.action}|{event.source}'
         category = event.category or None
         return {
             'id': hashlib.sha256(identity.encode('utf-8')).hexdigest()[:16], 'at': event.hour.isoformat(),
-            'devid': event.devid, 'kind': 'web_block',
+            'devid': event.devid, 'kind': 'web_monitor' if event.action == 'monitored' else 'web_block',
             'detail': event.domain if event.reason != 'dropped' else 'eventos não registrados pelo limite do agente',
             'reason': event.reason, 'category': category,
             'category_label': CATEGORIES[category]['label'] if category in CATEGORIES else None, 'count': event.count,
+            'action': event.action, 'source': event.source,
         }
 
     def tamper_view(event: TamperEvent) -> dict[str, Any]:
@@ -338,10 +340,23 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         if payload.dropped:
             dropped_row = BlockEvent(devid=devid, hour=current_hour(now), domain='', reason='dropped',
                                           category='', count=payload.dropped)
-            events.add([*accepted, dropped_row])
+            stored = [*accepted, dropped_row]
         else:
-            events.add(accepted)
-        return {'accepted': len(accepted), 'rejected': len(payload.events) - len(accepted)}
+            stored = accepted
+        result = {'accepted': len(accepted), 'rejected': len(payload.events) - len(accepted)}
+        if payload.batch_id is not None:
+            fingerprint = hashlib.sha256(json.dumps(
+                {'events': [row.model_dump() for row in payload.events], 'dropped': payload.dropped},
+                sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')).hexdigest()
+            try:
+                result['duplicate'] = not events.add_batch(devid, payload.batch_id, stored, fingerprint)
+            except ValueError as error:
+                raise HTTPException(status_code=409, detail=str(error)) from error
+            except OverflowError as error:
+                raise HTTPException(status_code=429, detail=str(error)) from error
+        else:
+            events.add(stored)
+        return result
 
     @app.post('/fct/api/public/v1/tamper/')
     def report_tamper(payload: TamperPayload):
@@ -575,9 +590,21 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             result = profile_response(profile)
         result['client_ip'] = request.client.host if request.client else ''
         result['locations'] = svc.assigned_locations(endpoint)
+        bodies = [profile.body] if profile is not None else []
+        bodies.extend(location['assignment']['body'] for location in result['locations'])
+        for body in bodies:
+            require_action_capabilities(body, endpoint)
         if (release := uninstall.release_for(endpoint)) is not None:
             result['uninstall_release'] = release
         return result
+
+    def require_action_capabilities(body: Any, endpoint: Endpoint) -> None:
+        if 'web-filter:actions' in required_tags(body):
+            missing = missing_tags(body, endpoint.host_tags)
+            if missing:
+                raise HTTPException(status_code=409, detail={
+                    'message': 'agent does not support the required web policy actions', 'missing_capabilities': missing,
+                })
 
     @app.post('/fct/api/public/v1/messages/pull/')
     def pull_messages(payload: ClientPayload):
@@ -587,6 +614,16 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     def ack_config(payload: AckPayload):
         if not lab_mode and (payload.vdom is None or payload.digest is None):
             raise HTTPException(status_code=422, detail='policy group and digest are required')
+        if payload.success:
+            endpoint = svc.get_endpoint_by_client_id(payload.client_id)
+            profile = svc.effective_profile(payload.client_id)
+            body = profile.body if profile is not None else {}
+            if payload.location:
+                assignment = next((item['assignment'] for item in svc.assigned_locations(endpoint)
+                                   if item['id'] == payload.location), None)
+                if assignment is not None:
+                    body = assignment['body']
+            require_action_capabilities(body, endpoint)
         try:
             endpoint = svc.ack_config(payload.client_id, payload.version, vdom=payload.vdom,
                                       digest=payload.digest, success=payload.success, error=payload.error,
@@ -620,14 +657,16 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         return {'removed': rule_id}
 
     @app.get('/api/v1/events')
-    def list_events(request: Request, limit: int = Query(default=50, ge=1, le=500)):
+    def list_events(request: Request, limit: int = Query(default=50, ge=1, le=500),
+                    action: str | None = Query(default=None, pattern='^(blocked|monitored)$')):
         record_view(request)
         purge_personal_data()
-        rows = [(event.hour, event_view(event)) for event in events.recent(limit)]
-        rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(limit)]
-        rows += [(datetime.fromisoformat(event['at']), {
-            **event, 'detail': event['target'], 'reason': event['rule_id'], 'category': None, 'category_label': None,
-        }) for event in inventory.recent_events(limit)]
+        rows = [(event.hour, event_view(event)) for event in events.recent(limit, action=action)]
+        if action is None:
+            rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(limit)]
+            rows += [(datetime.fromisoformat(event['at']), {
+                **event, 'detail': event['target'], 'reason': event['rule_id'], 'category': None, 'category_label': None,
+            }) for event in inventory.recent_events(limit)]
         rows.sort(key=lambda row: row[0], reverse=True)
         return [view for _, view in rows[:limit]]
 
@@ -638,6 +677,8 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         today = current_hour().replace(hour=0)
         start, previous_start = today - timedelta(days=6), today - timedelta(days=13)
         totals = events.daily_totals(previous_start)
+        monitored = events.daily_totals(start, action='monitored')
+        dropped = events.daily_totals(start, action='dropped')
         control_totals = inventory.daily_totals(previous_start)
         days = [(start + timedelta(days=offset)).date() for offset in range(7)]
         previous = sum(total for day, total in totals.items() if day < start.date())
@@ -648,6 +689,8 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'blocks_by_day': [{'date': day.isoformat(), 'web': totals.get(day, 0),
                               **control_totals.get(day.isoformat(), {'apps': 0, 'usb': 0})} for day in days],
             'top_domains': [{'domain': domain, 'count': count} for domain, count in events.top_domains(start, 5)],
+            'monitoring_by_day': [{'date': day.isoformat(), 'web': monitored.get(day, 0)} for day in days],
+            'dropped_by_day': [{'date': day.isoformat(), 'web': dropped.get(day, 0)} for day in days],
             # No history of machine status is kept, so only blocks can be compared.
             'previous_period': {'blocks': previous},
             'retention_days': retention_days,
@@ -655,8 +698,12 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
 
     @app.get('/api/v1/categories')
     def list_categories():
-        manifest = categories.manifest() if categories else {'version': None, 'attribution': '', 'categories': []}
-        return {'version': manifest['version'], 'attribution': manifest['attribution'],
+        health = categories.health() if categories else missing_category_health()
+        manifest = categories.manifest() if categories and health['status'] != 'invalid' else {
+            'version': None, 'attribution': '', 'categories': [],
+        }
+        return {'version': manifest.get('version'), 'attribution': manifest.get('attribution', ''),
+                'health': health,
                 'categories': [{key: entry[key] for key in ('id', 'label', 'group', 'count')}
                                for entry in manifest['categories']]}
 
