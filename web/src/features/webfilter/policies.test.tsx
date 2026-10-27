@@ -24,7 +24,8 @@ describe("policy editors", () => {
     backend();
     server.use(http.get("*/api/v1/categories", () => HttpResponse.json({ version: "2026-10-20T00:00:00Z", attribution: "UT1", categories: [], health: { status: "stale" } })));
     renderApp("/policies/web");
-    expect(await screen.findByText(/listas de categorias estão desatualizadas/i)).toBeInTheDocument();
+    await screen.findByLabelText("Domínios bloqueados");
+    expect(await screen.findByRole("note")).toHaveTextContent(/listas de categorias estão desatualizadas/i);
   });
 
   it("publishes web rules and categories while preserving apps and USB with a digest precondition", async () => {

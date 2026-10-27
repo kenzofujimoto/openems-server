@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { AppWindow, Globe, ShieldAlert, TriangleAlert, Usb } from "lucide-react";
+import { AppWindow, Eye, Globe, ShieldAlert, TriangleAlert, Usb } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
@@ -66,6 +66,7 @@ export function BlocksChart({ overview }: { overview: Overview }) {
 
 const EVENT_STYLE: Record<EventKind, { icon: LucideIcon; label: string; tone: string }> = {
   web_block: { icon: Globe, label: "Site bloqueado", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
+  web_monitor: { icon: Eye, label: "Domínio monitorado", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
   app_block: { icon: AppWindow, label: "Aplicativo bloqueado", tone: "bg-[#e9eef2] text-rsm-navy" },
   app_network_block: { icon: AppWindow, label: "Conexão do aplicativo bloqueada", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
   app_control_applied: { icon: AppWindow, label: "Política de aplicativos aplicada", tone: "bg-rsm-green-soft text-rsm-green" },

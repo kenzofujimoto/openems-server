@@ -51,7 +51,7 @@ export const overviewSchema = z.object({
 });
 export type Overview = z.infer<typeof overviewSchema>;
 
-export const eventKindSchema = z.enum(["web_block", "app_block", "app_network_block", "app_control_applied", "app_network_policy", "usb_block", "usb_read_only", "tamper", "policy_error"]);
+export const eventKindSchema = z.enum(["web_block", "web_monitor", "app_block", "app_network_block", "app_control_applied", "app_network_policy", "usb_block", "usb_read_only", "tamper", "policy_error"]);
 export type EventKind = z.infer<typeof eventKindSchema>;
 
 export const eventSchema = z.object({
@@ -64,6 +64,8 @@ export const eventSchema = z.object({
   category: z.string().nullable().optional(),
   category_label: z.string().nullable().optional(),
   count: z.number().int().optional(),
+  action: z.enum(["blocked", "monitored"]).optional(),
+  source: z.literal("dns").optional(),
 });
 export type FleetEvent = z.infer<typeof eventSchema>;
 
@@ -74,6 +76,7 @@ export const categoriesSchema = z.object({
   version: z.string().nullable(),
   attribution: z.string(),
   categories: z.array(categorySchema),
+  health: z.object({ status: z.enum(["missing", "empty", "stale", "current", "invalid"]) }).optional(),
 });
 
 export const uninstallCodeSchema = z.object({ devid: z.string(), counter: z.number().int(), code: z.string() });
