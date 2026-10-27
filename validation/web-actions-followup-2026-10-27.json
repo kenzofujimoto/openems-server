@@ -1,0 +1,1268 @@
+{
+  "date": "2026-10-27",
+  "scope": "Follow-up of the web actions guest acceptance: rows left pending, YouTube instead of Netflix, panel review and server fixes",
+  "packages": {
+    "openems-agent.msi": "20e9d24e1a9b59fb96eec25fbd66e3c67bea82a33b27efbe1183db0f098a17c4",
+    "installed_agent_sha256": "5290604d7f008cb279c01ccca0d1664edfb4415ffc0d0200987bf6465ea8bf04",
+    "rebuilt": false
+  },
+  "server_during_rounds": {
+    "image": "sha256:a48ef467c87e1f0a6d018391407182e4753b95b2aaf04fd86f91ed012d457369",
+    "revision": "main + 43e5e23 (migrations shipped in the image); inventory lock and events limit fixes were committed after these rounds",
+    "migration_cli_in_image": "python -m app.migrations -> applied: none"
+  },
+  "fault_injection": {
+    "offline": "guest relay drops every agent connection while a guest-local flag exists",
+    "lost_response": "guest relay forwards one event upload, then closes the connection before replying",
+    "invalid_digest": "guest relay flips the last byte of the sports category file",
+    "expired_token": "device credential rotated through the admin API",
+    "lost_identity": "endpoint row deleted in the homologation database before an operator re-enrollment with a new one-time invitation"
+  },
+  "matrix": [
+    {
+      "row": "Reinício offline com cache completo",
+      "status": "passed",
+      "evidence": "round 4: server unreachable, service restarted (new PID), state kept the acknowledged digest, www.example.net 0.0.0.0, www.ietf.org forwarded"
+    },
+    {
+      "row": "Reinício offline com cache incompleto",
+      "status": "passed",
+      "evidence": "round 4: policy B (sports + monitor_all) failed with a corrupted sports file, ACK not successful; offline restart kept digest A, sports not blocked, www.example.net blocked, no monitored event for www.rfc-editor.org after reconnecting; B acknowledged once the file was valid"
+    },
+    {
+      "row": "Retry do mesmo lote após perda da resposta",
+      "status": "passed",
+      "evidence": "round 4: same batch_id sent twice (first response dropped after the server stored it), one receipt, count 1"
+    },
+    {
+      "row": "Fila saturada",
+      "status": "passed",
+      "evidence": "round 4: 5600 unique blocked names while offline; 5000 rows stored (agent capacity), 600 reported as dropped; blocks +5000, monitoring +0, dropped +600"
+    },
+    {
+      "row": "Token expirado e novo enrollment",
+      "status": "passed",
+      "evidence": "round 4: after rotation the agent got 401 and a refused re-registration (400), kept blocking from cache; after the lost identity and a new invitation, requests went register -> host_tags -> config/assigned (200) -> ACK, no 409"
+    },
+    {
+      "row": "YouTube: só site/player liberado, vídeo bloqueado (substitui Netflix login)",
+      "status": "passed",
+      "evidence": "rounds 6-7: Chrome and Firefox loaded the watch page (HTTP 200, secure), video stayed at 0 s, blocked/streaming events for googlevideo.com hosts; youtube.com/ytimg.com without events"
+    },
+    {
+      "row": "YouTube: site e vídeo liberados, reprodução (substitui Netflix reprodução)",
+      "status": "passed_chrome_pending_firefox",
+      "evidence": "round 6: Chrome advanced 2.2 s, no events. Firefox: round 6 advanced 1.28 s (below the 2 s threshold) with an evicted status capture; round 7 the 19 s video ended and the page moved to the next video, resetting the counter",
+      "pending": "Firefox playback by the automatic criterion; repeat manually on the second machine"
+    },
+    {
+      "row": "Painel: seletor por teclado e ícones",
+      "status": "passed",
+      "evidence": "radiogroup per category, arrows change the action with a visible focus outline, Tab moves to the next group, three icons with text labels; nothing published"
+    },
+    {
+      "row": "Painel: modo escuro",
+      "status": "passed",
+      "evidence": "toggle switches theme and persists after reload; restored to light"
+    },
+    {
+      "row": "Painel: aviso de listas desatualizadas",
+      "status": "pending",
+      "evidence": "publication was current during the review; the stale state was not reproduced"
+    },
+    {
+      "row": "Painel: registros separados de bloqueio/monitoramento",
+      "status": "passed_after_fix",
+      "evidence": "Events page requested limit=1000 and the API allowed 500: HTTP 422 and an empty table; API now accepts 1000 (test added). Overview/events also returned 500 on first load (concurrent purges on the shared inventory connection); store now locks (test added)",
+      "recheck": "image sha256:ccb4dd690e55d072004be523b72e813e4f0e20d327e6f6dd17ac6a240e7d3b02: first load without 500; events limit=1000 -> 200 with 1000 rows; blocked and monitored remain separate kinds (web_block/web_monitor) and API filters"
+    }
+  ],
+  "findings": [
+    {
+      "finding": "Production image did not ship migrations/",
+      "status": "fixed",
+      "commits": [
+        "2be8e78",
+        "43e5e23"
+      ]
+    },
+    {
+      "finding": "Concurrent purges nested transactions on PostgresInventoryStore's shared connection (HTTP 500 on first panel load)",
+      "status": "fixed",
+      "commits": [
+        "eb3fbca",
+        "7a572a7"
+      ]
+    },
+    {
+      "finding": "Events page limit 1000 vs API maximum 500 (HTTP 422, empty table)",
+      "status": "fixed",
+      "commits": [
+        "ad80f2e",
+        "2dda1d5"
+      ]
+    },
+    {
+      "finding": "The consumed enrollment invitation stays in C:\\ProgramData\\openems\\agent.json after MSI installation",
+      "status": "open",
+      "risk": "low for single-use invitations; new-env.ps1 defaults to 10 uses, where a readable agent.json could enroll other devices",
+      "fix": "agent change and new MSI, not done because this round must keep the accepted bytes"
+    }
+  ],
+  "harness_failures": [
+    "round 4 YouTube: browser check compared the setup-time agent PID after service restarts and aborted before navigating; DNS probe name with underscore rejected",
+    "round 5 YouTube: a top-level /embed/ URL fails with player error 153 in both browsers",
+    "round 6 Firefox: 128-event BiDi buffer evicted the main document status; progress 1.28 s below threshold",
+    "round 7 Firefox: 19 s video finished inside the 40 s window and the page autoplayed the next video"
+  ],
+  "server_after_fixes": {
+    "image": "sha256:ccb4dd690e55d072004be523b72e813e4f0e20d327e6f6dd17ac6a240e7d3b02",
+    "revision": "2dda1d5",
+    "ports": "loopback only"
+  },
+  "rounds": [
+    {
+      "label": "4-pending-rows",
+      "sandbox_id": "1fcd6963-2034-4420-a559-36678a7be8ac",
+      "devid": "sandbox-web-actions-d",
+      "started_at": "2026-10-27T15:38:04.644368+00:00",
+      "finished_at": "2026-10-27T15:57:10.162038+00:00",
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "initial_ack": true,
+      "rows": {
+        "offline_restart_complete_cache": {
+          "restart": {
+            "pid": 6732,
+            "at": "2026-10-27T15:41:41.1405465Z",
+            "previous_pid": 7864
+          },
+          "agent_profile_after_restart": {
+            "vdom": "WebActionsSandbox",
+            "version": 22,
+            "digest": "8ea90698b21244732c4c9780fa015677c937dcfaa0d8ff0bb92e9108783348b6"
+          },
+          "dns": {
+            "www.example.net": {
+              "outcome": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "at": "2026-10-27T15:41:42.0249226Z"
+            },
+            "www.ietf.org": {
+              "outcome": "forwarded",
+              "answers": [
+                "104.16.45.99",
+                "104.16.44.99"
+              ],
+              "at": "2026-10-27T15:41:42.1193669Z"
+            }
+          },
+          "passed": true
+        },
+        "offline_restart_incomplete_cache": {
+          "policy_b": {
+            "version": 23,
+            "digest": "05bbbae0e205a86bb842d098e9882b74fd7d8af7dba0bbc07e093fc58fa81961"
+          },
+          "ack_before_restart": {
+            "applied_digest": "8ea90698b21244732c4c9780fa015677c937dcfaa0d8ff0bb92e9108783348b6",
+            "last_error": "enforcement failed: PolicyError"
+          },
+          "restart": {
+            "pid": 2216,
+            "at": "2026-10-27T15:42:44.8805286Z",
+            "previous_pid": 6732
+          },
+          "agent_profile_after_restart": {
+            "vdom": "WebActionsSandbox",
+            "version": 22,
+            "digest": "8ea90698b21244732c4c9780fa015677c937dcfaa0d8ff0bb92e9108783348b6"
+          },
+          "dns": {
+            "www.rfc-editor.org": {
+              "outcome": "forwarded",
+              "answers": [
+                "104.18.21.81",
+                "104.18.20.81"
+              ],
+              "at": "2026-10-27T15:42:45.7686016Z"
+            },
+            "sports.homolog.example": {
+              "outcome": "error",
+              "answers": [],
+              "at": "2026-10-27T15:42:45.9287075Z"
+            },
+            "www.example.net": {
+              "outcome": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "at": "2026-10-27T15:42:46.0051633Z"
+            }
+          },
+          "events_after_reconnect": [
+            {
+              "domain": "www.example.net",
+              "reason": "category",
+              "category": "games",
+              "action": "blocked",
+              "source": "dns",
+              "hour": "2026-10-27 15:00:00+00",
+              "added": 1
+            }
+          ],
+          "previous_policy_event_arrived": true,
+          "wait_seconds": 47.5,
+          "recovered_after_valid_file": true,
+          "passed": true
+        },
+        "retry_same_batch": {
+          "domain": "r4retry.sports.homolog.example",
+          "dns": {
+            "outcome": "blocked",
+            "answers": [
+              "0.0.0.0"
+            ],
+            "at": "2026-10-27T15:45:08.9651930Z"
+          },
+          "batch_id": "05e8bb1ad19225383238fceffb5c54e9d3a7c03438bbb77263dbc6f87ed2ad1c",
+          "attempts": [
+            {
+              "at": "2026-10-27T15:45:18.329Z",
+              "status": 200,
+              "response_dropped": true
+            },
+            {
+              "at": "2026-10-27T15:45:33.518Z",
+              "status": 200,
+              "response_dropped": null
+            }
+          ],
+          "server_rows_added": [
+            {
+              "domain": "r4retry.sports.homolog.example",
+              "reason": "category",
+              "category": "sports",
+              "action": "blocked",
+              "source": "dns",
+              "hour": "2026-10-27 15:00:00+00",
+              "added": 1
+            }
+          ],
+          "receipts_for_batch": 1,
+          "passed": true
+        },
+        "saturated_queue": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "games": "block",
+                "sports": "block"
+              },
+              "monitor_all": false
+            },
+            "version": 24,
+            "digest": "c9c31cbca52423e8010502dd2052a79af941ba371e36f114d44c56d26d1dfb25",
+            "published_at": "2026-10-27T15:44:03.187780+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T15:44:33.703559+00:00",
+            "last_error": null
+          },
+          "flood": {
+            "queries": 5600,
+            "blocked": 5600,
+            "other": 0,
+            "finished_at": "2026-10-27T15:45:44.1091763Z",
+            "tag": "s5",
+            "seconds": 6
+          },
+          "overview_before": {
+            "blocks": 36,
+            "monitoring": 20,
+            "dropped": 0
+          },
+          "overview_after": {
+            "blocks": 5036,
+            "monitoring": 20,
+            "dropped": 600
+          },
+          "flood_rows_stored": 5000,
+          "flood_observations_stored": 5000,
+          "dropped_reported": 600,
+          "blocks_delta": 5000,
+          "monitoring_delta": 0,
+          "dropped_delta": 600,
+          "agent_capacity_rows": 5000,
+          "passed": true
+        },
+        "expired_token_reenrollment": {
+          "rotate_status": 200,
+          "after_rotation": {
+            "dns": {
+              "www.example.net": {
+                "outcome": "blocked",
+                "answers": [
+                  "0.0.0.0"
+                ],
+                "at": "2026-10-27T15:47:28.3297696Z"
+              }
+            },
+            "relay_statuses": [
+              [
+                "/fct/api/public/v1/messages/pull/",
+                401
+              ],
+              [
+                "/fct/api/public/v1/register/",
+                400
+              ]
+            ]
+          },
+          "invitation_status": 200,
+          "restart": {
+            "pid": 5600,
+            "at": "2026-10-27T15:47:45.4112660Z",
+            "previous_pid": 2216
+          },
+          "ack": true,
+          "first_requests_after_restart": [
+            [
+              "register/",
+              200
+            ],
+            [
+              "messages/pull/",
+              200
+            ],
+            [
+              "refresh/",
+              200
+            ],
+            [
+              "host_tags/",
+              200
+            ],
+            [
+              "config/assigned/",
+              200
+            ],
+            [
+              "categories/",
+              200
+            ],
+            [
+              "inventory/",
+              200
+            ],
+            [
+              "uninstall_secret/",
+              503
+            ],
+            [
+              "config/ack/",
+              200
+            ],
+            [
+              "host_tags/",
+              200
+            ],
+            [
+              "messages/pull/",
+              200
+            ],
+            [
+              "refresh/",
+              200
+            ]
+          ],
+          "config_has_invitation_after_enrollment": true,
+          "dns_after": {
+            "www.example.net": {
+              "outcome": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "at": "2026-10-27T15:48:10.1488073Z"
+            }
+          },
+          "conflicts_409": [],
+          "passed": true
+        },
+        "youtube_site_only": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com"
+              ]
+            },
+            "version": 25,
+            "digest": "53793a343a0a0b0727bfcc162ef11a624fdefd285b96271487d0b7ac70230715",
+            "published_at": "2026-10-27T15:48:10.416264+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T15:48:31.913734+00:00",
+            "last_error": null
+          },
+          "dns": {},
+          "browsers": [
+            {
+              "browser": "chrome",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": "Error: Live agent image mismatch",
+              "case": {
+                "case": null,
+                "passed": null,
+                "failures": null,
+                "status": null,
+                "has_video": null,
+                "video_time": null,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": null
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": false,
+              "passed": false
+            },
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": "Error: Live agent image mismatch",
+              "case": {
+                "case": null,
+                "passed": null,
+                "failures": null,
+                "status": null,
+                "has_video": null,
+                "video_time": null,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": null
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": false,
+              "passed": false
+            }
+          ],
+          "passed": false
+        },
+        "youtube_site_and_video": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com",
+                "googlevideo.com",
+                "*.googlevideo.com"
+              ]
+            },
+            "version": 26,
+            "digest": "efd1e7289eb03764e76c04faa6cd61f443bd55027df4a9a082ecd829d7fd89cb",
+            "published_at": "2026-10-27T15:52:21.511420+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T15:53:01.747585+00:00",
+            "last_error": null
+          },
+          "dns": {},
+          "browsers": [
+            {
+              "browser": "chrome",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": "Error: Live agent image mismatch",
+              "case": {
+                "case": null,
+                "passed": null,
+                "failures": null,
+                "status": null,
+                "has_video": null,
+                "video_time": null,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": null
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": false
+            },
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": "Error: Live agent image mismatch",
+              "case": {
+                "case": null,
+                "passed": null,
+                "failures": null,
+                "status": null,
+                "has_video": null,
+                "video_time": null,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": null
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": false
+            }
+          ],
+          "passed": false
+        }
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": [
+        5,
+        "2026-10-27 15:48:15.658711+00"
+      ],
+      "errors": []
+    },
+    {
+      "label": "5-youtube-embed",
+      "sandbox_id": "9ad417b1-b9bb-4b80-93e6-33cc9dd3f376",
+      "devid": "sandbox-web-actions-e",
+      "started_at": "2026-10-27T15:58:04.480887+00:00",
+      "finished_at": "2026-10-27T16:08:39.256502+00:00",
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "initial_ack": true,
+      "rows": {
+        "youtube_site_only": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com"
+              ]
+            },
+            "version": 28,
+            "digest": "53793a343a0a0b0727bfcc162ef11a624fdefd285b96271487d0b7ac70230715",
+            "published_at": "2026-10-27T16:00:55.209331+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T16:01:14.109335+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.156.4",
+                "142.251.157.4",
+                "142.251.150.4",
+                "142.251.151.4",
+                "142.251.154.4",
+                "142.251.152.4",
+                "142.251.155.4",
+                "142.251.153.4"
+              ],
+              "at": "2026-10-27T16:01:18.6932867Z"
+            },
+            "i.ytimg.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.147.6",
+                "192.178.41.6",
+                "142.251.148.6",
+                "142.251.145.6",
+                "192.178.40.6",
+                "142.251.149.6",
+                "142.251.146.6",
+                "142.251.144.6"
+              ],
+              "at": "2026-10-27T16:01:18.8675669Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "at": "2026-10-27T16:01:18.8990866Z"
+            },
+            "accounts.google.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.0.84"
+              ],
+              "at": "2026-10-27T16:01:18.9147445Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "chrome",
+              "exec_exit": 0,
+              "report_passed": true,
+              "error": null,
+              "case": {
+                "case": "video_stalled",
+                "passed": true,
+                "failures": [],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [
+                {
+                  "domain": "redirector.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                }
+              ],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": true
+            },
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": true,
+              "error": null,
+              "case": {
+                "case": "video_stalled",
+                "passed": true,
+                "failures": [],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": false,
+              "passed": false
+            }
+          ],
+          "passed": false
+        },
+        "youtube_site_and_video": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com",
+                "googlevideo.com",
+                "*.googlevideo.com"
+              ]
+            },
+            "version": 29,
+            "digest": "efd1e7289eb03764e76c04faa6cd61f443bd55027df4a9a082ecd829d7fd89cb",
+            "published_at": "2026-10-27T16:04:43.837928+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T16:05:00.454658+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.155.4",
+                "142.251.152.4",
+                "142.251.153.4",
+                "142.251.151.4",
+                "142.251.154.4",
+                "142.251.157.4",
+                "142.251.150.4",
+                "142.251.156.4"
+              ],
+              "at": "2026-10-27T16:05:05.0951222Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "64.233.190.138",
+                "64.233.190.100",
+                "64.233.190.101",
+                "64.233.190.102",
+                "64.233.190.139",
+                "64.233.190.113"
+              ],
+              "at": "2026-10-27T16:05:05.2221747Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "chrome",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": null,
+              "case": {
+                "case": "video_playing",
+                "passed": false,
+                "failures": [
+                  "Video did not play"
+                ],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": false
+            },
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": null,
+              "case": {
+                "case": "video_playing",
+                "passed": false,
+                "failures": [
+                  "Video did not play"
+                ],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": false
+            }
+          ],
+          "passed": false
+        }
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": null,
+      "errors": []
+    },
+    {
+      "label": "6-youtube-watch",
+      "sandbox_id": "27dffb64-8446-4b42-9994-06746a64ea10",
+      "devid": "sandbox-web-actions-f",
+      "started_at": "2026-10-27T16:10:17.151498+00:00",
+      "finished_at": "2026-10-27T16:20:57.466021+00:00",
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "initial_ack": true,
+      "rows": {
+        "youtube_site_only": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com"
+              ]
+            },
+            "version": 31,
+            "digest": "53793a343a0a0b0727bfcc162ef11a624fdefd285b96271487d0b7ac70230715",
+            "published_at": "2026-10-27T16:13:07.338656+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T16:13:26.155984+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.150.4",
+                "142.251.155.4",
+                "142.251.157.4",
+                "142.251.154.4",
+                "142.251.153.4",
+                "142.251.151.4",
+                "142.251.152.4",
+                "142.251.156.4"
+              ],
+              "at": "2026-10-27T16:13:30.4988118Z"
+            },
+            "i.ytimg.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "192.178.40.6",
+                "192.178.41.6",
+                "142.251.144.6",
+                "142.251.149.6",
+                "142.251.145.6",
+                "142.251.147.6",
+                "142.251.146.6",
+                "142.251.148.6"
+              ],
+              "at": "2026-10-27T16:13:30.6725469Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "at": "2026-10-27T16:13:30.7198764Z"
+            },
+            "accounts.google.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "64.233.186.84"
+              ],
+              "at": "2026-10-27T16:13:30.7198764Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "chrome",
+              "exec_exit": 0,
+              "report_passed": true,
+              "error": null,
+              "case": {
+                "case": "video_stalled",
+                "passed": true,
+                "failures": [],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [
+                {
+                  "domain": "redirector.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                },
+                {
+                  "domain": "rr2---sn-2obg05-co.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                },
+                {
+                  "domain": "rr3---sn-8p8v-bg0sz.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                },
+                {
+                  "domain": "rr5---sn-q4flrn7k.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                }
+              ],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": true
+            },
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": null,
+              "case": {
+                "case": "video_stalled",
+                "passed": false,
+                "failures": [
+                  "Player page is not HTTP 200"
+                ],
+                "status": null,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [
+                {
+                  "domain": "rr2---sn-2obg05-co.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                },
+                {
+                  "domain": "rr3---sn-8p8v-bg0sz.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 2
+                },
+                {
+                  "domain": "rr3---sn-q4flrnes.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                }
+              ],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": false
+            }
+          ],
+          "passed": false
+        },
+        "youtube_site_and_video": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com",
+                "googlevideo.com",
+                "*.googlevideo.com"
+              ]
+            },
+            "version": 32,
+            "digest": "efd1e7289eb03764e76c04faa6cd61f443bd55027df4a9a082ecd829d7fd89cb",
+            "published_at": "2026-10-27T16:16:50.968765+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T16:17:14.637403+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.150.4",
+                "142.251.155.4",
+                "142.251.157.4",
+                "142.251.154.4",
+                "142.251.153.4",
+                "142.251.151.4",
+                "142.251.152.4",
+                "142.251.156.4"
+              ],
+              "at": "2026-10-27T16:17:19.5730304Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "64.233.190.102",
+                "64.233.190.138",
+                "64.233.190.101",
+                "64.233.190.139",
+                "64.233.190.113",
+                "64.233.190.100"
+              ],
+              "at": "2026-10-27T16:17:19.6842582Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "chrome",
+              "exec_exit": 0,
+              "report_passed": true,
+              "error": null,
+              "case": {
+                "case": "video_playing",
+                "passed": true,
+                "failures": [],
+                "status": 200,
+                "has_video": true,
+                "video_time": 2.227943,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": true
+            },
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": null,
+              "case": {
+                "case": "video_playing",
+                "passed": false,
+                "failures": [
+                  "Player page is not HTTP 200",
+                  "Video did not play"
+                ],
+                "status": null,
+                "has_video": true,
+                "video_time": 1.284074,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": false
+            }
+          ],
+          "passed": false
+        }
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": null,
+      "errors": []
+    },
+    {
+      "label": "7-youtube-firefox",
+      "sandbox_id": "a2d10c84-65a7-4bad-adae-2c3e369323a5",
+      "devid": "sandbox-web-actions-g",
+      "started_at": "2026-10-27T16:21:45.987218+00:00",
+      "finished_at": "2026-10-27T16:30:22.509306+00:00",
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "initial_ack": true,
+      "rows": {
+        "youtube_site_only": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com"
+              ]
+            },
+            "version": 34,
+            "digest": "53793a343a0a0b0727bfcc162ef11a624fdefd285b96271487d0b7ac70230715",
+            "published_at": "2026-10-27T16:24:38.278315+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T16:25:08.913138+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.152.4",
+                "142.251.154.4",
+                "142.251.156.4",
+                "142.251.157.4",
+                "142.251.150.4",
+                "142.251.151.4",
+                "142.251.155.4",
+                "142.251.153.4"
+              ],
+              "at": "2026-10-27T16:25:13.4584124Z"
+            },
+            "i.ytimg.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "172.217.172.150",
+                "142.250.79.214",
+                "142.250.219.246",
+                "142.250.78.118",
+                "142.250.78.150",
+                "172.217.28.182",
+                "172.217.28.150",
+                "172.217.30.118",
+                "172.217.162.22",
+                "172.217.30.150",
+                "172.217.28.214",
+                "172.217.30.246",
+                "172.217.162.182",
+                "172.217.162.246",
+                "172.217.172.54",
+                "172.217.172.182"
+              ],
+              "at": "2026-10-27T16:25:13.6408156Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "at": "2026-10-27T16:25:13.6798825Z"
+            },
+            "accounts.google.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "108.177.123.84"
+              ],
+              "at": "2026-10-27T16:25:13.6955565Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": true,
+              "error": null,
+              "case": {
+                "case": "video_stalled",
+                "passed": true,
+                "failures": [],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [
+                {
+                  "domain": "redirector.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                },
+                {
+                  "domain": "rr2---sn-2obg05-co.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 2
+                },
+                {
+                  "domain": "rr3---sn-8p8v-bg0sz.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 2
+                }
+              ],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "youtube_site_and_video": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com",
+                "googlevideo.com",
+                "*.googlevideo.com"
+              ]
+            },
+            "version": 35,
+            "digest": "efd1e7289eb03764e76c04faa6cd61f443bd55027df4a9a082ecd829d7fd89cb",
+            "published_at": "2026-10-27T16:27:32.844852+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T16:27:56.407379+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.152.4",
+                "142.251.154.4",
+                "142.251.156.4",
+                "142.251.157.4",
+                "142.251.150.4",
+                "142.251.151.4",
+                "142.251.155.4",
+                "142.251.153.4"
+              ],
+              "at": "2026-10-27T16:28:01.2816910Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.0.138",
+                "142.251.0.101",
+                "142.251.0.100",
+                "142.251.0.139",
+                "142.251.0.113",
+                "142.251.0.102"
+              ],
+              "at": "2026-10-27T16:28:01.3925797Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": false,
+              "error": null,
+              "case": {
+                "case": "video_playing",
+                "passed": false,
+                "failures": [
+                  "Video did not play"
+                ],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": false
+            }
+          ],
+          "passed": false
+        }
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": null,
+      "errors": []
+    }
+  ]
+}
