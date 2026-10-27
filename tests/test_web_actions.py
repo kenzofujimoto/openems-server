@@ -114,3 +114,18 @@ def test_legacy_and_explicit_same_block_are_not_a_conflict_and_input_is_not_muta
     normalized = policy.validate_policy(value)
     assert normalized["web_filter"]["category_actions"] == {"games": "block"}
     assert value == before
+
+
+def test_equal_new_actions_use_sorted_ids_independent_of_json_key_order():
+    data = category_data(streaming=["watch.example"], games=["watch.example"])
+    for actions in ({"streaming": "monitor", "games": "monitor"},
+                    {"games": "monitor", "streaming": "monitor"}):
+        assert decide(categories=data, category_actions=actions)["category"] == "games"
+
+
+def test_equal_block_actions_preserve_legacy_category_order_even_in_windows():
+    data = category_data(streaming=["watch.example"], games=["watch.example"], adult=["watch.example"])
+    assert decide(categories=data, blocked_categories=["streaming", "games"])["category"] == "streaming"
+    assert decide(categories=data, category_actions={"adult": "block"}, timezone="UTC", scheduled=[
+        {"days": ["mon"], "from": "08:00", "to": "18:00", "blocked_categories": ["streaming", "games"]}
+    ])["category"] == "streaming"
