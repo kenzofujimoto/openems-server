@@ -65,7 +65,7 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements-dev.txt
       - run: python -m playwright install --with-deps chromium
       - uses: actions/setup-node@v4
         with:
@@ -109,7 +109,7 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements-dev.txt
       - name: Agent and mocked Windows service checks
         env:
           COVERAGE_FILE: .coverage.windows
@@ -135,7 +135,7 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements-dev.txt
       - name: Format and lint
         working-directory: agent-rs
         run: |
@@ -175,7 +175,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements-dev.txt
       - uses: actions/download-artifact@v4
         with:
           name: linux-coverage

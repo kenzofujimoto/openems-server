@@ -1,16 +1,14 @@
-# Runtime (HTTP server). The core service (app/service.py) needs none of these.
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-python-multipart==0.0.20   # SAML ACS form POST
+# Runtime of the HTTP server image only. The core service (app/service.py) needs none of these.
+# The image installs requirements.lock (all transitive pins with hashes), compiled from this file:
+#   docker run --rm -v "$PWD:/w" -w /w python:3.14-slim sh -c "pip install -q pip-tools && pip-compile --generate-hashes --allow-unsafe --strip-extras -o requirements.lock requirements.txt"
+# Test and lint tools live in requirements-dev.txt.
+fastapi==0.162.0
+uvicorn==0.54.0           # without [standard]: no reload watcher, websockets or dotenv in production
+httptools==0.9.0          # uvicorn HTTP parser
+uvloop==0.23.0; sys_platform != "win32"
+python-multipart==0.0.32   # SAML ACS form POST
 psycopg[binary]==3.3.6     # PostgresStore
 redis==7.2.1               # RedisQueue
 signxml==5.2.0             # SAML XML-DSig verification (pulls lxml + cryptography)
+defusedxml==0.7.1          # Hardened parsing of untrusted SAML XML
 tzdata==2026.5             # IANA zones for policy schedules (Windows has no system database)
-
-# Dev / test
-pytest==9.0.2
-httpx==0.28.1        # for FastAPI TestClient-based integration tests
-pytest-cov==7.1.0
-ruff==0.17.1
-playwright==1.64.0
-pywin32==312; sys_platform == "win32"

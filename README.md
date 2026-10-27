@@ -112,7 +112,7 @@ docker compose up --build
 Or just the server (in-memory backends, no infra):
 ```bash
 python -m venv .venv && . .venv/Scripts/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 uvicorn --factory app.api:build --port 8013
 ```
 Wire real backends via env: `OPENEMS_DATABASE_URL` (Postgres),
