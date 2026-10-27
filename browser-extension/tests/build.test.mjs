@@ -10,6 +10,10 @@ test('browser-specific MV3 packages do not request history, content injection or
   await buildTargets(root);
   for (const browser of ['chrome','firefox']) {
     const directory = path.join(root, browser);
+    const archive = await readFile(path.join(root, `openems-browser-${browser}.zip`));
+    assert.equal(archive.readUInt32LE(0), 0x04034b50);
+    assert.equal(archive.readUInt32LE(archive.length - 22), 0x06054b50);
+    assert.equal(archive.readUInt16LE(archive.length - 14), 6);
     const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
     assert.equal(manifest.manifest_version, 3);
     assert.deepEqual(manifest.permissions.toSorted(), ['nativeMessaging','storage','webNavigation'].toSorted());

@@ -145,3 +145,34 @@ test('policy revision replaces pairing and invalidates an earlier authorization'
   f.ready({policy_digest:'c'.repeat(64)}); f.decide(request, 'monitor'); await work;
   assert.equal(f.sent.filter((message) => message.type==='observation').length, 0);
 });
+
+test('handshake timeout prevents a late ready reply from enabling collection', async () => {
+  const f = fixture(); await f.controller.initialize(); await f.controller.configure({enabled:true, includePath:false});
+  f.expire(); f.ready();
+  assert.equal(f.controller.status().paired, false);
+  assert.equal(f.sent.some((message) => message.type === 'decide'), false);
+});
+
+test('failed storage read keeps collection disabled', async () => {
+  const f = fixture(); f.api.storage.local.get = async () => { throw Error('Storage unavailable'); };
+  await f.controller.initialize(); await f.controller.observe(navigation());
+  assert.equal(f.controller.status().enabled, false); assert.equal(f.controller.status().code, 'storage_error');
+  assert.deepEqual(f.sent, []);
+});
+
+test('failed native write clears pairing and pending work', async () => {
+  const f = await enabledFixture();
+  f.port.postMessage = () => { throw Error('Native write unavailable'); };
+  await f.controller.observe(navigation());
+  assert.equal(f.controller.status().paired, false); assert.equal(f.controller.status().pending, 0);
+});
+
+test('failed opt-out storage write still stops collection in memory', async () => {
+  const f = await enabledFixture();
+  f.api.storage.local.set = async () => { throw Error('Storage unavailable'); };
+  await assert.rejects(() => f.controller.configure({enabled:false, includePath:false}));
+  await f.controller.observe(navigation());
+  assert.equal(f.controller.status().enabled, false);
+  assert.equal(f.controller.status().paired, false);
+  assert.equal(f.connectCount(), 1);
+});
