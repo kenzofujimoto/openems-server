@@ -51,9 +51,8 @@
     },
     {
       "row": "YouTube: site e vídeo liberados, reprodução (substitui Netflix reprodução)",
-      "status": "passed_chrome_pending_firefox",
-      "evidence": "round 6: Chrome advanced 2.2 s, no events. Firefox: round 6 advanced 1.28 s (below the 2 s threshold) with an evicted status capture; round 7 the 19 s video ended and the page moved to the next video, resetting the counter",
-      "pending": "Firefox playback by the automatic criterion; repeat manually on the second machine"
+      "status": "passed",
+      "evidence": "round 6: Chrome advanced 2.2 s, no events. Firefox: round 6 advanced 1.28 s (below the 2 s threshold) with an evicted status capture; round 7 the 19 s video ended and the page moved to the next video, resetting the counter. Round 8 (Firefox, ~10 min Big Buck Bunny, same 2 s threshold and 40 s window): 0 s with the CDN blocked, 17.1 s with it allowed"
     },
     {
       "row": "Painel: seletor por teclado e ícones",
@@ -67,8 +66,8 @@
     },
     {
       "row": "Painel: aviso de listas desatualizadas",
-      "status": "pending",
-      "evidence": "publication was current during the review; the stale state was not reproduced"
+      "status": "passed",
+      "evidence": "manifest backdated to 2026-10-20 in the homologation volume: the web filter page showed the note \"As listas de categorias estão desatualizadas\" with the old date; lists republished afterwards"
     },
     {
       "row": "Painel: registros separados de bloqueio/monitoramento",
@@ -113,7 +112,8 @@
     "round 4 YouTube: browser check compared the setup-time agent PID after service restarts and aborted before navigating; DNS probe name with underscore rejected",
     "round 5 YouTube: a top-level /embed/ URL fails with player error 153 in both browsers",
     "round 6 Firefox: 128-event BiDi buffer evicted the main document status; progress 1.28 s below threshold",
-    "round 7 Firefox: 19 s video finished inside the 40 s window and the page autoplayed the next video"
+    "round 7 Firefox: 19 s video finished inside the 40 s window and the page autoplayed the next video",
+    "round 8 changed only the video (19 s -> ~10 min) after round 7 showed the short video ending inside the window"
   ],
   "server_after_fixes": {
     "image": "sha256:ccb4dd690e55d072004be523b72e813e4f0e20d327e6f6dd17ac6a240e7d3b02",
@@ -1253,6 +1253,223 @@
             }
           ],
           "passed": false
+        }
+      },
+      "removal": {
+        "service_present": false,
+        "hosts_sha256": "2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085",
+        "managed_nrpt": 0,
+        "exit_code": 0
+      },
+      "batches_total": null,
+      "errors": []
+    },
+    {
+      "label": "8-youtube-firefox-long-video",
+      "sandbox_id": "313428f8-2e41-475a-8b66-11f0789e8de2",
+      "devid": "sandbox-web-actions-h",
+      "started_at": "2026-10-27T17:46:35.839422+00:00",
+      "finished_at": "2026-10-27T17:57:11.931921+00:00",
+      "msi_sha256_in_guest": "20E9D24E1A9B59FB96EEC25FBD66E3C67BEA82A33B27EFBE1183DB0F098A17C4",
+      "agent_sha256_in_guest": "5290604D7F008CB279C01CCCA0D1664EDFB4415FFC0D0200987BF6465EA8BF04",
+      "initial_ack": true,
+      "rows": {
+        "youtube_site_only": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com"
+              ]
+            },
+            "version": 37,
+            "digest": "53793a343a0a0b0727bfcc162ef11a624fdefd285b96271487d0b7ac70230715",
+            "published_at": "2026-10-27T17:50:01.734619+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T17:50:32.080016+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.157.4",
+                "142.251.155.4",
+                "142.251.152.4",
+                "142.251.154.4",
+                "142.251.153.4",
+                "142.251.156.4",
+                "142.251.150.4",
+                "142.251.151.4"
+              ],
+              "at": "2026-10-27T17:50:40.1127881Z"
+            },
+            "i.ytimg.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "172.217.29.118",
+                "172.217.29.150",
+                "172.217.29.182",
+                "172.217.29.214",
+                "172.217.29.246",
+                "172.217.30.22",
+                "172.217.172.150",
+                "142.250.79.214",
+                "142.251.129.150",
+                "142.251.128.150",
+                "142.251.128.118",
+                "142.251.129.182",
+                "172.217.28.22",
+                "142.251.128.246",
+                "172.217.29.54",
+                "172.217.29.86"
+              ],
+              "at": "2026-10-27T17:50:40.3984056Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "blocked",
+              "answers": [
+                "0.0.0.0"
+              ],
+              "at": "2026-10-27T17:50:40.4464191Z"
+            },
+            "accounts.google.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "172.217.192.84"
+              ],
+              "at": "2026-10-27T17:50:40.4624743Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": true,
+              "error": null,
+              "case": {
+                "case": "video_stalled",
+                "passed": true,
+                "failures": [],
+                "status": 200,
+                "has_video": true,
+                "video_time": 0,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [
+                {
+                  "domain": "redirector.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                },
+                {
+                  "domain": "rr2---sn-5hnekn7z.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 1
+                },
+                {
+                  "domain": "rr2---sn-b8u-bg06.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 2
+                },
+                {
+                  "domain": "rr5---sn-2obg05-jh.googlevideo.com",
+                  "action": "blocked",
+                  "category": "streaming",
+                  "added": 2
+                }
+              ],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "youtube_site_and_video": {
+          "policy": {
+            "policy": {
+              "category_actions": {
+                "streaming": "block"
+              },
+              "monitor_all": false,
+              "allowed": [
+                "youtube.com",
+                "*.youtube.com",
+                "*.ytimg.com",
+                "googlevideo.com",
+                "*.googlevideo.com"
+              ]
+            },
+            "version": 38,
+            "digest": "efd1e7289eb03764e76c04faa6cd61f443bd55027df4a9a082ecd829d7fd89cb",
+            "published_at": "2026-10-27T17:53:16.622569+00:00",
+            "acknowledged": true,
+            "seen_at": "2026-10-27T17:53:42.220693+00:00",
+            "last_error": null
+          },
+          "dns": {
+            "www.youtube.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "142.251.157.4",
+                "142.251.152.4",
+                "142.251.150.4",
+                "142.251.154.4",
+                "142.251.151.4",
+                "142.251.156.4",
+                "142.251.155.4",
+                "142.251.153.4"
+              ],
+              "at": "2026-10-27T17:53:52.3129525Z"
+            },
+            "redirector.googlevideo.com": {
+              "outcome": "forwarded",
+              "answers": [
+                "64.233.186.139",
+                "64.233.186.138",
+                "64.233.186.101",
+                "64.233.186.102",
+                "64.233.186.100",
+                "64.233.186.113"
+              ],
+              "at": "2026-10-27T17:53:53.3014809Z"
+            }
+          },
+          "browsers": [
+            {
+              "browser": "firefox",
+              "exec_exit": 0,
+              "report_passed": true,
+              "error": null,
+              "case": {
+                "case": "video_playing",
+                "passed": true,
+                "failures": [],
+                "status": 200,
+                "has_video": true,
+                "video_time": 17.110634,
+                "video_error": null,
+                "navigation_error": null,
+                "is_secure_context": true
+              },
+              "cdn_events": [],
+              "site_events": 0,
+              "events_ok": true,
+              "passed": true
+            }
+          ],
+          "passed": true
         }
       },
       "removal": {
