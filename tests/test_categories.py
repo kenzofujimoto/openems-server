@@ -35,6 +35,13 @@ def test_taxonomy_maps_ut1_sources_into_fortiguard_style_groups():
     assert len(sources) == len(set(sources)), "each UT1 list feeds one category"
 
 
+@pytest.mark.parametrize("category", ["ai", "bank", "financial", "jobsearch", "webhosting", "celebrity"])
+def test_precise_additional_categories_have_dedicated_source_and_policy_support(category):
+    assert len(CATEGORIES) == 27
+    assert CATEGORIES[category]["sources"] == [category]
+    assert web(category_actions={category: "monitor"})["category_actions"] == {category: "monitor"}
+
+
 def test_domain_hash_is_the_first_eight_bytes_of_sha256_of_the_normalized_name():
     expected = int.from_bytes(hashlib.sha256(b"steampowered.com").digest()[:8], "big")
     assert domain_hash("SteamPowered.COM") == expected
