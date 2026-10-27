@@ -1,5 +1,14 @@
 # Handoff — roadmap v2
 
+## Revisão paralela dos scanners — Codex, 27/10/2026
+
+- Plano aprovado pelo usuário. Os testes de regressão foram registrados primeiro em `2c83a8e`: 33 falharam e 14 passaram antes da correção. O executor corrigido entrou no commit compartilhado `84c7411`; os 47 testes agora passam e o Ruff do projeto inteiro passou.
+- Suíte Python completa após a correção: **997 aprovados, 55 ignorados, 5 `windows_only` desmarcados e 1 falha** em `test_the_agent_stores_its_secret_and_confirms_delivery`: `PermissionError` ao ler `state.json` enquanto o agente temporário executava. A repetição isolada passou (1 aprovado); o teste não foi alterado. Não registrar a suíte completa como totalmente verde. Na rodada anterior, ainda com o executor antigo carregado, houve as 33 regressões esperadas e uma falha porque os workflows ainda não existiam no início da coleta.
+- Zizmor agora rejeita erros operacionais, saída vazia e relatórios inválidos, preservando códigos de achados e exceções aceitas. Trivy exige execução bem-sucedida e relatórios JSON/SARIF/CycloneDX válidos; artefatos antigos são removidos e SBOM ausente não é anunciado. Revisão independente aprovada. As imagens reais do Zizmor/actionlint aceitaram um projeto de teste limpo; relatórios Trivy reais anteriores passaram pela validação de estrutura.
+- Próxima revisão recomendada: DAST deve validar os códigos de saída do ZAP e relatórios novos, comprovar acesso autenticado a uma rota protegida, remover o token temporário do `scan.log` e marcar falha se `compose down -v` não concluir. O token é da pilha descartável; não é uma credencial de produção.
+- Pendência separada reproduzida: actionlint sem argumentos exige um projeto Git; `snapshot()` copia fontes sem `.git`. O gate real falhou no snapshot de teste e passou com um marcador `.git`. Ajustar a chamada para receber os workflows explicitamente, sem copiar o histórico para o snapshot.
+- Nenhum serviço/MSI do host foi instalado, alterado ou removido. Evidências locais em `.venv/codex-scanner-fix/`, incluindo o diff incremental preservado.
+
 ## Próximo passo: segunda máquina
 
 O usuário vai continuar no notebook com pendrive, Chrome, Firefox e Claude. Roteiro em [docs/second-machine-acceptance.md](docs/second-machine-acceptance.md).
