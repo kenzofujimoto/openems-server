@@ -8,11 +8,12 @@ import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Event
 
-from app.categories import build_categories
+from app.categories import CategoryRepository, build_categories
 from app.events import InMemoryEventStore
 from tests.test_agent_integration import live_server
-from tests.test_native_agent import INVITATION
+from tests.test_native_agent import INVITATION, detail
 from tests.test_native_dns_cli import dns_query, free_port
 
 
@@ -96,10 +97,20 @@ def test_agent_downloads_blocks_respects_allowed_and_keeps_categories_offline(na
         stop(offline)
 
 
-def test_agent_rejects_a_category_file_that_does_not_match_its_digest(native, tmp_path):
+def test_agent_rejects_a_category_file_that_does_not_match_its_digest(native, tmp_path, monkeypatch):
     categories = tmp_path / "published"
     manifest = build_categories(ut1(tmp_path), categories, now=datetime(2026, 10, 23, tzinfo=UTC))
     digest = manifest["categories"][0]["digest"]
+    rejected_download = Event()
+    read_file = CategoryRepository.file
+
+    def observed_file(repository, category, requested_digest):
+        data = read_file(repository, category, requested_digest)
+        if category == "games" and requested_digest == digest and data is None:
+            rejected_download.set()
+        return data
+
+    monkeypatch.setattr(CategoryRepository, "file", observed_file)
     port = free_port()
     with live_server(category_dir=categories) as (_, origin, client):
         policy = {"web_filter": {"blocked_categories": ["games"]}}
@@ -108,8 +119,21 @@ def test_agent_rejects_a_category_file_that_does_not_match_its_digest(native, tm
         (categories / f"games-{digest}.bin").write_bytes(b"OEMSCAT1" + (0).to_bytes(4, "big"))
         agent = start_agent(native, origin, tmp_path, port)
         try:
-            assert wait_for(lambda: answer(port, "example.org") is not None, 15)
-            time.sleep(3)
+            def resolver_ready():
+                # The local Firefox canary checks resolver readiness without depending on
+                # public DNS latency, whose response budget exceeds answer()'s one second.
+                reply = answer(port, "use-application-dns.net")
+                return reply is not None and reply[3] & 0x0F == 3
+
+            assert wait_for(resolver_ready, 15)
+            assert wait_for(rejected_download.is_set, 15), "the agent must request the corrupted category"
+
+            def acknowledged():
+                info = detail(client, "category-pc")
+                return (info["config_version"] == 1 and info["applied_vdom"] == "Default"
+                        and info["applied_digest"] == info["desired_profile"]["digest"] and info["last_error"] == "")
+
+            assert wait_for(acknowledged, 15), "legacy policy must apply despite unavailable category data"
             assert not blocked(port, "api.steampowered.com")
             assert not list((tmp_path / "categories").glob("games-*.bin"))
         finally:
