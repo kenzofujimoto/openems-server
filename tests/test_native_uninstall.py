@@ -176,14 +176,21 @@ def test_msi_passes_a_hidden_uninstall_code_only_to_removal():
     assert "NOT UPGRADINGPRODUCTCODE" in scheduled.attrib["Condition"], "upgrades never ask for a code"
 
 
+@pytest.mark.windows_only
 def test_built_msi_hides_the_uninstall_code(tmp_path):
     import pytest
 
-    wix = ROOT / ".venv" / "wix-tools" / "wix.exe"
+    import shutil
+
+    # Portable WiX in .venv locally; the Windows CI job installs the wix dotnet tool globally.
+    portable = ROOT / ".venv" / "wix-tools" / "wix.exe"
+    wix = portable if portable.is_file() else Path(shutil.which("wix") or portable)
     agent = ROOT / "agent-rs" / "target" / "release" / "openems-agent.exe"
     if os.name != "nt" or not wix.is_file() or not agent.is_file():
-        pytest.skip("needs Windows, the portable WiX in .venv/wix-tools and a release agent build")
-    environment = {**os.environ, "DOTNET_ROOT": str(ROOT / ".venv" / "dotnet-sdk")}
+        pytest.skip("needs Windows, WiX (portable in .venv/wix-tools or the wix tool) and a release agent build")
+    environment = dict(os.environ)
+    if wix == portable:
+        environment["DOTNET_ROOT"] = str(ROOT / ".venv" / "dotnet-sdk")
     package = tmp_path / "openems-agent.msi"
     built = subprocess.run([str(wix), "build", str(WXS), "-arch", "x64", "-d", "Version=0.5.0", "-d", f"AgentExe={agent}",
                             "-d", f"SessionExe={agent.with_name('openems-session.exe')}", "-o", str(package)],
