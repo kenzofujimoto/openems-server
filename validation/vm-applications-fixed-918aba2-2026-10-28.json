@@ -1,0 +1,42 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  false,
+    "status":  "failed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-28T22:24:57.0562309Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "the application inventory includes the running fixture with its path and SHA-256",
+                       "at":  "2026-10-28T22:24:57.3415641Z"
+                   }
+               ],
+    "pending":  [
+
+                ],
+    "error":  "Fixture process timed out.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-28T22:23:50.5791178Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-28T22:23:50.5889813Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "ed7089ee7ef498aff33d6da77437c447f50ad46bd964dcf0cf6836de5bf3c7b4",
+                                                                       "bytes":  8527872
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "e52280d811d46d3bd6a209fff32bca731db9985c48c4676f3d74963889473992",
+                                                                            "bytes":  8527872
+                                                                        }
+                                         },
+                            "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910"
+                        },
+    "finished_utc":  "2026-10-28T22:25:52.4465753Z"
+}

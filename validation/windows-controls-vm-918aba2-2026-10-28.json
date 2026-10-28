@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-28",
+  "source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
+  "package_report": "validation/windows-controls-canonical-package-2026-10-28.json",
+  "passed": false,
+  "status": "applications_failed_before_network_and_wdac_enforcement",
+  "applications": {
+    "status": "failed",
+    "report": "validation/vm-applications-fixed-918aba2-2026-10-28.json",
+    "preflight": "validation/vm-applications-fixed-918aba2-preflight-2026-10-28.json",
+    "supplement": "validation/vm-applications-fixed-918aba2-supplement-2026-10-28.json",
+    "started_utc": "2026-10-28T22:23:50.5791178Z",
+    "finished_utc": "2026-10-28T22:25:52.4465753Z",
+    "error": "Fixture process timed out.",
+    "passed_checks": [
+      "production MSI and authenticated inventory",
+      "running fixture inventoried with path and SHA-256"
+    ],
+    "failure_stage": "external HTTPS fixture baseline before network-deny or WDAC policies",
+    "wdac_enforcement_reached": false,
+    "installed_hash_matches": true,
+    "initial_empty_policy_ack_success": true,
+    "release_empty_policy_ack_success": true,
+    "cleanup_errors": [],
+    "service_absent": true,
+    "watchdog_count": 0,
+    "managed_nrpt_count": 0,
+    "agent_process_count": 0,
+    "control_journals_present": [],
+    "diagnostic": {
+      "status": "completed: all preserved fixture and curl probes passed after removal",
+      "shortcut": "17 - Diagnose 918aba2 network inside VM as administrator",
+      "scope": "SYSTEM context; preserved authenticated fixture with and without HTTPS, control copy and curl HTTPS",
+      "agent_installation_or_policy_mutation": false,
+      "certificate_validation_bypassed": false,
+      "antivirus_modified": false,
+      "report": "validation/vm-applications-fixed-918aba2-network-diagnostic-2026-10-28.json"
+    },
+    "retry": {
+      "status": "pending_clean_snapshot_and_operator_launch",
+      "shortcut": "18 - Retry 918aba2 WDAC inside clean VM as administrator",
+      "same_package_bytes": true,
+      "same_harness_and_deadlines": true,
+      "guest_results": "fixed-918aba2/applications-retry1"
+    }
+  },
+  "usb": {
+    "status": "pending",
+    "device_required": "PENMACK, VID 058f PID 6387, 4026531840 bytes",
+    "substitute_device_allowed": false,
+    "shortcut": "15 - Run 918aba2 USB inside VM as administrator"
+  },
+  "old_inputs_or_reports_overwritten": false,
+  "physical_host_controls_executed_in_this_round": false,
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false
+}

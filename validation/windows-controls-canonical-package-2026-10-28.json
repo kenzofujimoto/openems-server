@@ -58,7 +58,8 @@
     ],
     "snapshot_required": "clean-preflight-before-controls (UID 2)"
   },
-  "vm_reacceptance": "pending",
+  "vm_reacceptance": "Applications failed before network/WDAC enforcement: fixture HTTPS baseline timeout; USB pending authorized PENMACK",
   "push": false,
-  "pull_request": false
+  "pull_request": false,
+  "vm_round_report": "validation/windows-controls-vm-918aba2-2026-10-28.json"
 }
