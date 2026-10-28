@@ -1,0 +1,220 @@
+"""Run embedded adapters in PowerShell 5.1 with all Windows mutations mocked."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+MOCKS = ROOT / "tests" / "fixtures" / "windows_controls_mocks.ps1"
+POWERSHELL = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+REGISTRY = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions"
+INSTANCE = r"USBSTOR\DISK\fixture"
+IDENTITY = "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"
+pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell 5.1")]
+
+
+def fixture_environment(tmp_path, *, scenario="normal", registry=None, boot=False):
+    configuration = {"scenario": scenario, "registry": registry or {}, "boot": boot}
+    (tmp_path / "fixture.json").write_text(json.dumps(configuration), encoding="utf-8")
+    system = tmp_path / "systemroot"
+    templates = system / "schemas/CodeIntegrity/ExamplePolicies"
+    templates.mkdir(parents=True)
+    (templates / "AllowAll.xml").write_text("<system-template>unchanged</system-template>", encoding="utf-8")
+    (system / "System32").mkdir()
+    # The test copy changes the command name to a .ps1; the real CiTool can never be invoked.
+    (system / "System32/Mock-CiTool.ps1").write_text(
+        r"""param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Arguments)
+$file=Join-Path $PSScriptRoot '..\..\active-policy.json'
+switch($Arguments[0]) {
+    '--list-policies' {
+        $policies=@()
+        if(Test-Path -LiteralPath $file){$policies=@(Get-Content -LiteralPath $file -Raw | ConvertFrom-Json)}
+        @{Policies=$policies}|ConvertTo-Json -Depth 6 -Compress
+    }
+    '--update-policy' {
+        $id=[IO.Path]::GetFileNameWithoutExtension($Arguments[1])
+        @{PolicyID=$id;FriendlyName='openems application control';IsEnforced=$true}|ConvertTo-Json|Set-Content -LiteralPath $file
+    }
+    '--remove-policy' { [IO.File]::Delete($file) }
+    default { throw 'Unexpected mock CiTool operation.' }
+}
+$global:LASTEXITCODE=0
+""",
+        encoding="utf-8",
+    )
+    return tmp_path
+
+
+def invoke_adapter(directory, kind, request, *, simulate_system=True):
+    source = (ROOT / "deploy" / f"agent-{kind}.ps1").read_text(encoding="utf-8")
+    assert source.count(IDENTITY) == 1, "Review the identity seam if the production guard changes"
+    if simulate_system:
+        # Substitution is confined to a temporary test copy. Production has no bypass switch.
+        source = source.replace(IDENTITY, "'S-1-5-18'")
+    source = source.replace("$env:SystemRoot", "$script:fixtureSystemRoot")
+    source = source.replace("CiTool.exe", "Mock-CiTool.ps1")
+    prefix = "$script:fixtureRoot='" + str(directory).replace("'", "''") + "'\n"
+    script = directory / f"{kind}-test-copy.ps1"
+    script.write_text(prefix + MOCKS.read_text(encoding="utf-8") + "\n" + source, encoding="utf-8")
+    return subprocess.run(
+        [str(POWERSHELL), "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+        input=json.dumps(request), capture_output=True, text=True, encoding="utf-8", timeout=90, check=False,
+    )
+
+
+def calls(directory):
+    path = directory / "calls.jsonl"
+    return [json.loads(line) for line in path.read_text(encoding="utf-8-sig").splitlines()] if path.exists() else []
+
+
+def wdac_request(directory, rule_kind="path"):
+    sample = directory / "fixture.exe"
+    sample.write_bytes(b"fixture image; never executable")
+    values = {"path": str(sample), "hash": hashlib.sha256(sample.read_bytes()).hexdigest(),
+              "publisher": "CN=Fixture Publisher", "name": "fixture.exe"}
+    return {"mode": "apply", "state_path": str(directory / "application-control.json"), "policy": {
+        "execution_rules": [{"id": "fixture", "kind": rule_kind, "value": values[rule_kind], "sample_path": str(sample)}],
+        "network_blocked": [],
+    }}
+
+
+def usb_request(directory, mode="apply", action="block"):
+    return {"mode": mode, "state_path": str(directory / "usb-control.json"),
+            "policy": {"default_action": action, "rules": []}}
+
+
+def assert_success(result):
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    return json.loads(result.stdout)
+
+
+def test_mocked_wdac_success_and_cleanup_preserve_the_json_contract(tmp_path):
+    directory = fixture_environment(tmp_path)
+    request = wdac_request(directory, "hash")
+    assert_success(invoke_adapter(directory, "applications", request))
+    assert (directory / "active-policy.json").exists()
+    assert_success(invoke_adapter(directory, "applications", {**request, "mode": "cleanup"}))
+    assert not (directory / "active-policy.json").exists()
+    assert not Path(request["state_path"]).exists()
+
+
+def test_wdac_merge_uses_a_private_copy_of_the_system_template(tmp_path):
+    directory = fixture_environment(tmp_path, scenario="readonly_template")
+    template = directory / "systemroot/schemas/CodeIntegrity/ExamplePolicies/AllowAll.xml"
+    original = template.read_bytes()
+    result = assert_success(invoke_adapter(directory, "applications", wdac_request(directory)))
+    assert "app-control:wdac" in result["capabilities"]
+    merge = next(call["detail"] for call in calls(directory) if call["name"] == "Merge-CIPolicy")
+    assert all(Path(path) != template for path in merge["inputs"])
+    assert all(Path(path).parent == Path(merge["output"]).parent for path in merge["inputs"])
+    assert template.read_bytes() == original
+
+
+@pytest.mark.parametrize("rule_kind", ["path", "hash", "publisher", "name"])
+def test_configci_console_output_does_not_corrupt_adapter_json(tmp_path, rule_kind):
+    directory = fixture_environment(tmp_path, scenario="console_noise")
+    result = assert_success(invoke_adapter(directory, "applications", wdac_request(directory, rule_kind)))
+    assert any(event["kind"] == "app_control_applied" for event in result["events"])
+
+
+def test_configci_failure_restores_console_output_for_the_error_json(tmp_path):
+    directory = fixture_environment(tmp_path, scenario="console_failure")
+    result = invoke_adapter(directory, "applications", wdac_request(directory))
+    assert result.returncode == 1
+    assert json.loads(result.stdout) == {"error": "control_failed"}
+
+
+def test_removable_usb_block_uses_pnp_without_setting_disk_offline(tmp_path):
+    directory = fixture_environment(tmp_path, registry={REGISTRY: {"DenyInstanceIDs": 0, "DenyInstanceIDsRetroactive": 0}})
+    result = assert_success(invoke_adapter(directory, "usb", usb_request(directory)))
+    assert any(event["kind"] == "usb_block" for event in result["events"])
+    assert any(call["name"] == "Disable-PnpDevice" for call in calls(directory))
+    assert not any(call["name"] == "Set-Disk" for call in calls(directory))
+    state = json.loads((directory / "usb-control.json").read_text(encoding="utf-8"))
+    assert state["devices"][0]["disabled_by_us"] is True
+    assert state["devices"][0]["applied_offline"] is False
+
+
+def test_usb_apply_handles_an_existing_restrictions_key_without_values(tmp_path):
+    directory = fixture_environment(tmp_path, registry={REGISTRY: {}})
+    result = assert_success(invoke_adapter(directory, "usb", usb_request(directory)))
+    assert any(event["kind"] == "usb_block" for event in result["events"])
+
+
+@pytest.mark.parametrize("mode", ["cleanup", "apply"])
+def test_usb_removes_owned_journal_when_registry_values_are_already_absent(tmp_path, mode):
+    directory = fixture_environment(tmp_path, registry={REGISTRY: {}, REGISTRY + r"\DenyInstanceIDs": {}})
+    state = {"format": 1, "devices": [], "entries": [{"name": "1", "value": INSTANCE}],
+             "flags": [{"name": name, "existed": False, "value": None}
+                       for name in ("DenyInstanceIDs", "DenyInstanceIDsRetroactive")]}
+    (directory / "usb-control.json").write_text(json.dumps(state), encoding="utf-8")
+    assert_success(invoke_adapter(directory, "usb", usb_request(directory, mode, "allow")))
+    assert not (directory / "usb-control.json").exists()
+
+
+def test_usb_release_preserves_external_restrictions_and_restores_owned_device(tmp_path):
+    external = REGISTRY + r"\DenyInstanceIDs"
+    directory = fixture_environment(tmp_path, registry={
+        REGISTRY: {"DenyInstanceIDs": 1, "DenyInstanceIDsRetroactive": 0}, external: {"1": "EXTERNAL-DEVICE"},
+    })
+    assert_success(invoke_adapter(directory, "usb", usb_request(directory)))
+    assert_success(invoke_adapter(directory, "usb", usb_request(directory, "cleanup")))
+    state = json.loads((directory / "mock-state.json").read_text(encoding="utf-8-sig"))
+    assert state["disabled"] is False
+    assert state["registry"][external] == {"1": "EXTERNAL-DEVICE"}
+    assert state["registry"][REGISTRY] == {"DenyInstanceIDs": 1, "DenyInstanceIDsRetroactive": 0}
+    assert not (directory / "usb-control.json").exists()
+
+
+@pytest.mark.parametrize("kind", ["usb", "applications"])
+def test_production_system_guard_still_rejects_unprivileged_apply(tmp_path, kind):
+    directory = fixture_environment(tmp_path)
+    request = usb_request(directory) if kind == "usb" else wdac_request(directory)
+    result = invoke_adapter(directory, kind, request, simulate_system=False)
+    assert result.returncode == 1
+    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert not Path(request["state_path"]).exists()
+    assert calls(directory) == []
+
+
+def test_usb_boot_storage_never_reaches_a_mutating_mock(tmp_path):
+    directory = fixture_environment(tmp_path, boot=True)
+    assert_success(invoke_adapter(directory, "usb", usb_request(directory)))
+    assert not any(call["name"] in {"Set-Disk", "Disable-PnpDevice", "New-ItemProperty"}
+                   for call in calls(directory))
+
+
+def test_usb_read_only_and_cleanup_restore_the_original_writable_state(tmp_path):
+    directory = fixture_environment(tmp_path)
+    request = usb_request(directory, action="allow")
+    request["policy"]["rules"] = [{"id": "read-only", "action": "read_only", "instance_id": INSTANCE}]
+    result = assert_success(invoke_adapter(directory, "usb", request))
+    assert any(event["kind"] == "usb_read_only" for event in result["events"])
+    assert_success(invoke_adapter(directory, "usb", usb_request(directory, "cleanup")))
+    state = json.loads((directory / "mock-state.json").read_text(encoding="utf-8-sig"))
+    assert state["read_only"] is False
+    assert state["disabled"] is False
+    assert not (directory / "usb-control.json").exists()
+
+
+def test_usb_cleanup_still_restores_an_offline_disk_from_an_old_journal(tmp_path):
+    directory = fixture_environment(tmp_path, scenario="legacy_offline")
+    mock = {"disabled": True, "read_only": False, "offline": True, "registry": {}}
+    (directory / "mock-state.json").write_text(json.dumps(mock), encoding="utf-8")
+    journal = {"format": 1, "entries": [], "flags": [], "devices": [{
+        "instance_id": INSTANCE, "unique_id": "fixture-usb-id", "disabled_by_us": True,
+        "original_read_only": False, "applied_read_only": False,
+        "original_offline": False, "applied_offline": True,
+    }]}
+    (directory / "usb-control.json").write_text(json.dumps(journal), encoding="utf-8")
+    assert_success(invoke_adapter(directory, "usb", usb_request(directory, "cleanup")))
+    restored = json.loads((directory / "mock-state.json").read_text(encoding="utf-8-sig"))
+    assert restored["disabled"] is False
+    assert restored["offline"] is False
+    assert not (directory / "usb-control.json").exists()
