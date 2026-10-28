@@ -24,9 +24,9 @@
   "guest_vcpus": 2,
   "vm_name": "OpenEMS Disposable Acceptance",
   "usb_autoconnect": false,
-  "guest_installation": "Windows 11 Setup language screen reached; operator asked to complete installer, license and credentials because console input did not advance via computer-use",
+  "guest_installation": "Completed; operator signed into local OpenEMSTest account; desktop confirmed visually",
   "snapshot": "pending Windows installation and clean baseline",
-  "updated_at": "2026-10-28T09:24:31.3457651-03:00",
+  "updated_at": "2026-10-28T11:10:39.7246508-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -44,5 +44,13 @@
     "at": "2026-10-28T09:11:35.5217333-03:00",
     "initial_power_on": "failed before guest boot",
     "final_assignment": "Consistent standard PCI/PCIe slot map; guest boot reached official installation media"
-  }
+  },
+  "guest_os_observation": {
+    "watermark_build": "26100",
+    "edition": "Windows 11 Enterprise Evaluation",
+    "verification": "Desktop watermark only; CiTool/ConfigCI and exact OS version still require guest preflight",
+    "note": "Guest watermark differs from the downloaded ISO filename label; retain actual guest version rather than infer from filename"
+  },
+  "vmware_tools": "Operator asked to install bundled official VMware Tools; pending verification",
+  "ui_input_diagnosis": "VMware and ChatGPT processes both not elevated; console/menu input failure not attributable to elevation difference"
 }
