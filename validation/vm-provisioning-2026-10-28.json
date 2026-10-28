@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T12:09:08.3489954-03:00",
+  "updated_at": "2026-10-28T12:12:06.9259014-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -70,12 +70,12 @@
     "source": "VMware host log ToolsVersionStatus current"
   },
   "ui_input_diagnosis": "VMware and ChatGPT processes both not elevated; console/menu input failure not attributable to elevation difference",
-  "test_input_media": "Current VMX points to Windows installation ISO again; disconnect before restarting guest",
+  "test_input_media": "openems-acceptance-input.iso mounted in saved VMX; captured before clean snapshot UID 2",
   "setup_incident": {
     "operator_confirmed_install_clicked": true,
     "controls_started": false,
     "recovery": "Do not rely on existing snapshot as clean; verify current guest after cancellation and reboot, then create new baseline",
-    "recovery_status": "guest_restarted_and_preflight_received; no Setup process or reboot pending; new clean snapshot required",
+    "recovery_status": "new baseline snapshot UID 2 created after normal reboot and guest preflight",
     "installation_completed": false,
     "guest_restart": {
       "operator_confirmed_normal_desktop": true,
@@ -96,5 +96,24 @@
     "servicing_reboot_pending": false,
     "windows_update_reboot_pending": false,
     "snapshot_cleanliness": "Not yet verified; previous snapshot captured with Windows Setup open"
+  },
+  "clean_snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": "2",
+    "status": "created_and_verified",
+    "verified_from": "VMware VMSD and Snapshot2.vmsn",
+    "state_bytes": 5431296,
+    "operator_completion_confirmed": true,
+    "verified_at": "2026-10-28T12:12:06.9148571-03:00"
+  },
+  "authorized_usb_host_baseline": {
+    "drive": "E:",
+    "label": "PENMACK",
+    "model": "Generic Flash Disk",
+    "bus_type": "USB",
+    "size_bytes": 4026531840,
+    "is_boot": false,
+    "is_system": false,
+    "at": "2026-10-28T12:12:06.9255835-03:00"
   }
 }
