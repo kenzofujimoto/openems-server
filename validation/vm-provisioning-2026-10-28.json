@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:43:48.4966317-03:00",
+  "updated_at": "2026-10-28T13:52:04.6579944-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -233,5 +233,18 @@
     "journal_removed": true,
     "stdout_pollution_confirmed": "Successful apply stdout is \"Scan completed successfully\" line followed by JSON; agent serde parse would reject it",
     "conclusion": "Root cause of WDAC acceptance failure: Merge-CIPolicy requires write access to its input and the system AllowAll.xml is read-only for SYSTEM. A product fix also needs a clean stdout contract. USB v2 cause still separate and undiagnosed."
+  },
+  "usb_adapter_diagnostic": {
+    "report": "validation/vm-usb-adapter-diagnostic-2026-10-28.json",
+    "report_sha256": "30b47e8130293f9be4e1fb670018603217f58291de417a4e7493fac2764321d0",
+    "method": "Instrumented copy of deploy/agent-usb.ps1 at 18cd811 run as SYSTEM with policy default_action=block (same as acceptance v2); PENMACK reconnected through VMware",
+    "failing_line": 231,
+    "failing_statement": "$disk | Set-Disk -IsOffline $true",
+    "exception": "CimException StorageWMI 1: Not Supported. Removable media cannot be set to offline.",
+    "journal_state_at_failure": "applied_offline and disabled_by_us already saved before the failing call; Disable-PnpDevice not reached",
+    "cleanup_succeeded": true,
+    "device_after_cleanup": "DiskDrive and USB nodes OK, present, problem code 0",
+    "side_observation": "Win32_DiskDrive serial for PENMACK is a control character plus \"1\" (\\u00031); serial-based allow rules may be unreliable for this device",
+    "hypothesis": "Skipping the offline step for removable media and relying on DenyInstanceIDs plus Disable-PnpDevice blocks access and restores cleanly. Not yet verified."
   }
 }

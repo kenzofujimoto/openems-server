@@ -1,0 +1,312 @@
+﻿{
+    "kind":  "USB",
+    "variant":  "baseline",
+    "started":  "2026-10-28T13:49:26.2528984-03:00",
+    "stage":  "completed",
+    "steps":  [
+                  {
+                      "name":  "inventory",
+                      "exit_code":  0,
+                      "timed_out":  false,
+                      "seconds":  10.9,
+                      "output":  {
+                                     "inventory":  [
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0003\u0026MI_00\\7\u0026220035BB\u00260\u00260000",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0003",
+                                                           "serial":  "",
+                                                           "class":  "hid",
+                                                           "manufacturer":  "(Standard system devices)",
+                                                           "product":  "USB Input Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USBSTOR\\DISK\u0026VEN_GENERIC\u0026PROD_FLASH_DISK\u0026REV_8.07\\19A8A271\u00260",
+                                                           "vid":  "058f",
+                                                           "pid":  "6387",
+                                                           "serial":  "\u00031",
+                                                           "class":  "storage",
+                                                           "manufacturer":  "(Standard disk drives)",
+                                                           "product":  "Generic Flash Disk USB Device",
+                                                           "drive_letters":  [
+                                                                                 "E:"
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  1,
+                                                           "disk_unique_id":  "USBSTOR\\DISK\u0026VEN_GENERIC\u0026PROD_FLASH_DISK\u0026REV_8.07\\19A8A271\u00260:DESKTOP-VK4T969",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0003\\6\u00261E7C416C\u00260\u00265",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0003",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "(Standard USB Host Controller)",
+                                                           "product":  "USB Composite Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0003\u0026MI_01\\7\u0026220035BB\u00260\u00260001",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0003",
+                                                           "serial":  "",
+                                                           "class":  "hid",
+                                                           "manufacturer":  "(Standard system devices)",
+                                                           "product":  "USB Input Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0002\\6\u00261E7C416C\u00260\u00267",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0002",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "(Standard USB HUBs)",
+                                                           "product":  "Generic USB Hub",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0002\\6\u00261E7C416C\u00260\u00268",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0002",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "(Standard USB HUBs)",
+                                                           "product":  "Generic USB Hub",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_058F\u0026PID_6387\\19A8A271",
+                                                           "vid":  "058f",
+                                                           "pid":  "6387",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "Compatible USB storage device",
+                                                           "product":  "USB Mass Storage Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       }
+                                                   ]
+                                 },
+                      "raw_output":  null,
+                      "stderr":  ""
+                  },
+                  {
+                      "name":  "apply_default_block",
+                      "exit_code":  1,
+                      "timed_out":  false,
+                      "seconds":  6.8,
+                      "output":  {
+                                     "error":  "control_failed",
+                                     "diagnostic":  {
+                                                        "statement":  "if ($null -ne $disk) { $disk | Set-Disk -IsOffline $true -ErrorAction Stop }",
+                                                        "message":  "Not Supported\n \nExtended information:\nRemovable media cannot be set to offline.\n \n\nActivity ID: {0fec390f-66ed-0001-7040-ec0fed66dd01}",
+                                                        "inner":  null,
+                                                        "line":  231,
+                                                        "type":  "Microsoft.Management.Infrastructure.CimException",
+                                                        "fqid":  "StorageWMI 1,Set-Disk"
+                                                    }
+                                 },
+                      "raw_output":  null,
+                      "stderr":  ""
+                  },
+                  {
+                      "name":  "cleanup",
+                      "exit_code":  0,
+                      "timed_out":  false,
+                      "seconds":  4.9,
+                      "output":  {
+                                     "inventory":  [
+
+                                                   ],
+                                     "events":  [
+
+                                                ],
+                                     "capabilities":  [
+                                                          "usb:storage",
+                                                          "usb:polling"
+                                                      ]
+                                 },
+                      "raw_output":  null,
+                      "stderr":  ""
+                  }
+              ],
+    "error":  null,
+    "usb_before":  [
+                       {
+                           "class":  "DiskDrive",
+                           "status":  "OK",
+                           "present":  true,
+                           "problem_code":  0,
+                           "usbstor":  true
+                       },
+                       {
+                           "class":  "USB",
+                           "status":  "OK",
+                           "present":  true,
+                           "problem_code":  0,
+                           "usbstor":  false
+                       }
+                   ],
+    "usb_after_apply":  [
+                            {
+                                "class":  "DiskDrive",
+                                "status":  "OK",
+                                "present":  true,
+                                "problem_code":  0,
+                                "usbstor":  true
+                            },
+                            {
+                                "class":  "USB",
+                                "status":  "OK",
+                                "present":  true,
+                                "problem_code":  0,
+                                "usbstor":  false
+                            }
+                        ],
+    "journal_after_apply":  true,
+    "usb_after_cleanup":  [
+                              {
+                                  "class":  "DiskDrive",
+                                  "status":  "OK",
+                                  "present":  true,
+                                  "problem_code":  0,
+                                  "usbstor":  true
+                              },
+                              {
+                                  "class":  "USB",
+                                  "status":  "OK",
+                                  "present":  true,
+                                  "problem_code":  0,
+                                  "usbstor":  false
+                              }
+                          ],
+    "journal_after_cleanup":  false,
+    "code_integrity_events":  [
+                                  {
+                                      "id":  3116,
+                                      "at":  "2026-10-28T13:51:35.1798368-03:00",
+                                      "level":  "Information",
+                                      "message":  "Signature information for Code Integrity policy ID {2678656c-05ef-481f-bc5b-ebd8c991502d}."
+                                  },
+                                  {
+                                      "id":  3099,
+                                      "at":  "2026-10-28T13:51:35.1796815-03:00",
+                                      "level":  "Information",
+                                      "message":  "Refreshed and activated Code Integrity policy {2678656c-05ef-481f-bc5b-ebd8c991502d} VerifiedAndReputableDesktopEvaluationFlightSupplemental. id 27766.241221-1700. Status 0x0"
+                                  },
+                                  {
+                                      "id":  3116,
+                                      "at":  "2026-10-28T13:51:35.1796683-03:00",
+                                      "level":  "Information",
+                                      "message":  "Signature information for Code Integrity policy ID {d2bda982-ccf6-4344-ac5b-0b44427b6816}."
+                                  },
+                                  {
+                                      "id":  3099,
+                                      "at":  "2026-10-28T13:51:35.1793997-03:00",
+                                      "level":  "Information",
+                                      "message":  "Refreshed and activated Code Integrity policy {d2bda982-ccf6-4344-ac5b-0b44427b6816} Microsoft Windows Driver Policy. id 10.0.29520.0. Status 0x0"
+                                  },
+                                  {
+                                      "id":  3116,
+                                      "at":  "2026-10-28T13:51:35.1788406-03:00",
+                                      "level":  "Information",
+                                      "message":  "Signature information for Code Integrity policy ID {1283ac0f-fff1-49ae-ada1-8a933130cad6}."
+                                  },
+                                  {
+                                      "id":  3099,
+                                      "at":  "2026-10-28T13:51:35.1785636-03:00",
+                                      "level":  "Information",
+                                      "message":  "Refreshed and activated Code Integrity policy {1283ac0f-fff1-49ae-ada1-8a933130cad6} VerifiedAndReputableDesktopEvaluation. id 25979.1000.20231018. Status 0x0"
+                                  },
+                                  {
+                                      "id":  3116,
+                                      "at":  "2026-10-28T13:51:35.1783675-03:00",
+                                      "level":  "Information",
+                                      "message":  "Signature information for Code Integrity policy ID {784c4414-79f4-4c32-a6a5-f0fb42a51d0d}."
+                                  },
+                                  {
+                                      "id":  3099,
+                                      "at":  "2026-10-28T13:51:35.1780206-03:00",
+                                      "level":  "Information",
+                                      "message":  "Refreshed and activated Code Integrity policy {784c4414-79f4-4c32-a6a5-f0fb42a51d0d} Microsoft Windows Cross Certificates for Code Integrity Exceptions Audit Policy. id 10.29611.0.0. Status 0x0"
+                                  },
+                                  {
+                                      "id":  3116,
+                                      "at":  "2026-10-28T13:51:35.1775554-03:00",
+                                      "level":  "Information",
+                                      "message":  "Signature information for Code Integrity policy ID {60fd87f8-4593-44a0-91b0-2e0da022f248}."
+                                  },
+                                  {
+                                      "id":  3099,
+                                      "at":  "2026-10-28T13:51:35.1758673-03:00",
+                                      "level":  "Information",
+                                      "message":  "Refreshed and activated Code Integrity policy {60fd87f8-4593-44a0-91b0-2e0da022f248} Microsoft Windows Endpoint Security Policy. id 10.0.29526.0. Status 0x0"
+                                  },
+                                  {
+                                      "id":  3084,
+                                      "at":  "2026-10-28T13:51:35.1757519-03:00",
+                                      "level":  "Information",
+                                      "message":  "Code Integrity will enable WHQL driver enforcement for this boot session.  Settings 0x0. Exemption 1."
+                                  }
+                              ],
+    "finished":  "2026-10-28T13:49:51.7943790-03:00"
+}
