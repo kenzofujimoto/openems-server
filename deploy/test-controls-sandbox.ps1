@@ -16,7 +16,28 @@ $totalTimeout = 1800
 function ConvertTo-Canonical($Value) {
     if ($null -eq $Value) { return 'null' }
     if ($Value -is [bool]) { return $Value.ToString().ToLowerInvariant() }
-    if ($Value -is [string]) { return ConvertTo-Json -InputObject $Value -Compress }
+    if ($Value -is [string]) {
+        # Mirror the server's json.dumps(ensure_ascii=False): PS 5.1 ConvertTo-Json also escapes &, <, >, ' and U+0085/2028/2029.
+        $builder = New-Object Text.StringBuilder ($Value.Length + 2)
+        [void]$builder.Append('"')
+        foreach ($character in $Value.ToCharArray()) {
+            switch ([int]$character) {
+                0x22 { [void]$builder.Append('\"') }
+                0x5C { [void]$builder.Append('\\') }
+                0x08 { [void]$builder.Append('\b') }
+                0x0C { [void]$builder.Append('\f') }
+                0x0A { [void]$builder.Append('\n') }
+                0x0D { [void]$builder.Append('\r') }
+                0x09 { [void]$builder.Append('\t') }
+                default {
+                    if ([int]$character -lt 0x20) { [void]$builder.Append('\u' + ([int]$character).ToString('x4')) }
+                    else { [void]$builder.Append($character) }
+                }
+            }
+        }
+        [void]$builder.Append('"')
+        return $builder.ToString()
+    }
     if ($Value -is [Collections.IDictionary]) {
         [string[]]$keys = @($Value.Keys)
         [Array]::Sort($keys, [StringComparer]::Ordinal)
