@@ -1,5 +1,5 @@
 {
-  "physical_usb": "failed: production MSI and authenticated inventory passed; USB policy successful ACK timeout; original report preserved; post-removal verification pending",
+  "physical_usb": "failed: production MSI and authenticated inventory passed; USB policy successful ACK timeout; original report preserved; post-removal cleanup and physical read/write restoration verified",
   "network": "NAT",
   "virtual_disk_capacity_gib": 80,
   "at": "2026-10-28T09:02:14.5123288-03:00",
@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:05:35.3448259-03:00",
+  "updated_at": "2026-10-28T13:12:17.7935539-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -163,6 +163,25 @@
     "usb_journal_present": false,
     "usb_pnp_present": false,
     "physical_read_write_verified": false,
-    "next_step": "Normal VMware device reconnect after successful policy release and MSI removal; repeat post-removal canary verification"
+    "next_step": "Completed by usb_post_reconnect_verification"
+  },
+  "usb_post_reconnect_verification": {
+    "report": "validation/vm-usb-diagnostics-after-reconnect-2026-10-28.json",
+    "report_sha256": "2126ad615d7c7e5efbab7dd3de28542c4466c1e0234809dd1851c3912c77f668",
+    "collector_sha256": "ced183dda31f67803345943b8d4e0831a1514c4cf48dcb2f2198b186d43dd0c0",
+    "collected_at": "2026-10-28T13:07:22.6791819-03:00",
+    "operator_action": "Normal VMware Removable Devices reconnect of Alcor Micro Mass Storage after release ACK v3 and MSI removal",
+    "usb_drive": "E:",
+    "usb_read_only": false,
+    "usb_offline": false,
+    "penmack_pnp_ok": true,
+    "service_absent": true,
+    "watchdog_count": 0,
+    "managed_nrpt_count": 0,
+    "agent_process_count": 0,
+    "usb_journal_present": false,
+    "post_removal_canary_read_write_delete_verified": true,
+    "cleanup_verified": true,
+    "usb_acceptance_result": "failed (unchanged): policy v2 never acknowledged success; root cause not determined"
   }
 }
