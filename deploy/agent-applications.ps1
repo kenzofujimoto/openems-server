@@ -241,34 +241,45 @@ try {
         if (-not ($script:state.execution_digest -eq $digest -and $null -ne $active -and ([string]$active.IsEnforced -ieq 'true'))) {
             if ($null -ne $active -and (-not $script:state.wdac_owned -or [string]$active.FriendlyName -cne 'openems application control')) { throw 'OPENEMS_EXTERNAL_POLICY_CHANGE' }
             $samples = @(Resolve-Samples $request.policy)
-            $deny = @()
-            foreach ($rule in $samples) {
-                $generated = switch ($rule.kind) {
-                    'path' { New-CIPolicyRule -FilePathRule $rule.value -Deny -ErrorAction Stop }
-                    'hash' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level Hash -Deny -ErrorAction Stop }
-                    'publisher' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level Publisher -Deny -ErrorAction Stop }
-                    'name' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level FileName -SpecificFileNameLevel OriginalFileName -Deny -ErrorAction Stop }
-                    default { throw 'OPENEMS_INVALID_RULE' }
+            $consoleOut = [Console]::Out
+            try {
+                # ConfigCI writes directly to Console.Out, outside PowerShell's redirectable streams.
+                [Console]::SetOut([IO.TextWriter]::Null)
+                $deny = @()
+                foreach ($rule in $samples) {
+                    $generated = switch ($rule.kind) {
+                        'path' { New-CIPolicyRule -FilePathRule $rule.value -Deny -ErrorAction Stop }
+                        'hash' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level Hash -Deny -ErrorAction Stop }
+                        'publisher' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level Publisher -Deny -ErrorAction Stop }
+                        'name' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level FileName -SpecificFileNameLevel OriginalFileName -Deny -ErrorAction Stop }
+                        default { throw 'OPENEMS_INVALID_RULE' }
+                    }
+                    $userRules = @($generated | Where-Object UserMode)
+                    if ($userRules.Count -eq 0) { throw 'OPENEMS_NO_USER_MODE_RULE' }
+                    $deny += $userRules
                 }
-                $userRules = @($generated | Where-Object UserMode)
-                if ($userRules.Count -eq 0) { throw 'OPENEMS_NO_USER_MODE_RULE' }
-                $deny += $userRules
+                $xmlPath = Join-Path $script:directory 'policy.xml'
+                $binaryPath = Join-Path $script:directory ($script:state.policy_id + '.cip')
+                $template = Join-Path $env:SystemRoot 'schemas\CodeIntegrity\ExamplePolicies\AllowAll.xml'
+                if (-not (Test-Path -LiteralPath $template)) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
+                # Merge-CIPolicy opens its input for writing. Never pass the protected Windows template.
+                $allow = Join-Path $script:directory 'allow-all.xml'
+                Copy-Item -LiteralPath $template -Destination $allow -Force
+                Protect-File $allow
+                Merge-CIPolicy -PolicyPaths $allow -OutputFilePath $xmlPath -Rules $deny -ErrorAction Stop | Out-Null
+                Set-CIPolicyIdInfo -FilePath $xmlPath -PolicyName 'openems application control' -ResetPolicyID -ErrorAction Stop | Out-Null
+                Set-RuleOption -FilePath $xmlPath -Option 0 -ErrorAction Stop
+                Set-RuleOption -FilePath $xmlPath -Option 3 -Delete -ErrorAction Stop
+                foreach ($option in @(6,11,16)) { Set-RuleOption -FilePath $xmlPath -Option $option -ErrorAction Stop }
+                [xml]$xml = Get-Content -LiteralPath $xmlPath -Raw
+                $xml.SiPolicy.PolicyID = $script:state.policy_id; $xml.SiPolicy.BasePolicyID = $script:state.policy_id
+                $script:state.version = [int]$script:state.version + 1
+                $xml.SiPolicy.VersionEx = '1.0.' + [math]::Floor($script:state.version / 65536) + '.' + ($script:state.version % 65536)
+                $xml.Save($xmlPath)
+                ConvertFrom-CIPolicy -XmlFilePath $xmlPath -BinaryFilePath $binaryPath -ErrorAction Stop | Out-Null
+            } finally {
+                [Console]::SetOut($consoleOut)
             }
-            $xmlPath = Join-Path $script:directory 'policy.xml'
-            $binaryPath = Join-Path $script:directory ($script:state.policy_id + '.cip')
-            $allow = Join-Path $env:SystemRoot 'schemas\CodeIntegrity\ExamplePolicies\AllowAll.xml'
-            if (-not (Test-Path -LiteralPath $allow)) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
-            Merge-CIPolicy -PolicyPaths $allow -OutputFilePath $xmlPath -Rules $deny -ErrorAction Stop | Out-Null
-            Set-CIPolicyIdInfo -FilePath $xmlPath -PolicyName 'openems application control' -ResetPolicyID -ErrorAction Stop | Out-Null
-            Set-RuleOption -FilePath $xmlPath -Option 0 -ErrorAction Stop
-            Set-RuleOption -FilePath $xmlPath -Option 3 -Delete -ErrorAction Stop
-            foreach ($option in @(6,11,16)) { Set-RuleOption -FilePath $xmlPath -Option $option -ErrorAction Stop }
-            [xml]$xml = Get-Content -LiteralPath $xmlPath -Raw
-            $xml.SiPolicy.PolicyID = $script:state.policy_id; $xml.SiPolicy.BasePolicyID = $script:state.policy_id
-            $script:state.version = [int]$script:state.version + 1
-            $xml.SiPolicy.VersionEx = '1.0.' + [math]::Floor($script:state.version / 65536) + '.' + ($script:state.version % 65536)
-            $xml.Save($xmlPath)
-            ConvertFrom-CIPolicy -XmlFilePath $xmlPath -BinaryFilePath $binaryPath -ErrorAction Stop | Out-Null
             # Ownership intent is durable before CiTool can change the system.
             $script:state.wdac_owned = $true; Save-State
             & (Join-Path $env:SystemRoot 'System32\CiTool.exe') --update-policy $binaryPath -json | Out-Null
