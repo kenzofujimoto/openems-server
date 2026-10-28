@@ -1,5 +1,15 @@
 # Handoff — roadmap v2
 
+## Segunda máquina física — preparação de 27–28/10/2026
+
+- Clone isolado `openems-second-machine-acceptance`, branch local `chore/second-machine-acceptance`, main fixada em `5ba6be67c10237c9015ff1098258494039093f8b`. Não atualizar durante a rodada. Sem push, merge ou alterações no CI.
+- [Evidência parcial sanitizada](validation/second-machine-browsers-2026-10-28.json): **aceite pendente**, agente ainda não instalado. ZIP v2 e todos os 21 arquivos do RECEIPT conferidos por tamanho/SHA-256; nenhum payload extra. MSI preservado, sem recompilar.
+- Docker disponível após intervenção do usuário; pilha própria em loopback:8013, segredos novos por `deploy/new-env.ps1 -Uses 1` sem saída de segredos, migrações normais 001–008 aplicadas e segunda execução `applied: none`. Listas do pacote publicadas. WebActions v1 publicada sem avisos: games=block, streaming=monitor, shopping=allow, monitor_all=false.
+- Baseline elevado: nenhum serviço/watchdog/NRPT OpenEMS; hash do hosts na evidência. DNS inicial dos três domínios público. Chrome 156.0.8078.48, Firefox 158.0.1. SharedAccess ocupa UDP 0.0.0.0:53, mas bind de teste 127.0.0.1:53 funcionou e foi fechado, sem alterar o serviço.
+- Retomada: aguardando segunda confirmação UAC e convite WebActions de uso único, digitado pelo usuário na entrada oculta do helper local `.venv/acceptance-admin.ps1 -Mode Install`. Nenhum segredo deve entrar em evidência/chat/captura. Login do painel precisa ser feito pelo usuário. Helpers e estado privado estão somente em `.venv/`; não versionar logs privados nem `.env`.
+- Remoção preparada no mesmo helper, modo Remove: MSI original, `UNINSTALLCODE` em entrada oculta; ações MSI executam como SYSTEM. Gerar código no painel antes de remover, ou publicar liberação e confirmar recebimento. Nunca contornar antiadulteração. Verificar serviço, watchdog, NRPT e baseline ao terminar.
+- VMware instalado, sem VM em execução; apenas FGT-LAB encontrada no inventário/diretório de VMs. PENMACK E: autorizado pelo usuário, mas USB físico e WDAC permanecem pendentes até VM Windows descartável, snapshot e passthrough comprovados. Nenhum roteiro de controles executado no host.
+
 ## Revisão paralela dos scanners — Codex, 27/10/2026
 
 - Plano aprovado pelo usuário. Os testes de regressão foram registrados primeiro em `2c83a8e`: 33 falharam e 14 passaram antes da correção. O executor corrigido entrou no commit compartilhado `84c7411`; os 47 testes agora passam e o Ruff do projeto inteiro passou.

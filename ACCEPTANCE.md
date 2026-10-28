@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Segunda máquina física — rodada iniciada em 27–28/10/2026
+
+[Evidência parcial](validation/second-machine-browsers-2026-10-28.json), main fixada em `5ba6be67c10237c9015ff1098258494039093f8b`, MSI v2 da origem `18cd811`. Integridade do ZIP e 21 arquivos do recibo aprovada; servidor Docker, migrações 001–008, listas de homologação e política WebActions v1 preparados. Baseline elevado coletado sem agente existente.
+
+**Parte A permanece pendente:** instalação ainda aguarda UAC e convite de uso único digitado pelo operador. Hash instalado, ausência do convite, ACK, DNS/eventos, Chrome/Firefox, YouTube, teclado/foco/tema e remoção/restauração não foram aceitos. Não inferir resultado físico dos testes históricos de Sandbox.
+
+**Parte B permanece pendente:** VMware presente, mas sem VM Windows descartável com snapshot/passthrough verificada. PENMACK E: autorizado somente para a rodada dentro dessa VM. Nenhum teste USB/WDAC executado no Windows físico. Pendência não conta como aceite.
+
 ## Ações web — entrega de 27/10/2026
 
 Permitir/Bloquear/Monitorar usa [matriz de aceite própria](docs/web-filter-actions-acceptance.md). O build desta entrega é preparado separadamente em `.venv/web-actions-acceptance/`, preservando os pacotes e resultados anteriores. Os quatro roteiros abaixo continuam como regressões de sessão/locais/controles; não substituem o aceite das ações web nem dos navegadores.

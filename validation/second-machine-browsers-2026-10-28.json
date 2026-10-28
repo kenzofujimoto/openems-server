@@ -1,0 +1,256 @@
+{
+  "policy": {
+    "vdom": "WebActions",
+    "version": 1,
+    "digest": "753081a2c3319c958fa513f1b433b99419cdfb9fa61c853adf7d5d62b20ae6cf",
+    "warnings": []
+  },
+  "started_at": "2026-10-27T23:54:58.2570012-03:00",
+  "part_b": {
+    "status": "pending",
+    "usb_test_volume": "E: PENMACK",
+    "reason": "No disposable Windows VM with snapshot and USB passthrough verified"
+  },
+  "revision": "5ba6be67c10237c9015ff1098258494039093f8b",
+  "msi_source_revision": "18cd81169d1d317ee070a4d02a7ac26e0c439296",
+  "zip_sha256": "51760378d5af1db860bc3574b7437adb6928ed749c07a9d0269b932ad62af387",
+  "migrations": [
+    "001",
+    "002",
+    "003",
+    "004",
+    "005",
+    "006",
+    "007",
+    "008"
+  ],
+  "receipt_checks": [
+    {
+      "path": "msi/openems-agent.msi",
+      "passed": true,
+      "sha256": "762c931afe6c84934e02402f28f65776bd11ea1c56cfe829d4f4e12f315ef486",
+      "bytes": 8527872
+    },
+    {
+      "path": "msi/openems-agent-next.msi",
+      "passed": true,
+      "sha256": "e7ad63ccfedd800c228f50e6a8da83ecc124f9f4ada8809a647b2280d1c85832",
+      "bytes": 8527872
+    },
+    {
+      "path": "msi/acceptance-manifest.json",
+      "passed": true,
+      "sha256": "f8e912b93f924eb8b252a603ecfabf3048852d530ccf6a8921fe12e6c1ca2c3f",
+      "bytes": 6102
+    },
+    {
+      "path": "usb-input/acceptance-manifest.json",
+      "passed": true,
+      "sha256": "3128a797a9804dbef0d3184aef2913f9076087d8b8d7614800bc0a296a04200e",
+      "bytes": 1254
+    },
+    {
+      "path": "usb-input/invoke-final-acceptance.ps1",
+      "passed": true,
+      "sha256": "c88814d75033ced794af5e6b3119e496caf185aed84b97f9829ecdc3adba8d9f",
+      "bytes": 3644
+    },
+    {
+      "path": "usb-input/openems-agent-next.msi",
+      "passed": true,
+      "sha256": "e7ad63ccfedd800c228f50e6a8da83ecc124f9f4ada8809a647b2280d1c85832",
+      "bytes": 8527872
+    },
+    {
+      "path": "usb-input/openems-agent.msi",
+      "passed": true,
+      "sha256": "762c931afe6c84934e02402f28f65776bd11ea1c56cfe829d4f4e12f315ef486",
+      "bytes": 8527872
+    },
+    {
+      "path": "usb-input/RUN-USB-TEST.cmd",
+      "passed": true,
+      "sha256": "c05b3a00e5f72f15fd0ef97b0633472c717b8679c2039ab824307161a8a76d74",
+      "bytes": 168
+    },
+    {
+      "path": "usb-input/test-controls-sandbox.ps1",
+      "passed": true,
+      "sha256": "a6d0295ed3ca8f075378ad38ed1f18bbe5d91b58f8393d96b1e3365fb24267f4",
+      "bytes": 36329
+    },
+    {
+      "path": "applications-input/acceptance-manifest.json",
+      "passed": true,
+      "sha256": "6813e9d625dac516f3ce306da4c971e3d242fcf880939e906c694caaad019437",
+      "bytes": 1281
+    },
+    {
+      "path": "applications-input/invoke-final-acceptance.ps1",
+      "passed": true,
+      "sha256": "c88814d75033ced794af5e6b3119e496caf185aed84b97f9829ecdc3adba8d9f",
+      "bytes": 3644
+    },
+    {
+      "path": "applications-input/openems-agent-next.msi",
+      "passed": true,
+      "sha256": "e7ad63ccfedd800c228f50e6a8da83ecc124f9f4ada8809a647b2280d1c85832",
+      "bytes": 8527872
+    },
+    {
+      "path": "applications-input/openems-agent.msi",
+      "passed": true,
+      "sha256": "762c931afe6c84934e02402f28f65776bd11ea1c56cfe829d4f4e12f315ef486",
+      "bytes": 8527872
+    },
+    {
+      "path": "applications-input/RUN-APPLICATIONS-TEST.cmd",
+      "passed": true,
+      "sha256": "b794928c8f5ce9414958301f5340ac0c2f3c871695ce7c9c63c619ffac03b26f",
+      "bytes": 177
+    },
+    {
+      "path": "applications-input/test-controls-sandbox.ps1",
+      "passed": true,
+      "sha256": "a6d0295ed3ca8f075378ad38ed1f18bbe5d91b58f8393d96b1e3365fb24267f4",
+      "bytes": 36329
+    },
+    {
+      "path": "categories-src/audio-video/domains",
+      "passed": true,
+      "sha256": "493c38e6cd6081a75af3aa7a34e3896cf507150c48f5d271dc3396ead3f3648a",
+      "bytes": 103
+    },
+    {
+      "path": "categories-src/games/domains",
+      "passed": true,
+      "sha256": "32ae54ed36376fe89d3f984f2779ada0f116203a0b2cf2fc0dde9a87272335eb",
+      "bytes": 38
+    },
+    {
+      "path": "categories-src/README.txt",
+      "passed": true,
+      "sha256": "ebce7411c760f9622899fc8fb6b8c4ed4074984322b741b24571e300c911e4f0",
+      "bytes": 209
+    },
+    {
+      "path": "categories-src/shopping/domains",
+      "passed": true,
+      "sha256": "bd8572d62c863a4d34a2ac4b7f8c364f9224b9c45dd7da779efeeb6590b03321",
+      "bytes": 36
+    },
+    {
+      "path": "categories-src/sports/domains",
+      "passed": true,
+      "sha256": "98c150b9b345c4e4a208a4ac69ead1f0ac803109c61ade5dc6714f83b24f99cb",
+      "bytes": 23
+    },
+    {
+      "path": "second-machine-acceptance.md",
+      "passed": true,
+      "sha256": "789fccc8d24810e1479ebd87716d4a6d93ae478229cbe0b52d013169d5cb43f6",
+      "bytes": 7164
+    }
+  ],
+  "browsers": {
+    "firefox": "158.0.1",
+    "chrome": "156.0.8078.48"
+  },
+  "branch": "chore/second-machine-acceptance",
+  "initial_state": {
+    "dns_before_install": [
+      {
+        "domain": "www.example.net",
+        "answers": [
+          "104.20.21.8",
+          "172.66.175.59"
+        ],
+        "at": "2026-10-27T23:57:38.3708442-03:00"
+      },
+      {
+        "domain": "www.example.org",
+        "answers": [
+          "172.66.157.237",
+          "104.20.26.136"
+        ],
+        "at": "2026-10-27T23:57:38.3805126-03:00"
+      },
+      {
+        "domain": "www.ietf.org",
+        "answers": [
+          "104.16.45.99",
+          "104.16.44.99"
+        ],
+        "at": "2026-10-27T23:57:38.3904258-03:00"
+      }
+    ],
+    "hosts_sha256": "53647A06EFFBE50787CB4F30C0A9E8D5BFC6184CA1735EE67CB19A270C0C84E2",
+    "services": [],
+    "watchdog": [],
+    "managed_nrpt": []
+  },
+  "date": "2026-10-28",
+  "updated_at": "2026-10-28T00:03:35.1664816-03:00",
+  "status": "pending",
+  "passed": false,
+  "preparation": {
+    "categories": "games=3, streaming=8, shopping=3, sports=1",
+    "admin_baseline_collected": true,
+    "existing_agent_detected": false,
+    "migrations_first_run": "001-008 applied",
+    "migrations_second_run": "applied: none",
+    "installation_started": false,
+    "server": "running on loopback"
+  },
+  "scenarios": {
+    "panel_keyboard_focus_dark_mode": {
+      "status": "pending"
+    },
+    "youtube": {
+      "status": "pending"
+    },
+    "package_integrity": {
+      "reason": "ZIP digest and all 21 RECEIPT entries match, no unlisted payload",
+      "status": "passed"
+    },
+    "installed_hash_and_invitation_removal": {
+      "status": "pending"
+    },
+    "installation": {
+      "reason": "Awaiting interactive UAC and operator-entered single-use WebActions invitation",
+      "status": "pending"
+    },
+    "dns_actions_and_events": {
+      "status": "pending"
+    },
+    "policy_ack": {
+      "status": "pending"
+    },
+    "wdac": {
+      "reason": "No verified disposable supported Windows VM",
+      "status": "pending"
+    },
+    "uninstall_and_restoration": {
+      "reason": "No installation performed yet",
+      "status": "pending"
+    },
+    "physical_usb": {
+      "reason": "Only FGT-LAB VM found; no verified disposable Windows VM, snapshot or passthrough",
+      "status": "pending"
+    },
+    "chrome": {
+      "status": "pending"
+    },
+    "firefox": {
+      "status": "pending"
+    }
+  },
+  "notes": [
+    "Preparation started on 2026-10-27 and continued after midnight America/Sao_Paulo.",
+    "No CI changes, push or merge.",
+    "MSI files were not rebuilt or substituted.",
+    "No USB/WDAC control script executed on physical Windows.",
+    "No certificate validation or antivirus protection disabled.",
+    "Source AGENTS.md absent from published checkout; user-provided instructions applied."
+  ]
+}
