@@ -6,7 +6,9 @@ Quatro defeitos corrigidos em `fix/windows-control-adapters`: TDD em `787caab` (
 
 Par MSI novo 0.4.0/0.4.1 gerado da revisão `548584b2496fdd6872e8f7a2af7afe13304bad5c` e verificado por manifesto, hashes e ausência de fault injection ([recibo](validation/windows-controls-fixed-package-2026-10-28.json)). Pacotes v2 originais intactos. Isso não equivale a aceite na VM: nenhum novo MSI instalado, controle aplicado no host ou snapshot restaurado nesta etapa.
 
-A suspeita adicional do serial PENMACK foi confirmada em modo somente de planejamento ([prova](validation/windows-usb-serial-policy-probe-2026-10-28.json)): WMI com caractere de controle produz seletor rejeitado. Correção do serial aguarda aprovação de escopo/TDD; não foi implementada nem foi afrouxada a validação. USB e Applications/WDAC na VM permanecem pendentes do pacote final e da nova rodada; pendência não conta como aceite.
+A correção adicional do serial foi aprovada e concluída com TDD: testes `3adaeea`, produto `f1fb891`, 27/27 regressões; Rust 225/225. WMI malformado mantém a identidade PnP válida. Suíte completa final: 1121 aprovados, 0 falhas, 58 skips, cobertura 88.58%; pendências de cobertura/integração preservadas.
+
+Pacote final separado da revisão `f1fb89192c003cec457230cc507873f9837435ad`: [recibo de MSI, executáveis e ISO](validation/windows-controls-serial-fixed-package-2026-10-28.json). O pacote anterior de quatro correções e o v2 não foram substituídos. **USB físico e Applications/WDAC permanecem pendentes**, exigindo snapshot limpo UID 2 antes de cada fase. A ISO e os atalhos novos estão preparados; nenhum snapshot foi restaurado nem controle executado no host nesta etapa.
 
 ## Ações web — entrega de 27/10/2026
 

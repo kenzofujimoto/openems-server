@@ -1,6 +1,6 @@
 {
   "date": "2026-10-28",
-  "updated_at": "2026-10-28T15:49:34.2696813-03:00",
+  "updated_at": "2026-10-28T16:33:13.535883-03:00",
   "branch": "fix/windows-control-adapters",
   "base_revision": "5ba6be67c10237c9015ff1098258494039093f8b",
   "brief_commit": "5059685",
@@ -202,7 +202,13 @@
       "python_coverage_percent": 88.58,
       "native_agent_sha256": "f5f2a56c384fda76033095a2e1989c1d745fe2e8603f106807ffb749c8ef2da3",
       "full_quality_gate_complete": false
-    }
+    },
+    "serial_cargo_test": {
+      "passed": 225,
+      "failed": 0,
+      "ignored": 0
+    },
+    "serial_clippy": "passed: --locked --all-targets -D warnings"
   },
   "environment": {
     "python": "3.14.7 in isolated venv; original 3.13 attempt retained in history",
@@ -219,10 +225,12 @@
     "old_packages_modified": false,
     "vm_snapshot_restored": false,
     "physical_controls_executed_on_host": false,
-    "usb_reacceptance": "pending: serial scope-extension approval and subsequent VM round",
-    "wdac_reacceptance": "pending: final package and VM round",
+    "usb_reacceptance": "pending: fresh snapshot and final MSI in VM",
+    "wdac_reacceptance": "pending: fresh snapshot and final MSI in VM",
     "package_build": "completed: 20 per-phase file hashes verified; source 548584b; old packages untouched",
-    "package_report": "validation/windows-controls-fixed-package-2026-10-28.json"
+    "package_report": "validation/windows-controls-fixed-package-2026-10-28.json",
+    "final_package_report": "validation/windows-controls-serial-fixed-package-2026-10-28.json",
+    "final_source_revision": "f1fb89192c003cec457230cc507873f9837435ad"
   },
   "git": {
     "push": false,
@@ -232,8 +240,264 @@
   "additional_usb_serial": {
     "confirmed": true,
     "report": "validation/windows-usb-serial-policy-probe-2026-10-28.json",
-    "product_code_changed": false,
-    "approval_status": "awaiting explicit approval for scope extension"
+    "product_code_changed": true,
+    "approval_status": "approved explicitly by operator; TDD completed",
+    "test_commit": "3adaeea",
+    "serial_regression_red": {
+      "failed": 6,
+      "passed": 21,
+      "production_changed": false
+    },
+    "implementation_commit": "f1fb89192c003cec457230cc507873f9837435ad",
+    "serial_full_red": {
+      "passed": 1115,
+      "failed": 6,
+      "skipped": 58,
+      "seconds": 392.23
+    },
+    "serial_regression_green": {
+      "passed": 27,
+      "failed": 0,
+      "seconds": 57.79
+    },
+    "serial_full_green": {
+      "passed": 1121,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 58,
+      "seconds": 374.863,
+      "python_coverage_percent": 88.57559552746719,
+      "full_quality_gate_complete": false,
+      "native_agent_sha256": "ea759d9b0ed50c13b61ebda73db14546b73c3450f57ed665512fd876f08832b4"
+    },
+    "junit_evidence": {
+      "serial-red": {
+        "sha256": "107ed539bf88031c3424bf600b16c4a88d40942611cb8397dbdcffb0253b55f5",
+        "bytes": 6668,
+        "serial_cases": [
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-prefix]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-middle]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-c1-control]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-newline-must-not-be-stripped]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-oversized]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-whitespace-only]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-null]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-empty]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-preserved]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-padding-trimmed]",
+            "failed": false,
+            "error": false
+          }
+        ]
+      },
+      "serial-green": {
+        "sha256": "63b8c6594979b240cc29153f3ef2f1810ada34c08cd018d6058d73f96444e1dc",
+        "bytes": 4369,
+        "serial_cases": [
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-prefix]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-middle]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-c1-control]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-newline-must-not-be-stripped]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-oversized]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-whitespace-only]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-null]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-empty]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-preserved]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-padding-trimmed]",
+            "failed": false,
+            "error": false
+          }
+        ]
+      },
+      "serial-full-red": {
+        "sha256": "4e576e44356258f92423195d1d39552aeaa87073ef69aac4f8b05cd67ab0aa9d",
+        "bytes": 180558,
+        "serial_cases": [
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-prefix]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-middle]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-c1-control]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-newline-must-not-be-stripped]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-oversized]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-whitespace-only]",
+            "failed": true,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-null]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-empty]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-preserved]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-padding-trimmed]",
+            "failed": false,
+            "error": false
+          }
+        ]
+      },
+      "serial-full-green": {
+        "sha256": "fb12dddf65ff3efe137bf41fe3048d60eca85287243369989b11ee07738fab58",
+        "bytes": 178258,
+        "serial_cases": [
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-prefix]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-control-middle]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-c1-control]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-newline-must-not-be-stripped]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-oversized]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-whitespace-only]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-null]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[wmi-empty]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-preserved]",
+            "failed": false,
+            "error": false
+          },
+          {
+            "name": "test_usb_inventory_serial_remains_usable_as_a_policy_selector[valid-wmi-padding-trimmed]",
+            "failed": false,
+            "error": false
+          }
+        ]
+      }
+    }
   },
-  "four_defects_status": "implemented, regression tested and packaged; physical reacceptance remains pending"
+  "four_defects_status": "implemented, regression tested and packaged; physical reacceptance remains pending",
+  "updated_utc": "2026-10-28T16:33:13.535883-03:00",
+  "five_defects_status": "implemented, regression tested and packaged; physical VM reacceptance remains pending"
 }
