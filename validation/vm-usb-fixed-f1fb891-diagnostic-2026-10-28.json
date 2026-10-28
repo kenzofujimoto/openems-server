@@ -1,0 +1,71 @@
+﻿{
+    "at":  "2026-10-28T20:05:06.6221389Z",
+    "source_revision":  "f1fb89192c003cec457230cc507873f9837435ad",
+    "diagnostic_only":  true,
+    "agent_log_present":  true,
+    "agent_log_categories":  [
+                                 {
+                                     "at":  "2026-10-28T19:55:35Z",
+                                     "categories":  [
+                                                        "synchronization failed",
+                                                        "cached enforcement continues"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-28T19:57:11Z",
+                                     "categories":  [
+                                                        "synchronization failed",
+                                                        "cached enforcement continues"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-28T19:57:37Z",
+                                     "categories":  [
+                                                        "synchronization failed",
+                                                        "cached enforcement continues"
+                                                    ]
+                                 }
+                             ],
+    "selected_inventory":  [
+                               {
+                                   "vid":  "058f",
+                                   "pid":  "6387",
+                                   "serial_is_nonempty_printable":  true,
+                                   "instance_has_ampersand":  true,
+                                   "instance_characters":  60,
+                                   "drive_letters":  [
+                                                         "E:"
+                                                     ],
+                                   "present":  true
+                               }
+                           ],
+    "acknowledgments":  [
+                            {
+                                "version":  1,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  true
+                            },
+                            {
+                                "version":  3,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true
+                            },
+                            {
+                                "version":  4,
+                                "digest":  "ea9a1989566c245642f907013efb8709686f5b933288ed854c4a5f3f942c13ee",
+                                "success":  true
+                            },
+                            {
+                                "version":  6,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true
+                            }
+                        ],
+    "service_absent":  true,
+    "guest_controls_mutated":  false
+}

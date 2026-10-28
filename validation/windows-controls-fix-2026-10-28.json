@@ -8,7 +8,7 @@
   "wdac_fix_commit": "e31e2fe",
   "usb_fix_commit": "548584b",
   "passed": false,
-  "scope": "Four confirmed Windows adapter defects; physical acceptance is separate",
+  "scope": "Five adapter defects implemented; separate harness canonical encoding defect approved for TDD",
   "regression": {
     "engine": "Windows PowerShell 5.1",
     "mocked_controls": true,
@@ -208,7 +208,8 @@
       "failed": 0,
       "ignored": 0
     },
-    "serial_clippy": "passed: --locked --all-targets -D warnings"
+    "serial_clippy": "passed: --locked --all-targets -D warnings",
+    "host_harness_invocation_audit": "validation/windows-controls-host-invocation-audit-2026-10-28.json"
   },
   "environment": {
     "python": "3.14.7 in isolated venv; original 3.13 attempt retained in history",
@@ -223,14 +224,15 @@
   "acceptance": {
     "new_msi_built": true,
     "old_packages_modified": false,
-    "vm_snapshot_restored": false,
+    "vm_snapshot_restored": true,
     "physical_controls_executed_on_host": false,
-    "usb_reacceptance": "pending: fresh snapshot and final MSI in VM",
-    "wdac_reacceptance": "pending: fresh snapshot and final MSI in VM",
+    "usb_reacceptance": "failed: instance-block v5 ACK missing; cleanup and physical read/write restored",
+    "wdac_reacceptance": "pending: clean VM and final harness inputs",
     "package_build": "completed: 20 per-phase file hashes verified; source 548584b; old packages untouched",
     "package_report": "validation/windows-controls-fixed-package-2026-10-28.json",
     "final_package_report": "validation/windows-controls-serial-fixed-package-2026-10-28.json",
-    "final_source_revision": "f1fb89192c003cec457230cc507873f9837435ad"
+    "final_source_revision": "f1fb89192c003cec457230cc507873f9837435ad",
+    "vm_round_report": "validation/windows-controls-vm-reacceptance-2026-10-28.json"
   },
   "git": {
     "push": false,

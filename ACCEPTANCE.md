@@ -2,6 +2,8 @@
 
 ## Correção dos controles Windows — 28/10/2026
 
+**Resultado atual:** [USB f1fb891 falhou](validation/vm-usb-fixed-f1fb891-2026-10-28.json) por falta de ACK v5; allow físico por serial passou e remoção/restauração do PENMACK foram verificadas. WDAC e aceite USB completo continuam pendentes. A incompatibilidade do digest do roteiro em PS 5.1 foi reproduzida; sua correção com TDD foi aprovada, mantendo validação e critérios. [Auditoria de invocação indevida do roteiro no host](validation/windows-controls-host-invocation-audit-2026-10-28.json): Plan/recusa ocorreram via pytest; sem aplicação de controles. Futuras execuções no host devem desmarcar esses quatro casos.
+
 Quatro defeitos corrigidos em `fix/windows-control-adapters`: TDD em `787caab` (11 falhas/6 sucessos antes do produto), WDAC em `e31e2fe`, USB em `548584b`. Regressões 17/17, Rust 225/225 sem ignorados, Ruff, fmt e Clippy passaram. Painel 102/102, cobertura de linhas 95,17%. Suíte Python 3.14 com release: 1111 aprovados, 58 skips, 0 falhas, cobertura 88,58%; gate completo permanece pendente. Timeout anterior de inventário e tentativas de ambiente estão preservados no [registro](validation/windows-controls-fix-2026-10-28.json).
 
 Par MSI novo 0.4.0/0.4.1 gerado da revisão `548584b2496fdd6872e8f7a2af7afe13304bad5c` e verificado por manifesto, hashes e ausência de fault injection ([recibo](validation/windows-controls-fixed-package-2026-10-28.json)). Pacotes v2 originais intactos. Isso não equivale a aceite na VM: nenhum novo MSI instalado, controle aplicado no host ou snapshot restaurado nesta etapa.

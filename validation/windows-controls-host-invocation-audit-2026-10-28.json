@@ -1,0 +1,172 @@
+{
+  "date": "2026-10-28",
+  "user_restriction_violated": true,
+  "description": "Full pytest runs included tests invoking the entire controls harness on the physical host in Plan mode and host-refusal checks. This violated the user restriction even though they did not install or apply controls.",
+  "controls_applied_by_these_tests": false,
+  "installation_performed_by_these_tests": false,
+  "evidence": "Plan returns before writes. The host-refusal tests passed and assert the output directory remains empty. Service/MSI host tests were disabled.",
+  "junit_artifacts": [
+    {
+      "artifact": "full-after-fix.junit.xml",
+      "sha256": "08ff1817b1644d6d3325ccdef3bba755716e848131a07cf9044b2977c8470d61",
+      "cases": [
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[Applications]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[Applications]",
+          "skipped": false,
+          "failed": false
+        }
+      ]
+    },
+    {
+      "artifact": "full-native-python314.junit.xml",
+      "sha256": "c88f0c79ef670e8446189991ba8a9354df19444aa96c998c34be807f6b099c2b",
+      "cases": [
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[Applications]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[Applications]",
+          "skipped": false,
+          "failed": false
+        }
+      ]
+    },
+    {
+      "artifact": "full-python314.junit.xml",
+      "sha256": "c02947f9d006bf082e8f75eecab9a990ece81f9fb9c65dbaa47c414be29ff98a",
+      "cases": [
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[Applications]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[Applications]",
+          "skipped": false,
+          "failed": false
+        }
+      ]
+    },
+    {
+      "artifact": "full-release-python314.junit.xml",
+      "sha256": "96ccd47cad98aa788da1fe9468e8d346ce031694a5b9cb39449f3691b77c3c54",
+      "cases": [
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[Applications]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[Applications]",
+          "skipped": false,
+          "failed": false
+        }
+      ]
+    },
+    {
+      "artifact": "serial-full-green.junit.xml",
+      "sha256": "fb12dddf65ff3efe137bf41fe3048d60eca85287243369989b11ee07738fab58",
+      "cases": [
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[Applications]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[Applications]",
+          "skipped": false,
+          "failed": false
+        }
+      ]
+    },
+    {
+      "artifact": "serial-full-red.junit.xml",
+      "sha256": "4e576e44356258f92423195d1d39552aeaa87073ef69aac4f8b05cd67ab0aa9d",
+      "cases": [
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_plan_has_verified_policies_and_never_accepts_unobserved_hardware[Applications]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[USB]",
+          "skipped": false,
+          "failed": false
+        },
+        {
+          "name": "test_host_is_refused_before_writes_even_with_system_or_vm_flags[Applications]",
+          "skipped": false,
+          "failed": false
+        }
+      ]
+    }
+  ],
+  "future_pytest_deselections": [
+    "tests/test_controls_sandbox.py::test_plan_has_verified_policies_and_never_accepts_unobserved_hardware",
+    "tests/test_controls_sandbox.py::test_host_is_refused_before_writes_even_with_system_or_vm_flags"
+  ],
+  "future_harness_invocation_on_host_allowed": false,
+  "isolated_pure_function_tests_only": true
+}
