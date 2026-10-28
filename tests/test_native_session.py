@@ -46,6 +46,7 @@ def session_binary(native: Path) -> Path:
     return binary
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="uses a copy of PING.EXE as the blocked application")
 def test_a_closed_application_reaches_the_session_board(native, tmp_path):
     dummy = tmp_path / APP

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "deploy/test-https-browser-sandbox.ps1"
-pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows Sandbox harness")
+pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows Sandbox harness")]
 
 
 def test_browser_plan_uses_valid_policy_and_explicit_release(tmp_path):

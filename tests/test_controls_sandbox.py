@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "deploy/test-controls-sandbox.ps1"
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell shared-folder publication contract")
 @pytest.mark.parametrize("script_name,writer", [
     ("test-controls-sandbox.ps1", "Write-Json"),
@@ -72,6 +73,7 @@ if ($global:shared) {
     assert {path.name for path in tmp_path.iterdir()} == {"result.json"}
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
 @pytest.mark.parametrize("phase", ["session", "locations"])
 def test_failed_installation_exports_logs_without_copying_configuration(tmp_path, phase):
@@ -101,6 +103,7 @@ if ($null -eq $definition) { throw 'Missing diagnostic export' }
     assert "finally {\n        try { Export-Diagnostics" in text
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
 @pytest.mark.parametrize("kind,unavailable,calls,available", [
     ("USB", True, 0, False), ("Applications", True, 1, False),
@@ -141,6 +144,7 @@ def run(*arguments: str) -> subprocess.CompletedProcess[str]:
                           capture_output=True, text=True, timeout=60, check=False)
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
 @pytest.mark.parametrize("kind", ["USB", "Applications"])
 def test_plan_has_verified_policies_and_never_accepts_unobserved_hardware(kind):
@@ -164,6 +168,7 @@ def test_plan_has_verified_policies_and_never_accepts_unobserved_hardware(kind):
             assert topic in scenarios
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
 @pytest.mark.parametrize("kind", ["USB", "Applications"])
 def test_host_is_refused_before_writes_even_with_system_or_vm_flags(tmp_path, kind):
@@ -173,6 +178,7 @@ def test_host_is_refused_before_writes_even_with_system_or_vm_flags(tmp_path, ki
     assert list(tmp_path.iterdir()) == []
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell harness contract")
 def test_controls_harness_and_final_wrapper_parse():
     for script in (SCRIPT, ROOT / "deploy/invoke-final-acceptance.ps1"):
@@ -275,6 +281,7 @@ def test_usb_success_requires_an_explicit_completed_physical_acceptance(tmp_path
     assert summary["passed"] is False and summary["pending"] == [report.name]
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell manifest verification")
 def test_wrapper_verifies_bytes_without_executing_the_harness_and_refuses_tampering(tmp_path):
     import hashlib

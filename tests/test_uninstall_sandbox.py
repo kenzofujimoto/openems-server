@@ -12,7 +12,7 @@ from agent.policy import policy_digest, validate_policy
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'deploy/test-uninstall-sandbox.ps1'
 VECTORS = json.loads((ROOT / 'contract/uninstall-vectors.json').read_text(encoding='utf-8'))
-pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows harness')
+pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != 'nt', reason='Windows harness')]
 
 
 def run(*args):

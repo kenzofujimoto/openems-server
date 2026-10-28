@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'deploy/test-msi-sandbox.ps1'
-pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows harness')
+pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != 'nt', reason='Windows harness')]
 
 def run(*args):
     return subprocess.run(['powershell.exe', '-NoProfile', '-File', str(SCRIPT), *args], capture_output=True, text=True, timeout=30, check=False)

@@ -136,6 +136,7 @@ def pinned_probe(directory: Path):
             worker.join(timeout=5)
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows adapter signals are the current native implementation")
 def test_native_uses_live_local_signals_offline_and_rejects_a_changed_certificate(native, tmp_path):
     (tmp_path / "hosts").write_text("# checkpoint\n", encoding="utf-8")

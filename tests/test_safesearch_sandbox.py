@@ -18,7 +18,7 @@ from agent.policy import (
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'deploy/test-safesearch-sandbox.ps1'
-pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows harness')
+pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != 'nt', reason='Windows harness')]
 
 
 def run(*args):

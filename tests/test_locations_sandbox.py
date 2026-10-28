@@ -14,7 +14,7 @@ from agent.policy import policy_digest, validate_policy
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "deploy/test-locations-sandbox.ps1"
-pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows Sandbox harness contracts")
+pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows Sandbox harness contracts")]
 
 
 def run(*args: str) -> subprocess.CompletedProcess[str]:

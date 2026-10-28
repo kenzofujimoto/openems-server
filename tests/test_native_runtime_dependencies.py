@@ -54,6 +54,7 @@ def test_repository_root_cargo_builds_discover_the_static_runtime_configuration(
     assert settings["target"]["x86_64-pc-windows-msvc"]["rustflags"] == ["-C", "target-feature=+crt-static"]
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="Windows PE import contract")
 @pytest.mark.parametrize("name", ["openems-agent.exe", "openems-session.exe", "openems-platform.exe"])
 def test_native_binaries_do_not_require_a_visual_cpp_redistributable(native, name):

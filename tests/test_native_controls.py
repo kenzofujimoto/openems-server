@@ -50,6 +50,7 @@ def test_native_control_plan_rejects_unverified_publisher_samples(native, tmp_pa
     assert "verified local sample" in result.stderr
 
 
+@pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="native Windows inventory")
 def test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals(native, tmp_path):
     result = invoke(native, "inventory", "--state-path", tmp_path / "state.json")

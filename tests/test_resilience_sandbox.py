@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'deploy/test-resilience-sandbox.ps1'
 BUILDER = ROOT / 'tools/build-msi-fixtures.ps1'
-pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Windows harness')
+pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != 'nt', reason='Windows harness')]
 
 def run(script, *args):
     return subprocess.run(['powershell.exe', '-NoProfile', '-File', str(script), *args], capture_output=True, text=True, timeout=30, check=False)
