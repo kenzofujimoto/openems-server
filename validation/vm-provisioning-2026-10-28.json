@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:04:18.5275304-03:00",
+  "updated_at": "2026-10-28T13:05:35.3448259-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -150,5 +150,19 @@
     "next_step": "Auxiliary collector updated to retain ACKs and disk/PnP inventory without assuming E exists; rerun requested",
     "original_harness_modified": false,
     "msi_modified": false
+  },
+  "usb_cleanup_diagnostics": {
+    "report": "validation/vm-usb-diagnostics-before-reconnect-2026-10-28.json",
+    "policy_v1_success": true,
+    "policy_v2_failed_ack_count": 6,
+    "release_v3_success": true,
+    "service_absent": true,
+    "watchdog_count": 0,
+    "managed_nrpt_count": 0,
+    "agent_process_count": 0,
+    "usb_journal_present": false,
+    "usb_pnp_present": false,
+    "physical_read_write_verified": false,
+    "next_step": "Normal VMware device reconnect after successful policy release and MSI removal; repeat post-removal canary verification"
   }
 }
