@@ -136,3 +136,33 @@ def test_applied_migration_cannot_disappear(database, tmp_path):
     migration.unlink()
     with pytest.raises(ValueError, match="missing"):
         runner()(database, migration_dir=tmp_path)
+
+
+def test_cli_requires_a_database_url(monkeypatch, capsys):
+    from app import migrations
+
+    monkeypatch.delenv("OPENEMS_DATABASE_URL", raising=False)
+    assert migrations.main() == 2
+    assert "OPENEMS_DATABASE_URL" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("applied,printed", [(["008_web_event_actions.sql"], "applied: 008_web_event_actions.sql"),
+                                             ([], "applied: none")])
+def test_cli_reports_what_it_applied(monkeypatch, capsys, applied, printed):
+    from app import migrations
+
+    monkeypatch.setenv("OPENEMS_DATABASE_URL", "postgresql://unused")
+    monkeypatch.setattr(migrations, "apply_migrations", lambda dsn: applied)
+    assert migrations.main() == 0
+    assert capsys.readouterr().out.strip() == printed
+
+
+def test_module_entry_point_exits_with_the_cli_status(monkeypatch):
+    import runpy
+    import sys
+
+    monkeypatch.delenv("OPENEMS_DATABASE_URL", raising=False)
+    monkeypatch.delitem(sys.modules, "app.migrations", raising=False)
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_module("app.migrations", run_name="__main__")
+    assert exit_info.value.code == 2
