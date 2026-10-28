@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T12:25:08.6901949-03:00",
+  "updated_at": "2026-10-28T13:04:18.5275304-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -141,5 +141,14 @@
     "result_status": "failed",
     "finished_utc": "2026-10-28T15:21:26.9480436Z",
     "report_sha256": "bb72190c50a63ed48e3230ac1b3fa6cb547d2421ba2adcebd4afe12ee9d67a57"
+  },
+  "usb_cleanup_diagnostic_attempt": {
+    "status": "failed_before_saving_diagnostic",
+    "error": "No MSFT_Partition objects found with property DriveLetter equal to E",
+    "screenshot": "validation/vm-usb-cleanup-error-2026-10-28.png",
+    "physical_restoration_verified": false,
+    "next_step": "Auxiliary collector updated to retain ACKs and disk/PnP inventory without assuming E exists; rerun requested",
+    "original_harness_modified": false,
+    "msi_modified": false
   }
 }
