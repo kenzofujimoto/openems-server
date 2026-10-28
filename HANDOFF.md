@@ -2,6 +2,15 @@
 
 ## Segunda máquina física — aceite de 27–28/10/2026
 
+### Continuação: criação da VM Windows — 28/10, manhã
+
+- Usuário autorizou baixar ISO oficial e criar VM para concluir USB/WDAC; também autorizou parar boat-clinic. Na verificação, Docker já estava encerrado e a distribuição WSL docker-desktop estava parada; nenhum volume foi excluído. Após o usuário fechar Chrome, RAM livre subiu de ~1,3 para ~5,7 GB.
+- [Progresso de provisionamento](validation/vm-provisioning-2026-10-28.json), ainda `passed=false`: ISO Enterprise Evaluation x64 26H2, build 26300.9457, baixada do link público oficial da Microsoft; 8.225.329.152 bytes, SHA-256 `BC3F24086EBADC94489066B5AD78089E2CF5C3491E90E790BB81A2B199C10E38`, igual ao publicado pela Microsoft. Mídia local em `.venv/windows-vm/media/windows11-enterprise-eval-x64.iso`.
+- VM `OpenEMS Disposable Acceptance` criada em `.venv/windows-vm/guest/openems-acceptance.vmx`, com disco virtual expansível de 80 GB, 4 GB RAM, 2 vCPUs, UEFI/Secure Boot, NAT, USB 3 e autoconexão USB/pastas compartilhadas desativadas. Windows ainda não instalado, nenhum snapshot ou controle executado.
+- Bloqueio atual exige ação do operador: VMware em Virtual Machine Settings → Options → Encryption. Usuário deve concluir Encrypt… com senha própria e adicionar Hardware → Add… → Trusted Platform Module. Não pedir nem registrar a senha, nem capturar essa etapa. Não contornar requisitos do Windows 11. A skill de controle proíbe automatizar diálogos de autenticação.
+- ISO de dados `.venv/windows-vm/media/openems-acceptance-input.iso` preparada com cópias intactas de usb-input, applications-input e RECEIPT; hashes dos MSIs conferidos. Não substitui a ISO de instalação. Não contém segredos.
+- Retomada: confirmar criptografia/vTPM, instalar Windows na VM (aceite de licença e credenciais pelo usuário), conferir CiTool/ConfigCI e criar snapshot limpo. Executar USB com PENMACK redirecionado e letra identificada dentro do guest, preservar JSON, comprovar liberação do dispositivo; restaurar snapshot antes de Applications/WDAC. Nunca executar o roteiro de controles no host. Parte A já concluída abaixo; não reinstalar agente físico nem atualizar checkout.
+
 - Clone isolado `openems-second-machine-acceptance`, branch local `chore/second-machine-acceptance`, main fixada em `5ba6be67c10237c9015ff1098258494039093f8b`. Não atualizar durante a rodada. Sem push, merge ou alterações no CI.
 - [Evidência sanitizada](validation/second-machine-browsers-2026-10-28.json): **Parte A aprovada na instalação válida; Parte B pendente**. O aceite global permanece parcial (`passed=false`). ZIP v2 e todos os 21 arquivos do RECEIPT conferidos por tamanho/SHA-256; nenhum payload extra. MSI preservado, sem recompilar.
 - Docker disponível após intervenção do usuário; pilha própria em loopback:8013, segredos novos por `deploy/new-env.ps1 -Uses 1` sem saída de segredos, migrações normais 001–008 aplicadas e segunda execução `applied: none`. Listas do pacote publicadas. WebActions v1 publicada sem avisos: games=block, streaming=monitor, shopping=allow, monitor_all=false.

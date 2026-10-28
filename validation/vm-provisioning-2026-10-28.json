@@ -1,0 +1,40 @@
+{
+  "physical_usb": "pending",
+  "network": "NAT",
+  "virtual_disk_capacity_gib": 80,
+  "at": "2026-10-28T09:02:14.5123288-03:00",
+  "docker": "Already stopped by operator; docker-desktop WSL distribution confirmed stopped",
+  "source_revision": "5ba6be67c10237c9015ff1098258494039093f8b",
+  "guest_ram_mib": 4096,
+  "iso": {
+    "expected_bytes": 8225329152,
+    "status": "downloaded_and_verified",
+    "filename": "26300.9457.260913-1737.26h2_ge_release_svc_refresh_CLIENTENTERPRISEEVAL_OEMRET_x64FRE_en-us.iso",
+    "expected_sha256": "BC3F24086EBADC94489066B5AD78089E2CF5C3491E90E790BB81A2B199C10E38",
+    "source_domain": "microsoft.com",
+    "verification": {
+      "bytes": 8225329152,
+      "sha256": "BC3F24086EBADC94489066B5AD78089E2CF5C3491E90E790BB81A2B199C10E38",
+      "verified_at": "2026-10-28T09:06:34.0012161-03:00"
+    }
+  },
+  "shared_folders": false,
+  "vmware_version": "26.0.1 build-25688693",
+  "wdac": "pending",
+  "guest_vcpus": 2,
+  "vm_name": "OpenEMS Disposable Acceptance",
+  "usb_autoconnect": false,
+  "guest_installation": "not started",
+  "snapshot": "pending",
+  "updated_at": "2026-10-28T09:07:19.0139686-03:00",
+  "virtual_disk_created": true,
+  "vm_configuration_created": true,
+  "guest_encryption": "pending operator-defined password",
+  "virtual_tpm": "pending operator addition after encryption",
+  "payload_iso": {
+    "contains": "Unmodified usb-input and applications-input packages plus RECEIPT; no secrets",
+    "bytes": 34265088,
+    "sha256": "A282B8D02A29EEDEC919F06F7D8D8AF223728DEF82DE922900C14BBC7AE73587"
+  },
+  "passed": false
+}
