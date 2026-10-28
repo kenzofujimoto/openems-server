@@ -1,5 +1,5 @@
 {
-  "physical_usb": "failed: production MSI and authenticated inventory passed; USB policy successful ACK timeout; original report preserved; post-removal cleanup and physical read/write restoration verified",
+  "physical_usb": "failed (acceptance unchanged): root causes identified and validated by diagnostic variant in guest; product fix and new acceptance run pending",
   "network": "NAT",
   "virtual_disk_capacity_gib": 80,
   "at": "2026-10-28T09:02:14.5123288-03:00",
@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:54:48.3982361-03:00",
+  "updated_at": "2026-10-28T14:00:54.2945212-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -245,7 +245,7 @@
     "cleanup_succeeded": true,
     "device_after_cleanup": "DiskDrive and USB nodes OK, present, problem code 0",
     "side_observation": "Win32_DiskDrive serial for PENMACK is a control character plus \"1\" (\\u00031); serial-based allow rules may be unreliable for this device",
-    "hypothesis": "Skipping the offline step for removable media and relying on DenyInstanceIDs plus Disable-PnpDevice blocks access and restores cleanly. Not yet verified."
+    "hypothesis": "Confirmed by usb_safe_read_test"
   },
   "usb_skip_offline_test": {
     "report": "validation/vm-usb-skip-offline-test-2026-10-28.json",
@@ -258,5 +258,24 @@
     "host_probe": "Windows PowerShell 5.1.26100: existing key + missing value throws PSArgumentException; missing key returns null",
     "affected_sites": "deploy/agent-usb.ps1 lines 126, 132, 184, 194 (apply and cleanup)",
     "device_and_canary": "Unchanged: device OK, canary readable and writable, no journal created"
+  },
+  "usb_safe_read_test": {
+    "report": "validation/vm-usb-safe-read-test-2026-10-28.json",
+    "report_sha256": "59f374902fbb8beb83453687058a069ed7778f02d6e32b5396fc448da1b6c244",
+    "variant_adapter_sha256": "22acffe7053342c2025c4164288c82a931fc3f4b78cad2d53c39622f8a837070",
+    "changes_under_test": "Offline step skipped for removable media; four Get-ItemPropertyValue reads replaced by a missing-value-safe registry read",
+    "precondition": "Restrictions key present without values (reproduces the line 194 failure)",
+    "apply_exit_code": 0,
+    "apply_seconds": 9.3,
+    "usb_block_event": true,
+    "storage_after_apply": "USBSTOR DiskDrive problem code 22 (disabled); USB parent and HID nodes unchanged",
+    "canary_after_apply": "not readable",
+    "cleanup_exit_code": 0,
+    "storage_after_cleanup": "OK, problem code 0",
+    "canary_read_write_after_cleanup": true,
+    "restriction_values_after_cleanup": [],
+    "residue": "Empty DenyInstanceIDs subkey remains after cleanup",
+    "stdout_clean": true,
+    "conclusion": "USB v2 acceptance failure root causes: Set-Disk -IsOffline unsupported on removable media (line 231) and PS 5.1 Get-ItemPropertyValue throwing for missing values (lines 126, 132, 184, 194). Product fix and new acceptance pending."
   }
 }
