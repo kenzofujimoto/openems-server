@@ -19,8 +19,8 @@ IDENTITY = "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"
 pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell 5.1")]
 
 
-def fixture_environment(tmp_path, *, scenario="normal", registry=None, boot=False):
-    configuration = {"scenario": scenario, "registry": registry or {}, "boot": boot}
+def fixture_environment(tmp_path, *, scenario="normal", registry=None, boot=False, wmi_serial="SERIAL"):
+    configuration = {"scenario": scenario, "registry": registry or {}, "boot": boot, "wmi_serial": wmi_serial}
     (tmp_path / "fixture.json").write_text(json.dumps(configuration), encoding="utf-8")
     system = tmp_path / "systemroot"
     templates = system / "schemas/CodeIntegrity/ExamplePolicies"
@@ -218,3 +218,22 @@ def test_usb_cleanup_still_restores_an_offline_disk_from_an_old_journal(tmp_path
     assert restored["disabled"] is False
     assert restored["offline"] is False
     assert not (directory / "usb-control.json").exists()
+
+
+@pytest.mark.parametrize(("wmi_serial", "expected"), [
+    pytest.param("\x031", "fixture", id="wmi-control-prefix"),
+    pytest.param("SER\x7fIAL", "fixture", id="wmi-control-middle"),
+    pytest.param("\x80SERIAL", "fixture", id="wmi-c1-control"),
+    pytest.param("\nSERIAL", "fixture", id="wmi-newline-must-not-be-stripped"),
+    pytest.param("X" * 513, "fixture", id="wmi-oversized"),
+    pytest.param("   ", "fixture", id="wmi-whitespace-only"),
+    pytest.param(None, "fixture", id="wmi-null"),
+    pytest.param("", "fixture", id="wmi-empty"),
+    pytest.param("VALID-SERIAL", "VALID-SERIAL", id="valid-wmi-preserved"),
+    pytest.param("  VALID-SERIAL  ", "VALID-SERIAL", id="valid-wmi-padding-trimmed"),
+])
+def test_usb_inventory_serial_remains_usable_as_a_policy_selector(tmp_path, wmi_serial, expected):
+    directory = fixture_environment(tmp_path, wmi_serial=wmi_serial)
+    result = assert_success(invoke_adapter(directory, "usb", {"mode": "inventory"}))
+    assert result["inventory"][0]["serial"] == expected
+    assert calls(directory) == [], "serial selection must not mutate Windows state"

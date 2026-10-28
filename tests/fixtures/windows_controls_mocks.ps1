@@ -111,7 +111,7 @@ function Copy-Item {
 function Get-CimInstance {
     [CmdletBinding()] param([string]$ClassName)
     if ($ClassName -ne 'Win32_DiskDrive') { throw 'Unexpected CIM query in fixture.' }
-    [pscustomobject]@{PNPDeviceID='USBSTOR\DISK\fixture';Index=1;InterfaceType='USB';SerialNumber='SERIAL';Manufacturer='Fixture';Model='Removable fixture'}
+    [pscustomobject]@{PNPDeviceID='USBSTOR\DISK\fixture';Index=1;InterfaceType='USB';SerialNumber=$fixture.wmi_serial;Manufacturer='Fixture';Model='Removable fixture'}
 }
 function Get-PnpDevice {
     [CmdletBinding()] param([switch]$PresentOnly,[string]$InstanceId)
