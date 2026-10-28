@@ -164,7 +164,7 @@ jobs:
           OPENEMS_REQUIRE_NATIVE_AGENT: "1"
           OPENEMS_SERVICE_TESTS: "1"
           OPENEMS_MSI: openems-agent.msi
-        run: python -m pytest tests/test_native_agent.py tests/test_native_service.py tests/test_native_msi.py -q --junitxml=native.junit.xml
+        run: python -m pytest tests/test_native_agent.py tests/test_native_service.py tests/test_native_msi.py tests/test_native_uninstall.py::test_removal_commands_take_the_uninstall_code tests/test_native_uninstall.py::test_removal_commands_refuse_to_run_without_system -q --junitxml=native.junit.xml
       - name: Reject skipped native tests
         run: python tools/check_quality.py native.junit.xml
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

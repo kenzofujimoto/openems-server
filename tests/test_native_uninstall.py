@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import httpx
+import pytest
 
 from agent.uninstall import derive_secret, release_token
 from tests.test_agent_integration import live_server
@@ -134,6 +135,8 @@ def run(native: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run([str(native), *arguments], capture_output=True, text=True, timeout=60, check=False)
 
 
+# Removal subcommands exist only in the Windows build; the native Windows CI job runs this.
+@pytest.mark.windows_only
 def test_removal_commands_take_the_uninstall_code(native, tmp_path):
     for command in (["installer-prepare", "--remove"], ["uninstall-service"], ["cleanup"]):
         help_text = run(native, *command[:1], "--help").stdout
@@ -142,6 +145,8 @@ def test_removal_commands_take_the_uninstall_code(native, tmp_path):
     assert misplaced.returncode != 0 and "--remove" in misplaced.stderr, "a code only makes sense for removal"
 
 
+# Removal subcommands exist only in the Windows build; the native Windows CI job runs this.
+@pytest.mark.windows_only
 def test_removal_commands_refuse_to_run_without_system(native, tmp_path):
     config = tmp_path / "agent.json"
     config.write_text(json.dumps({"server": "https://ems.example.com", "devid": "PC1",
