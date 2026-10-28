@@ -10,7 +10,7 @@ Remoção autorizada por liberação assinada recebida às 00:37:25; MSI termino
 
 **Parte B permanece pendente:** VMware presente, mas sem VM Windows descartável com snapshot/passthrough verificada. PENMACK E: autorizado somente para a rodada dentro dessa VM. Nenhum teste USB/WDAC executado no Windows físico. Pendência não conta como aceite.
 
-Continuação de 28/10 pela manhã: usuário autorizou criar a VM e baixar a ISO. [Provisionamento](validation/vm-provisioning-2026-10-28.json): ISO oficial Enterprise Evaluation 26H2 baixada e SHA-256 conferido contra a Microsoft; disco virtual e configuração VMware preparados. Aguarda criptografia/vTPM pelo operador, instalação e snapshot. Isso ainda não é aceite USB nem WDAC e não altera o resultado da Parte A.
+Continuação de 28/10 pela manhã: usuário autorizou criar a VM e baixar a ISO. [Provisionamento](validation/vm-provisioning-2026-10-28.json): ISO oficial Enterprise Evaluation 26H2 baixada e SHA-256 conferido contra a Microsoft; disco virtual e configuração VMware preparados. Operador concluiu criptografia/TPM, conferidos no VMware. Após corrigir pontes e slots PCI virtuais, VM ligada no gerenciador UEFI; instalação e snapshot ainda pendentes. Isso ainda não é aceite USB nem WDAC e não altera o resultado da Parte A.
 
 ## Ações web — entrega de 27/10/2026
 

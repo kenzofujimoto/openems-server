@@ -24,17 +24,25 @@
   "guest_vcpus": 2,
   "vm_name": "OpenEMS Disposable Acceptance",
   "usb_autoconnect": false,
-  "guest_installation": "not started",
-  "snapshot": "pending",
-  "updated_at": "2026-10-28T09:07:19.0139686-03:00",
+  "guest_installation": "VM powered on; UEFI boot manager awaiting installation-media selection",
+  "snapshot": "pending Windows installation and clean baseline",
+  "updated_at": "2026-10-28T09:16:36.6942473-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
-  "guest_encryption": "pending operator-defined password",
-  "virtual_tpm": "pending operator addition after encryption",
+  "guest_encryption": "configured by operator; password not collected",
+  "virtual_tpm": "confirmed present in VMware settings and saved VM configuration",
   "payload_iso": {
     "contains": "Unmodified usb-input and applications-input packages plus RECEIPT; no secrets",
     "bytes": 34265088,
     "sha256": "A282B8D02A29EEDEC919F06F7D8D8AF223728DEF82DE922900C14BBC7AE73587"
   },
-  "passed": false
+  "passed": false,
+  "virtual_hardware_correction": {
+    "openems_source_modified": false,
+    "correction": "Added standard virtual PCI and PCIe root bridges to powered-off VM configuration",
+    "error": "No PCIe slot available for SCSI0",
+    "at": "2026-10-28T09:11:35.5217333-03:00",
+    "initial_power_on": "failed before guest boot",
+    "final_assignment": "Consistent standard PCI/PCIe slot map; guest boot reached official installation media"
+  }
 }
