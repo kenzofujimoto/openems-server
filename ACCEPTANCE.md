@@ -1,10 +1,12 @@
 # Aceite final do roadmap desktop
 
-## Segunda máquina física — rodada iniciada em 27–28/10/2026
+## Segunda máquina física — rodada de 27–28/10/2026
 
-[Evidência parcial](validation/second-machine-browsers-2026-10-28.json), main fixada em `5ba6be67c10237c9015ff1098258494039093f8b`, MSI v2 da origem `18cd811`. Integridade do ZIP e 21 arquivos do recibo aprovada; servidor Docker, migrações 001–008, listas de homologação e política WebActions v1 preparados. Baseline elevado coletado sem agente existente.
+[Evidência sanitizada](validation/second-machine-browsers-2026-10-28.json), main fixada em `5ba6be67c10237c9015ff1098258494039093f8b`, MSI v2 da origem `18cd811`. Integridade do ZIP e 21 arquivos do recibo aprovada; servidor Docker, migrações 001–008, listas de homologação e política WebActions v1 preparados. Baseline elevado coletado sem agente existente. Parte A aprovada; aceite global parcial por pendência da Parte B.
 
-**Parte A em andamento:** instalação válida, hash esperado, convite consumido/removido e ACK v1 confirmados. Sondas DNS, eventos esperados sem evento IETF, Chrome/Firefox físicos em perfis novos e painel/teclado/foco/tema passaram; observações dos navegadores e legibilidade/foco confirmadas pelo operador. Duas tentativas anteriores inválidas e suas remoções pelo MSI permanecem registradas. YouTube está na fase de CDN bloqueado com ACK v2; reprodução e remoção/restauração continuam pendentes. Não inferir resultado físico dos testes históricos de Sandbox.
+**Parte A aprovada na instalação válida:** hash esperado, convite consumido/removido e ACK v1 confirmados. Sondas DNS, eventos esperados sem evento IETF, Chrome 156.0.8078.48/Firefox 158.0.1 físicos em perfis novos e painel/teclado/foco/tema passaram; observações dos navegadores e legibilidade/foco confirmadas pelo operador. YouTube passou nos dois: página aberta sem reprodução com CDN bloqueado (ACK v2 e eventos reais googlevideo.com), reprodução por pelo menos 10 s com CDN liberado (ACK v3). Duas tentativas anteriores inválidas e suas remoções pelo MSI permanecem registradas; não foram convertidas em sucesso.
+
+Remoção autorizada por liberação assinada recebida às 00:37:25; MSI terminou com código 0 às 00:38:00. Ausência de serviço, watchdog, processos e NRPT; DNS público voltou, configurações DNS e políticas dos navegadores iguais ao baseline. O hosts perdeu apenas um bloco OpenEMS antigo já presente no baseline, preservando byte a byte as entradas externas; hash total não é igual ao inicial e o backup original está preservado. Servidor de homologação encerrado sem remover volumes nem afetar outros projetos. Nenhuma alteração no código, CI, certificados ou proteção antivírus; sem push/merge.
 
 **Parte B permanece pendente:** VMware presente, mas sem VM Windows descartável com snapshot/passthrough verificada. PENMACK E: autorizado somente para a rodada dentro dessa VM. Nenhum teste USB/WDAC executado no Windows físico. Pendência não conta como aceite.
 

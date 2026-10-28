@@ -9,7 +9,8 @@
   "part_b": {
     "status": "pending",
     "usb_test_volume": "E: PENMACK",
-    "reason": "No disposable Windows VM with snapshot and USB passthrough verified"
+    "reason": "No disposable Windows VM with snapshot and USB passthrough verified",
+    "passed": false
   },
   "revision": "5ba6be67c10237c9015ff1098258494039093f8b",
   "msi_source_revision": "18cd81169d1d317ee070a4d02a7ac26e0c439296",
@@ -190,8 +191,8 @@
     "managed_nrpt": []
   },
   "date": "2026-10-28",
-  "updated_at": "2026-10-28T00:28:22.3616254-03:00",
-  "status": "pending",
+  "updated_at": "2026-10-28T00:41:13.5499363-03:00",
+  "status": "partial_acceptance",
   "passed": false,
   "preparation": {
     "categories": "games=3, streaming=8, shopping=3, sports=1",
@@ -200,7 +201,7 @@
     "migrations_first_run": "001-008 applied",
     "migrations_second_run": "applied: none",
     "installation_started": true,
-    "server": "running on loopback"
+    "server": "Stopped with docker compose down; persistent test volumes retained; other project containers preserved"
   },
   "scenarios": {
     "panel_keyboard_focus_dark_mode": {
@@ -208,7 +209,8 @@
       "status": "passed"
     },
     "youtube": {
-      "status": "pending"
+      "reason": "Both physical browsers: page loads but playback blocked with CDN denied; playback advances at least 10 seconds after CDN release; policies ACKed and DNS checked",
+      "status": "passed"
     },
     "package_integrity": {
       "reason": "ZIP digest and all 21 RECEIPT entries match, no unlisted payload",
@@ -237,8 +239,8 @@
       "status": "pending"
     },
     "uninstall_and_restoration": {
-      "reason": "No installation performed yet",
-      "status": "pending"
+      "status": "passed",
+      "reason": "Signed release received before MSI removal; exit 0; no service/watchdog/process/NRPT; DNS adapter and browser settings unchanged; unmanaged hosts bytes preserved; public DNS restored"
     },
     "physical_usb": {
       "reason": "Only FGT-LAB VM found; no verified disposable Windows VM, snapshot or passthrough",
@@ -636,6 +638,81 @@
           }
         ]
       }
+    },
+    {
+      "stage": "cdn_allowed",
+      "policy": {
+        "vdom": "WebActions",
+        "version": 3,
+        "digest": "402c1f275f45d492c9091536156fe32199cb29e07414b8edb7dc5a0490f0e2cc",
+        "body": {
+          "web_filter": {
+            "allowed": [
+              "youtube.com",
+              "*.youtube.com",
+              "*.ytimg.com",
+              "googlevideo.com",
+              "*.googlevideo.com"
+            ],
+            "blocked": [],
+            "category_actions": {
+              "games": "block",
+              "shopping": "allow",
+              "streaming": "block"
+            }
+          }
+        },
+        "updated_at": "2026-10-28T00:32:16.117435-03:00"
+      },
+      "published_from": "real panel",
+      "confirmed_check": {
+        "dns": [
+          {
+            "at": "2026-10-28T00:33:26.5431547-03:00",
+            "domain": "www.youtube.com",
+            "answers": [
+              "142.251.154.4",
+              "142.251.151.4",
+              "142.251.156.4",
+              "142.251.150.4",
+              "142.251.157.4",
+              "142.251.155.4",
+              "142.251.152.4",
+              "142.251.153.4"
+            ]
+          },
+          {
+            "at": "2026-10-28T00:33:26.6112203-03:00",
+            "domain": "googlevideo.com",
+            "answers": [
+              "172.217.162.164"
+            ]
+          },
+          {
+            "at": "2026-10-28T00:33:26.6390412-03:00",
+            "domain": "i.ytimg.com",
+            "answers": [
+              "142.251.147.6",
+              "142.251.144.6",
+              "142.251.148.6",
+              "192.178.40.6",
+              "142.251.149.6",
+              "192.178.41.6",
+              "142.251.145.6",
+              "142.251.146.6"
+            ]
+          }
+        ],
+        "ack": [
+          {
+            "config_version": 3,
+            "current_config_version": 3,
+            "applied_digest": "402c1f275f45d492c9091536156fe32199cb29e07414b8edb7dc5a0490f0e2cc",
+            "last_applied": "2026-10-28T00:32:34.685451-03:00",
+            "last_error": ""
+          }
+        ]
+      }
     }
   ],
   "firefox_events": {
@@ -659,5 +736,178 @@
       }
     ],
     "ietf_event_count": 0
-  }
+  },
+  "youtube_cdn_blocked_events": {
+    "blocked_count": 8.0,
+    "categories": [
+      "streaming"
+    ],
+    "row_count": 6,
+    "domain": "googlevideo.com",
+    "at": "2026-10-28T00:30:37.8038435-03:00",
+    "note": "CDN hostnames normalized to the parent domain; includes the apex DNS probe",
+    "subdomain_row_count": 5
+  },
+  "youtube_observations": [
+    {
+      "passed": true,
+      "browser": "Chrome",
+      "at": "2026-10-28T00:32:34.9608188-03:00",
+      "source": "operator confirmation",
+      "video_played": false,
+      "stage": "cdn_blocked",
+      "result": "Spinner persists; seeking shows preview frames but playback does not advance",
+      "page_loaded": true
+    },
+    {
+      "passed": true,
+      "browser": "Firefox",
+      "at": "2026-10-28T00:32:34.9609383-03:00",
+      "source": "operator confirmation",
+      "video_played": false,
+      "stage": "cdn_blocked",
+      "result": "Page loads; video does not start",
+      "page_loaded": true
+    },
+    {
+      "source": "operator confirmation",
+      "at": "2026-10-28T00:37:10.5537764-03:00",
+      "passed": true,
+      "video_played": true,
+      "browser": "Chrome",
+      "playback_advanced_seconds_at_least": 10,
+      "stage": "cdn_allowed",
+      "page_loaded": true
+    },
+    {
+      "source": "operator confirmation",
+      "at": "2026-10-28T00:37:10.5565977-03:00",
+      "passed": true,
+      "video_played": true,
+      "browser": "Firefox",
+      "playback_advanced_seconds_at_least": 10,
+      "stage": "cdn_allowed",
+      "page_loaded": true
+    }
+  ],
+  "os": {
+    "Caption": "Microsoft Windows 11 Home Single Language",
+    "Version": "10.0.26300",
+    "BuildNumber": "26300"
+  },
+  "docker_server_version": "29.7.2",
+  "security_scope": {
+    "antivirus_disabled": false,
+    "certificate_validation_bypassed": false,
+    "anti_bypass": false,
+    "usb_or_wdac_controls_run_on_physical_host": false,
+    "https_blockpage": false,
+    "dns_filter": true
+  },
+  "youtube_cdn_events_at_allow_check": {
+    "at": "2026-10-28T00:34:06.6519007-03:00",
+    "subdomain_row_count": 5,
+    "note": "Cumulative hourly totals; includes events from the blocked stage, not evidence of new blocking after release",
+    "blocked_count": 11.0
+  },
+  "youtube_cdn_post_allow_observation": {
+    "cumulative_blocked_count": 11,
+    "note": "No increase in cumulative blocked CDN count between allow-stage checks; playback remains an operator observation",
+    "at": "2026-10-28T00:36:50.9383053-03:00",
+    "new_blocked_events_since_allow_check": 0
+  },
+  "screenshots": [
+    "second-machine-panel-2026-10-28.png",
+    "second-machine-youtube-policy-2026-10-28.png",
+    "second-machine-youtube-allowed-2026-10-28.png"
+  ],
+  "removal_authorization": {
+    "requested_at": "2026-10-28T00:37:10.386669-03:00",
+    "method": "Server-published signed release for WebActions",
+    "agent_receipt": {
+      "at": "2026-10-28T03:37:25Z",
+      "received": true
+    },
+    "release_revoked_after_removal": true
+  },
+  "removal": {
+    "restoration": {
+      "nrpt_total_remaining": 0,
+      "processes_remaining": 0,
+      "services_remaining": 0,
+      "at": "2026-10-28T00:38:01.4476704-03:00",
+      "hosts_unchanged": false,
+      "managed_nrpt_remaining": 0,
+      "watchdog_remaining": 0,
+      "browser_policies_unchanged": true,
+      "dns_adapter_settings_unchanged": true,
+      "hosts_sha256": "FCDB94B1EAA177DD807C9EB68C95F1C7E57E12588BC9DB29DF73F6B0F9B5E16E"
+    },
+    "dns_after_removal": [
+      {
+        "answers": [
+          "104.20.21.8",
+          "172.66.175.59"
+        ],
+        "domain": "www.example.net",
+        "at": "2026-10-28T00:38:19.1254389-03:00"
+      },
+      {
+        "answers": [
+          "104.20.26.136",
+          "172.66.157.237"
+        ],
+        "domain": "www.example.org",
+        "at": "2026-10-28T00:38:19.1468913-03:00"
+      },
+      {
+        "answers": [
+          "104.16.45.99",
+          "104.16.44.99"
+        ],
+        "domain": "www.ietf.org",
+        "at": "2026-10-28T00:38:19.1639193-03:00"
+      }
+    ],
+    "hosts_managed_cleanup": {
+      "only_preexisting_openems_block_removed": true,
+      "baseline_managed_block_present": true,
+      "final_managed_block_present": false
+    },
+    "result": {
+      "exit_code": 0,
+      "release_receipt_confirmed": true,
+      "at": "2026-10-28T00:38:00.5391462-03:00"
+    },
+    "note": "Baseline contained an old OpenEMS-managed hosts block despite no installed agent. MSI removed only that block; all unmanaged hosts bytes are identical. Original backup is preserved locally. ProgramData agent state is retained by the MSI design."
+  },
+  "final_expected_events": {
+    "ietf_event_count": 0,
+    "observed_at": "2026-10-28T00:40:14.161741-03:00",
+    "rows": [
+      {
+        "at": "2026-10-28T00:00:00-03:00",
+        "domain": "www.example.net",
+        "action": "blocked",
+        "category": "games",
+        "reason": "category",
+        "count": 6
+      },
+      {
+        "at": "2026-10-28T00:00:00-03:00",
+        "domain": "www.example.org",
+        "action": "monitored",
+        "category": "streaming",
+        "reason": "category",
+        "count": 4
+      }
+    ]
+  },
+  "part_a": {
+    "passed": true,
+    "status": "passed",
+    "note": "Two invalid enrollment attempts and their cleanup remain recorded; final valid physical acceptance passed"
+  },
+  "completed_at": "2026-10-28T00:40:14.1696618-03:00",
+  "verification_scope": "Artifact hashes, real Windows install/DNS/server ACK/events, operator-observed physical browsers, real panel keyboard/theme and MSI cleanup; no source-code or CI changes"
 }
