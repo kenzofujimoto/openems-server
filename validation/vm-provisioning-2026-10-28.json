@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T14:00:54.2945212-03:00",
+  "updated_at": "2026-10-28T14:08:42.9359294-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -277,5 +277,12 @@
     "residue": "Empty DenyInstanceIDs subkey remains after cleanup",
     "stdout_clean": true,
     "conclusion": "USB v2 acceptance failure root causes: Set-Disk -IsOffline unsupported on removable media (line 231) and PS 5.1 Get-ItemPropertyValue throwing for missing values (lines 126, 132, 184, 194). Product fix and new acceptance pending."
+  },
+  "cipolicy_output_probe": {
+    "report": "validation/vm-cipolicy-output-probe-2026-10-28.json",
+    "report_sha256": "617d3b5cc4e1c98ce320ca9b95337e961e57af1b1143a9a7dbd036cf00454094",
+    "mutates_system": false,
+    "finding": "New-CIPolicyRule writes \"Scan completed successfully\" directly to Console.Out: present with plain call and with PowerShell streams 3-6 silenced; absent only when [Console]::Out is swapped to TextWriter.Null during the call. Rule objects are still returned (4 rules).",
+    "side_finding": "Progress records go to stderr as CLIXML (discarded by windows_control.rs, capped at 64 KiB)"
   }
 }
