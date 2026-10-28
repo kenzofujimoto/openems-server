@@ -11,6 +11,25 @@
 
 ## Próximo passo: segunda máquina
 
+**Para o Claude da segunda máquina:** antes de qualquer ação, leia esta seção, a "Revisão de segurança", o [ACCEPTANCE.md](ACCEPTANCE.md) e o [roteiro](docs/second-machine-acceptance.md).
+- Pacote e bytes:
+  - Use só os bytes do pacote v2. Confira o hash do ZIP e o `RECEIPT.json` antes de usar.
+  - Não recompile nem gere MSI.
+- Parte A (Windows físico):
+  - Instalar o agente filtra o DNS da máquina até a remoção, então avise o usuário antes de instalar e remova no fim.
+  - Convites só de uso único, digitados pelo usuário.
+  - Use apenas perfis de navegador novos, nunca o pessoal.
+  - Não contorne o antivírus.
+- Parte B (USB e WDAC): somente em VM descartável com snapshot. Nunca rode `test-controls-sandbox.ps1` no Windows físico.
+- Registro:
+  - Evidência sanitizada em `validation/`, sem segredos nem URLs completas.
+  - Pendência não vira aceite; uma falha fica registrada como falha.
+  - Atualize este HANDOFF e o ACCEPTANCE.
+- Git:
+  - A `main` é protegida por 15 checks.
+  - Trabalhe numa branch (`test/second-machine-acceptance`) e abra PR em draft. Push direto na `main` só com confirmação explícita do usuário.
+  - Commits convencionais. Antes de comitar, rode `git log` e procure commits de outros agentes, porque o Codex também trabalha neste repositório.
+
 O usuário vai continuar no notebook com pendrive, Chrome, Firefox e Claude. O roteiro está em [docs/second-machine-acceptance.md](docs/second-machine-acceptance.md).
 - **Parte A:** agente real no Windows físico, servidor local por Docker, painel, Chrome/Firefox e YouTube manual.
 - **Parte B:** USB físico e WDAC em VM descartável com passthrough. Nunca no Windows físico.
