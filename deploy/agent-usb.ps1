@@ -81,7 +81,12 @@ function Inventory {
                 if ($candidate.BusType -eq 'USB') {
                     $number = [uint32]$candidate.Number; $unique = [string]$candidate.UniqueId
                     $boot = [bool]$candidate.IsBoot; $system = [bool]$candidate.IsSystem
-                    if ([string]$disk.SerialNumber) { $serial = ([string]$disk.SerialNumber).Trim() }
+                    # Keep the PnP identity when WMI reports malformed or missing serial data.
+                    $wmiSerial = [string]$disk.SerialNumber
+                    if ($wmiSerial -notmatch '\p{Cc}') {
+                        $wmiSerial = $wmiSerial.Trim()
+                        if ($wmiSerial -and $wmiSerial.Length -le 512) { $serial = $wmiSerial }
+                    }
                     $manufacturer = [string]$disk.Manufacturer; $model = [string]$disk.Model
                     $letters = @(Get-Partition -DiskNumber $number -ErrorAction Stop | Where-Object DriveLetter | ForEach-Object { [string]$_.DriveLetter + ':' })
                 } else { continue }
