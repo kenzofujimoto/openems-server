@@ -1,5 +1,5 @@
 {
-  "physical_usb": "pending",
+  "physical_usb": "failed: production MSI and authenticated inventory passed; USB policy successful ACK timeout; original report preserved; post-removal verification pending",
   "network": "NAT",
   "virtual_disk_capacity_gib": 80,
   "at": "2026-10-28T09:02:14.5123288-03:00",
@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T12:12:06.9259014-03:00",
+  "updated_at": "2026-10-28T12:25:08.6901949-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -114,6 +114,32 @@
     "size_bytes": 4026531840,
     "is_boot": false,
     "is_system": false,
-    "at": "2026-10-28T12:12:06.9255835-03:00"
+    "at": "2026-10-28T12:12:06.9255835-03:00",
+    "vid": "058F",
+    "pid": "6387"
+  },
+  "usb_guest_preflight": {
+    "at": "2026-10-28T12:15:12.0303912-03:00",
+    "model": "VMware20,1",
+    "usb_volumes": [
+      {
+        "drive": "E:",
+        "label": "PENMACK",
+        "model": "Generic Flash Disk",
+        "bus_type": "USB",
+        "is_boot": false,
+        "is_system": false,
+        "size_bytes": 4026531840
+      }
+    ]
+  },
+  "usb_launch": {
+    "started_utc": "2026-10-28T15:18:33.1598678Z",
+    "original_script_sha256": "a6d0295ed3ca8f075378ad38ed1f18bbe5d91b58f8393d96b1e3365fb24267f4",
+    "guest_drive": "E:",
+    "initial_non_admin_attempt": "Guard rejected launch before marker creation or original harness execution; subsequent elevated launch started",
+    "result_status": "failed",
+    "finished_utc": "2026-10-28T15:21:26.9480436Z",
+    "report_sha256": "bb72190c50a63ed48e3230ac1b3fa6cb547d2421ba2adcebd4afe12ee9d67a57"
   }
 }

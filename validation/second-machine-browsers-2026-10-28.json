@@ -7,10 +7,12 @@
   },
   "started_at": "2026-10-27T23:54:58.2570012-03:00",
   "part_b": {
-    "status": "pending",
+    "status": "usb_failed_applications_pending",
     "usb_test_volume": "E: PENMACK",
-    "reason": "No disposable Windows VM with snapshot and USB passthrough verified",
-    "passed": false
+    "reason": "Disposable VMware guest and clean snapshot UID 2 verified; physical PENMACK passthrough verified; original USB harness failed awaiting successful policy ACK. Applications/WDAC not yet run.",
+    "passed": false,
+    "usb_report": "validation/vm-usb-2026-10-28.json",
+    "usb_cleanup": "Harness reported no cleanup errors; independent guest and canary verification pending"
   },
   "revision": "5ba6be67c10237c9015ff1098258494039093f8b",
   "msi_source_revision": "18cd81169d1d317ee070a4d02a7ac26e0c439296",
@@ -191,7 +193,7 @@
     "managed_nrpt": []
   },
   "date": "2026-10-28",
-  "updated_at": "2026-10-28T00:41:13.5499363-03:00",
+  "updated_at": "2026-10-28T12:25:08.7527065-03:00",
   "status": "partial_acceptance",
   "passed": false,
   "preparation": {
