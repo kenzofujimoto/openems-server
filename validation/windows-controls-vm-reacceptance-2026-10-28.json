@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-28",
+  "source_revision": "f1fb89192c003cec457230cc507873f9837435ad",
+  "package_report": "validation/windows-controls-serial-fixed-package-2026-10-28.json",
+  "passed": false,
+  "status": "pending_guest_media_and_usb",
+  "snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": 2,
+    "restore_confirmed_by_operator": true,
+    "guest_desktop_observed": true,
+    "observed_at": "2026-10-28T16:42:45-03:00"
+  },
+  "media": {
+    "required_iso": "openems-controls-fixed-f1fb891.iso",
+    "required_label": "OPENEMS_FIXED",
+    "sha256": "e0e4fc28a36c78499da2e2d62769f18039706f52ca3f8b76f0dac82b351c9578",
+    "guest_mount_confirmed": false
+  },
+  "usb": {
+    "status": "pending",
+    "device_label": "PENMACK",
+    "vmware_menu_name": "Alcor Micro Mass Storage",
+    "vid": "058f",
+    "pid": "6387",
+    "expected_bytes": 4026531840,
+    "new_runner_shortcut": "12 - Run FIXED USB inside VM as administrator",
+    "guest_report_directory": "OpenEMSResults/fixed-f1fb891/usb"
+  },
+  "applications": {
+    "status": "pending",
+    "requires_another_clean_snapshot_restore": true,
+    "new_runner_shortcut": "13 - Run FIXED WDAC inside VM as administrator",
+    "guest_report_directory": "OpenEMSResults/fixed-f1fb891/applications"
+  },
+  "physical_host_controls_executed": false,
+  "old_inputs_and_reports_overwritten": false,
+  "git": {"push": false, "pull_request": false, "ci_modified": false}
+}

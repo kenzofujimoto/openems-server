@@ -8,7 +8,7 @@ Par MSI novo 0.4.0/0.4.1 gerado da revisão `548584b2496fdd6872e8f7a2af7afe13304
 
 A correção adicional do serial foi aprovada e concluída com TDD: testes `3adaeea`, produto `f1fb891`, 27/27 regressões; Rust 225/225. WMI malformado mantém a identidade PnP válida. Suíte completa final: 1121 aprovados, 0 falhas, 58 skips, cobertura 88.58%; pendências de cobertura/integração preservadas.
 
-Pacote final separado da revisão `f1fb89192c003cec457230cc507873f9837435ad`: [recibo de MSI, executáveis e ISO](validation/windows-controls-serial-fixed-package-2026-10-28.json). O pacote anterior de quatro correções e o v2 não foram substituídos. **USB físico e Applications/WDAC permanecem pendentes**, exigindo snapshot limpo UID 2 antes de cada fase. A ISO e os atalhos novos estão preparados; nenhum snapshot foi restaurado nem controle executado no host nesta etapa.
+Pacote final separado da revisão `f1fb89192c003cec457230cc507873f9837435ad`: [recibo de MSI, executáveis e ISO](validation/windows-controls-serial-fixed-package-2026-10-28.json). O pacote anterior de quatro correções e o v2 não foram substituídos. **USB físico e Applications/WDAC permanecem pendentes**, exigindo snapshot limpo UID 2 antes de cada fase. A ISO e os atalhos novos estão preparados. O operador confirmou a restauração do snapshot UID 2; a execução USB ainda aguarda mídia/PENMACK. Nenhum controle foi executado no host. [Estado da nova rodada](validation/windows-controls-vm-reacceptance-2026-10-28.json).
 
 ## Ações web — entrega de 27/10/2026
 
