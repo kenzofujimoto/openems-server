@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:52:04.6579944-03:00",
+  "updated_at": "2026-10-28T13:54:48.3982361-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -246,5 +246,17 @@
     "device_after_cleanup": "DiskDrive and USB nodes OK, present, problem code 0",
     "side_observation": "Win32_DiskDrive serial for PENMACK is a control character plus \"1\" (\\u00031); serial-based allow rules may be unreliable for this device",
     "hypothesis": "Skipping the offline step for removable media and relying on DenyInstanceIDs plus Disable-PnpDevice blocks access and restores cleanly. Not yet verified."
+  },
+  "usb_skip_offline_test": {
+    "report": "validation/vm-usb-skip-offline-test-2026-10-28.json",
+    "report_sha256": "45dd04b3f2a18c58b0198cba1241c26bba37f91770b94de1ff5b9b733c590b71",
+    "result": "Inconclusive for the offline hypothesis: apply failed earlier, before any device or journal change",
+    "failing_line": 194,
+    "failing_statement": "Get-ItemPropertyValue -LiteralPath $restriction -Name DenyInstanceIDs -ErrorAction SilentlyContinue",
+    "exception": "PSArgumentException: property does not exist (terminating despite SilentlyContinue)",
+    "trigger": "Restrictions key left by the previous diagnostic cleanup exists without the value; the empty DenyInstanceIDs subkey also remains after cleanup",
+    "host_probe": "Windows PowerShell 5.1.26100: existing key + missing value throws PSArgumentException; missing key returns null",
+    "affected_sites": "deploy/agent-usb.ps1 lines 126, 132, 184, 194 (apply and cleanup)",
+    "device_and_canary": "Unchanged: device OK, canary readable and writable, no journal created"
   }
 }
