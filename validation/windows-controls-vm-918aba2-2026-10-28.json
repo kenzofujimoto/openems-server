@@ -3,7 +3,7 @@
   "source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
   "package_report": "validation/windows-controls-canonical-package-2026-10-28.json",
   "passed": false,
-  "status": "applications_failed_before_network_and_wdac_enforcement",
+  "status": "applications_retry_failed_wdac_hash_ack_negative",
   "applications": {
     "status": "failed",
     "report": "validation/vm-applications-fixed-918aba2-2026-10-28.json",
@@ -37,11 +37,38 @@
       "report": "validation/vm-applications-fixed-918aba2-network-diagnostic-2026-10-28.json"
     },
     "retry": {
-      "status": "pending_clean_snapshot_and_operator_launch",
+      "status": "failed",
       "shortcut": "18 - Retry 918aba2 WDAC inside clean VM as administrator",
       "same_package_bytes": true,
       "same_harness_and_deadlines": true,
-      "guest_results": "fixed-918aba2/applications-retry1"
+      "guest_results": "fixed-918aba2/applications-retry1",
+      "started_utc": "2026-10-28T22:47:51.1229879Z",
+      "report": "validation/vm-applications-fixed-918aba2-retry1-2026-10-28.json",
+      "preflight": "validation/vm-applications-fixed-918aba2-retry1-preflight-2026-10-28.json",
+      "supplement": "validation/vm-applications-fixed-918aba2-retry1-supplement-2026-10-28.json",
+      "harness_started_utc": "2026-10-28T22:48:55.6284293Z",
+      "finished_utc": "2026-10-28T22:53:18.8018658Z",
+      "passed_checks": [
+        "production MSI and authenticated inventory",
+        "running fixture inventory and SHA-256",
+        "both fixture paths reach HTTPS before policy",
+        "selected app remains runnable with blocked network; control copy connects",
+        "network policy release restores connection"
+      ],
+      "failure_stage": "WDAC hash policy version 4: negative ACK; no success within unchanged 90-second deadline",
+      "failed_policy_version": 4,
+      "negative_ack_received": true,
+      "release_policy_version": 5,
+      "release_ack_success": true,
+      "cleanup_errors": [],
+      "core_cleanup_verified": true,
+      "wdac_ownership_enumeration": "pending read-only diagnostic",
+      "diagnostic": {
+        "shortcut": "19 - Read 918aba2 WDAC failure inside VM as administrator",
+        "agent_installation": false,
+        "policy_mutations": false,
+        "status": "pending_guest_operator_launch"
+      }
     }
   },
   "usb": {
