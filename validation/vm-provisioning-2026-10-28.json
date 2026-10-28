@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:30:58.0379169-03:00",
+  "updated_at": "2026-10-28T13:39:39.7002143-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -198,5 +198,23 @@
     "cleanup_errors": [],
     "guest_retains_evidence": true,
     "shared_pattern": "Same generic enforcement failure (ACK text only LocalError) as USB policy v2; adapter discards exception message and stderr"
+  },
+  "wdac_adapter_diagnostic": {
+    "report": "validation/vm-wdac-adapter-diagnostic-2026-10-28.json",
+    "report_sha256": "6581cbf70331615c18f86c22a60173a217d46da8b0d409b62f0396496128ae91",
+    "tooling_sha256": {
+      "diag-adapter-worker.ps1": "4ee583dd4138b9e05b8bf4c16cfe917f7f52b794d64337ad52b3c1e5df15669e",
+      "run-adapter-diagnostic.ps1": "f5c7f2bfc89d629449e9215e3598df7cb2562ee682bc93959720f7f76e13574d",
+      "diag-agent-applications.ps1": "26a0385ec477a6a5675ab52ad2078fc6f15b260e97d43ad1f781c0daab94dce1"
+    },
+    "method": "Instrumented copy of deploy/agent-applications.ps1 at 18cd811 (catch block also emits exception); run as SYSTEM via scheduled task with a fresh compiled hash fixture; product code unchanged",
+    "failing_line": 261,
+    "failing_statement": "Merge-CIPolicy -PolicyPaths $allow -OutputFilePath $xmlPath -Rules $deny",
+    "exception": "System.UnauthorizedAccessException: access denied to C:\\WINDOWS\\schemas\\CodeIntegrity\\ExamplePolicies\\AllowAll.xml",
+    "latent_issue": "New-CIPolicyRule writes \"Scan completed successfully\" to stdout before the JSON result, which serde_json in windows_control.rs would reject even on success",
+    "apply_seconds": 89.9,
+    "wdac_policy_deployed": false,
+    "cleanup_succeeded": true,
+    "hypothesis": "Merge-CIPolicy needs write access to its input policy; Microsoft guidance copies example policies to a working path first. Not yet verified."
   }
 }
