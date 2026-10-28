@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Correção dos controles Windows — 28/10/2026
+
+Quatro defeitos corrigidos em `fix/windows-control-adapters`: TDD em `787caab` (11 falhas/6 sucessos antes do produto), WDAC em `e31e2fe`, USB em `548584b`. Regressões 17/17, Rust 225/225 sem ignorados, Ruff, fmt e Clippy passaram. Painel 102/102, cobertura de linhas 95,17%. Suíte Python 3.14 com release: 1111 aprovados, 58 skips, 0 falhas, cobertura 88,58%; gate completo permanece pendente. Timeout anterior de inventário e tentativas de ambiente estão preservados no [registro](validation/windows-controls-fix-2026-10-28.json).
+
+Par MSI novo 0.4.0/0.4.1 gerado da revisão `548584b2496fdd6872e8f7a2af7afe13304bad5c` e verificado por manifesto, hashes e ausência de fault injection ([recibo](validation/windows-controls-fixed-package-2026-10-28.json)). Pacotes v2 originais intactos. Isso não equivale a aceite na VM: nenhum novo MSI instalado, controle aplicado no host ou snapshot restaurado nesta etapa.
+
+A suspeita adicional do serial PENMACK foi confirmada em modo somente de planejamento ([prova](validation/windows-usb-serial-policy-probe-2026-10-28.json)): WMI com caractere de controle produz seletor rejeitado. Correção do serial aguarda aprovação de escopo/TDD; não foi implementada nem foi afrouxada a validação. USB e Applications/WDAC na VM permanecem pendentes do pacote final e da nova rodada; pendência não conta como aceite.
+
 ## Ações web — entrega de 27/10/2026
 
 Permitir/Bloquear/Monitorar usa [matriz de aceite própria](docs/web-filter-actions-acceptance.md). O build desta entrega é preparado separadamente em `.venv/web-actions-acceptance/`, preservando os pacotes e resultados anteriores. Os quatro roteiros abaixo continuam como regressões de sessão/locais/controles; não substituem o aceite das ações web nem dos navegadores.

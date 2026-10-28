@@ -1,0 +1,239 @@
+{
+  "date": "2026-10-28",
+  "updated_at": "2026-10-28T15:49:34.2696813-03:00",
+  "branch": "fix/windows-control-adapters",
+  "base_revision": "5ba6be67c10237c9015ff1098258494039093f8b",
+  "brief_commit": "5059685",
+  "test_commit": "787caab",
+  "wdac_fix_commit": "e31e2fe",
+  "usb_fix_commit": "548584b",
+  "passed": false,
+  "scope": "Four confirmed Windows adapter defects; physical acceptance is separate",
+  "regression": {
+    "engine": "Windows PowerShell 5.1",
+    "mocked_controls": true,
+    "production_system_guard_unchanged": true,
+    "red": {
+      "tests": 17,
+      "failed": 11,
+      "errors": 0,
+      "cases": [
+        {
+          "name": "test_mocked_wdac_success_and_cleanup_preserve_the_json_contract",
+          "failed": false
+        },
+        {
+          "name": "test_wdac_merge_uses_a_private_copy_of_the_system_template",
+          "failed": true
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[path]",
+          "failed": true
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[hash]",
+          "failed": true
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[publisher]",
+          "failed": true
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[name]",
+          "failed": true
+        },
+        {
+          "name": "test_configci_failure_restores_console_output_for_the_error_json",
+          "failed": true
+        },
+        {
+          "name": "test_removable_usb_block_uses_pnp_without_setting_disk_offline",
+          "failed": true
+        },
+        {
+          "name": "test_usb_apply_handles_an_existing_restrictions_key_without_values",
+          "failed": true
+        },
+        {
+          "name": "test_usb_removes_owned_journal_when_registry_values_are_already_absent[cleanup]",
+          "failed": true
+        },
+        {
+          "name": "test_usb_removes_owned_journal_when_registry_values_are_already_absent[apply]",
+          "failed": true
+        },
+        {
+          "name": "test_usb_release_preserves_external_restrictions_and_restores_owned_device",
+          "failed": true
+        },
+        {
+          "name": "test_production_system_guard_still_rejects_unprivileged_apply[usb]",
+          "failed": false
+        },
+        {
+          "name": "test_production_system_guard_still_rejects_unprivileged_apply[applications]",
+          "failed": false
+        },
+        {
+          "name": "test_usb_boot_storage_never_reaches_a_mutating_mock",
+          "failed": false
+        },
+        {
+          "name": "test_usb_read_only_and_cleanup_restore_the_original_writable_state",
+          "failed": false
+        },
+        {
+          "name": "test_usb_cleanup_still_restores_an_offline_disk_from_an_old_journal",
+          "failed": false
+        }
+      ]
+    },
+    "green": {
+      "tests": 17,
+      "failed": 0,
+      "errors": 0,
+      "cases": [
+        {
+          "name": "test_mocked_wdac_success_and_cleanup_preserve_the_json_contract",
+          "failed": false
+        },
+        {
+          "name": "test_wdac_merge_uses_a_private_copy_of_the_system_template",
+          "failed": false
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[path]",
+          "failed": false
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[hash]",
+          "failed": false
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[publisher]",
+          "failed": false
+        },
+        {
+          "name": "test_configci_console_output_does_not_corrupt_adapter_json[name]",
+          "failed": false
+        },
+        {
+          "name": "test_configci_failure_restores_console_output_for_the_error_json",
+          "failed": false
+        },
+        {
+          "name": "test_removable_usb_block_uses_pnp_without_setting_disk_offline",
+          "failed": false
+        },
+        {
+          "name": "test_usb_apply_handles_an_existing_restrictions_key_without_values",
+          "failed": false
+        },
+        {
+          "name": "test_usb_removes_owned_journal_when_registry_values_are_already_absent[cleanup]",
+          "failed": false
+        },
+        {
+          "name": "test_usb_removes_owned_journal_when_registry_values_are_already_absent[apply]",
+          "failed": false
+        },
+        {
+          "name": "test_usb_release_preserves_external_restrictions_and_restores_owned_device",
+          "failed": false
+        },
+        {
+          "name": "test_production_system_guard_still_rejects_unprivileged_apply[usb]",
+          "failed": false
+        },
+        {
+          "name": "test_production_system_guard_still_rejects_unprivileged_apply[applications]",
+          "failed": false
+        },
+        {
+          "name": "test_usb_boot_storage_never_reaches_a_mutating_mock",
+          "failed": false
+        },
+        {
+          "name": "test_usb_read_only_and_cleanup_restore_the_original_writable_state",
+          "failed": false
+        },
+        {
+          "name": "test_usb_cleanup_still_restores_an_offline_disk_from_an_old_journal",
+          "failed": false
+        }
+      ]
+    }
+  },
+  "checks": {
+    "ruff": "passed_project_wide",
+    "cargo_fmt": "passed",
+    "cargo_test": "passed: 225 tests, 0 failed, 0 ignored",
+    "clippy": "passed: --locked --all-targets -D warnings",
+    "full_python": "completed: 1111 passed, 58 skipped, 0 failed with compiled release executable",
+    "panel": "passed: 102 tests in 14 files, threads pool with one worker; initial forks startup timed out",
+    "panel_coverage": {
+      "passed": true,
+      "tests": 102,
+      "files": 14,
+      "statements_percent": 91.27,
+      "branches_percent": 83.34,
+      "functions_percent": 88.7,
+      "lines_percent": 95.17
+    },
+    "native_debug_full": {
+      "passed": 1110,
+      "failed": 1,
+      "skipped": 58,
+      "failure": "readonly inventory subprocess timeout after 90 seconds"
+    },
+    "native_inventory_retry": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 75.02,
+      "timeout_seconds_unchanged": 90
+    },
+    "native_release_full": {
+      "passed": 1111,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 58,
+      "warnings": 1,
+      "seconds": 378.23,
+      "python_coverage_percent": 88.58,
+      "native_agent_sha256": "f5f2a56c384fda76033095a2e1989c1d745fe2e8603f106807ffb749c8ef2da3",
+      "full_quality_gate_complete": false
+    }
+  },
+  "environment": {
+    "python": "3.14.7 in isolated venv; original 3.13 attempt retained in history",
+    "rust": "1.99.1",
+    "msvc": "MSVC x64/x86 installed by operator; VS 2022 BuildTools discovered and Rust test suite passed",
+    "msvc_rejection_reason": "blocked by policy",
+    "runtime_packages_match_lock_except_platform_specific_uvloop": true,
+    "python314": "Isolated CPython 3.14.7 environment prepared through existing uv; project sources unchanged",
+    "dotnet_sdk": "Private SDK 8.0.427; Microsoft signature verified",
+    "wix": "Private tool 5.0.2 from nuget.org"
+  },
+  "acceptance": {
+    "new_msi_built": true,
+    "old_packages_modified": false,
+    "vm_snapshot_restored": false,
+    "physical_controls_executed_on_host": false,
+    "usb_reacceptance": "pending: serial scope-extension approval and subsequent VM round",
+    "wdac_reacceptance": "pending: final package and VM round",
+    "package_build": "completed: 20 per-phase file hashes verified; source 548584b; old packages untouched",
+    "package_report": "validation/windows-controls-fixed-package-2026-10-28.json"
+  },
+  "git": {
+    "push": false,
+    "pull_request": false,
+    "ci_modified": false
+  },
+  "additional_usb_serial": {
+    "confirmed": true,
+    "report": "validation/windows-usb-serial-policy-probe-2026-10-28.json",
+    "product_code_changed": false,
+    "approval_status": "awaiting explicit approval for scope extension"
+  },
+  "four_defects_status": "implemented, regression tested and packaged; physical reacceptance remains pending"
+}

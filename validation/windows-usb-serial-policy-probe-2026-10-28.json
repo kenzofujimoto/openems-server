@@ -1,0 +1,14 @@
+{
+  "source_revision": "548584b2496fdd6872e8f7a2af7afe13304bad5c",
+  "evidence_source": "acceptance clone: validation/vm-usb-safe-read-test-2026-10-28.json",
+  "mode": "controls-plan; no policy installation or device mutation",
+  "serial_codepoints": [
+    3,
+    49
+  ],
+  "exit_code": 1,
+  "error": "control selector must be a bounded nonempty string without control characters",
+  "positive_control_exit_code": 0,
+  "confirmed": true,
+  "product_code_changed": false
+}
