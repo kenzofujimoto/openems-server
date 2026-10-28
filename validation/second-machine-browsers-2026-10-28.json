@@ -190,7 +190,7 @@
     "managed_nrpt": []
   },
   "date": "2026-10-28",
-  "updated_at": "2026-10-28T00:03:35.1664816-03:00",
+  "updated_at": "2026-10-28T00:28:22.3616254-03:00",
   "status": "pending",
   "passed": false,
   "preparation": {
@@ -199,12 +199,13 @@
     "existing_agent_detected": false,
     "migrations_first_run": "001-008 applied",
     "migrations_second_run": "applied: none",
-    "installation_started": false,
+    "installation_started": true,
     "server": "running on loopback"
   },
   "scenarios": {
     "panel_keyboard_focus_dark_mode": {
-      "status": "pending"
+      "reason": "Real panel keyboard/labels/theme checks; operator confirmed screenshot focus and legibility",
+      "status": "passed"
     },
     "youtube": {
       "status": "pending"
@@ -214,17 +215,22 @@
       "status": "passed"
     },
     "installed_hash_and_invitation_removal": {
-      "status": "pending"
+      "status": "passed",
+      "reason": "Expected SHA-256 and invitation property absent"
     },
     "installation": {
-      "reason": "Awaiting interactive UAC and operator-entered single-use WebActions invitation",
-      "status": "pending"
+      "status": "passed",
+      "reason": "Attempt 3 enrolled after unused invitation validation; failed attempts preserved"
     },
     "dns_actions_and_events": {
-      "status": "pending"
+      "status": "passed",
+      "reason": "System DNS probes and blocked/monitored events match; no IETF event"
     },
     "policy_ack": {
-      "status": "pending"
+      "missing_capabilities": [],
+      "version": 1,
+      "digest": "753081a2c3319c958fa513f1b433b99419cdfb9fa61c853adf7d5d62b20ae6cf",
+      "status": "passed"
     },
     "wdac": {
       "reason": "No verified disposable supported Windows VM",
@@ -239,10 +245,12 @@
       "status": "pending"
     },
     "chrome": {
-      "status": "pending"
+      "reason": "Operator confirmed all three domains in a fresh temporary profile",
+      "status": "passed"
     },
     "firefox": {
-      "status": "pending"
+      "reason": "Operator confirmed all three domains in a fresh temporary profile",
+      "status": "passed"
     }
   },
   "notes": [
@@ -251,6 +259,405 @@
     "MSI files were not rebuilt or substituted.",
     "No USB/WDAC control script executed on physical Windows.",
     "No certificate validation or antivirus protection disabled.",
-    "Source AGENTS.md absent from published checkout; user-provided instructions applied."
-  ]
+    "Source AGENTS.md absent from published checkout; user-provided instructions applied.",
+    "DNSFILTER=1 only: the expected blocked-browser result is its native connection/name error; HTTPS block page and CA were not enabled."
+  ],
+  "attempts": [
+    {
+      "dns": [
+        {
+          "answers": [
+            "172.66.175.59",
+            "104.20.21.8"
+          ],
+          "domain": "www.example.net",
+          "at": "2026-10-28T00:08:15.226785-03:00",
+          "passed": false
+        },
+        {
+          "answers": [
+            "104.20.26.136",
+            "172.66.157.237"
+          ],
+          "domain": "www.example.org",
+          "at": "2026-10-28T00:08:15.2677-03:00",
+          "passed": true
+        },
+        {
+          "answers": [
+            "104.16.45.99",
+            "104.16.44.99"
+          ],
+          "domain": "www.ietf.org",
+          "at": "2026-10-28T00:08:15.2836065-03:00",
+          "passed": true
+        }
+      ],
+      "attempt": 1,
+      "removal": {
+        "exit_code": 0,
+        "services": [],
+        "reason": "Enrollment was refused, no registration or uninstall-secret state existed",
+        "managed_nrpt": [],
+        "at": "2026-10-28T00:10:23.9255558-03:00"
+      },
+      "diagnosis": {
+        "at": "2026-10-28T00:09:15.2964201-03:00",
+        "vdom": "WebActions",
+        "dns_filter": true,
+        "invitation_length": 36,
+        "invitation_matches_stored": false,
+        "invitation_has_whitespace": false
+      },
+      "reason": "Operator-pasted enrollment value did not match an unused invitation; server returned HTTP 400; no enrollment or ACK",
+      "install": {
+        "at": "2026-10-28T00:07:52.0153801-03:00",
+        "exit_code": 0
+      },
+      "installed_sha256": "370aa1ace2fbc8c4a37f54efadaa29781293fb60c7c343d14451d5d6a814179c",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "removal": {
+        "exit_code": 0,
+        "services": [],
+        "reason": "Enrollment was refused, no registration or uninstall-secret state existed",
+        "managed_nrpt": [],
+        "at": "2026-10-28T00:14:38.1054509-03:00"
+      },
+      "status": "failed",
+      "diagnosis": {
+        "at": "2026-10-28T00:13:35.8765973-03:00",
+        "vdom": "WebActions",
+        "dns_filter": true,
+        "invitation_length": 36,
+        "invitation_matches_stored": false,
+        "invitation_has_whitespace": false
+      },
+      "install": {
+        "at": "2026-10-28T00:12:40.2045257-03:00",
+        "exit_code": 0
+      },
+      "reason": "MSI preserved the unregistered configuration from attempt 1 despite a newly validated invitation"
+    }
+  ],
+  "active_installation": {
+    "dns_and_ack": {
+      "events": [
+        {
+          "at": "2026-10-28T00:00:00-03:00",
+          "domain": "www.example.net",
+          "action": "blocked",
+          "category": "games",
+          "reason": "category",
+          "count": 1
+        },
+        {
+          "at": "2026-10-28T00:00:00-03:00",
+          "domain": "www.example.org",
+          "action": "monitored",
+          "category": "streaming",
+          "reason": "category",
+          "count": 1
+        }
+      ],
+      "at": "2026-10-28T00:17:14.6901272-03:00",
+      "label": "policy-v1-after-inventory",
+      "dns": [
+        {
+          "domain": "www.example.net",
+          "answers": [
+            "0.0.0.0"
+          ],
+          "passed": true,
+          "at": "2026-10-28T00:17:14.537493-03:00"
+        },
+        {
+          "domain": "www.example.org",
+          "answers": [
+            "172.66.157.237",
+            "104.20.26.136"
+          ],
+          "passed": true,
+          "at": "2026-10-28T00:17:14.592287-03:00"
+        },
+        {
+          "domain": "www.ietf.org",
+          "answers": [
+            "104.16.45.99",
+            "104.16.44.99"
+          ],
+          "passed": true,
+          "at": "2026-10-28T00:17:14.6132441-03:00"
+        }
+      ],
+      "ack": [
+        {
+          "effective_vdom": "WebActions",
+          "config_version": 1,
+          "current_config_version": 1,
+          "applied_vdom": "WebActions",
+          "applied_digest": "753081a2c3319c958fa513f1b433b99419cdfb9fa61c853adf7d5d62b20ae6cf",
+          "last_applied": "2026-10-28T00:16:43.473476-03:00",
+          "last_seen": "2026-10-28T00:16:59.812235-03:00",
+          "last_error": "",
+          "missing_capabilities": []
+        }
+      ]
+    },
+    "first_ack_at": "2026-10-28T00:16:43.473476-03:00",
+    "attempt": 3,
+    "config_has_invitation": false,
+    "result": {
+      "at": "2026-10-28T00:15:05.5195273-03:00",
+      "exit_code": 0
+    },
+    "uninstall_secret_acked": true,
+    "first_ack_delay_seconds": 99,
+    "invitation_remaining_uses": 0,
+    "installed_sha256": "370aa1ace2fbc8c4a37f54efadaa29781293fb60c7c343d14451d5d6a814179c"
+  },
+  "browser_observations": [
+    {
+      "domain": "www.example.net",
+      "source": "operator confirmation",
+      "result": "connection or name error",
+      "passed": true,
+      "browser": "Chrome",
+      "profile": "New temporary profile launched by operator using --user-data-dir and random directory",
+      "at": "2026-10-28T00:21:01.3144596-03:00"
+    },
+    {
+      "at": "2026-10-28T00:22:06.1974693-03:00",
+      "browser": "Chrome",
+      "result": "Example Domain loaded",
+      "passed": true,
+      "domain": "www.example.org",
+      "source": "operator confirmation"
+    },
+    {
+      "passed": true,
+      "result": "IETF loaded",
+      "at": "2026-10-28T00:22:33.2429967-03:00",
+      "source": "operator confirmation",
+      "domain": "www.ietf.org",
+      "browser": "Chrome"
+    },
+    {
+      "source": "operator confirmation",
+      "passed": true,
+      "profile": "New temporary profile launched by operator using -no-remote -profile and random directory",
+      "browser": "Firefox",
+      "domain": "www.example.net",
+      "result": "connection or name error",
+      "at": "2026-10-28T00:25:10.2464194-03:00"
+    },
+    {
+      "browser": "Firefox",
+      "domain": "www.example.org",
+      "at": "2026-10-28T00:26:04.3001553-03:00",
+      "source": "operator confirmation",
+      "passed": true,
+      "result": "Expected page loaded"
+    },
+    {
+      "browser": "Firefox",
+      "domain": "www.ietf.org",
+      "at": "2026-10-28T00:26:04.3030306-03:00",
+      "source": "operator confirmation",
+      "passed": true,
+      "result": "Expected page loaded"
+    }
+  ],
+  "panel_checks": {
+    "focus_screenshot": "second-machine-panel-2026-10-28.png",
+    "tab": "Moved focus to Monitorar Áudio e vídeo in next radio group",
+    "browser": "in-app browser, real production panel and API",
+    "dark_mode": "Toggle changed to Ativar modo claro and remained after reload",
+    "labels": "Permitir, Bloquear and Monitorar accessible names present",
+    "at": "2026-10-28T00:21:01.3295131-03:00",
+    "policy_published_during_keyboard_test": false,
+    "operator_visual_confirmation": "Labels and icons legible; blue focus outline visible",
+    "arrow_keys": "Right selected Monitorar Jogos; Left restored Bloquear Jogos",
+    "category_health": "current",
+    "category_health_checked_at": "2026-10-28T00:22:06.2102917-03:00",
+    "enter_escape": "No policy selection or publication change observed"
+  },
+  "chrome_events": {
+    "ietf_event_count": 0,
+    "note": "Counts aggregate by hour and deduplicate by minute; initial DNS probes contribute to totals",
+    "rows": [
+      {
+        "at": "2026-10-28T00:00:00-03:00",
+        "domain": "www.example.net",
+        "action": "blocked",
+        "category": "games",
+        "reason": "category",
+        "count": 3
+      },
+      {
+        "at": "2026-10-28T00:00:00-03:00",
+        "domain": "www.example.org",
+        "action": "monitored",
+        "category": "streaming",
+        "reason": "category",
+        "count": 3
+      }
+    ],
+    "observed_at": "2026-10-28T00:22:33.2483411-03:00"
+  },
+  "youtube_policies": [
+    {
+      "stage": "cdn_blocked",
+      "published_from": "real panel",
+      "policy": {
+        "vdom": "WebActions",
+        "version": 2,
+        "digest": "8cc11deff7e05e2c58d419b454ffa6c5141cef4cf548bfabada01b36f533908d",
+        "body": {
+          "web_filter": {
+            "allowed": [
+              "youtube.com",
+              "*.youtube.com",
+              "*.ytimg.com"
+            ],
+            "blocked": [],
+            "category_actions": {
+              "games": "block",
+              "shopping": "allow",
+              "streaming": "block"
+            }
+          }
+        },
+        "updated_at": "2026-10-28T00:25:46.400369-03:00"
+      },
+      "pre_ack_check": {
+        "dns": [
+          {
+            "at": "2026-10-28T00:26:41.8891203-03:00",
+            "answers": [
+              "142.251.152.4",
+              "142.251.155.4",
+              "142.251.151.4",
+              "142.251.153.4",
+              "142.251.157.4",
+              "142.251.156.4",
+              "142.251.150.4",
+              "142.251.154.4"
+            ],
+            "domain": "www.youtube.com"
+          },
+          {
+            "at": "2026-10-28T00:26:41.9538503-03:00",
+            "answers": [
+              "172.217.162.164"
+            ],
+            "domain": "googlevideo.com"
+          },
+          {
+            "at": "2026-10-28T00:26:41.9749378-03:00",
+            "answers": [
+              "172.217.29.86",
+              "172.217.30.150",
+              "172.217.29.118",
+              "172.217.30.246",
+              "172.217.172.150",
+              "142.250.79.214",
+              "172.217.29.54",
+              "172.217.30.118",
+              "172.217.172.182",
+              "172.217.172.54",
+              "172.217.162.22",
+              "172.217.28.150",
+              "172.217.28.214",
+              "172.217.28.182",
+              "172.217.162.182",
+              "172.217.162.246"
+            ],
+            "domain": "i.ytimg.com"
+          }
+        ],
+        "ack": [
+          {
+            "config_version": 1,
+            "current_config_version": 2,
+            "applied_digest": "753081a2c3319c958fa513f1b433b99419cdfb9fa61c853adf7d5d62b20ae6cf",
+            "last_applied": "2026-10-28T00:16:43.473476-03:00",
+            "last_error": ""
+          }
+        ]
+      },
+      "confirmed_check": {
+        "ack": [
+          {
+            "config_version": 2,
+            "current_config_version": 2,
+            "applied_digest": "8cc11deff7e05e2c58d419b454ffa6c5141cef4cf548bfabada01b36f533908d",
+            "last_applied": "2026-10-28T00:27:15.984747-03:00",
+            "last_error": ""
+          }
+        ],
+        "dns": [
+          {
+            "answers": [
+              "142.251.152.4",
+              "142.251.154.4",
+              "142.251.156.4",
+              "142.251.153.4",
+              "142.251.150.4",
+              "142.251.157.4",
+              "142.251.155.4",
+              "142.251.151.4"
+            ],
+            "domain": "www.youtube.com",
+            "at": "2026-10-28T00:27:32.4555402-03:00"
+          },
+          {
+            "answers": [
+              "0.0.0.0"
+            ],
+            "domain": "googlevideo.com",
+            "at": "2026-10-28T00:27:32.4664061-03:00"
+          },
+          {
+            "answers": [
+              "142.251.147.6",
+              "192.178.41.6",
+              "142.251.146.6",
+              "142.251.145.6",
+              "192.178.40.6",
+              "142.251.148.6",
+              "142.251.149.6",
+              "142.251.144.6"
+            ],
+            "domain": "i.ytimg.com",
+            "at": "2026-10-28T00:27:32.4817389-03:00"
+          }
+        ]
+      }
+    }
+  ],
+  "firefox_events": {
+    "observed_at": "2026-10-28T00:28:22.3313035-03:00",
+    "rows": [
+      {
+        "at": "2026-10-28T00:00:00-03:00",
+        "domain": "www.example.net",
+        "action": "blocked",
+        "category": "games",
+        "reason": "category",
+        "count": 5
+      },
+      {
+        "at": "2026-10-28T00:00:00-03:00",
+        "domain": "www.example.org",
+        "action": "monitored",
+        "category": "streaming",
+        "reason": "category",
+        "count": 4
+      }
+    ],
+    "ietf_event_count": 0
+  }
 }

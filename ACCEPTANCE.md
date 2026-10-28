@@ -4,7 +4,7 @@
 
 [Evidência parcial](validation/second-machine-browsers-2026-10-28.json), main fixada em `5ba6be67c10237c9015ff1098258494039093f8b`, MSI v2 da origem `18cd811`. Integridade do ZIP e 21 arquivos do recibo aprovada; servidor Docker, migrações 001–008, listas de homologação e política WebActions v1 preparados. Baseline elevado coletado sem agente existente.
 
-**Parte A permanece pendente:** instalação ainda aguarda UAC e convite de uso único digitado pelo operador. Hash instalado, ausência do convite, ACK, DNS/eventos, Chrome/Firefox, YouTube, teclado/foco/tema e remoção/restauração não foram aceitos. Não inferir resultado físico dos testes históricos de Sandbox.
+**Parte A em andamento:** instalação válida, hash esperado, convite consumido/removido e ACK v1 confirmados. Sondas DNS, eventos esperados sem evento IETF, Chrome/Firefox físicos em perfis novos e painel/teclado/foco/tema passaram; observações dos navegadores e legibilidade/foco confirmadas pelo operador. Duas tentativas anteriores inválidas e suas remoções pelo MSI permanecem registradas. YouTube está na fase de CDN bloqueado com ACK v2; reprodução e remoção/restauração continuam pendentes. Não inferir resultado físico dos testes históricos de Sandbox.
 
 **Parte B permanece pendente:** VMware presente, mas sem VM Windows descartável com snapshot/passthrough verificada. PENMACK E: autorizado somente para a rodada dentro dessa VM. Nenhum teste USB/WDAC executado no Windows físico. Pendência não conta como aceite.
 
