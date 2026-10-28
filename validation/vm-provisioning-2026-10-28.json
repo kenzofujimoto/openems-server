@@ -25,8 +25,8 @@
   "vm_name": "OpenEMS Disposable Acceptance",
   "usb_autoconnect": false,
   "guest_installation": "Completed; operator signed into local OpenEMSTest account; desktop confirmed visually",
-  "snapshot": "pending Windows installation and clean baseline",
-  "updated_at": "2026-10-28T11:10:39.7246508-03:00",
+  "snapshot": "Operator asked to create clean-win11-tools-before-controls; pending confirmation",
+  "updated_at": "2026-10-28T11:25:58.5316600-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -51,6 +51,13 @@
     "verification": "Desktop watermark only; CiTool/ConfigCI and exact OS version still require guest preflight",
     "note": "Guest watermark differs from the downloaded ISO filename label; retain actual guest version rather than infer from filename"
   },
-  "vmware_tools": "Operator asked to install bundled official VMware Tools; pending verification",
+  "vmware_tools": {
+    "installed_legacy_version": 13349,
+    "operator_reboot_and_login_confirmed": true,
+    "status": "installed_and_current",
+    "available_legacy_version": 13349,
+    "observed_at": "2026-10-28T11:25:58.0230741-03:00",
+    "source": "VMware host log ToolsVersionStatus current"
+  },
   "ui_input_diagnosis": "VMware and ChatGPT processes both not elevated; console/menu input failure not attributable to elevation difference"
 }
