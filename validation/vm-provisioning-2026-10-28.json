@@ -20,7 +20,7 @@
   },
   "shared_folders": "OpenEMSResults enabled read/write for dedicated results directory; guest report successfully received through share",
   "vmware_version": "26.0.1 build-25688693",
-  "wdac": "pending",
+  "wdac": "failed: network block/release passed; WDAC hash policy not acknowledged; root cause under investigation",
   "guest_vcpus": 2,
   "vm_name": "OpenEMS Disposable Acceptance",
   "usb_autoconnect": false,
@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:12:17.7935539-03:00",
+  "updated_at": "2026-10-28T13:30:58.0379169-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -183,5 +183,20 @@
     "post_removal_canary_read_write_delete_verified": true,
     "cleanup_verified": true,
     "usb_acceptance_result": "failed (unchanged): policy v2 never acknowledged success; root cause not determined"
+  },
+  "applications_launch": {
+    "snapshot_restored_before": "clean-preflight-before-controls (UID 2), operator confirmed",
+    "launcher_sha256": "3d26ed5f1e814eeb650a10ca7e135119547e6a29344fbc506dd1d0af5f01501b",
+    "original_script_sha256": "a6d0295ed3ca8f075378ad38ed1f18bbe5d91b58f8393d96b1e3365fb24267f4",
+    "started_utc": "2026-10-28T16:21:32.6589812Z",
+    "finished_utc": "2026-10-28T16:26:20.9079839Z",
+    "result_status": "failed",
+    "report": "validation/vm-applications-2026-10-28.json",
+    "report_sha256": "db7a2dd37b5ec8b6e4f693907b43b057dbf4da1b2932c56464b1768ef690d826",
+    "passed_checks": 5,
+    "failed_step": "WDAC hash execution policy: no successful ACK within 90 s",
+    "cleanup_errors": [],
+    "guest_retains_evidence": true,
+    "shared_pattern": "Same generic enforcement failure (ACK text only LocalError) as USB policy v2; adapter discards exception message and stderr"
   }
 }
