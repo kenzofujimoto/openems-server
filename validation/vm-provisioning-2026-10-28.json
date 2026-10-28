@@ -20,7 +20,7 @@
   },
   "shared_folders": "OpenEMSResults enabled read/write for dedicated results directory; guest report successfully received through share",
   "vmware_version": "26.0.1 build-25688693",
-  "wdac": "failed: network block/release passed; WDAC hash policy not acknowledged; root cause under investigation",
+  "wdac": "failed (acceptance unchanged): root cause identified and fix validated by diagnostic variant in guest; product fix and new acceptance run pending",
   "guest_vcpus": 2,
   "vm_name": "OpenEMS Disposable Acceptance",
   "usb_autoconnect": false,
@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T13:39:39.7002143-03:00",
+  "updated_at": "2026-10-28T13:43:48.4966317-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -215,6 +215,23 @@
     "apply_seconds": 89.9,
     "wdac_policy_deployed": false,
     "cleanup_succeeded": true,
-    "hypothesis": "Merge-CIPolicy needs write access to its input policy; Microsoft guidance copies example policies to a working path first. Not yet verified."
+    "hypothesis": "Confirmed by wdac_template_copy_test"
+  },
+  "wdac_template_copy_test": {
+    "report": "validation/vm-wdac-template-copy-test-2026-10-28.json",
+    "report_sha256": "585bc61e32298cce2571f8e7e40dfbd96237b2f1d96261d215a4ee0d9688aad2",
+    "variant_adapter_sha256": "7c6f7840a8d93688baf688c267b333d5fba6709318a1bae5b220ee1aea1acebc",
+    "change_under_test": "Single line: copy AllowAll.xml into the SYSTEM-only app-control directory and merge from the copy",
+    "template_acl": "Owner TrustedInstaller; SYSTEM and Administrators ReadAndExecute only; open Read ok, open ReadWrite UnauthorizedAccess",
+    "apply_exit_code": 0,
+    "apply_seconds": 36.9,
+    "policy_enforced": true,
+    "policy_id": "c25b22af-9499-4f1b-abb1-ad8041fb0654",
+    "fixture_denied": "Start-Process refused; CodeIntegrity 3077 names the openems policy ID",
+    "cleanup_exit_code": 0,
+    "policy_removed_without_restart": true,
+    "journal_removed": true,
+    "stdout_pollution_confirmed": "Successful apply stdout is \"Scan completed successfully\" line followed by JSON; agent serde parse would reject it",
+    "conclusion": "Root cause of WDAC acceptance failure: Merge-CIPolicy requires write access to its input and the system AllowAll.xml is read-only for SYSTEM. A product fix also needs a clean stdout contract. USB v2 cause still separate and undiagnosed."
   }
 }
