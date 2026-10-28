@@ -62,12 +62,39 @@
       "release_ack_success": true,
       "cleanup_errors": [],
       "core_cleanup_verified": true,
-      "wdac_ownership_enumeration": "pending read-only diagnostic",
+      "wdac_ownership_enumeration": "CiTool query succeeded: 14 existing policies, none named openems application control",
       "diagnostic": {
         "shortcut": "19 - Read 918aba2 WDAC failure inside VM as administrator",
         "agent_installation": false,
         "policy_mutations": false,
-        "status": "pending_guest_operator_launch"
+        "status": "completed: negative ACK LocalError; no OpenEMS policy currently loaded",
+        "report": "validation/vm-applications-fixed-918aba2-retry1-diagnostic-2026-10-28.json"
+      },
+      "generation_diagnostic": {
+        "installs_agent": false,
+        "loads_windows_policy": false,
+        "shortcut": "20 - Time WDAC generation only inside VM as administrator",
+        "adapter_source_sha256": "7c44a28a6f7ac5ca8f883e090724e6a318a0dba7219ad127e9d2966458bdc8d4",
+        "status": "recovered: ConfigCI New-CIPolicyRule failed with no user-mode rule after about 124 seconds",
+        "deadline_seconds": 120,
+        "auxiliary_preflight_failure": "validation/vm-applications-fixed-918aba2-generation-preflight-failure-2026-10-28.json",
+        "auxiliary_report_collision": "validation/vm-applications-fixed-918aba2-generation-collector-collision-2026-10-28.json",
+        "last_observed_stage": "New-CIPolicyRule; ConfigCI import and signature query completed quickly",
+        "valid_completed_timing_measurement": false,
+        "recovery_shortcut": "22 - Recover saved WDAC generation result inside VM",
+        "recovery_report": "validation/vm-applications-fixed-918aba2-generation-recovered-2026-10-28.json",
+        "recovered_worker": {
+          "remaining_worker_processes": 0,
+          "code_policy_ids_unchanged": true,
+          "controller_failed_before_deadline_enforcement": true,
+          "generation_call_elapsed_ms": 124040,
+          "stage": "New-CIPolicyRule",
+          "policy_loaded": false,
+          "formal_bounded_measurement_passed": false,
+          "total_worker_elapsed_ms": 125988,
+          "final_error": "OPENEMS_NO_USER_MODE_RULE"
+        },
+        "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
       }
     }
   },

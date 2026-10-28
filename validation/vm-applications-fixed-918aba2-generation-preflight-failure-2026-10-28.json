@@ -1,0 +1,19 @@
+﻿{
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "started_utc":  "2026-10-28T23:03:50.8752952Z",
+    "status":  "failed",
+    "context":  "SYSTEM",
+    "controls_modified":  false,
+    "policy_loading_included":  false,
+    "native_deadline_seconds":  120,
+    "generation":  null,
+    "timed_out":  false,
+    "code_policy_ids_before":  [
+
+                               ],
+    "code_policy_ids_after":  [
+
+                              ],
+    "error_type":  "RuntimeException",
+    "finished_utc":  "2026-10-28T23:03:51.3387244Z"
+}
