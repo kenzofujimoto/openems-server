@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-28",
+  "source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
+  "test_commit": "8f5496b",
+  "fix_commit": "918aba2",
+  "scope": "Acceptance harness canonical string encoding only; agent, validation, scenarios and deadlines unchanged",
+  "canonical_tests": {
+    "red": {
+      "passed": 7,
+      "failed": 3,
+      "failed_cases": [
+        "physical-instance-ampersands",
+        "html-characters",
+        "unicode-separators"
+      ]
+    },
+    "green": {
+      "passed": 10,
+      "failed": 0
+    }
+  },
+  "full_host_suite": {
+    "python": "3.14.7 isolated venv",
+    "native_agent_sha256": "ea759d9b0ed50c13b61ebda73db14546b73c3450f57ed665512fd876f08832b4",
+    "passed": 1128,
+    "skipped": 58,
+    "failed": 0,
+    "errors": 0,
+    "deselected": 4,
+    "seconds": 337.7,
+    "deselected_tests": [
+      "tests/test_controls_sandbox.py::test_plan_has_verified_policies_and_never_accepts_unobserved_hardware",
+      "tests/test_controls_sandbox.py::test_host_is_refused_before_writes_even_with_system_or_vm_flags"
+    ],
+    "harness_invoked_on_host": false,
+    "junit_sha256": "01ee444e71befc230287418e7122920a32316ed85f97bb070f5c5f470d2c044a"
+  },
+  "package": {
+    "directory": ".venv/windows-controls-fixed-918aba2-2026-10-28",
+    "agent_executable_sha256": "ea759d9b0ed50c13b61ebda73db14546b73c3450f57ed665512fd876f08832b4",
+    "msi_sha256": "ed7089ee7ef498aff33d6da77437c447f50ad46bd964dcf0cf6836de5bf3c7b4",
+    "msi_next_sha256": "e52280d811d46d3bd6a209fff32bca731db9985c48c4676f3d74963889473992",
+    "harness_sha256": "a0871dbb2f921296a42ee5fe22dc575cd54be637db78ca4b07bc8ebe19fab1ca",
+    "phase_files_checked": 10,
+    "mismatches": 0,
+    "previous_packages_modified": false
+  },
+  "vm_media": {
+    "iso": "openems-controls-fixed-918aba2.iso",
+    "iso_sha256": "896f0acdafd20f7dc65e54982b8fa1e9652accb9265095ee00349082e2fde97b",
+    "volume_label": "OPENEMS_FIXED",
+    "guest_launcher": "results/fixed-918aba2/run-fixed-controls.ps1",
+    "guest_launcher_sha256": "cd641080f37b0976934d5d48a40ef2d4d9e104d48f29123853002088965a9484",
+    "guest_launcher_executed_on_host": false,
+    "shortcuts": [
+      "15 - Run 918aba2 USB inside VM as administrator",
+      "16 - Run 918aba2 WDAC inside VM as administrator"
+    ],
+    "snapshot_required": "clean-preflight-before-controls (UID 2)"
+  },
+  "vm_reacceptance": "pending",
+  "push": false,
+  "pull_request": false
+}
