@@ -24,9 +24,18 @@
   "guest_vcpus": 2,
   "vm_name": "OpenEMS Disposable Acceptance",
   "usb_autoconnect": false,
-  "guest_installation": "Completed; operator signed into local OpenEMSTest account; desktop confirmed visually",
-  "snapshot": "Operator asked to create clean-win11-tools-before-controls; pending confirmation",
-  "updated_at": "2026-10-28T11:25:58.5316600-03:00",
+  "guest_installation": "Completed; clean Tools snapshot verified; operator reported reopening Windows Setup from the still-mounted installation DVD and was instructed to cancel",
+  "snapshot": {
+    "state_bytes": 4395008,
+    "status": "created",
+    "uid": "1",
+    "verified_at": "2026-10-28T11:31:00.9537936-03:00",
+    "state_file": "openems-acceptance-Snapshot1.vmsn",
+    "verified_from": "VMware VMSD and snapshot state file",
+    "name": "clean-win11-tools-before-controls",
+    "operator_completion_confirmed": true
+  },
+  "updated_at": "2026-10-28T11:35:27.2480198-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -59,5 +68,6 @@
     "observed_at": "2026-10-28T11:25:58.0230741-03:00",
     "source": "VMware host log ToolsVersionStatus current"
   },
-  "ui_input_diagnosis": "VMware and ChatGPT processes both not elevated; console/menu input failure not attributable to elevation difference"
+  "ui_input_diagnosis": "VMware and ChatGPT processes both not elevated; console/menu input failure not attributable to elevation difference",
+  "test_input_media": "Prepared ISO; not mounted in guest yet"
 }
