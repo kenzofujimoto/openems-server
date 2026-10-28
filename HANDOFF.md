@@ -4,6 +4,8 @@
 
 ### Continuação: criação da VM Windows — 28/10, manhã
 
+- Preflight real do guest recebido às 12:08:37 de 28/10 em [vm-preflight-2026-10-28.json](validation/vm-preflight-2026-10-28.json): CIM informa Windows Enterprise Evaluation 10.0.26300/build 26300, VMware20,1 com hipervisor, CiTool e ConfigCI presentes, agente ausente, Setup encerrado e nenhum reinício pendente nas duas chaves verificadas. Essa versão efetiva substitui a observação anterior do watermark 26100. Pasta dedicada OpenEMSResults funciona e retornou o relatório. Aguarda montar novamente a mídia de testes e criar o novo snapshot `clean-preflight-before-controls`; USB/WDAC continuam pendentes.
+
 - Usuário autorizou baixar ISO oficial e criar VM para concluir USB/WDAC; também autorizou parar boat-clinic. Na verificação, Docker já estava encerrado e a distribuição WSL docker-desktop estava parada; nenhum volume foi excluído. Após o usuário fechar Chrome, RAM livre subiu de ~1,3 para ~5,7 GB.
 - [Progresso de provisionamento](validation/vm-provisioning-2026-10-28.json), ainda `passed=false`: ISO Enterprise Evaluation x64 26H2, build 26300.9457, baixada do link público oficial da Microsoft; 8.225.329.152 bytes, SHA-256 `BC3F24086EBADC94489066B5AD78089E2CF5C3491E90E790BB81A2B199C10E38`, igual ao publicado pela Microsoft. Mídia local em `.venv/windows-vm/media/windows11-enterprise-eval-x64.iso`.
 - VM `OpenEMS Disposable Acceptance` criada em `.venv/windows-vm/guest/openems-acceptance.vmx`, com disco virtual expansível de 80 GB, 4 GB RAM, 2 vCPUs, UEFI/Secure Boot, NAT, USB 3 e autoconexão USB/pastas compartilhadas desativadas. Windows ainda não instalado, nenhum snapshot ou controle executado.

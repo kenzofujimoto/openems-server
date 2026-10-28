@@ -18,7 +18,7 @@
       "verified_at": "2026-10-28T09:06:34.0012161-03:00"
     }
   },
-  "shared_folders": "Operator reported configuration; current VMX sharedFolder.maxNum=0, requires reconfiguration",
+  "shared_folders": "OpenEMSResults enabled read/write for dedicated results directory; guest report successfully received through share",
   "vmware_version": "26.0.1 build-25688693",
   "wdac": "pending",
   "guest_vcpus": 2,
@@ -36,7 +36,7 @@
     "operator_completion_confirmed": true,
     "cleanliness": "not_verified_setup_open_at_capture"
   },
-  "updated_at": "2026-10-28T11:56:12.0914124-03:00",
+  "updated_at": "2026-10-28T12:09:08.3489954-03:00",
   "virtual_disk_created": true,
   "vm_configuration_created": true,
   "guest_encryption": "configured by operator; password not collected",
@@ -58,7 +58,7 @@
   "guest_os_observation": {
     "watermark_build": "26100",
     "edition": "Windows 11 Enterprise Evaluation",
-    "verification": "Desktop watermark only; CiTool/ConfigCI and exact OS version still require guest preflight",
+    "verification": "Guest CIM preflight reports version 10.0.26300 build 26300; supersedes earlier desktop watermark observation",
     "note": "Guest watermark differs from the downloaded ISO filename label; retain actual guest version rather than infer from filename"
   },
   "vmware_tools": {
@@ -75,7 +75,26 @@
     "operator_confirmed_install_clicked": true,
     "controls_started": false,
     "recovery": "Do not rely on existing snapshot as clean; verify current guest after cancellation and reboot, then create new baseline",
-    "recovery_status": "awaiting_guest_restart_and_preflight",
-    "installation_completed": false
+    "recovery_status": "guest_restarted_and_preflight_received; no Setup process or reboot pending; new clean snapshot required",
+    "installation_completed": false,
+    "guest_restart": {
+      "operator_confirmed_normal_desktop": true,
+      "recorded_at": "2026-10-28T12:02:12.1554446-03:00"
+    }
+  },
+  "guest_preflight": {
+    "at": "2026-10-28T12:08:37.8292983-03:00",
+    "model": "VMware20,1",
+    "hypervisor_present": true,
+    "os_caption": "Microsoft Windows 11 Enterprise Evaluation",
+    "os_version": "10.0.26300",
+    "os_build": "26300",
+    "citool_present": true,
+    "configci_present": true,
+    "agent_present": false,
+    "windows_setup_running": false,
+    "servicing_reboot_pending": false,
+    "windows_update_reboot_pending": false,
+    "snapshot_cleanliness": "Not yet verified; previous snapshot captured with Windows Setup open"
   }
 }
