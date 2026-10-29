@@ -310,6 +310,10 @@ impl ControlManager {
         Ok(Some(inventory))
     }
 
+    pub fn take_inventory_ready(&self) -> bool {
+        false
+    }
+
     pub fn inventory_uploaded(&self, sent: &Inventory) {
         let mut state = lock(&self.inventory);
         if state.pending.as_ref() == Some(sent) {

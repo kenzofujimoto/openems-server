@@ -42,6 +42,18 @@ fn event(target: &str) -> ControlEvent {
     }
 }
 
+/// Inventory is collected in the background: poll the manager like the sync thread does.
+fn collected(manager: &ControlManager, now: Instant) -> Result<Inventory> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        if let Some(inventory) = manager.inventory_due(now)? {
+            return Ok(inventory);
+        }
+        assert!(Instant::now() < deadline, "background inventory did not finish");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 #[test]
 fn inventory_is_opt_in_throttled_and_retained_until_uploaded() {
     let dir = tempfile::tempdir().unwrap();
@@ -51,13 +63,130 @@ fn inventory_is_opt_in_throttled_and_retained_until_uploaded() {
     assert!(manager.inventory_due(now).unwrap().is_none());
     assert_eq!(backend.calls.load(Ordering::Relaxed), 0);
     manager.enable_inventory();
-    let first = manager.inventory_due(now).unwrap().unwrap();
+    let first = collected(&manager, now).unwrap();
     assert_eq!(manager.inventory_due(now + Duration::from_secs(10)).unwrap(), Some(first.clone()));
     assert_eq!(backend.calls.load(Ordering::Relaxed), 1);
     manager.inventory_uploaded(&first);
     assert!(manager.inventory_due(now + Duration::from_secs(299)).unwrap().is_none());
-    assert!(manager.inventory_due(now + Duration::from_secs(300)).unwrap().is_some());
+    assert!(collected(&manager, now + Duration::from_secs(300)).is_ok());
     assert_eq!(backend.calls.load(Ordering::Relaxed), 2);
+}
+
+/// Inventory whose collection waits for the test, like a slow Windows inventory adapter.
+#[derive(Default)]
+struct Gated {
+    calls: AtomicUsize,
+    released: std::sync::Mutex<usize>,
+    signal: std::sync::Condvar,
+    fail: bool,
+}
+impl Gated {
+    fn release(&self) {
+        *self.released.lock().unwrap() += 1;
+        self.signal.notify_all();
+    }
+}
+impl Backend for Gated {
+    fn apply(&self, _: &Value, _: &Path) -> openems_agent::controls::ApplyResult {
+        Ok(Vec::new())
+    }
+    fn inventory(&self, _: &Path) -> Result<Inventory> {
+        let call = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
+        let released = self.released.lock().unwrap();
+        let _released = self.signal.wait_while(released, |released| *released < call).unwrap();
+        if self.fail {
+            return Err(AgentError::Local("inventory adapter failed".into()));
+        }
+        Ok(Inventory {
+            collected_at: "2026-10-29T18:00:00Z".into(),
+            applications: vec![json!({"name": format!("collection-{call}")})],
+            usb_devices: vec![],
+        })
+    }
+    fn capabilities(&self) -> Vec<String> {
+        Vec::new()
+    }
+}
+
+#[test]
+fn a_slow_inventory_never_blocks_the_synchronization_caller() {
+    let dir = tempfile::tempdir().unwrap();
+    let backend = Arc::new(Gated::default());
+    let manager = ControlManager::new(&dir.path().join("state.json"), backend.clone()).unwrap();
+    manager.enable_inventory();
+    let now = Instant::now();
+    let started = Instant::now();
+    assert!(manager.inventory_due(now).unwrap().is_none(), "collection must not run on the caller");
+    assert!(manager.inventory_due(now).unwrap().is_none());
+    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(!manager.take_inventory_ready());
+    backend.release();
+    let inventory = collected(&manager, now).unwrap();
+    assert_eq!(inventory.applications, vec![json!({"name":"collection-1"})]);
+    assert_eq!(backend.calls.load(Ordering::SeqCst), 1, "only one collection may be in flight");
+    assert!(manager.take_inventory_ready(), "a completed collection is announced once");
+    assert!(!manager.take_inventory_ready());
+}
+
+#[test]
+fn a_policy_change_during_collection_discards_the_stale_inventory() {
+    let dir = tempfile::tempdir().unwrap();
+    let backend = Arc::new(Gated::default());
+    let manager = ControlManager::new(&dir.path().join("state.json"), backend.clone()).unwrap();
+    manager.enable_inventory();
+    let now = Instant::now();
+    assert!(manager.inventory_due(now).unwrap().is_none());
+    manager.apply(&json!({"usb_control":{"default_action":"block","rules":[]}}), false).unwrap();
+    backend.release();
+    backend.release();
+    let inventory = collected(&manager, now).unwrap();
+    assert_eq!(inventory.applications, vec![json!({"name":"collection-2"})], "state seen before the change is stale");
+    assert_eq!(backend.calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn reapplying_an_unchanged_policy_keeps_the_inventory_but_a_release_refreshes_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let backend = Arc::new(Gated::default());
+    let manager = ControlManager::new(&dir.path().join("state.json"), backend.clone()).unwrap();
+    manager.enable_inventory();
+    let now = Instant::now();
+    let block = json!({"usb_control":{"default_action":"block","rules":[]}});
+    manager.apply(&block, false).unwrap();
+    backend.release();
+    let first = collected(&manager, now).unwrap();
+    manager.inventory_uploaded(&first);
+    manager.apply(&block, false).unwrap();
+    assert!(manager.inventory_due(now).unwrap().is_none());
+    assert_eq!(backend.calls.load(Ordering::SeqCst), 1, "periodic reconciliation must not recollect");
+    // Releasing a device emits no control event but changes what the inventory must report.
+    manager.apply(&json!({"usb_control":{"default_action":"allow","rules":[]}}), false).unwrap();
+    backend.release();
+    assert_eq!(collected(&manager, now).unwrap().applications, vec![json!({"name":"collection-2"})]);
+}
+
+#[test]
+fn a_failed_background_inventory_is_reported_once_and_throttled() {
+    let dir = tempfile::tempdir().unwrap();
+    let backend = Arc::new(Gated { fail: true, ..Default::default() });
+    let manager = ControlManager::new(&dir.path().join("state.json"), backend.clone()).unwrap();
+    manager.enable_inventory();
+    let now = Instant::now();
+    backend.release();
+    assert!(manager.inventory_due(now).unwrap().is_none());
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let error = loop {
+        match manager.inventory_due(now) {
+            Err(error) => break error,
+            Ok(None) => assert!(Instant::now() < deadline, "failure was never reported"),
+            Ok(Some(_)) => panic!("a failed collection produced an inventory"),
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert_eq!(error.kind(), "LocalError");
+    assert!(manager.inventory_due(now + Duration::from_secs(60)).unwrap().is_none());
+    assert!(!manager.take_inventory_ready());
+    assert_eq!(backend.calls.load(Ordering::SeqCst), 1);
 }
 
 #[test]
