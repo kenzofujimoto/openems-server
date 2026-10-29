@@ -28,6 +28,15 @@ def test_publisher_fixture_still_requires_a_valid_signature_before_the_policy():
     assert "Assert-ExecutionDenied $publisherFixture" in setup and "Assert-ExecutionDenied $publisherCopy" in setup
 
 
+def test_released_usb_waits_for_an_inventory_that_reports_the_drive():
+    # Inventory is uploaded after the release ACK, from a background collection.
+    start = HARNESS.index("$PhysicalDrive = $PhysicalDrive.ToUpperInvariant()")
+    selection = HARNESS[start:HARNESS.index("$partition = Get-Partition", start)]
+    assert "Wait-Until { $null -ne (Get-UsbDevice $PhysicalDrive) -and (Test-Path -LiteralPath ($PhysicalDrive + '\\')) } 120" in selection
+    assert selection.index("Wait-Until") < selection.index("$device = Get-UsbDevice $PhysicalDrive")
+    assert "if ($null -eq $device -or -not $device.instance_id -or -not $device.serial -or -not $device.vid -or -not $device.pid) { throw" in selection
+
+
 def test_publisher_certificate_cleanup_still_covers_every_store():
     cleanup = HARNESS[HARNESS.index("if ($null -ne $certificate) {"):]
     assert "foreach ($store in @('My','Root','TrustedPublisher'))" in cleanup[:400]
