@@ -525,8 +525,8 @@ try {
             $certificate = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Openems Acceptance Fixture' -CertStoreLocation Cert:\LocalMachine\My
             $publicCertificate = Join-Path $work 'fixture.cer'
             Export-Certificate -Cert $certificate -FilePath $publicCertificate | Out-Null
+            # WDAC validates the signer chain only; SYSTEM is refused TrustedPublisher imports on Windows 11 guests.
             Import-Certificate -FilePath $publicCertificate -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-            Import-Certificate -FilePath $publicCertificate -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
             $signature = Set-AuthenticodeSignature -LiteralPath $publisherFixture -Certificate $certificate
             if ($signature.Status -ne 'Valid') { throw 'The dedicated fixture signing certificate was not trusted in this guest.' }
             Copy-Item -LiteralPath $publisherFixture -Destination $publisherCopy
