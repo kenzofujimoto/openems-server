@@ -97,7 +97,7 @@
         "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
       },
       "next_fix_plan": {
-        "phase": "candidate remains unvalidated; auxiliary PS 5.1 diagnostic writer failure discovered",
+        "phase": "fixed diagnostic writer comparative retry prepared; waiting for preserved snapshot UID 3 and shortcut 32",
         "shortcut": "23 - Probe explicit user-mode WDAC generation inside VM",
         "agent_validation_and_90_120_second_limits_unchanged": true,
         "loads_policy_in_comparison": false,
@@ -116,7 +116,11 @@
           "policy_loading_included": false,
           "candidate_validated": false,
           "guest_state_preservation": "Operator created wdac-probe23-preserved snapshot UID 3 before restoring clean UID 2 for USB acceptance"
-        }
+        },
+        "retry_shortcut": "32 - Compare WDAC UserPE generation with fixed writer inside VM",
+        "retry_result": "fixed-918aba2/wdac-userpes-probe-retry1.json",
+        "retry_helper_sha256": "441b45c69b910ad2cabf79aa524a459acdf6160931b3bf86daff374cad0175a6",
+        "requires_snapshot": "wdac-probe23-preserved (UID 3)"
       }
     }
   },
