@@ -37,6 +37,16 @@ def test_released_usb_waits_for_an_inventory_that_reports_the_drive():
     assert "if ($null -eq $device -or -not $device.instance_id -or -not $device.serial -or -not $device.vid -or -not $device.pid) { throw" in selection
 
 
+def test_fixture_backend_startup_allows_a_cold_guest_and_reports_the_job_state():
+    start = HARNESS.index("function Start-Backend {")
+    backend = HARNESS[start:HARNESS.index("function Stop-Backend {", start)]
+    assert "Test-Path -LiteralPath $ready } 120 (" in backend
+    assert "'Fixture backend did not start; job state ' + $job.State" in backend
+    # ACK and inventory deadlines are acceptance criteria and stay unchanged.
+    assert "$_.success }).Count -gt 0 } 90 'The service did not successfully apply and ACK" in HARNESS
+    assert "Wait-Until { @(Read-Rows 'inventory.log').Count -gt 0 } 90 'The service did not upload an inventory.'" in HARNESS
+
+
 def test_publisher_certificate_cleanup_still_covers_every_store():
     cleanup = HARNESS[HARNESS.index("if ($null -ne $certificate) {"):]
     assert "foreach ($store in @('My','Root','TrustedPublisher'))" in cleanup[:400]
