@@ -304,7 +304,13 @@ try {
                 if ($singleHash) {
                     # This bounded route was validated against the DriverFiles-generated deny policy.
                     $directPolicy = Join-Path $script:directory ('hash-' + [guid]::NewGuid().ToString('N') + '.xml')
-                    New-CIPolicy -ScanPath (Split-Path -Parent $samples[0].sample_path) -FilePath $directPolicy -UserPEs -Level Hash -Deny -NoScript -NoShadowCopy -MultiplePolicyFormat -ErrorAction Stop | Out-Null
+                    # Hash rules need no external catalog discovery; normal sample signature checks remain above.
+                    $catalog = Join-Path $script:directory ('catalog-' + [guid]::NewGuid().ToString('N'))
+                    New-Item -ItemType Directory -Path $catalog | Out-Null
+                    $acl = New-Object Security.AccessControl.DirectorySecurity
+                    $acl.SetSecurityDescriptorSddlForm('O:SYD:P(A;OICI;FA;;;SY)')
+                    Set-Acl -LiteralPath $catalog -AclObject $acl
+                    New-CIPolicy -ScanPath (Split-Path -Parent $samples[0].sample_path) -FilePath $directPolicy -UserPEs -Level Hash -Deny -NoScript -NoShadowCopy -MultiplePolicyFormat -PathToCatroot $catalog -ErrorAction Stop | Out-Null
                     Protect-File $directPolicy
                     Assert-PrivateHashPolicy $directPolicy
                     # Preserve the existing adapter's scope; New-CIPolicy adds this option by default.
