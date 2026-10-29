@@ -127,7 +127,9 @@ function Resolve-Samples($Policy) {
         if ($rule.kind -eq 'hash' -and $actual.sha256 -ine $rule.value) { throw 'OPENEMS_SAMPLE_MISMATCH' }
         if ($rule.kind -eq 'publisher' -and (-not $actual.signature_valid -or $actual.publisher -ine $rule.value -or $actual.publisher -match '(?i)microsoft')) { throw 'OPENEMS_SAMPLE_MISMATCH' }
         if ($rule.kind -eq 'name' -and (-not $actual.original_name -or $actual.original_name -ine $rule.value)) { throw 'OPENEMS_SAMPLE_MISMATCH' }
-        $resolved += @{id=$rule.id; kind=$rule.kind; value=$rule.value; sample_path=$copy}
+        # Only a catalog-signed publisher sample needs the system catalog root to resolve its signer.
+        $catalogSigned = $rule.kind -eq 'publisher' -and [string](Get-AuthenticodeSignature -LiteralPath $copy -ErrorAction Stop).SignatureType -ne 'Authenticode'
+        $resolved += @{id=$rule.id; kind=$rule.kind; value=$rule.value; sample_path=$copy; catalog_signed=$catalogSigned}
     }
     return @($resolved)
 }
@@ -318,7 +320,17 @@ try {
                 } elseif ($imageSamples.Count) {
                     # Enumerate only this request's verified private copies, never the system or old samples.
                     $scanPath = Split-Path -Parent $imageSamples[0].sample_path
-                    $drivers = @(foreach ($container in @(Get-SystemDriver -ScanPath $scanPath -UserPEs -NoScript -NoShadowCopy -ErrorAction Stop)) {
+                    $scan = @{ ScanPath=$scanPath; UserPEs=$true; NoScript=$true; NoShadowCopy=$true; ErrorAction='Stop' }
+                    # Scanning the system catalog root exceeded the adapter limit; embedded signatures do not need it.
+                    if (@($imageSamples | Where-Object { $_.catalog_signed }).Count -eq 0) {
+                        $catalog = Join-Path $script:directory ('catalog-' + [guid]::NewGuid().ToString('N'))
+                        New-Item -ItemType Directory -Path $catalog | Out-Null
+                        $acl = New-Object Security.AccessControl.DirectorySecurity
+                        $acl.SetSecurityDescriptorSddlForm('O:SYD:P(A;OICI;FA;;;SY)')
+                        Set-Acl -LiteralPath $catalog -AclObject $acl
+                        $scan.PathToCatroot = $catalog
+                    }
+                    $drivers = @(foreach ($container in @(Get-SystemDriver @scan)) {
                         foreach ($driver in $container) { $driver }
                     })
                 }
