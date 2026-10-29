@@ -1,5 +1,9 @@
 # Aceite final do roadmap desktop
 
+## Pendência imediata — 29/10/2026
+
+**USB 918aba2, repetição 1: falhou; remoção ainda pendente.** [Resultado original](validation/vm-usb-fixed-918aba2-retry1-2026-10-29.json) e [suplemento](validation/vm-usb-fixed-918aba2-retry1-supplement-2026-10-29.json). Passaram instalação/hash, bloqueio de armazenamento com HID saudável e reinício offline. Sem ACK da política seguinte v4 (allow selecionado por VID/PID/serial conforme a sequência do roteiro), nem da liberação v5 no finally. Serviço/watchdog/processos continuam na VM; não marcar limpeza ou aceite. Atalho 30 preparado para remoção pelo MSI normal após confirmação de liberação recebida, sem contornar proteção; aguardar seu relatório. Instância, somente leitura e restauração final continuam sem aceite desta fonte. WDAC continua pendente; snapshot de diagnóstico UID 3 preservado.
+
 ## Correção dos controles Windows — 28/10/2026
 
 **Continuação em 29/10 — erro auxiliar identificado:** as sondas 24–26 não provaram travamento de WMI. O escritor JSON falhou em File.Replace no PS 5.1 e deixou os resultados finais no temporário ([recuperação](validation/vm-usb-fixed-918aba2-diagnostic-recovery-2026-10-28.json), [reprodução isolada](validation/windows-diagnostic-ipc-nullstring-2026-10-29.json)). Após corrigir apenas o coletor com NullString.Value, backend iniciou em 8.238 ms e respondeu HTTP 204. USB completo está em execução pelo atalho 29, mesmos MSI/harness/prazos, saída separada usb-retry1; três checks iniciais passaram. Resultado final e remoção ainda precisam ser confirmados. Não considerar a sonda ou checks parciais como aceite.
