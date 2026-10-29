@@ -93,7 +93,7 @@ function Safe-Path([string]$Path) {
     return $full
 }
 function Resolve-Samples($Policy) {
-    $inventory = $null; $resolved = @(); $copied = 0
+    $inventory = $null; $resolved = @(); $copied = 0; $sampleDirectory = $null
     foreach ($rule in @(Field $Policy 'execution_rules' @())) {
         if ($rule.kind -eq 'path') { $resolved += @{id=$rule.id; kind=$rule.kind; value=(Safe-Path $rule.value); sample_path=$null}; continue }
         $sample = [string](Field $rule 'sample_path' '')
@@ -112,7 +112,14 @@ function Resolve-Samples($Policy) {
         $copied += (Get-Item -LiteralPath $sample -ErrorAction Stop).Length
         if ($copied -gt 134217728) { throw 'OPENEMS_SAMPLE_SIZE_LIMIT' }
         # Work on a protected copy so later user writes cannot change which image is denied.
-        $copy = Join-Path $script:directory ([guid]::NewGuid().ToString('N') + '.exe')
+        if ($null -eq $sampleDirectory) {
+            $sampleDirectory = Join-Path $script:directory ('samples-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $sampleDirectory | Out-Null
+            $acl = New-Object Security.AccessControl.DirectorySecurity
+            $acl.SetSecurityDescriptorSddlForm('O:SYD:P(A;OICI;FA;;;SY)')
+            Set-Acl -LiteralPath $sampleDirectory -AclObject $acl
+        }
+        $copy = Join-Path $sampleDirectory ([guid]::NewGuid().ToString('N') + '.exe')
         [IO.File]::Open($copy, 'CreateNew', 'Write', 'None').Dispose(); Protect-File $copy
         Copy-Item -LiteralPath $sample -Destination $copy -Force
         $actual = Get-Application $copy $false '' ''
@@ -123,6 +130,16 @@ function Resolve-Samples($Policy) {
         $resolved += @{id=$rule.id; kind=$rule.kind; value=$rule.value; sample_path=$copy}
     }
     return @($resolved)
+}
+function Driver-MatchesSample($Driver, [string]$Sample) {
+    $matched = $false
+    foreach ($name in @('FilePath','FriendlyName')) {
+        $path = [string](Field $Driver $name '')
+        if ($path.StartsWith('\\?\')) { $path = $path.Substring(4) }
+        if ([string]::Equals($path, $Sample, [StringComparison]::OrdinalIgnoreCase)) { $matched = $true }
+        elseif ([IO.Path]::IsPathRooted($path)) { return $false }
+    }
+    return $matched
 }
 function Policies {
     $citool = Join-Path $env:SystemRoot 'System32\CiTool.exe'
@@ -245,13 +262,27 @@ try {
             try {
                 # ConfigCI writes directly to Console.Out, outside PowerShell's redirectable streams.
                 [Console]::SetOut([IO.TextWriter]::Null)
+                $imageSamples = @($samples | Where-Object { $_.kind -ne 'path' })
+                $drivers = @()
+                if ($imageSamples.Count) {
+                    # Enumerate only this request's verified private copies, never the system or old samples.
+                    $scanPath = Split-Path -Parent $imageSamples[0].sample_path
+                    $drivers = @(foreach ($container in @(Get-SystemDriver -ScanPath $scanPath -UserPEs -NoScript -NoShadowCopy -ErrorAction Stop)) {
+                        foreach ($driver in $container) { $driver }
+                    })
+                }
                 $deny = @()
                 foreach ($rule in $samples) {
+                    $matching = @()
+                    if ($rule.kind -ne 'path') {
+                        $matching = @($drivers | Where-Object { $_.UserMode -eq $true -and (Driver-MatchesSample $_ $rule.sample_path) })
+                        if ($matching.Count -ne 1) { throw 'OPENEMS_USER_MODE_SAMPLE_REQUIRED' }
+                    }
                     $generated = switch ($rule.kind) {
                         'path' { New-CIPolicyRule -FilePathRule $rule.value -Deny -ErrorAction Stop }
-                        'hash' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level Hash -Deny -ErrorAction Stop }
-                        'publisher' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level Publisher -Deny -ErrorAction Stop }
-                        'name' { New-CIPolicyRule -DriverFilePath $rule.sample_path -Level FileName -SpecificFileNameLevel OriginalFileName -Deny -ErrorAction Stop }
+                        'hash' { New-CIPolicyRule -DriverFiles $matching -Level Hash -Deny -ErrorAction Stop }
+                        'publisher' { New-CIPolicyRule -DriverFiles $matching -Level Publisher -Deny -ErrorAction Stop }
+                        'name' { New-CIPolicyRule -DriverFiles $matching -Level FileName -SpecificFileNameLevel OriginalFileName -Deny -ErrorAction Stop }
                         default { throw 'OPENEMS_INVALID_RULE' }
                     }
                     $userRules = @($generated | Where-Object UserMode)
