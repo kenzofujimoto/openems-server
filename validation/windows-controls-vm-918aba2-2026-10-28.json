@@ -97,14 +97,26 @@
         "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
       },
       "next_fix_plan": {
-        "phase": "comparative generation probe pending",
+        "phase": "comparative probe timed out before ConfigCI; candidate remains unvalidated",
         "shortcut": "23 - Probe explicit user-mode WDAC generation inside VM",
         "agent_validation_and_90_120_second_limits_unchanged": true,
         "loads_policy_in_comparison": false,
         "approved": true,
         "test_commit_before_implementation": true,
         "product_code_changed": false,
-        "approval": "explicit operator approval for scoped UserPE generation investigation and TDD"
+        "approval": "explicit operator approval for scoped UserPE generation investigation and TDD",
+        "comparative_probe": {
+          "report": "validation/vm-applications-fixed-918aba2-userpes-probe-timeout-2026-10-28.json",
+          "report_sha256": "0a816a9c950fb6a38ba09a8b92ac34a9f04387dfe8b18e93fe478bab416144bd",
+          "status": "timed_out",
+          "deadline_seconds": 120,
+          "last_observed_stage": "identify_fixture",
+          "configci_candidate_reached": false,
+          "controls_modified": false,
+          "policy_loading_included": false,
+          "candidate_validated": false,
+          "guest_state_preservation": "New diagnostic snapshot requested before restoring clean UID 2 for USB acceptance"
+        }
       }
     }
   },
@@ -112,6 +124,7 @@
     "status": "pending",
     "device_required": "PENMACK, VID 058f PID 6387, 4026531840 bytes",
     "substitute_device_allowed": false,
+    "operator_reports_authorized_device_available_again": true,
     "shortcut": "15 - Run 918aba2 USB inside VM as administrator"
   },
   "old_inputs_or_reports_overwritten": false,

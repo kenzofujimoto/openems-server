@@ -2,6 +2,8 @@
 
 ## Correção dos controles Windows — 28/10/2026
 
+**Comparação UserPEs ainda pendente:** o [atalho 23](validation/vm-applications-fixed-918aba2-userpes-probe-timeout-2026-10-28.json) atingiu 120 s em `identify_fixture`, antes de ConfigCI, sem carregar política. A estratégia proposta não foi validada. O operador voltou a ter o PENMACK autorizado; a rodada USB com fonte `918aba2` pode seguir após preservar o estado WDAC em snapshot adicional e restaurar o snapshot limpo UID 2. Disponibilidade do hardware não conta como aceite.
+
 **Diagnóstico da falha por hash:** [worker recuperado](validation/vm-applications-fixed-918aba2-generation-recovered-2026-10-28.json) parou em New-CIPolicyRule com OPENEMS_NO_USER_MODE_RULE após ~124 s. Importação e assinatura foram rápidas; nenhuma política foi carregada pelo diagnóstico e os 14 IDs CI permaneceram iguais. O controlador auxiliar falhou antes de impor seu limite; o resultado não conta como aceite. Nova estratégia de geração por amostra explícita ainda depende de aprovação, validação comparativa e TDD; prazos e critérios serão mantidos.
 
 **Repetição mais recente, atalho 18:** [falhou no WDAC por hash](validation/vm-applications-fixed-918aba2-retry1-2026-10-28.json). HTTPS de referência e bloqueio/liberação de rede passaram. Política v4 recebeu ACK negativo; release v5 recebeu ACK de sucesso. Remoção do agente e ausência de serviço/watchdog/NRPT/diários confirmadas no [suplemento](validation/vm-applications-fixed-918aba2-retry1-supplement-2026-10-28.json). Diagnóstico somente de leitura do erro/CodeIntegrity pendente no atalho 19. Não atribuir causa específica nem aceitar hash/editor antes dessa investigação e de execução completa bem-sucedida.
