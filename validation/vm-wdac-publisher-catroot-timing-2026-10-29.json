@@ -1,0 +1,65 @@
+﻿{
+    "started":  "2026-10-29T21:53:38.5265893Z",
+    "variants":  {
+                     "system_catroot":  {
+                                            "get_system_driver_ms":  51040,
+                                            "rule_ms":  151,
+                                            "merge_ms":  754,
+                                            "user_mode_matches":  1,
+                                            "signers":  [
+                                                            {
+                                                                "name":  "",
+                                                                "cert_root_type":  "",
+                                                                "cert_root":  "",
+                                                                "publisher":  ""
+                                                            }
+                                                        ],
+                                            "deny_rules":  0,
+                                            "error":  null,
+                                            "denied_signer_scenarios":  [
+                                                                            {
+                                                                                "value":  "131",
+                                                                                "denied":  1
+                                                                            },
+                                                                            {
+                                                                                "value":  "12",
+                                                                                "denied":  1
+                                                                            }
+                                                                        ]
+                                        },
+                     "private_empty_catroot":  {
+                                                   "get_system_driver_ms":  101,
+                                                   "rule_ms":  37,
+                                                   "merge_ms":  4,
+                                                   "user_mode_matches":  1,
+                                                   "signers":  [
+                                                                   {
+                                                                       "name":  "",
+                                                                       "cert_root_type":  "",
+                                                                       "cert_root":  "",
+                                                                       "publisher":  ""
+                                                                   }
+                                                               ],
+                                                   "deny_rules":  0,
+                                                   "error":  null,
+                                                   "denied_signer_scenarios":  [
+                                                                                   {
+                                                                                       "value":  "131",
+                                                                                       "denied":  1
+                                                                                   },
+                                                                                   {
+                                                                                       "value":  "12",
+                                                                                       "denied":  1
+                                                                                   }
+                                                                               ]
+                                               }
+                 },
+    "cleanup":  [
+                    "My: removed or absent",
+                    "Root: removed or absent"
+                ],
+    "error":  null,
+    "finished":  "2026-10-29T21:54:33.3688596Z",
+    "signature":  "Valid",
+    "signers_identical":  true
+}
