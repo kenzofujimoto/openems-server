@@ -151,7 +151,7 @@ pub fn journal_path(state: &Path) -> PathBuf {
 }
 
 pub fn inventory(state: &Path) -> Result<Vec<Device>> {
-    let result = adapter::run(SCRIPT, &json!({"mode":"inventory"}))?;
+    let result = adapter::run_background(SCRIPT, &json!({"mode":"inventory"}))?;
     let observed: Vec<Device> =
         serde_json::from_value(result["inventory"].clone()).map_err(|_| invalid("invalid USB inventory"))?;
     let history = state.with_file_name("usb-inventory.json");

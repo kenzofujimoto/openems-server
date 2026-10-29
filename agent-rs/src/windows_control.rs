@@ -17,7 +17,23 @@ fn default_rule_id() -> String {
 }
 
 #[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(windows)]
+const BELOW_NORMAL_PRIORITY_CLASS: u32 = 0x0000_4000;
+
+#[cfg(windows)]
 pub fn run(script: &'static str, request: &Value) -> Result<Value> {
+    run_with_flags(script, request, CREATE_NO_WINDOW)
+}
+
+/// Inventory collection: yields CPU so it never slows enforcement or the applications it inventories.
+#[cfg(windows)]
+pub fn run_background(script: &'static str, request: &Value) -> Result<Value> {
+    run_with_flags(script, request, CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS)
+}
+
+#[cfg(windows)]
+fn run_with_flags(script: &'static str, request: &Value, flags: u32) -> Result<Value> {
     use std::io::{Read, Write};
     use std::os::windows::process::CommandExt;
     use std::process::{Command, Stdio};
@@ -33,7 +49,7 @@ pub fn run(script: &'static str, request: &Value) -> Result<Value> {
     let executable = std::path::Path::new(&system_root).join("System32/WindowsPowerShell/v1.0/powershell.exe");
     let mut child = Command::new(executable)
         .args(["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script])
-        .creation_flags(0x0800_0000)
+        .creation_flags(flags)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -86,6 +102,7 @@ pub fn run(_script: &'static str, _request: &Value) -> Result<Value> {
     Err(AgentError::Local("this control adapter requires Windows".into()))
 }
 
+#[cfg(not(windows))]
 pub fn run_background(script: &'static str, request: &Value) -> Result<Value> {
     run(script, request)
 }
@@ -119,8 +136,7 @@ mod tests {
 
     #[test]
     fn background_collection_yields_cpu_to_enforcement() {
-        const PRIORITY: &str =
-            "[Console]::In.ReadToEnd()|Out-Null; @{priority=[string](Get-Process -Id $PID).PriorityClass}|ConvertTo-Json -Compress";
+        const PRIORITY: &str = "[Console]::In.ReadToEnd()|Out-Null; @{priority=[string](Get-Process -Id $PID).PriorityClass}|ConvertTo-Json -Compress";
         assert_eq!(run(PRIORITY, &json!({})).unwrap()["priority"], "Normal");
         assert_eq!(run_background(PRIORITY, &json!({})).unwrap()["priority"], "BelowNormal");
     }
