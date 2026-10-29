@@ -142,6 +142,8 @@ def test_wdac_uses_verified_explicit_user_pe_driver_files(tmp_path, kind):
     assert Path(scan["files"][0]).parent == Path(scan["path"])
     assert Path(scan["path"]).parent.parent == directory
     generated = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicyRule")
+    assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
+    assert not list(directory.glob("app-control-*/catalog-*"))
     assert generated["driver_paths"] == scan["files"]
     assert generated["driver_user_modes"] == [True]
     assert generated["legacy_path"] == ""
@@ -212,6 +214,8 @@ def test_wdac_path_rule_does_not_require_a_user_pe_scan(tmp_path):
     directory = fixture_environment(tmp_path)
     assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "path")))
     assert not any(call["name"] == "Get-SystemDriver" for call in calls(directory))
+    assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
+    assert not list(directory.glob("app-control-*/catalog-*"))
 
 
 def test_wdac_mismatched_hash_is_rejected_before_user_pe_enumeration(tmp_path):
@@ -240,6 +244,47 @@ def test_wdac_single_hash_scans_only_its_verified_private_copy_without_driver_en
     assert len(merge["inputs"]) == 2
     assert direct["output"] in merge["inputs"]
     assert all(Path(path).parent == Path(merge["output"]).parent for path in merge["inputs"])
+
+
+def test_wdac_single_hash_uses_fresh_empty_system_private_catalogs_without_changing_windows(tmp_path):
+    directory = fixture_environment(tmp_path)
+    request = wdac_request(directory, "hash")
+    assert_success(invoke_adapter(directory, "applications", request))
+    request["policy"]["execution_rules"][0]["id"] = "updated-hash-rule"
+    assert_success(invoke_adapter(directory, "applications", request))
+    generated = [call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicy"]
+    assert len(generated) == 2
+    paths = [Path(call["catalog_path"]) for call in generated]
+    assert all(path.is_absolute() and path.is_dir() for path in paths)
+    assert paths[0] != paths[1]
+    for path, call in zip(paths, generated, strict=True):
+        assert path.parent == Path(call["scan_path"]).parent
+        assert call["catalog_files"] == [] and not list(path.iterdir())
+        assert not path.is_relative_to(directory / "systemroot")
+        descriptors = [entry["detail"] for entry in calls(directory)
+                       if entry["name"] == "Set-AclDescriptor" and entry["detail"]["path"] == str(path)]
+        assert len(descriptors) == 1
+        assert descriptors[0]["owner_sid"] == "S-1-5-18" and descriptors[0]["protected"]
+        assert len(descriptors[0]["rules"]) == 1
+        assert descriptors[0]["rules"][0]["sid"] == "S-1-5-18"
+        assert descriptors[0]["rules"][0]["type"] == "Allow"
+        assert "FullControl" in descriptors[0]["rules"][0]["rights"]
+        assert "ContainerInherit" in descriptors[0]["rules"][0]["inheritance"]
+        assert "ObjectInherit" in descriptors[0]["rules"][0]["inheritance"]
+    signatures = [call["detail"]["path"] for call in calls(directory) if call["name"] == "Get-AuthenticodeSignature"]
+    assert signatures == [call["files"][0] for call in generated]
+    mutations = [call["detail"] for call in calls(directory) if call["name"] == "Set-Acl"]
+    assert not any(Path(path).is_relative_to(directory / "systemroot") for path in mutations)
+
+
+def test_wdac_hash_still_refuses_a_failed_signature_query_before_catalog_generation(tmp_path):
+    directory = fixture_environment(tmp_path, scenario="signature_failure")
+    result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
+    assert result.returncode == 1
+    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert any(call["name"] == "Get-AuthenticodeSignature" for call in calls(directory))
+    assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
+    assert not (directory / "active-policy.json").exists()
 
 
 def test_wdac_direct_hash_preserves_enforced_options_and_real_deny_references(tmp_path):

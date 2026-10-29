@@ -35,6 +35,7 @@ function Set-Acl {
     [CmdletBinding()] param([string]$LiteralPath, $AclObject)
     Assert-FixturePath $LiteralPath
     Trace-Mock 'Set-Acl' $LiteralPath
+    Trace-Mock 'Set-AclDescriptor' @{path=$LiteralPath;owner_sid=$AclObject.GetOwner([Security.Principal.SecurityIdentifier]).Value;protected=$AclObject.AreAccessRulesProtected;rules=@($AclObject.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | ForEach-Object { @{sid=$_.IdentityReference.Value;type=[string]$_.AccessControlType;rights=[string]$_.FileSystemRights;inheritance=[string]$_.InheritanceFlags} })}
 }
 function Test-Path {
     [CmdletBinding()] param([Alias('Path')][string]$LiteralPath, [string]$PathType)
@@ -176,6 +177,9 @@ function Get-WinEvent {
 }
 function Get-AuthenticodeSignature {
     [CmdletBinding()] param([string]$LiteralPath)
+    Assert-FixturePath $LiteralPath
+    Trace-Mock 'Get-AuthenticodeSignature' @{path=$LiteralPath}
+    if($fixture.scenario -eq 'signature_failure') { throw 'Fixture signature lookup failed.' }
     [pscustomobject]@{Status='Valid';SignerCertificate=[pscustomobject]@{Subject='CN=Fixture Publisher'}}
 }
 function Get-SystemDriver {
@@ -210,11 +214,13 @@ function New-CIPolicyRule {
     Write-Output -NoEnumerate $rules
 }
 function New-CIPolicy {
-    [CmdletBinding()] param([string]$ScanPath,[string]$FilePath,[string]$Level,[switch]$UserPEs,[switch]$NoScript,[switch]$NoShadowCopy,[switch]$Deny,[switch]$MultiplePolicyFormat)
+    [CmdletBinding()] param([string]$ScanPath,[string]$FilePath,[string]$Level,[switch]$UserPEs,[switch]$NoScript,[switch]$NoShadowCopy,[switch]$Deny,[switch]$MultiplePolicyFormat,[string]$PathToCatroot)
     Assert-FixturePath $ScanPath
     Assert-FixturePath $FilePath
     $files=@(Microsoft.PowerShell.Management\Get-ChildItem -LiteralPath $ScanPath -File -Filter '*.exe')
-    Trace-Mock 'New-CIPolicy' @{scan_path=$ScanPath;output=$FilePath;files=@($files | ForEach-Object FullName);level=$Level;user_pes=[bool]$UserPEs;no_script=[bool]$NoScript;no_shadow_copy=[bool]$NoShadowCopy;deny=[bool]$Deny;multiple_policy=[bool]$MultiplePolicyFormat}
+    $catalogFiles=@()
+    if($PathToCatroot) { Assert-FixturePath $PathToCatroot; $catalogFiles=@(Microsoft.PowerShell.Management\Get-ChildItem -LiteralPath $PathToCatroot -Force | ForEach-Object Name) }
+    Trace-Mock 'New-CIPolicy' @{scan_path=$ScanPath;output=$FilePath;files=@($files | ForEach-Object FullName);level=$Level;user_pes=[bool]$UserPEs;no_script=[bool]$NoScript;no_shadow_copy=[bool]$NoShadowCopy;deny=[bool]$Deny;multiple_policy=[bool]$MultiplePolicyFormat;catalog_path=$PathToCatroot;catalog_files=$catalogFiles}
     if($fixture.scenario -eq 'console_noise') { [Console]::Out.WriteLine('Scan completed successfully') }
     $hashes=@(('A'*40),('B'*64),('C'*40),('D'*64))
     $rules='';$refs=''
