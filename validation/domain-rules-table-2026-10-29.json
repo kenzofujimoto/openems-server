@@ -1,0 +1,115 @@
+{
+  "started_local_date": "2026-10-28",
+  "recorded_local_date": "2026-10-29",
+  "timezone": "America/Sao_Paulo",
+  "branch": "feature/domain-rules-table",
+  "base_revision": "5ba6be67c10237c9015ff1098258494039093f8b",
+  "approved_behavior": "first matching domain rule, with move up/down, evaluated before categories and schedules",
+  "reference": "https://docs.fortinet.com/document/forticlient/7.4.3/ems-administration-guide/68075/web-filter",
+  "scope": "DNS domains, not full URLs, referrers or regular expressions",
+  "tdd": {
+    "initial_test_commit": "06984bc",
+    "python_red": {
+      "failed": 25,
+      "passed": 3
+    },
+    "rust_red": {
+      "failed": 3,
+      "passed": 0
+    },
+    "panel_red": {
+      "failed": 3,
+      "missing_new_helper_module": true
+    },
+    "keyboard_and_boundary_test_commit": "349c45d",
+    "real_api_browser_test_commit": "45b1de6",
+    "keyboard_regression_observed_before_fix": true,
+    "accessible_select_regression_observed_before_fix": true
+  },
+  "features": {
+    "individual_add_edit_delete": true,
+    "first_match_ordering": true,
+    "actions": [
+      "allow",
+      "block",
+      "monitor"
+    ],
+    "types": [
+      "simple",
+      "wildcard"
+    ],
+    "category_block_overridden_by_explicit_allow_or_monitor": true,
+    "legacy_allow_before_block_migration": true,
+    "non_domain_profile_sections_preserved": true,
+    "csv_preview_before_append": true,
+    "csv_export_preserves_draft_order": true,
+    "invalid_import_is_atomic": true,
+    "csv_max_bytes": 2097152,
+    "max_rules": 10000,
+    "page_size": 50,
+    "domain_search": true,
+    "new_capability": "web-filter:domain-rules:v1",
+    "unsupported_agents_refused_assigned_policy_and_success_ack": true
+  },
+  "validation": {
+    "panel": {
+      "passed": 139,
+      "failed": 0,
+      "files": 17,
+      "lines_percent": 95.45,
+      "branches_percent": 83.97
+    },
+    "csv_helper": {
+      "lines_percent": 100,
+      "branches_percent": 96.34
+    },
+    "domain_table": {
+      "lines_percent": 94.91,
+      "branches_percent": 83.33
+    },
+    "chromium_real_api": {
+      "passed": 5,
+      "failed": 0,
+      "includes": [
+        "cookie and CSRF",
+        "ordered table editing",
+        "CSV import and export",
+        "publication round trip",
+        "viewer restrictions and mobile theme"
+      ]
+    },
+    "rust": {
+      "passed": 228,
+      "failed": 0,
+      "fmt": "passed",
+      "clippy_all_targets": "passed"
+    },
+    "typescript": "passed",
+    "eslint": "passed",
+    "production_panel_build": "passed; existing large-chunk advisory remains",
+    "python_full": {
+      "passed": 1117,
+      "failed": 1,
+      "skipped": 58,
+      "deselected": 4,
+      "seconds": 501.66,
+      "failed_test": "tests/test_native_controls.py::test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals",
+      "failure": "read-only native inventory subprocess exceeded unchanged 90-second deadline",
+      "isolated_repeat": "failed at unchanged deadline",
+      "full_suite_green": false
+    },
+    "ruff_changed_files": "passed",
+    "ruff_full": "failed: unchanged S603 in deploy/linux/build_package.py:123",
+    "host_service_or_msi_tests_enabled": false,
+    "whole_controls_acceptance_harness_invoked_on_host": false
+  },
+  "live_dns_acceptance_of_new_domain_rule_build": "pending; no new MSI built or installed for this feature",
+  "old_usb_wdac_package_changed": false,
+  "ci_changed": false,
+  "push": false,
+  "pull_request": false,
+  "implementation_commits": {
+    "policy": "f1ed99ef038b032acd6bee04771dbab0170b64a7",
+    "panel": "07f6326e124ff531861286ef0c5937aa13597ca0"
+  }
+}

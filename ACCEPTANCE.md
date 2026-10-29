@@ -1,5 +1,9 @@
 # Aceite final do roadmap desktop
 
+## Tabela de domínios — validação local de 29/10/2026
+
+[Relatório](validation/domain-rules-table-2026-10-29.json): tabela ordenada, Simples/Wildcard, Permitir/Bloquear/Monitorar, importação CSV com prévia, exportação, busca e paginação implementados na branch separada `feature/domain-rules-table`. Primeira regra correspondente precede categorias e horários; migração conserva as permissões antigas antes dos bloqueios. Passaram 139 testes do painel, cinco cenários em Chromium com API real e 228 testes Rust; fmt/Clippy/lint/TypeScript/build passaram. A suíte Python completa e Ruff global têm pendências descritas no relatório. Isso não é aceite DNS físico de um novo agente: nenhum MSI da feature foi gerado/instalado e os pacotes Windows de aceite permanecem intactos. [Contrato, CSV e limites](docs/ordered-domain-rules.md).
+
 ## Ações web — entrega de 27/10/2026
 
 Permitir/Bloquear/Monitorar usa [matriz de aceite própria](docs/web-filter-actions-acceptance.md). O build desta entrega é preparado separadamente em `.venv/web-actions-acceptance/`, preservando os pacotes e resultados anteriores. Os quatro roteiros abaixo continuam como regressões de sessão/locais/controles; não substituem o aceite das ações web nem dos navegadores.

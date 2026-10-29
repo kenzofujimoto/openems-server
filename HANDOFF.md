@@ -1,5 +1,12 @@
 # Handoff — roadmap v2
 
+## Tabela de domínios — 29/10/2026
+
+- Pedido e plano aprovados em 28/10, incluindo primeira regra correspondente como no EMS. Worktree própria `domain-rules-table`, branch `feature/domain-rules-table`, base main publicada `5ba6be6`; a correção e o aceite Windows continuam em `C:\Users\Kenzo\Desktop\codigo\projetos\openems-server`, branch `fix/windows-control-adapters`. Não misturar os pacotes congelados de USB/WDAC com a feature.
+- TDD em `06984bc`, `349c45d`, `45b1de6`. Implementados tabela com inclusão/edição/exclusão, ordenação, busca, páginas de 50, importação CSV com prévia e exportação do rascunho. Contrato `domain_rules`, IDNA, primeira correspondência antes de categorias/horários e capacidade `web-filter:domain-rules:v1` nos agentes DNS. Políticas antigas conservam a prioridade de allow ao migrar. Facebook permitido/monitorado explicitamente vence a categoria Redes sociais, sujeito à ordem das regras. [Uso e limites](docs/ordered-domain-rules.md).
+- [Evidência](validation/domain-rules-table-2026-10-29.json): painel 139/139; navegador Chromium + API real 5/5; Rust 228/228; lint, TypeScript, build, fmt e Clippy passaram. Cobertura do painel 95,45%, helper CSV 100%, tabela 94,91%. Suíte Python completa: 1117 sucessos, 1 timeout do inventário nativo somente de leitura, 58 skips e 4 casos proibidos do harness desmarcados; repetição isolada também falhou em 90 s. Ruff dos alterados passou; Ruff global tem S603 fora da mudança em deploy/linux/build_package.py:123. Não aumentar prazos nem declarar gate integral verde.
+- Prévia local com dados simulados: http://127.0.0.1:5174/panel/policies/web (`npm run dev:mock` em web). O build de produção foi conferido contra API real descartável; a prévia não publica nos agentes da VM. Novo MSI/aceite DNS ainda pendentes para esta feature. Nenhum push, PR, mudança no CI ou rollout.
+
 ## Revisão paralela dos scanners — Codex, 27/10/2026
 
 - Plano aprovado pelo usuário. Os testes de regressão foram registrados primeiro em `2c83a8e`: 33 falharam e 14 passaram antes da correção. O executor corrigido entrou no commit compartilhado `84c7411`; os 47 testes agora passam e o Ruff do projeto inteiro passou.
