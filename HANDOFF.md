@@ -2,6 +2,8 @@
 
 ## Tabela de domínios — 29/10/2026
 
+- **Limpeza da VM concluída às 11:56:16Z:** checkout principal, commit `03d986d`; liberação v7/ACK, MSI 0, serviço/watchdog/processos/NRPT/diários ausentes e PENMACK verificado em leitura/escrita/exclusão. Não há mais agente dessa rodada instalado na VM. USB original continua falho; comparação WDAC já aprovada aguarda atalho 32 no snapshot de diagnóstico UID 3, sem instalar agente ou carregar política. A feature desta worktree permanece separada e sem rollout.
+
 - **Operador retomou a sessão com a VM ligada.** A limpeza segue no checkout principal pelo atalho 31, exigindo liberação/ACK e MSI normal. Esta worktree da interface continua sem rollout; nenhuma retomada de teste USB/WDAC ou restauração de snapshot deve ser inferida só da disponibilidade da VM.
 
 - **Sessão pausada a pedido do operador, que foi dormir.** A feature está commitada, sem push/rollout. No checkout principal, a remoção normal da VM (atalho 30) falhou por falta de ACK de liberação; o MSI não foi acionado, serviço continua instalado apenas na VM e cache USB está em default block com uma regra. Evidência em `C:\Users\Kenzo\Desktop\codigo\projetos\openems-server\validation\vm-usb-fixed-918aba2-normal-removal-2026-10-29.json`. Não iniciar testes, restaurar snapshot nem agendar ações durante a pausa. Retomar primeiro a liberação/remoção normal quando o operador voltar.
