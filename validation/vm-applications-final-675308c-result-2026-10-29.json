@@ -1,0 +1,82 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  true,
+    "automation_passed":  true,
+    "physical_acceptance_pending":  false,
+    "status":  "passed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-29T22:53:16.6580875Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "the application inventory includes the running fixture with its path and SHA-256",
+                       "at":  "2026-10-29T22:53:16.7601196Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "both independent fixture paths start and reach the external network before policy",
+                       "at":  "2026-10-29T22:53:24.5792867Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network block kept the selected app runnable while its connection failed and the control copy connected",
+                       "at":  "2026-10-29T22:54:47.9201475Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network policy release restored the selected app connection",
+                       "at":  "2026-10-29T22:55:26.7792735Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "WDAC denied the original hash and renamed copy before their first instruction wrote a sentinel",
+                       "at":  "2026-10-29T22:55:57.4931098Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "WDAC denied only the dedicated test publisher including a renamed signed copy",
+                       "at":  "2026-10-29T22:56:56.8317737Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "publisher policy release restored execution",
+                       "at":  "2026-10-29T22:57:24.7166971Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "Code Integrity policy ownership restored after removal",
+                       "at":  "2026-10-29T22:58:07.9301502Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "MSI removal restored owned controls and preserved unrelated firewall, HID and hosts state",
+                       "at":  "2026-10-29T22:58:08.2182051Z"
+                   }
+               ],
+    "pending":  [
+
+                ],
+    "error":  null,
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T22:51:35.6274398Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T22:51:35.6505725Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "d5acc2ac7cce7ecf547bd28d2352935a44f8c9fa5c134b341acea652979c2097",
+                                                                       "bytes":  8552448
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "320a471adc000da4024f47d0a8051eb846078c29373aa105b7e51931a284b106",
+                                                                            "bytes":  8552448
+                                                                        }
+                                         },
+                            "source_revision":  "675308c02880afc315705e640e836daabb9ee4c1"
+                        },
+    "finished_utc":  "2026-10-29T22:58:09.6936354Z"
+}
