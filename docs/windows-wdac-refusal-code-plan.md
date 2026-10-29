@@ -1,6 +1,7 @@
 # Recognize Windows integrity-policy denial 4551
 
-Status: proposed; explicit operator approval pending. No code changed yet.
+Status: explicitly approved by the operator on 2026-10-29, including completing
+USB acceptance afterward. TDD in progress; same frozen 959e9de MSIs required.
 
 ## Confirmed defect
 
