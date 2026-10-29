@@ -130,7 +130,7 @@ def test_configci_failure_restores_console_output_for_the_error_json(tmp_path):
     assert json.loads(result.stdout) == {"error": "control_failed"}
 
 
-@pytest.mark.parametrize("kind", ["hash", "publisher", "name"])
+@pytest.mark.parametrize("kind", ["publisher", "name"])
 def test_wdac_uses_verified_explicit_user_pe_driver_files(tmp_path, kind):
     directory = fixture_environment(tmp_path, scenario="requires_driver_files")
     request = wdac_request(directory, kind)
@@ -166,6 +166,7 @@ def test_wdac_scans_only_current_copies_once_for_multiple_rules(tmp_path):
     assert len(scans[0]["files"]) == 2
     assert all(Path(path).parent == Path(scans[0]["path"]) for path in scans[0]["files"])
     assert str(outside) not in scans[0]["files"]
+    assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
     assert {Path(path).read_bytes() for path in scans[0]["files"]} == {
         b"fixture image; never executable", outside.read_bytes(),
     }
@@ -174,7 +175,7 @@ def test_wdac_scans_only_current_copies_once_for_multiple_rules(tmp_path):
 @pytest.mark.parametrize("scenario", ["drivers_native_prefix", "drivers_friendly_leaf"])
 def test_wdac_driver_aliases_still_resolve_to_the_exact_private_copy(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
-    assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "hash")))
+    assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "publisher")))
     scan = next(call["detail"] for call in calls(directory) if call["name"] == "Get-SystemDriver")
     generated = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicyRule")
     assert [path.removeprefix("\\\\?\\") for path in generated["driver_paths"]] == scan["files"]
@@ -183,7 +184,7 @@ def test_wdac_driver_aliases_still_resolve_to_the_exact_private_copy(tmp_path, s
 @pytest.mark.parametrize("scenario", ["drivers_empty", "drivers_kernel", "drivers_unrelated", "drivers_duplicate", "drivers_conflicting"])
 def test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
-    result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
+    result = invoke_adapter(directory, "applications", wdac_request(directory, "publisher"))
     assert result.returncode == 1
     assert json.loads(result.stdout) == {"error": "control_failed"}
     assert not (directory / "active-policy.json").exists()
@@ -193,7 +194,7 @@ def test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples(tmp_path, scen
 @pytest.mark.parametrize("scenario", ["rules_empty", "rules_kernel"])
 def test_wdac_rejects_empty_or_kernel_only_generated_rules(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
-    result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
+    result = invoke_adapter(directory, "applications", wdac_request(directory, "publisher"))
     assert result.returncode == 1
     assert not (directory / "active-policy.json").exists()
     assert not any(call["name"] == "Merge-CIPolicy" for call in calls(directory))
@@ -201,7 +202,7 @@ def test_wdac_rejects_empty_or_kernel_only_generated_rules(tmp_path, scenario):
 
 def test_wdac_collection_output_keeps_real_user_rules_without_mutating_kernel_rules(tmp_path):
     directory = fixture_environment(tmp_path, scenario="rules_mixed")
-    assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "hash")))
+    assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "publisher")))
     merge = next(call["detail"] for call in calls(directory) if call["name"] == "Merge-CIPolicy")
     assert merge["rule_ids"] == ["fixture-rule"]
     assert merge["user_modes"] == [True]
@@ -219,7 +220,65 @@ def test_wdac_mismatched_hash_is_rejected_before_user_pe_enumeration(tmp_path):
     request["policy"]["execution_rules"][0]["value"] = "00" * 32
     result = invoke_adapter(directory, "applications", request)
     assert result.returncode == 1
-    assert not any(call["name"] in {"Get-SystemDriver", "New-CIPolicyRule", "Merge-CIPolicy"} for call in calls(directory))
+    assert not any(call["name"] in {"Get-SystemDriver", "New-CIPolicy", "New-CIPolicyRule", "Merge-CIPolicy"} for call in calls(directory))
+
+
+def test_wdac_single_hash_scans_only_its_verified_private_copy_without_driver_enumeration(tmp_path):
+    directory = fixture_environment(tmp_path)
+    request = wdac_request(directory, "hash")
+    assert_success(invoke_adapter(directory, "applications", request))
+    direct = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicy")
+    assert direct["level"] == "Hash" and direct["deny"]
+    assert direct["user_pes"] and direct["no_script"] and direct["no_shadow_copy"] and direct["multiple_policy"]
+    assert len(direct["files"]) == 1
+    assert Path(direct["files"][0]) != Path(request["policy"]["execution_rules"][0]["sample_path"])
+    assert Path(direct["files"][0]).read_bytes() == b"fixture image; never executable"
+    assert Path(direct["files"][0]).parent == Path(direct["scan_path"])
+    assert Path(direct["scan_path"]).parent.parent == directory
+    assert not any(call["name"] in {"Get-SystemDriver", "New-CIPolicyRule"} for call in calls(directory))
+    merge = next(call["detail"] for call in calls(directory) if call["name"] == "Merge-CIPolicy")
+    assert len(merge["inputs"]) == 2
+    assert direct["output"] in merge["inputs"]
+    assert all(Path(path).parent == Path(merge["output"]).parent for path in merge["inputs"])
+
+
+def test_wdac_direct_hash_preserves_enforced_options_and_real_deny_references(tmp_path):
+    directory = fixture_environment(tmp_path)
+    assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "hash")))
+    conversion = next(call["detail"] for call in calls(directory) if call["name"] == "ConvertFrom-CIPolicy")
+    assert conversion["deny_count"] == conversion["user_deny_refs"] == 4
+    assert conversion["kernel_deny_refs"] == 0
+    assert "Enabled:UMCI" in conversion["options"]
+    assert "Enabled:Update Policy No Reboot" in conversion["options"]
+    assert "Enabled:Audit Mode" not in conversion["options"]
+    assert "Required:Enforce Store Applications" not in conversion["options"]
+    options = [call["detail"] for call in calls(directory) if call["name"] == "Set-RuleOption"]
+    assert any(option["option"] == 12 and option["delete"] for option in options)
+
+
+@pytest.mark.parametrize("scenario", [
+    "policy_empty", "policy_kernel", "policy_unreferenced", "policy_bad_hash", "policy_allow",
+    "policy_signer", "policy_duplicate_id", "policy_non_hash", "policy_extra_reference",
+    "policy_missing_umci", "policy_bad_namespace", "policy_malformed",
+])
+def test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading(tmp_path, scenario):
+    directory = fixture_environment(tmp_path, scenario=scenario)
+    result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
+    assert result.returncode == 1
+    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert not (directory / "active-policy.json").exists()
+    assert not any(call["name"] == "Merge-CIPolicy" for call in calls(directory))
+
+
+def test_wdac_mixed_rules_keep_the_driver_file_route(tmp_path):
+    directory = fixture_environment(tmp_path)
+    request = wdac_request(directory, "hash")
+    request["policy"]["execution_rules"].append({
+        "id": "path", "kind": "path", "value": str(directory / "fixture.exe"),
+    })
+    assert_success(invoke_adapter(directory, "applications", request))
+    assert any(call["name"] == "Get-SystemDriver" for call in calls(directory))
+    assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
 
 
 def test_removable_usb_block_uses_pnp_without_setting_disk_offline(tmp_path):

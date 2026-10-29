@@ -209,6 +209,36 @@ function New-CIPolicyRule {
     }
     Write-Output -NoEnumerate $rules
 }
+function New-CIPolicy {
+    [CmdletBinding()] param([string]$ScanPath,[string]$FilePath,[string]$Level,[switch]$UserPEs,[switch]$NoScript,[switch]$NoShadowCopy,[switch]$Deny,[switch]$MultiplePolicyFormat)
+    Assert-FixturePath $ScanPath
+    Assert-FixturePath $FilePath
+    $files=@(Microsoft.PowerShell.Management\Get-ChildItem -LiteralPath $ScanPath -File -Filter '*.exe')
+    Trace-Mock 'New-CIPolicy' @{scan_path=$ScanPath;output=$FilePath;files=@($files | ForEach-Object FullName);level=$Level;user_pes=[bool]$UserPEs;no_script=[bool]$NoScript;no_shadow_copy=[bool]$NoShadowCopy;deny=[bool]$Deny;multiple_policy=[bool]$MultiplePolicyFormat}
+    if($fixture.scenario -eq 'console_noise') { [Console]::Out.WriteLine('Scan completed successfully') }
+    $hashes=@(('A'*40),('B'*64),('C'*40),('D'*64))
+    $rules='';$refs=''
+    for($index=0;$index -lt 4;$index++) {
+        $rules+='<Deny ID="D'+$index+'" Hash="'+$hashes[$index]+'"/>'
+        $refs+='<FileRuleRef RuleID="D'+$index+'"/>'
+    }
+    $xml='<SiPolicy xmlns="urn:schemas-microsoft-com:sipolicy"><PolicyID>{00000000-0000-0000-0000-000000000000}</PolicyID><BasePolicyID>{00000000-0000-0000-0000-000000000000}</BasePolicyID><VersionEx>1.0.0.0</VersionEx><Rules><Rule><Option>Enabled:UMCI</Option></Rule><Rule><Option>Enabled:Audit Mode</Option></Rule><Rule><Option>Required:Enforce Store Applications</Option></Rule></Rules><FileRules>'+$rules+'</FileRules><Signers/><SigningScenarios><SigningScenario Value="12"><ProductSigners><FileRulesRef>'+$refs+'</FileRulesRef></ProductSigners></SigningScenario><SigningScenario Value="131"><ProductSigners><FileRulesRef/></ProductSigners></SigningScenario></SigningScenarios></SiPolicy>'
+    switch($fixture.scenario) {
+        'policy_empty' {$xml=$xml.Replace($rules,'').Replace($refs,'')}
+        'policy_kernel' {$xml=$xml.Replace('Value="12"','Value="131"')}
+        'policy_unreferenced' {$xml=$xml.Replace($refs,'')}
+        'policy_bad_hash' {$xml=$xml.Replace($hashes[0],'not-a-hash')}
+        'policy_allow' {$xml=$xml.Replace('</FileRules>','<Allow ID="EXTRA" FileName="*"/></FileRules>')}
+        'policy_signer' {$xml=$xml.Replace('<Signers/>','<Signers><Signer ID="EXTRA" Name="Other publisher"/></Signers>')}
+        'policy_duplicate_id' {$xml=$xml.Replace('ID="D1"','ID="D0"')}
+        'policy_non_hash' {$xml=$xml.Replace('Hash="'+$hashes[0]+'"','FileName="other.exe"')}
+        'policy_extra_reference' {$xml=$xml.Replace('<FileRulesRef/>','<FileRulesRef><FileRuleRef RuleID="D0"/></FileRulesRef>')}
+        'policy_missing_umci' {$xml=$xml.Replace('<Rule><Option>Enabled:UMCI</Option></Rule>','')}
+        'policy_bad_namespace' {$xml=$xml.Replace('urn:schemas-microsoft-com:sipolicy','urn:unexpected')}
+        'policy_malformed' {$xml='<SiPolicy>'}
+    }
+    [IO.File]::WriteAllText($FilePath,$xml)
+}
 function Merge-CIPolicy {
     [CmdletBinding()] param([string[]]$PolicyPaths,[string]$OutputFilePath,$Rules)
     $source = Join-Path $script:fixtureSystemRoot 'schemas\CodeIntegrity\ExamplePolicies\AllowAll.xml'
@@ -216,7 +246,19 @@ function Merge-CIPolicy {
     if ($fixture.scenario -eq 'readonly_template' -and $source -in $PolicyPaths) {
         throw [UnauthorizedAccessException]::new('The system template cannot be opened for writing.')
     }
-    [IO.File]::WriteAllText($OutputFilePath, '<SiPolicy><PolicyID>{00000000-0000-0000-0000-000000000000}</PolicyID><BasePolicyID>{00000000-0000-0000-0000-000000000000}</BasePolicyID><VersionEx>1.0.0.0</VersionEx></SiPolicy>')
+    if($PolicyPaths.Count -eq 2) {
+        [xml]$xml=Get-Content -LiteralPath $PolicyPaths[1] -Raw
+        $ns=$xml.DocumentElement.NamespaceURI
+        $allow=$xml.CreateElement('Allow',$ns);$allow.SetAttribute('ID','ALLOW_ALL');$allow.SetAttribute('FileName','*')
+        $xml.SiPolicy.FileRules.AppendChild($allow) | Out-Null
+        foreach($scenario in $xml.SiPolicy.SigningScenarios.SigningScenario) {
+            $reference=$xml.CreateElement('FileRuleRef',$ns);$reference.SetAttribute('RuleID','ALLOW_ALL')
+            $scenario.ProductSigners.SelectSingleNode('*[local-name()="FileRulesRef"]').AppendChild($reference) | Out-Null
+        }
+        $xml.Save($OutputFilePath)
+    } else {
+        [IO.File]::WriteAllText($OutputFilePath, '<SiPolicy><PolicyID>{00000000-0000-0000-0000-000000000000}</PolicyID><BasePolicyID>{00000000-0000-0000-0000-000000000000}</BasePolicyID><VersionEx>1.0.0.0</VersionEx></SiPolicy>')
+    }
 }
 function Set-CIPolicyIdInfo {
     [CmdletBinding()] param([string]$FilePath,[string]$PolicyName,[switch]$ResetPolicyID)
@@ -225,9 +267,26 @@ function Set-CIPolicyIdInfo {
 function Set-RuleOption {
     [CmdletBinding()] param([string]$FilePath,[int]$Option,[switch]$Delete)
     Trace-Mock 'Set-RuleOption' @{option=$Option;delete=[bool]$Delete}
+    Assert-FixturePath $FilePath
+    [xml]$xml=Get-Content -LiteralPath $FilePath -Raw
+    if($xml.DocumentElement.NamespaceURI -eq 'urn:schemas-microsoft-com:sipolicy') {
+        $options=@{0='Enabled:UMCI';3='Enabled:Audit Mode';6='Enabled:Unsigned System Integrity Policy';11='Disabled:Script Enforcement';12='Required:Enforce Store Applications';16='Enabled:Update Policy No Reboot'}
+        $name=$options[$Option]
+        $existing=@($xml.SiPolicy.Rules.Rule | Where-Object { $_.Option -ceq $name })
+        if($Delete) { foreach($rule in $existing) { $xml.SiPolicy.Rules.RemoveChild($rule) | Out-Null } }
+        elseif($existing.Count -eq 0) {
+            $rule=$xml.CreateElement('Rule',$xml.DocumentElement.NamespaceURI)
+            $entry=$xml.CreateElement('Option',$xml.DocumentElement.NamespaceURI);$entry.InnerText=$name
+            $rule.AppendChild($entry) | Out-Null;$xml.SiPolicy.Rules.AppendChild($rule) | Out-Null
+        }
+        $xml.Save($FilePath)
+    }
 }
 function ConvertFrom-CIPolicy {
     [CmdletBinding()] param([string]$XmlFilePath,[string]$BinaryFilePath)
     Assert-FixturePath $BinaryFilePath
+    [xml]$xml=Get-Content -LiteralPath $XmlFilePath -Raw
+    $manager=New-Object Xml.XmlNamespaceManager($xml.NameTable);$manager.AddNamespace('ci','urn:schemas-microsoft-com:sipolicy')
+    Trace-Mock 'ConvertFrom-CIPolicy' @{deny_count=$xml.SelectNodes('//ci:Deny',$manager).Count;user_deny_refs=$xml.SelectNodes('//ci:SigningScenario[@Value="12"]//ci:FileRuleRef[starts-with(@RuleID,"D")]',$manager).Count;kernel_deny_refs=$xml.SelectNodes('//ci:SigningScenario[@Value="131"]//ci:FileRuleRef[starts-with(@RuleID,"D")]',$manager).Count;options=@($xml.SelectNodes('//ci:Option',$manager) | ForEach-Object InnerText)}
     [IO.File]::WriteAllText($BinaryFilePath, 'fixture-policy-binary')
 }
