@@ -77,6 +77,14 @@ try {
     $observed.register=Send 'register' 'POST' '{}' $false
     $observed.ack=Send 'config/ack' 'POST' "{`"version`":1,`"digest`":`"fixture`",`"success`":true}"
     $observed.unknown=Send 'not-a-route'
+    # The harness polls ack.log with a shared read handle while the agent posts acknowledgments.
+    $reader=[IO.File]::Open((Join-Path $work 'ack.log'),'OpenOrCreate','Read','ReadWrite')
+    try {
+        $observed.ack_while_read=Send 'config/ack' 'POST' "{`"version`":2,`"digest`":`"fixture`",`"success`":true}"
+        $observed.inventory_while_read=$null
+        $inventoryReader=[IO.File]::Open((Join-Path $work 'inventory.log'),'OpenOrCreate','Read','ReadWrite')
+        try { $observed.inventory_while_read=Send 'inventory' 'POST' '{"applications":[]}' } finally { $inventoryReader.Dispose() }
+    } finally { $reader.Dispose() }
     $observed.job_state=[string]$job.State
 } finally { if($job) { Stop-Job $job -ErrorAction SilentlyContinue; Remove-Job $job -Force -ErrorAction SilentlyContinue } }
 $observed.engine=$PSVersionTable.PSVersion.Major
@@ -123,7 +131,18 @@ def test_fixture_backend_preserves_existing_routes_and_authorization(observed):
     assert results["ack"]["status"] == 200
     assert results["unknown"]["status"] == 404
     acks = [json.loads(line) for line in (work / "ack.log").read_text(encoding="utf-8-sig").splitlines() if line.strip()]
-    assert acks == [{"version": 1, "digest": "fixture", "success": True}]
+    assert acks[0] == {"version": 1, "digest": "fixture", "success": True}
+
+
+def test_fixture_backend_records_acks_while_the_harness_reads_the_log(observed):
+    # PS 5.1 Add-Content fails with a sharing violation here, so ACKs were answered 500 and lost.
+    work, results = observed
+    assert results["ack_while_read"]["status"] == 200, results["ack_while_read"]
+    assert results["inventory_while_read"]["status"] == 200, results["inventory_while_read"]
+    acks = [json.loads(line) for line in (work / "ack.log").read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+    assert acks == [{"version": 1, "digest": "fixture", "success": True}, {"version": 2, "digest": "fixture", "success": True}]
+    inventories = [line for line in (work / "inventory.log").read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+    assert [json.loads(line) for line in inventories] == [{"applications": []}]
 
 
 def test_fixture_backend_traces_every_request_without_secrets_or_bodies(observed):
