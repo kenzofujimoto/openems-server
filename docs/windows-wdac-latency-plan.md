@@ -2,7 +2,8 @@
 
 Status: approved explicitly by the operator on 2026-10-29. Comparison 34 completed
 with one extra option; private normalization 35 passed all eight exact checks.
-Proceed with approved TDD for the bounded single-hash path; full ACK unproven.
+Approved TDD completed for the bounded single-hash path in 2100dd7; full ACK
+and enforcement of the new package remain unproven.
 
 ## Evidence and completed authorized work
 
@@ -116,3 +117,17 @@ preserves the existing adapter's option set; it does not alter OS policy.
   XML rejection, option handling, console JSON and fallback preservation.
   Then implement the minimum, run the permitted complete suites and prepare
   a separate package for real acceptance. Keep the 90/120-second limits.
+
+## Frozen package and next physical result
+
+- Red tests 3765ea6: 14 failures/43 passes; final mocked adapters 57/57.
+  Product 2100dd7. Full permitted Python suite: 1,158 passes, 58 skips, four
+  whole-harness cases deselected. Rust 225/225 and panel 102/102 passed.
+- Complete validation: `validation/windows-wdac-direct-fix-2026-10-29.json`.
+  Separate package/media receipt:
+  `validation/windows-wdac-direct-package-2026-10-29.json`.
+- MSI/ISO prepared from exactly 2100dd7, preserving all previous inputs. Shortcut
+  36 requires clean snapshot UID 2 and the exact 2100dd7 ISO; it verifies source,
+  MSI, harness and installed executable hashes. Guest acceptance still pending.
+- Aggregate Python coverage 88.58% does not prove all per-module gates; full
+  Ruff retains the unrelated Linux S603 finding. No push, PR or CI change.

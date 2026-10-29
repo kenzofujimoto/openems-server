@@ -136,6 +136,13 @@
       "correctness_validated": true,
       "elapsed_ms": 1968,
       "policy_ids_unchanged": true
+    },
+    "production_followup": {
+      "source_revision": "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+      "validation_report": "validation/windows-wdac-direct-fix-2026-10-29.json",
+      "package_report": "validation/windows-wdac-direct-package-2026-10-29.json",
+      "guest_acceptance": "pending shortcut 36 in clean UID 2 snapshot",
+      "scope": "one verified hash rule only; other rule paths preserved"
     }
   },
   "new_msi_or_iso_created": false,

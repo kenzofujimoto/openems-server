@@ -97,7 +97,7 @@
         "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
       },
       "next_fix_plan": {
-        "phase": "single-hash private normalization validated; approved TDD next; full ACK and other case performance unproven",
+        "phase": "single-hash correctness and TDD complete; separately frozen 2100dd7 package prepared; real acceptance pending",
         "shortcut": "23 - Probe explicit user-mode WDAC generation inside VM",
         "agent_validation_and_90_120_second_limits_unchanged": true,
         "loads_policy_in_comparison": false,
@@ -173,6 +173,13 @@
           "correctness_validated": true,
           "elapsed_ms": 1968,
           "policy_ids_unchanged": true
+        },
+        "production_followup": {
+          "source_revision": "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+          "validation_report": "validation/windows-wdac-direct-fix-2026-10-29.json",
+          "package_report": "validation/windows-wdac-direct-package-2026-10-29.json",
+          "guest_acceptance": "pending shortcut 36 in clean UID 2 snapshot",
+          "scope": "one verified hash rule only; other rule paths preserved"
         }
       }
     }
