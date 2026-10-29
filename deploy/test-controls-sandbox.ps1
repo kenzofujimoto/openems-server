@@ -262,6 +262,17 @@ function Start-Backend {
         $listener.Prefixes.Add($Origin + '/')
         $routes = @('register','config/assigned','config/ack','inventory','control_events','host_tags','messages/pull','refresh','events','tamper')
         $traceErrors = 0
+        # Add-Content fails with a sharing violation while the harness polls these logs; share and retry briefly.
+        function Append-Log([string]$Name, [string]$Text) {
+            $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($Text -replace "`r?`n", ' ') + "`r`n")
+            for ($attempt = 1; ; $attempt++) {
+                try {
+                    $stream = [IO.File]::Open((Join-Path $Work $Name), 'Append', 'Write', 'ReadWrite')
+                    try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
+                    return
+                } catch [IO.IOException] { if ($attempt -ge 40) { throw }; Start-Sleep -Milliseconds 50 }
+            }
+        }
         try {
             $listener.Start(); Set-Content -LiteralPath (Join-Path $Work 'backend-ready') -Value ready
             while ($true) {
@@ -281,9 +292,9 @@ function Start-Backend {
                     } else { switch ($route) {
                         'register' { $answer = @{ client_id='sandbox-controls'; device_token='sandbox-fixture-only' } }
                         'config/assigned' { $answer = Get-Content -LiteralPath (Join-Path $Work 'policy.json') -Raw | ConvertFrom-Json }
-                        'config/ack' { Add-Content -LiteralPath (Join-Path $Work 'ack.log') -Value ($upload -replace "`r?`n", ' ') }
-                        'inventory' { Add-Content -LiteralPath (Join-Path $Work 'inventory.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=$true} }
-                        'control_events' { Add-Content -LiteralPath (Join-Path $Work 'control-events.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=1;rejected=0} }
+                        'config/ack' { Append-Log 'ack.log' $upload }
+                        'inventory' { Append-Log 'inventory.log' $upload; $answer=@{accepted=$true} }
+                        'control_events' { Append-Log 'control-events.log' $upload; $answer=@{accepted=1;rejected=0} }
                         'host_tags' { }
                         'messages/pull' { }
                         'refresh' { }
