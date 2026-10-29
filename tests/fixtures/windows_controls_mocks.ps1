@@ -188,6 +188,8 @@ function Get-SystemDriver {
         foreach($file in $files) {
             $path=if($fixture.scenario -in @('drivers_unrelated','drivers_conflicting')) {Join-Path $script:fixtureRoot 'unrelated.exe'} else {$file.FullName}
             $friendly=if($fixture.scenario -eq 'drivers_conflicting') {$file.FullName} else {$path}
+            if($fixture.scenario -eq 'drivers_native_prefix') { $path='\\?\'+$path;$friendly=$path }
+            if($fixture.scenario -eq 'drivers_friendly_leaf') { $friendly=$file.Name }
             $drivers.Add([pscustomobject]@{FilePath=$path;FriendlyName=$friendly;UserMode=($fixture.scenario -ne 'drivers_kernel')})
             if($fixture.scenario -eq 'drivers_duplicate') { $drivers.Add([pscustomobject]@{FilePath=$path;FriendlyName=$path;UserMode=$true}) }
         }

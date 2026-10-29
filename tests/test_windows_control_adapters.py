@@ -171,6 +171,15 @@ def test_wdac_scans_only_current_copies_once_for_multiple_rules(tmp_path):
     }
 
 
+@pytest.mark.parametrize("scenario", ["drivers_native_prefix", "drivers_friendly_leaf"])
+def test_wdac_driver_aliases_still_resolve_to_the_exact_private_copy(tmp_path, scenario):
+    directory = fixture_environment(tmp_path, scenario=scenario)
+    assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "hash")))
+    scan = next(call["detail"] for call in calls(directory) if call["name"] == "Get-SystemDriver")
+    generated = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicyRule")
+    assert [path.removeprefix("\\\\?\\") for path in generated["driver_paths"]] == scan["files"]
+
+
 @pytest.mark.parametrize("scenario", ["drivers_empty", "drivers_kernel", "drivers_unrelated", "drivers_duplicate", "drivers_conflicting"])
 def test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
