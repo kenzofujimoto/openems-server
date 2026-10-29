@@ -1,0 +1,12 @@
+{
+  "powershell": "5.1.26100.9711",
+  "scope": "isolated loopback HTTP and private files; no agent or controls",
+  "first_response_passed": true,
+  "response_after_aborted_request_passed": true,
+  "ack_preserved": true,
+  "request_count": 4,
+  "test_passed": true,
+  "checked_at_utc": "2026-10-29T11:50:24.9761441Z",
+  "whole_acceptance_harness_invoked": false,
+  "service_or_msi_invoked": false
+}

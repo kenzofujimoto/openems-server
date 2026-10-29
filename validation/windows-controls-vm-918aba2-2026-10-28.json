@@ -3,7 +3,7 @@
   "source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
   "package_report": "validation/windows-controls-canonical-package-2026-10-28.json",
   "passed": false,
-  "status": "paused by operator; USB release not acknowledged; MSI removal not attempted",
+  "status": "resumed by operator; normal USB release and removal retry prepared",
   "applications": {
     "status": "failed",
     "report": "validation/vm-applications-fixed-918aba2-2026-10-28.json",
@@ -210,5 +210,17 @@
     "requested_local_date": "2026-10-29",
     "automation_scheduled": false,
     "reason": "Operator going to sleep; resume when operator returns"
+  },
+  "operator_resume": {
+    "owned_loopback_server_smoke_test": "validation/windows-cleanup-loopback-server-2026-10-29.json",
+    "local_date": "2026-10-29",
+    "additional_acceptance_started": false,
+    "cleanup_result": "fixed-918aba2/usb-normal-removal-retry1.json",
+    "normal_release_ack_required": true,
+    "guest_started_by_operator": true,
+    "forced_removal": false,
+    "cleanup_shortcut": "31 - Release and normally remove USB test agent inside VM",
+    "cleanup_helper_sha256": "49d193e30fe7e2aefee09f9d33c53629e833f188e03cdd8422b9c9626c0258d6",
+    "normal_service_restart": true
   }
 }
