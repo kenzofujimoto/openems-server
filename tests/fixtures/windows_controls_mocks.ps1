@@ -178,17 +178,38 @@ function Get-AuthenticodeSignature {
     [CmdletBinding()] param([string]$LiteralPath)
     [pscustomobject]@{Status='Valid';SignerCertificate=[pscustomobject]@{Subject='CN=Fixture Publisher'}}
 }
+function Get-SystemDriver {
+    [CmdletBinding()] param([string]$ScanPath,[switch]$UserPEs,[switch]$NoScript,[switch]$NoShadowCopy)
+    Assert-FixturePath $ScanPath
+    $files=@(Microsoft.PowerShell.Management\Get-ChildItem -LiteralPath $ScanPath -File -Filter '*.exe')
+    Trace-Mock 'Get-SystemDriver' @{path=$ScanPath;files=@($files | ForEach-Object FullName);user_pes=[bool]$UserPEs;no_script=[bool]$NoScript;no_shadow_copy=[bool]$NoShadowCopy}
+    $drivers=New-Object 'Collections.Generic.List[object]'
+    if($fixture.scenario -ne 'drivers_empty') {
+        foreach($file in $files) {
+            $path=if($fixture.scenario -eq 'drivers_unrelated') {Join-Path $script:fixtureRoot 'unrelated.exe'} else {$file.FullName}
+            $drivers.Add([pscustomobject]@{FilePath=$path;FriendlyName=$path;UserMode=($fixture.scenario -ne 'drivers_kernel')})
+            if($fixture.scenario -eq 'drivers_duplicate') { $drivers.Add([pscustomobject]@{FilePath=$path;FriendlyName=$path;UserMode=$true}) }
+        }
+    }
+    Write-Output -NoEnumerate $drivers
+}
 function New-CIPolicyRule {
-    [CmdletBinding()] param([string]$FilePathRule,[string]$DriverFilePath,[string]$Level,[string]$SpecificFileNameLevel,[switch]$Deny)
-    Trace-Mock 'New-CIPolicyRule' $Level
+    [CmdletBinding()] param([string]$FilePathRule,[string]$DriverFilePath,[object[]]$DriverFiles=@(),[string]$Level,[string]$SpecificFileNameLevel,[switch]$Deny)
+    Trace-Mock 'New-CIPolicyRule' @{level=$Level;legacy_path=$DriverFilePath;file_path_rule=$FilePathRule;driver_paths=@($DriverFiles | ForEach-Object FilePath);driver_user_modes=@($DriverFiles | ForEach-Object UserMode);deny=[bool]$Deny;specific_file_name_level=$SpecificFileNameLevel}
     if ($fixture.scenario -in @('console_noise','console_failure')) { [Console]::Out.WriteLine('"Scan completed successfully"') }
     if ($fixture.scenario -eq 'console_failure') { throw 'Fixture ConfigCI failure.' }
-    [pscustomobject]@{UserMode=$true;Id='fixture-rule'}
+    $rules=New-Object 'Collections.Generic.List[object]'
+    if($fixture.scenario -ne 'rules_empty') {
+        if($fixture.scenario -eq 'rules_mixed') { $rules.Add([pscustomobject]@{UserMode=$false;Id='kernel-rule'}) }
+        $userMode=($fixture.scenario -ne 'rules_kernel' -and ($fixture.scenario -ne 'requires_driver_files' -or $DriverFiles.Count -gt 0 -or $FilePathRule))
+        $rules.Add([pscustomobject]@{UserMode=$userMode;Id='fixture-rule'})
+    }
+    Write-Output -NoEnumerate $rules
 }
 function Merge-CIPolicy {
     [CmdletBinding()] param([string[]]$PolicyPaths,[string]$OutputFilePath,$Rules)
     $source = Join-Path $script:fixtureSystemRoot 'schemas\CodeIntegrity\ExamplePolicies\AllowAll.xml'
-    Trace-Mock 'Merge-CIPolicy' @{inputs=$PolicyPaths;output=$OutputFilePath}
+    Trace-Mock 'Merge-CIPolicy' @{inputs=$PolicyPaths;output=$OutputFilePath;rule_ids=@($Rules | ForEach-Object Id);user_modes=@($Rules | ForEach-Object UserMode)}
     if ($fixture.scenario -eq 'readonly_template' -and $source -in $PolicyPaths) {
         throw [UnauthorizedAccessException]::new('The system template cannot be opened for writing.')
     }
