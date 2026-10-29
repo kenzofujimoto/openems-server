@@ -95,6 +95,16 @@
           "final_error": "OPENEMS_NO_USER_MODE_RULE"
         },
         "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
+      },
+      "next_fix_plan": {
+        "phase": "comparative generation probe pending",
+        "shortcut": "23 - Probe explicit user-mode WDAC generation inside VM",
+        "agent_validation_and_90_120_second_limits_unchanged": true,
+        "loads_policy_in_comparison": false,
+        "approved": true,
+        "test_commit_before_implementation": true,
+        "product_code_changed": false,
+        "approval": "explicit operator approval for scoped UserPE generation investigation and TDD"
       }
     }
   },
