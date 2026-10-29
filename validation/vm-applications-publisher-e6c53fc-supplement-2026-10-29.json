@@ -1,0 +1,409 @@
+﻿{
+    "finished_utc":  "2026-10-29T18:42:13.4217402Z",
+    "source_revision":  "e6c53fc42047e32c3c095156cc1a42d6d091593b",
+    "harness_exit":  1,
+    "installed_executable_hash_observations":  [
+                                                   {
+                                                       "at":  "2026-10-29T18:38:44.6379550Z",
+                                                       "sha256":  "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2"
+                                                   }
+                                               ],
+    "installed_hash_matches":  true,
+    "acknowledgments":  [
+                            {
+                                "version":  1,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            }
+                        ],
+    "control_events":  [
+
+                       ],
+    "final_policy":  [
+                         {
+                             "version":  2,
+                             "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                             "usb_default_action":  "allow",
+                             "usb_rule_count":  0,
+                             "execution_rule_count":  0
+                         }
+                     ],
+    "service_absent":  true,
+    "watchdog_count":  0,
+    "managed_nrpt_count":  0,
+    "agent_process_count":  0,
+    "control_journals_present":  [
+
+                                 ],
+    "agent_source_revision":  "959e9de55ec365899086290b404c29ce1f791bb4",
+    "harness_source_revision":  "e6c53fc42047e32c3c095156cc1a42d6d091593b",
+    "code_integrity_collection_status":  "completed",
+    "code_integrity_collection_error_type":  null,
+    "code_integrity_baseline_error_type":  null,
+    "code_policy_ids_before":  [
+                                   "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                   "5dac656c-21ad-4a02-ab49-649917162e70",
+                                   "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                   "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                   "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                   "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                   "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                   "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                               ],
+    "current_code_policies":  [
+                                  {
+                                      "policy_id":  "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                      "is_enforced":  "True",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                      "is_enforced":  "True",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                      "is_enforced":  "True",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "5dac656c-21ad-4a02-ab49-649917162e70",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "d2bda982-ccf6-4344-ac5b-0b44427b6816",
+                                      "is_enforced":  "True",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                      "is_enforced":  "False",
+                                      "openems_named":  false
+                                  },
+                                  {
+                                      "policy_id":  "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                      "is_enforced":  "True",
+                                      "openems_named":  false
+                                  }
+                              ],
+    "code_integrity_events":  [
+
+                              ],
+    "fixture_backend_events":  [
+                                   {
+                                       "at_utc":  "2026-10-29T18:38:48.8214380Z",
+                                       "route":  "register",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:38:52.3028160Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:38:52.3573403Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:38:52.3701177Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:38:52.3853758Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:39.1729084Z",
+                                       "route":  "inventory",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:46.8195279Z",
+                                       "route":  "other",
+                                       "status":  404,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:46.9735081Z",
+                                       "route":  "config/ack",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:47.0305908Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:50.3083300Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:50.3260080Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:50.3992651Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:39:50.5383671Z",
+                                       "route":  "inventory",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:03.7316192Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:03.7521091Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:03.8089018Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:06.7331221Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:19.6901424Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:20.8831767Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:21.2170023Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:21.8104738Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:34.7207967Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:39.4121033Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:39.4223375Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:42.7967386Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:50.2130878Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:50.5656094Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:50.7095249Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:50.7877391Z",
+                                       "route":  "config/ack",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:40:50.8795505Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:41:03.7970395Z",
+                                       "route":  "other",
+                                       "status":  404,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:41:03.8039488Z",
+                                       "route":  "tamper",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   }
+                               ],
+    "agent_log_categories":  [
+                                 {
+                                     "at":  "2026-10-29T18:39:44Z",
+                                     "categories":  [
+                                                        "TransportError"
+                                                    ]
+                                 }
+                             ],
+    "agent_log_read_error_type":  null,
+    "post_removal_usb_read_write_delete_verified":  false
+}
