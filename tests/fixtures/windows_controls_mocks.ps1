@@ -240,7 +240,7 @@ function New-CIPolicy {
     [IO.File]::WriteAllText($FilePath,$xml)
 }
 function Merge-CIPolicy {
-    [CmdletBinding()] param([string[]]$PolicyPaths,[string]$OutputFilePath,$Rules)
+    [CmdletBinding()] param([string[]]$PolicyPaths,[string]$OutputFilePath,$Rules=@())
     $source = Join-Path $script:fixtureSystemRoot 'schemas\CodeIntegrity\ExamplePolicies\AllowAll.xml'
     Trace-Mock 'Merge-CIPolicy' @{inputs=$PolicyPaths;output=$OutputFilePath;rule_ids=@($Rules | ForEach-Object Id);user_modes=@($Rules | ForEach-Object UserMode)}
     if ($fixture.scenario -eq 'readonly_template' -and $source -in $PolicyPaths) {

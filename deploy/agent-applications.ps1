@@ -141,6 +141,41 @@ function Driver-MatchesSample($Driver, [string]$Sample) {
     }
     return $matched
 }
+function Assert-PrivateHashPolicy([string]$Path) {
+    $settings = New-Object Xml.XmlReaderSettings
+    $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit; $settings.XmlResolver = $null
+    $reader = [Xml.XmlReader]::Create($Path, $settings)
+    $xml = New-Object Xml.XmlDocument
+    $xml.XmlResolver = $null
+    try { $xml.Load($reader) } finally { $reader.Dispose() }
+    $ns = New-Object Xml.XmlNamespaceManager($xml.NameTable)
+    $ns.AddNamespace('ci', 'urn:schemas-microsoft-com:sipolicy')
+    $rules = @($xml.SelectNodes('/ci:SiPolicy/ci:FileRules/*', $ns))
+    if ($rules.Count -eq 0) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($rule in $rules) {
+        $id = $rule.GetAttribute('ID')
+        if ($rule.LocalName -cne 'Deny' -or -not $id -or -not $ids.Add($id) -or
+            $rule.GetAttribute('Hash') -cnotmatch '^(?:[0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$') { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        foreach ($attribute in $rule.Attributes) {
+            if ($attribute.Name -cnotin @('ID','FriendlyName','Hash')) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        }
+    }
+    if ($xml.SelectNodes('//ci:Signer|//ci:AllowedSigner|//ci:DeniedSigner|//ci:FileAttrib|//ci:Allow', $ns).Count) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    $refs = @($xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="12"]/ci:ProductSigners/ci:FileRulesRef/ci:FileRuleRef', $ns))
+    if ($refs.Count -ne $ids.Count -or $xml.SelectNodes('//ci:FileRuleRef', $ns).Count -ne $refs.Count) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($reference in $refs) {
+        $id = $reference.GetAttribute('RuleID')
+        if (-not $ids.Contains($id) -or -not $seen.Add($id)) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    }
+    $options = @($xml.SelectNodes('/ci:SiPolicy/ci:Rules/ci:Rule/ci:Option', $ns) | ForEach-Object InnerText)
+    if ('Enabled:UMCI' -cnotin $options) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    foreach ($option in $options) {
+        if ($option -cnotin @('Enabled:UMCI','Enabled:Audit Mode','Enabled:Unsigned System Integrity Policy',
+            'Enabled:Advanced Boot Options Menu','Disabled:Script Enforcement','Required:Enforce Store Applications')) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    }
+}
 function Policies {
     $citool = Join-Path $env:SystemRoot 'System32\CiTool.exe'
     if (-not (Test-Path -LiteralPath $citool)) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
@@ -263,8 +298,18 @@ try {
                 # ConfigCI writes directly to Console.Out, outside PowerShell's redirectable streams.
                 [Console]::SetOut([IO.TextWriter]::Null)
                 $imageSamples = @($samples | Where-Object { $_.kind -ne 'path' })
+                $singleHash = $samples.Count -eq 1 -and $samples[0].kind -eq 'hash'
+                $directPolicy = $null
                 $drivers = @()
-                if ($imageSamples.Count) {
+                if ($singleHash) {
+                    # This bounded route was validated against the DriverFiles-generated deny policy.
+                    $directPolicy = Join-Path $script:directory ('hash-' + [guid]::NewGuid().ToString('N') + '.xml')
+                    New-CIPolicy -ScanPath (Split-Path -Parent $samples[0].sample_path) -FilePath $directPolicy -UserPEs -Level Hash -Deny -NoScript -NoShadowCopy -MultiplePolicyFormat -ErrorAction Stop | Out-Null
+                    Protect-File $directPolicy
+                    Assert-PrivateHashPolicy $directPolicy
+                    # Preserve the existing adapter's scope; New-CIPolicy adds this option by default.
+                    Set-RuleOption -FilePath $directPolicy -Option 12 -Delete -ErrorAction Stop
+                } elseif ($imageSamples.Count) {
                     # Enumerate only this request's verified private copies, never the system or old samples.
                     $scanPath = Split-Path -Parent $imageSamples[0].sample_path
                     $drivers = @(foreach ($container in @(Get-SystemDriver -ScanPath $scanPath -UserPEs -NoScript -NoShadowCopy -ErrorAction Stop)) {
@@ -272,7 +317,9 @@ try {
                     })
                 }
                 $deny = @()
-                foreach ($rule in $samples) {
+                $ruleSamples = @()
+                if (-not $singleHash) { $ruleSamples = $samples }
+                foreach ($rule in $ruleSamples) {
                     $matching = @()
                     if ($rule.kind -ne 'path') {
                         $matching = @($drivers | Where-Object { $_.UserMode -eq $true -and (Driver-MatchesSample $_ $rule.sample_path) })
@@ -297,7 +344,8 @@ try {
                 $allow = Join-Path $script:directory 'allow-all.xml'
                 Copy-Item -LiteralPath $template -Destination $allow -Force
                 Protect-File $allow
-                Merge-CIPolicy -PolicyPaths $allow -OutputFilePath $xmlPath -Rules $deny -ErrorAction Stop | Out-Null
+                if ($singleHash) { Merge-CIPolicy -PolicyPaths @($allow,$directPolicy) -OutputFilePath $xmlPath -ErrorAction Stop | Out-Null }
+                else { Merge-CIPolicy -PolicyPaths $allow -OutputFilePath $xmlPath -Rules $deny -ErrorAction Stop | Out-Null }
                 Set-CIPolicyIdInfo -FilePath $xmlPath -PolicyName 'openems application control' -ResetPolicyID -ErrorAction Stop | Out-Null
                 Set-RuleOption -FilePath $xmlPath -Option 0 -ErrorAction Stop
                 Set-RuleOption -FilePath $xmlPath -Option 3 -Delete -ErrorAction Stop
