@@ -40,5 +40,7 @@
     "ACCEPT-WDAC-54",
     "ACCEPT-USB-55"
   ],
-  "launcher_parsed_without_execution_on_host": true
+  "launcher_parsed_without_execution_on_host": true,
+  "rust_suite": "232 passed",
+  "host_suite": "1195 passed, 58 skipped, 4 whole-harness cases deselected, 0 failed"
 }
