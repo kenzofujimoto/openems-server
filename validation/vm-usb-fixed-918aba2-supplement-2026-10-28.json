@@ -1,0 +1,32 @@
+﻿{
+    "finished_utc":  "2026-10-29T02:28:02.7272705Z",
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "harness_exit":  1,
+    "installed_executable_hash_observations":  [
+
+                                               ],
+    "installed_hash_matches":  false,
+    "acknowledgments":  [
+
+                        ],
+    "control_events":  [
+
+                       ],
+    "final_policy":  [
+                         {
+                             "version":  1,
+                             "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                             "usb_default_action":  "allow",
+                             "usb_rule_count":  0,
+                             "execution_rule_count":  0
+                         }
+                     ],
+    "service_absent":  true,
+    "watchdog_count":  0,
+    "managed_nrpt_count":  0,
+    "agent_process_count":  0,
+    "control_journals_present":  [
+
+                                 ],
+    "post_removal_usb_read_write_delete_verified":  true
+}

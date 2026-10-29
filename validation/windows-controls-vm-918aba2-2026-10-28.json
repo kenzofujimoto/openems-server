@@ -3,7 +3,7 @@
   "source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
   "package_report": "validation/windows-controls-canonical-package-2026-10-28.json",
   "passed": false,
-  "status": "applications_retry_failed_wdac_hash_ack_negative",
+  "status": "applications_failed_wdac_hash_ack; usb_failed_before_installation",
   "applications": {
     "status": "failed",
     "report": "validation/vm-applications-fixed-918aba2-2026-10-28.json",
@@ -115,17 +115,36 @@
           "controls_modified": false,
           "policy_loading_included": false,
           "candidate_validated": false,
-          "guest_state_preservation": "New diagnostic snapshot requested before restoring clean UID 2 for USB acceptance"
+          "guest_state_preservation": "Operator created wdac-probe23-preserved snapshot UID 3 before restoring clean UID 2 for USB acceptance"
         }
       }
     }
   },
   "usb": {
-    "status": "pending",
+    "status": "failed_before_agent_installation",
     "device_required": "PENMACK, VID 058f PID 6387, 4026531840 bytes",
     "substitute_device_allowed": false,
     "operator_reports_authorized_device_available_again": true,
-    "shortcut": "15 - Run 918aba2 USB inside VM as administrator"
+    "shortcut": "15 - Run 918aba2 USB inside VM as administrator",
+    "report": "validation/vm-usb-fixed-918aba2-backend-startup-failure-2026-10-28.json",
+    "preflight": "validation/vm-usb-fixed-918aba2-preflight-2026-10-28.json",
+    "supplement": "validation/vm-usb-fixed-918aba2-supplement-2026-10-28.json",
+    "error": "Fixture backend did not start.",
+    "passed_check_count": 0,
+    "all_input_hashes_match": true,
+    "authorized_usb_drive": "E:",
+    "installed_hash_observed": false,
+    "agent_installation_reached": false,
+    "core_cleanup_verified": true,
+    "post_removal_usb_read_write_delete_verified": true,
+    "backend_diagnostics": {
+      "first_report": "validation/vm-usb-fixed-918aba2-backend-probe-timeout-2026-10-28.json",
+      "after_guest_reboot_report": "validation/vm-usb-fixed-918aba2-backend-probe-reboot-timeout-2026-10-28.json",
+      "status": "both probes timed out in diagnostic WMI baseline before backend measurement",
+      "no_agent_installation_or_control_mutation": true,
+      "next_probe": "26 - Isolate USB backend without WMI baseline inside VM",
+      "acceptance_harness_changed": false
+    }
   },
   "old_inputs_or_reports_overwritten": false,
   "physical_host_controls_executed_in_this_round": false,

@@ -2,6 +2,8 @@
 
 ## Correção dos controles Windows — 28/10/2026
 
+**USB 918aba2 ainda sem aceite:** [rodada falhou no backend local antes da instalação](validation/vm-usb-fixed-918aba2-backend-startup-failure-2026-10-28.json), zero checks. PENMACK correto em E:, todos os hashes conferidos, serviço/watchdog/NRPT/diários ausentes e canário USB posterior passou ([suplemento](validation/vm-usb-fixed-918aba2-supplement-2026-10-28.json)). As sondas auxiliares 24/25 pararam em consulta WMI antes de medir o backend. Sonda 26 separa essa consulta da medição de Start-Job/HTTP; sem alteração do harness, instalação ou política. Snapshot WDAC adicional UID 3 preserva a investigação anterior. Nenhuma dessas sondas substitui os cenários USB completos.
+
 **Comparação UserPEs ainda pendente:** o [atalho 23](validation/vm-applications-fixed-918aba2-userpes-probe-timeout-2026-10-28.json) atingiu 120 s em `identify_fixture`, antes de ConfigCI, sem carregar política. A estratégia proposta não foi validada. O operador voltou a ter o PENMACK autorizado; a rodada USB com fonte `918aba2` pode seguir após preservar o estado WDAC em snapshot adicional e restaurar o snapshot limpo UID 2. Disponibilidade do hardware não conta como aceite.
 
 **Diagnóstico da falha por hash:** [worker recuperado](validation/vm-applications-fixed-918aba2-generation-recovered-2026-10-28.json) parou em New-CIPolicyRule com OPENEMS_NO_USER_MODE_RULE após ~124 s. Importação e assinatura foram rápidas; nenhuma política foi carregada pelo diagnóstico e os 14 IDs CI permaneceram iguais. O controlador auxiliar falhou antes de impor seu limite; o resultado não conta como aceite. Nova estratégia de geração por amostra explícita ainda depende de aprovação, validação comparativa e TDD; prazos e critérios serão mantidos.
