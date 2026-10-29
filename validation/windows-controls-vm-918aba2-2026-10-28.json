@@ -97,7 +97,7 @@
         "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
       },
       "next_fix_plan": {
-        "phase": "fixed diagnostic writer comparative retry prepared; waiting for preserved snapshot UID 3 and shortcut 32",
+        "phase": "comparison reached ConfigCI but diagnostic wrapped collection filtering rejected its output; explicit enumeration retry prepared",
         "shortcut": "23 - Probe explicit user-mode WDAC generation inside VM",
         "agent_validation_and_90_120_second_limits_unchanged": true,
         "loads_policy_in_comparison": false,
@@ -120,7 +120,18 @@
         "retry_shortcut": "32 - Compare WDAC UserPE generation with fixed writer inside VM",
         "retry_result": "fixed-918aba2/wdac-userpes-probe-retry1.json",
         "retry_helper_sha256": "441b45c69b910ad2cabf79aa524a459acdf6160931b3bf86daff374cad0175a6",
-        "requires_snapshot": "wdac-probe23-preserved (UID 3)"
+        "requires_snapshot": "wdac-probe23-preserved (UID 3)",
+        "comparison_report": "validation/vm-applications-fixed-918aba2-userpes-comparison-2026-10-29.json",
+        "comparison_elapsed_ms": 81374,
+        "comparison_private_sample_match": true,
+        "comparison_wrapped_driver_output": true,
+        "comparison_user_rule_count": 0,
+        "comparison_post_policy_enumeration_completed": false,
+        "collection_semantics_proof": "validation/windows-powershell-collection-filter-probe-2026-10-29.json",
+        "next_shortcut": "33 - Compare actual WDAC rules after collection expansion inside VM",
+        "next_helper_sha256": "d879656444824b5cbeeb5deb2d42f28ed3d2212cf573fd8e5759aab4fd1473dc",
+        "next_result": "fixed-918aba2/wdac-userpes-probe-expanded.json",
+        "normalization_does_not_mutate_rule_properties": true
       }
     }
   },

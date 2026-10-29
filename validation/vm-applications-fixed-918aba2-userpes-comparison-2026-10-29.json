@@ -1,0 +1,78 @@
+﻿{
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "started_utc":  "2026-10-29T12:08:28.6229048Z",
+    "status":  "failed",
+    "stage":  "new_ci_rule_from_driver_files",
+    "context":  "SYSTEM",
+    "controls_modified":  false,
+    "policy_loading_included":  false,
+    "steps":  [
+                  {
+                      "stage":  "import_configci",
+                      "position":  "before",
+                      "elapsed_ms":  1842
+                  },
+                  {
+                      "stage":  "import_configci",
+                      "position":  "after",
+                      "elapsed_ms":  1939
+                  },
+                  {
+                      "stage":  "enumerate_user_pe",
+                      "position":  "before",
+                      "elapsed_ms":  1958
+                  },
+                  {
+                      "stage":  "enumerate_user_pe",
+                      "position":  "after",
+                      "elapsed_ms":  81084
+                  },
+                  {
+                      "stage":  "new_ci_rule_from_driver_files",
+                      "position":  "before",
+                      "elapsed_ms":  81159
+                  },
+                  {
+                      "stage":  "new_ci_rule_from_driver_files",
+                      "position":  "after",
+                      "elapsed_ms":  81323
+                  }
+              ],
+    "error":  {
+                  "type":  "RuntimeException",
+                  "message":  "Explicit driver-file generation returned no user-mode rules."
+              },
+    "driver_files":  [
+                         {
+                             "type":  "System.Collections.Generic.List`1[[Microsoft.SecureBoot.UserConfig.DriverFile, Microsoft.ConfigCI.Commands, Version=10.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35]]",
+                             "user_mode":  true,
+                             "exact_private_sample_match":  true,
+                             "friendly_leaf":  "fixture.exe",
+                             "file_leaf":  "fixture.exe"
+                         }
+                     ],
+    "generated_rule_count":  1,
+    "user_rule_count":  0,
+    "code_policy_ids_before":  [
+                                   "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                   "5dac656c-21ad-4a02-ab49-649917162e70",
+                                   "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                   "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                   "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                   "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                   "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                   "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                               ],
+    "code_policy_ids_after":  [
+
+                              ],
+    "fixture_sha256":  "d8e87c5d1bbe82cdb17b09472e31f04200097dd5daaf6d744dfacfd371363a2d",
+    "finished_utc":  "2026-10-29T12:09:50.0162353Z",
+    "elapsed_ms":  81374
+}

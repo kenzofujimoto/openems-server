@@ -2,6 +2,8 @@
 
 ## Pendência imediata — 29/10/2026
 
+**WDAC comparativo ainda pendente:** [32 terminou em 81,4 s](validation/vm-applications-fixed-918aba2-userpes-comparison-2026-10-29.json) na geração/filtragem das regras, com coleção .NET encapsulada. [Prova sintética PS 5.1](validation/windows-powershell-collection-filter-probe-2026-10-29.json) mostra que o wrapper da sonda pode ocultar regras verdadeiras do filtro; a seleção atual de produção difere. Não atribuir esse resultado automaticamente ao produto nem marcar ausência real de regras UMCI sem enumerar seus elementos. Atalho 33 preparado para a mesma comparação com expansão explícita, sem mudar propriedades ou carregar política. A enumeração CI posterior não ocorreu no 32; igualdade dos IDs não foi verificada nessa rodada.
+
 **Atualização: remoção verificada.** [Atalho 31](validation/vm-usb-fixed-918aba2-normal-removal-retry1-2026-10-29.json) confirmou liberação v7/ACK e MSI 0, sem forçar proteção. Serviço/watchdog/processos/NRPT gerenciado/diários ausentes; canário PENMACK passou leitura/escrita/exclusão. USB continua falho nos cenários restantes da rodada original; limpeza bem-sucedida não substitui aceite. A comparação WDAC já aprovada será retomada no snapshot de diagnóstico UID 3, sem instalar agente nem carregar política.
 
 **Pausa solicitada pelo operador:** [atalho 30 falhou antes do MSI](validation/vm-usb-fixed-918aba2-normal-removal-2026-10-29.json). Não houve ACK de liberação; a proteção foi respeitada e não se tentou remover à força. Cache v4 ainda tem default USB block e uma regra; serviço permanece instalado apenas na VM. Remoção/USB/WDAC continuam sem aceite. Retomar quando o operador voltar; não restaurar o snapshot enquanto os dados necessários não estiverem preservados.
