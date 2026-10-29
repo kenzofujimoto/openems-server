@@ -1,24 +1,24 @@
 {
   "date": "2026-10-29",
-  "source_revision": "c0192b1c188ee073c04825786419ea9ea370a1b4",
-  "agent_source_revision": "c0192b1c188ee073c04825786419ea9ea370a1b4",
-  "harness_source_revision": "c0192b1c188ee073c04825786419ea9ea370a1b4",
-  "agent_executable_sha256": "1446e8f766553c8c1b7d7c2502781e66726da668e658c93caac089c84b2711e3",
+  "source_revision": "a111860657c6ea357477ae23e16b04a95fd9a13c",
+  "agent_source_revision": "a111860657c6ea357477ae23e16b04a95fd9a13c",
+  "harness_source_revision": "a111860657c6ea357477ae23e16b04a95fd9a13c",
+  "agent_executable_sha256": "41355a6b6f03f092091ae61eedefcb0c027ea1efdc9a2a5bf3ff19508c06f357",
   "packages": {
     "openems-agent.msi": {
-      "sha256": "a8b3c1d982f7cd91765a3f62c208c4cb7d897f4c7ec5ae3e0ae0b84a94704459",
-      "bytes": 8552448
+      "sha256": "fd0727cbc4278ba8c96640ea96c562c4cbb6a21aa8864b3b6e8e247e0167083d",
+      "bytes": 8548352
     },
     "openems-agent-next.msi": {
-      "sha256": "3db79aa5080fde2bfd046fde7cac2b4e7165122615c25ec00b22aa074d3a8f65",
-      "bytes": 8552448
+      "sha256": "81c9bb5d88ea1d2afbcdbf49b5de3bcd19790bf52b0fb4bd02a498b53131a4f1",
+      "bytes": 8548352
     }
   },
   "msi_rebuilt_from_committed_sources": true,
   "all_manifest_hashes_match": true,
   "old_inputs_overwritten": false,
-  "harness_sha256": "c19103a52975ed949e2f3e2f6b1bf94ef3e01402fbe44a3ae7d3c7237f207c6e",
-  "launcher_sha256": "33bced93d86fd5cc86077bda43f887e3f6ecf0304e8f556823041966645b5d82",
+  "harness_sha256": "7568d3c581cc4d8581fdeef3d8aa930f0ecd25d5d29ae372ec76eb9fd72975c6",
+  "launcher_sha256": "acf268956067cba696bda4ea38e3e8082ca7eb2632925ca74aa503ba5c472430",
   "includes": [
     "background inventory collection that never delays policy ACKs",
     "4551 refusal recognition",
@@ -27,22 +27,18 @@
     "released USB awaited in uploaded inventory"
   ],
   "installed_on_host": false,
-  "iso": "openems-controls-final-c0192b1.iso",
-  "payload": "payload-final-c0192b1",
-  "results": "final-c0192b1",
+  "iso": "openems-controls-final-a111860.iso",
+  "payload": "payload-final-a111860",
+  "results": "final-a111860",
   "wdac_acceptance": "pending",
   "usb_acceptance": "pending",
   "push": false,
   "pull_request": false,
   "ci_modified": false,
-  "iso_sha256": "d535c55620f09c6e1b480207652f5be95d9a7905330e10467049693d0dad8953",
-  "iso_bytes": 34373632,
-  "volume_label": "OPENEMS_FIXED",
+  "iso_sha256": "0cf33aba44228dec3b0ccfb1bb8db6031d4ca3ebd6ee11dcc1ef2ac4c126e3fa",
   "shortcuts": [
-    "ACCEPT-WDAC-45",
-    "ACCEPT-USB-46"
+    "ACCEPT-WDAC-52",
+    "ACCEPT-USB-53"
   ],
-  "clean_snapshot_required": "clean-preflight-before-controls (UID 2) before each phase",
-  "launcher_parsed_without_execution_on_host": true,
-  "rust_suite": "230 passed; fmt and clippy clean"
+  "launcher_parsed_without_execution_on_host": true
 }
