@@ -1,0 +1,72 @@
+﻿{
+    "kind":  "USB",
+    "passed":  true,
+    "automation_passed":  true,
+    "physical_acceptance_pending":  false,
+    "status":  "passed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-29T23:03:55.4191967Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "storage block applied without disabling healthy keyboard, mouse or HID devices",
+                       "at":  "2026-10-29T23:04:50.7742526Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "offline restart retained the storage policy and healthy HID devices",
+                       "at":  "2026-10-29T23:05:22.2625843Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "physical USB allowed by matching VID, PID and serial",
+                       "at":  "2026-10-29T23:08:26.4973311Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "physical USB instance block prevented access",
+                       "at":  "2026-10-29T23:09:10.0834425Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "physical read-only policy allowed reading and refused writing",
+                       "at":  "2026-10-29T23:10:14.4681217Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "physical USB control event reached the server",
+                       "at":  "2026-10-29T23:10:14.5666455Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "MSI removal restored owned controls and preserved unrelated firewall, HID and hosts state",
+                       "at":  "2026-10-29T23:11:32.0245932Z"
+                   }
+               ],
+    "pending":  [
+
+                ],
+    "error":  null,
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T23:02:46.1024235Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T23:02:46.1195036Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "d5acc2ac7cce7ecf547bd28d2352935a44f8c9fa5c134b341acea652979c2097",
+                                                                       "bytes":  8552448
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "320a471adc000da4024f47d0a8051eb846078c29373aa105b7e51931a284b106",
+                                                                            "bytes":  8552448
+                                                                        }
+                                         },
+                            "source_revision":  "675308c02880afc315705e640e836daabb9ee4c1"
+                        },
+    "finished_utc":  "2026-10-29T23:11:33.2112827Z"
+}

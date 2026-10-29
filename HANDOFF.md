@@ -2,6 +2,25 @@
 
 ## Estado atual — 29/10/2026
 
+- **ACEITE WINDOWS CONCLUÍDO na VM descartável com o agente `675308c` (MSI 0.4.0 de 675308c, ISO `openems-controls-final-675308c.iso`):** Applications/WDAC ([resultado](validation/vm-applications-final-675308c-result-2026-10-29.json)) e USB físico com PENMACK ([resultado](validation/vm-usb-final-675308c-result-2026-10-29.json)) com `passed: true`, sem erros de limpeza e com `physical_acceptance_pending: false` na USB. Suítes no host: Rust 232 e Python 1195 aprovados, sem falhas (4 casos que rodam o roteiro inteiro deselecionados).
+- Correções desta reta final, todas com testes vermelhos commitados primeiro:
+  - **Agente:**
+    - inventário em segundo plano, sem atrasar os ACKs (`c0192b1`);
+    - prioridade baixa para o inventário (`675308c`);
+    - catálogo privado para publisher/nome com assinatura embutida (`a111860`).
+  - **Roteiro:**
+    - código 4551 (`52921a1`);
+    - backend que sobrevive a requisições abortadas (`bab175d`);
+    - publisher sem TrustedPublisher (`e6c53fc`);
+    - espera do inventário da USB liberada (`92eb59f`);
+    - gravação compartilhada do ack.log (`f7c6e17`), que era a causa dos ACKs perdidos com 500;
+    - 120 s de partida do backend (`fb2f73e`).
+  - Prazos de ACK e de inventário (90 s) e critérios inalterados.
+- Observações abertas, não bloqueiam o aceite:
+  - logo após cada política WDAC, uma reaplicação periódica reporta `LocalError` (v4/v6), com a negação mantida;
+  - `TransportError` ocasional por timeout de 10 s no loopback sob carga na VM de 2 vCPU.
+- Sem push/PR/CI. Próximos passos: decidir push e PR draft, apagar a VM (41 GB) e o cache do Docker.
+
 - **Rodada 40 / 959e9de: ACK hash passou; falha independente no roteiro.** [Consolidado](validation/windows-controls-vm-959e9de-2026-10-29.json), [original](validation/vm-applications-fixed-959e9de-2026-10-29.json), [suplemento](validation/vm-applications-fixed-959e9de-supplement-2026-10-29.json). ACKs 1/2/3/4/5 positivos, hash instalado dbf4d6d5… correto. A primeira tentativa do executável retornou native_error=4551, started=false, exit=-1; Assert-ExecutionDenied só aceita 577/1260 e lançou erro. SDK Microsoft 10.0.26100.0 shared/winerror.h:14526 define 4551 como ERROR_SYSTEM_INTEGRITY_POLICY_VIOLATION (mensagem: An Application Control policy has blocked this file). Não reclassificar o original: rename/publisher e fluxo final completo não foram executados. Falta associação CI específica; o próximo launcher deve coletá-la automaticamente sem outro atalho manual.
 - **Plano de correção só do roteiro apresentado, aguardando aprovação explícita:** [plano](docs/windows-wdac-refusal-code-plan.md). AST-extrair só Assert-ExecutionDenied e mockar Invoke-Fixture; commitar vermelhos; acrescentar somente 4551, manter sentinela/rejeições/tempos; suítes permitidas sem quatro casos integrais no host. Reutilizar exatamente os MSIs/native 959e9de, sem recompilar; nova mídia/recibo distinguirão revisão do agente e do roteiro. Próxima etapa manual será somente aceite completo com coleta CI automática. Nenhuma mudança de código feita ainda. Release v5 recebeu ACK e remoção normal terminou sem erro, serviço/watchdog/processos/NRPT/diários ausentes; consulta CI independente desta rodada ainda não exportada. Manter VM sem restaurar enquanto o plano é preparado e os dados são preservados.
 
