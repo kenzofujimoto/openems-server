@@ -1,0 +1,63 @@
+﻿{
+    "finished_utc":  "2026-10-29T14:01:50.5968649Z",
+    "source_revision":  "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+    "harness_exit":  1,
+    "installed_executable_hash_observations":  [
+                                                   {
+                                                       "at":  "2026-10-29T13:57:18.7908248Z",
+                                                       "sha256":  "d1e56f1abb66ea70f9c2439df8f00fc0367e01aaeaa6feb481db5119423549f7"
+                                                   }
+                                               ],
+    "installed_hash_matches":  true,
+    "acknowledgments":  [
+                            {
+                                "version":  1,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "cb166bb8f2a7fbdfadf9f7cbb8834f5cc9658ba72e91cacf11a8772f5d600a51",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  3,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  5,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            }
+                        ],
+    "control_events":  [
+                           {
+                               "kind":  "app_network_policy"
+                           },
+                           {
+                               "kind":  "app_control_applied"
+                           }
+                       ],
+    "final_policy":  [
+                         {
+                             "version":  5,
+                             "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                             "usb_default_action":  "allow",
+                             "usb_rule_count":  0,
+                             "execution_rule_count":  0
+                         }
+                     ],
+    "service_absent":  true,
+    "watchdog_count":  0,
+    "managed_nrpt_count":  0,
+    "agent_process_count":  0,
+    "control_journals_present":  [
+
+                                 ],
+    "post_removal_usb_read_write_delete_verified":  false
+}

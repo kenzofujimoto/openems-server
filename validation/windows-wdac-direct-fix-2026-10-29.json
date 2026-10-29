@@ -113,7 +113,7 @@
   "acceptance_harness_changed": false,
   "certificate_validation_or_antivirus_changed": false,
   "new_source_installed_on_host": false,
-  "new_source_guest_acceptance": "pending shortcut 36 in clean UID 2 with exact 2100dd7 ISO",
+  "new_source_guest_acceptance": "failed at v4 hash policy ACK; five initial checks and normal release/removal passed",
   "previous_packages_and_reports_overwritten": false,
   "coverage_gate": "pending; aggregate coverage does not establish all per-module thresholds",
   "package_report": "validation/windows-wdac-direct-package-2026-10-29.json",
@@ -121,5 +121,15 @@
   "pull_request": false,
   "ci_modified": false,
   "adapter_source_sha256": "275767dfb9ac8400561560f2dfef149e619d3d3d98325825c1ebef332cf62571",
-  "package_prepared_and_verified": true
+  "package_prepared_and_verified": true,
+  "vm_round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+  "latest_diagnostic_summary": {
+    "round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+    "late_application_confirmed": true,
+    "active_owned_control_cleanup_verified": true,
+    "private_catalog_variant_validated": true,
+    "private_pipeline_ms": 8225,
+    "integration_approved": true,
+    "new_variant_in_product_yet": false
+  }
 }

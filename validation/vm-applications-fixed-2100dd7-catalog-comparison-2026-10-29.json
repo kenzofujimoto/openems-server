@@ -1,0 +1,182 @@
+﻿{
+    "source_revision":  "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+    "adapter_source_sha256":  "275767dfb9ac8400561560f2dfef149e619d3d3d98325825c1ebef332cf62571",
+    "started_utc":  "2026-10-29T14:36:08.7062885Z",
+    "status":  "completed",
+    "stage":  "merge_normalize_convert_private",
+    "context":  "SYSTEM",
+    "controls_modified":  false,
+    "policy_loading_included":  false,
+    "experimental_catalog_scope":  true,
+    "steps":  [
+                  {
+                      "stage":  "resolve_verified_sample",
+                      "position":  "before",
+                      "elapsed_ms":  2445,
+                      "process_cpu_ms":  1250
+                  },
+                  {
+                      "stage":  "resolve_verified_sample",
+                      "position":  "after",
+                      "elapsed_ms":  3082,
+                      "process_cpu_ms":  1531
+                  },
+                  {
+                      "stage":  "import_configci",
+                      "position":  "before",
+                      "elapsed_ms":  3148,
+                      "process_cpu_ms":  1547
+                  },
+                  {
+                      "stage":  "import_configci",
+                      "position":  "after",
+                      "elapsed_ms":  3339,
+                      "process_cpu_ms":  1594
+                  },
+                  {
+                      "stage":  "new_ci_policy_private_catalog",
+                      "position":  "before",
+                      "elapsed_ms":  3384,
+                      "process_cpu_ms":  1594
+                  },
+                  {
+                      "stage":  "new_ci_policy_private_catalog",
+                      "position":  "after",
+                      "elapsed_ms":  6047,
+                      "process_cpu_ms":  2812
+                  },
+                  {
+                      "stage":  "merge_normalize_convert_private",
+                      "position":  "before",
+                      "elapsed_ms":  7170,
+                      "process_cpu_ms":  3312
+                  },
+                  {
+                      "stage":  "merge_normalize_convert_private",
+                      "position":  "after",
+                      "elapsed_ms":  8149,
+                      "process_cpu_ms":  3641
+                  }
+              ],
+    "correctness_validated":  true,
+    "code_policy_ids_before":  [
+                                   "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                   "5dac656c-21ad-4a02-ab49-649917162e70",
+                                   "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                   "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                   "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                   "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                   "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                   "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                               ],
+    "code_policy_ids_after":  [
+                                  "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                  "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                  "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                  "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                  "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                  "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                  "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                  "5dac656c-21ad-4a02-ab49-649917162e70",
+                                  "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                  "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                  "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                  "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                  "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                  "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                              ],
+    "error_type":  null,
+    "fixture_sha256":  "81a8b254570213d105f3d2db17b4f400e71e9276b02004a0fb8d637c9a1ac019",
+    "catalog_directory_private_and_empty":  true,
+    "post_copy_hash_matches":  true,
+    "reference_xml":  {
+                          "deny_count":  4,
+                          "deny_hashes":  [
+                                              "2AE3014EE4A75A3B9EBB65D3A2151F6EF85BDBEA",
+                                              "9BDC18DF7D93DB63CD9C5187FFEEDD34225EEB52",
+                                              "BEA242F21A08B30403F50D6AA802693BA8C63C9F8BA1BB32729F92C5F92C55CB",
+                                              "F0683BC786A789E4CE2791D05F449E2B3D8FD3AE361EAE5ED00923036507999C"
+                                          ],
+                          "user_deny_hashes":  [
+                                                   "2AE3014EE4A75A3B9EBB65D3A2151F6EF85BDBEA",
+                                                   "9BDC18DF7D93DB63CD9C5187FFEEDD34225EEB52",
+                                                   "BEA242F21A08B30403F50D6AA802693BA8C63C9F8BA1BB32729F92C5F92C55CB",
+                                                   "F0683BC786A789E4CE2791D05F449E2B3D8FD3AE361EAE5ED00923036507999C"
+                                               ],
+                          "kernel_deny_hashes":  [
+
+                                                 ],
+                          "other_scenario_denies":  0,
+                          "non_hash_denies":  0,
+                          "allow_scope":  [
+                                              "12:FileName=*",
+                                              "131:FileName=*"
+                                          ],
+                          "signer_count":  0,
+                          "options":  [
+                                          "Disabled:Script Enforcement",
+                                          "Enabled:Advanced Boot Options Menu",
+                                          "Enabled:Inherit Default Policy",
+                                          "Enabled:Revoked Expired As Unsigned",
+                                          "Enabled:UMCI",
+                                          "Enabled:Unsigned System Integrity Policy",
+                                          "Enabled:Update Policy No Reboot"
+                                      ]
+                      },
+    "candidate_xml":  {
+                          "deny_count":  4,
+                          "deny_hashes":  [
+                                              "2AE3014EE4A75A3B9EBB65D3A2151F6EF85BDBEA",
+                                              "9BDC18DF7D93DB63CD9C5187FFEEDD34225EEB52",
+                                              "BEA242F21A08B30403F50D6AA802693BA8C63C9F8BA1BB32729F92C5F92C55CB",
+                                              "F0683BC786A789E4CE2791D05F449E2B3D8FD3AE361EAE5ED00923036507999C"
+                                          ],
+                          "user_deny_hashes":  [
+                                                   "2AE3014EE4A75A3B9EBB65D3A2151F6EF85BDBEA",
+                                                   "9BDC18DF7D93DB63CD9C5187FFEEDD34225EEB52",
+                                                   "BEA242F21A08B30403F50D6AA802693BA8C63C9F8BA1BB32729F92C5F92C55CB",
+                                                   "F0683BC786A789E4CE2791D05F449E2B3D8FD3AE361EAE5ED00923036507999C"
+                                               ],
+                          "kernel_deny_hashes":  [
+
+                                                 ],
+                          "other_scenario_denies":  0,
+                          "non_hash_denies":  0,
+                          "allow_scope":  [
+                                              "12:FileName=*",
+                                              "131:FileName=*"
+                                          ],
+                          "signer_count":  0,
+                          "options":  [
+                                          "Disabled:Script Enforcement",
+                                          "Enabled:Advanced Boot Options Menu",
+                                          "Enabled:Inherit Default Policy",
+                                          "Enabled:Revoked Expired As Unsigned",
+                                          "Enabled:UMCI",
+                                          "Enabled:Unsigned System Integrity Policy",
+                                          "Enabled:Update Policy No Reboot"
+                                      ]
+                      },
+    "validation":  {
+                       "exact_hash_deny_set":  true,
+                       "exact_user_hash_deny_set":  true,
+                       "no_kernel_denies":  true,
+                       "no_other_or_non_hash_denies":  true,
+                       "exact_allow_scope":  true,
+                       "no_extra_signers":  true,
+                       "exact_normalized_options":  true,
+                       "genuine_user_deny_rules":  true
+                   },
+    "complete_private_pipeline_ms":  8225,
+    "experiment_timing_gate_under_30_seconds":  true,
+    "full_ack_feasibility_not_proven":  true,
+    "code_policy_ids_unchanged":  true,
+    "finished_utc":  "2026-10-29T14:36:17.4055260Z",
+    "elapsed_ms":  8602
+}

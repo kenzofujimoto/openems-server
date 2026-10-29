@@ -48,11 +48,21 @@
     "clean_snapshot_required": "clean-preflight-before-controls (UID 2)",
     "results": "fixed-2100dd7/applications",
     "source_msi_harness_and_installed_executable_pinned": true,
-    "operator_vm_execution": "pending"
+    "operator_vm_execution": "completed; acceptance failed"
   },
   "push": false,
   "pull_request": false,
   "ci_modified": false,
   "previous_media_overwritten": false,
-  "new_source_acceptance": "pending"
+  "new_source_acceptance": "failed at v4 hash policy ACK; five initial checks and normal release/removal passed",
+  "vm_round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+  "latest_diagnostic_summary": {
+    "round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+    "late_application_confirmed": true,
+    "active_owned_control_cleanup_verified": true,
+    "private_catalog_variant_validated": true,
+    "private_pipeline_ms": 8225,
+    "integration_approved": true,
+    "new_variant_in_product_yet": false
+  }
 }
