@@ -98,7 +98,7 @@
   "acceptance_harness_changed": false,
   "antivirus_or_tls_changed": false,
   "new_source_installed_on_host": false,
-  "new_source_guest_acceptance": "pending ACCEPT-WDAC-40 in clean UID 2 with exact 959e9de ISO",
+  "new_source_guest_acceptance": "failed in harness denial classification; v4 ACK succeeded and first launch returned 4551 before start",
   "host_inventory_limitation": "Full suite hit unchanged 90-second timeout; isolated repeat passed. Inventory code was not modified. Do not report the full suite as green.",
   "previous_packages_overwritten": false,
   "coverage_gate": "pending per-module thresholds; aggregate alone does not establish them",
@@ -106,5 +106,6 @@
   "push": false,
   "pull_request": false,
   "ci_modified": false,
-  "package_prepared_and_verified": true
+  "package_prepared_and_verified": true,
+  "vm_round_report": "validation/windows-controls-vm-959e9de-2026-10-29.json"
 }

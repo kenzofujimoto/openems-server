@@ -48,14 +48,15 @@
     "clean_snapshot_required": "clean-preflight-before-controls (UID 2)",
     "results": "fixed-959e9de/applications",
     "source_msi_harness_and_installed_executable_pinned": true,
-    "operator_vm_execution": "pending"
+    "operator_vm_execution": "completed; original report failed at unrecognized denial code"
   },
   "push": false,
   "pull_request": false,
   "ci_modified": false,
   "previous_media_overwritten": false,
-  "new_source_acceptance": "pending",
+  "new_source_acceptance": "failed in harness denial classification; v4 ACK succeeded and first launch returned 4551 before start",
   "host_validation_report": "validation/windows-wdac-catalog-fix-2026-10-29.json",
   "full_host_suite_green": false,
-  "host_inventory_timeout_note": "One unchanged 90-second timeout in full suite; isolated repeat passed in 77.14 seconds. No production release claimed."
+  "host_inventory_timeout_note": "One unchanged 90-second timeout in full suite; isolated repeat passed in 77.14 seconds. No production release claimed.",
+  "vm_round_report": "validation/windows-controls-vm-959e9de-2026-10-29.json"
 }
