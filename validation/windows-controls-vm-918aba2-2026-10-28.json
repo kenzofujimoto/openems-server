@@ -97,7 +97,7 @@
         "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
       },
       "next_fix_plan": {
-        "phase": "comparison reached ConfigCI but diagnostic wrapped collection filtering rejected its output; explicit enumeration retry prepared",
+        "phase": "real UMCI generation validated; approved correctness TDD completed; direct-policy latency comparison approved and prepared; 90-second ACK feasibility not demonstrated",
         "shortcut": "23 - Probe explicit user-mode WDAC generation inside VM",
         "agent_validation_and_90_120_second_limits_unchanged": true,
         "loads_policy_in_comparison": false,
@@ -131,7 +131,25 @@
         "next_shortcut": "33 - Compare actual WDAC rules after collection expansion inside VM",
         "next_helper_sha256": "d879656444824b5cbeeb5deb2d42f28ed3d2212cf573fd8e5759aab4fd1473dc",
         "next_result": "fixed-918aba2/wdac-userpes-probe-expanded.json",
-        "normalization_does_not_mutate_rule_properties": true
+        "normalization_does_not_mutate_rule_properties": true,
+        "expanded_report": "validation/vm-applications-fixed-918aba2-userpes-expanded-2026-10-29.json",
+        "expanded_elapsed_ms": 97826,
+        "expanded_scan_elapsed_ms": 90125,
+        "expanded_real_user_rule_count": 4,
+        "expanded_all_generated_rules_deny_and_user_mode": true,
+        "expanded_policy_ids_unchanged": true,
+        "expanded_os_policies_loaded": false,
+        "fits_generation_probe_120_seconds": true,
+        "fits_policy_ack_90_seconds": false,
+        "new_package_or_acceptance_deferred_until_latency_resolved": true,
+        "correctness_fix_commit": "ad3e6d42da1addae87284876dec64d806db3dfad",
+        "correctness_validation_report": "validation/windows-wdac-userpe-fix-2026-10-29.json",
+        "latency_plan": "docs/windows-wdac-latency-plan.md",
+        "latency_plan_approved": true,
+        "direct_policy_comparison_shortcut": "34 - Compare direct WDAC policy generation inside VM as administrator",
+        "direct_policy_helper_sha256": "4a8ac4bcf8a8c6e4d8eced11e0015b28164200db9eef9eeb207b5f5efaa41711",
+        "direct_policy_comparison_result": "fixed-918aba2/wdac-direct-policy-probe.json",
+        "direct_policy_comparison_status": "awaiting manual guest execution; no policy loading allowed"
       }
     }
   },

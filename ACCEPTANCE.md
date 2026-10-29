@@ -2,6 +2,16 @@
 
 ## Pendência imediata — 29/10/2026
 
+**Estado atual:** [atalho 33](validation/vm-applications-fixed-918aba2-userpes-expanded-2026-10-29.json) gerou quatro regras UMCI Deny reais e XML/CIP privados, com os 14 IDs CI preservados e nenhuma política carregada. Demorou 97.826 ms (Get-SystemDriver: 90.125 ms), acima do ACK de 90 s. Geração correta não comprova bloqueio antes da execução nem aceite do prazo.
+
+Correção de seleção/escopo commitada em `ad3e6d4`, após vermelhos `1c49c25`/`b8f0eda`; 43 regressões verdes, Rust 225/225 e painel 102/102, fmt/Clippy/lint/typecheck passaram. [Validação da correção](validation/windows-wdac-userpe-fix-2026-10-29.json). Nenhum MSI/ISO novo foi gerado. O [plano de comparação de latência](docs/windows-wdac-latency-plan.md) foi aprovado; atalho 34 aguarda comparação New-CIPolicy apenas em arquivos privados na VM preservada UID 3, sem instalar agente/carregar política ou ampliar prazos. Só seguir para nova implementação/pacote se houver prova de correção e tempo viável.
+
+Suíte completa permitida no host: **1.144 passaram, 58 skips, quatro casos desmarcados, zero falhas**; release novo `68d3ebe5…`. Cobertura agregada 88,58% não conclui os gates por módulo; Ruff global ainda tem S603 preexistente em `deploy/linux/build_package.py:123`. Nenhum roteiro integral de controles foi invocado no host nessa verificação.
+
+**USB permanece falho; limpeza passou:** [remoção normal 31](validation/vm-usb-fixed-918aba2-normal-removal-retry1-2026-10-29.json), ACK v7/MSI 0 e restauração verificada do PENMACK. WDAC completo e USB completo continuam sem aceite.
+
+### Histórico preservado da investigação
+
 **WDAC comparativo ainda pendente:** [32 terminou em 81,4 s](validation/vm-applications-fixed-918aba2-userpes-comparison-2026-10-29.json) na geração/filtragem das regras, com coleção .NET encapsulada. [Prova sintética PS 5.1](validation/windows-powershell-collection-filter-probe-2026-10-29.json) mostra que o wrapper da sonda pode ocultar regras verdadeiras do filtro; a seleção atual de produção difere. Não atribuir esse resultado automaticamente ao produto nem marcar ausência real de regras UMCI sem enumerar seus elementos. Atalho 33 preparado para a mesma comparação com expansão explícita, sem mudar propriedades ou carregar política. A enumeração CI posterior não ocorreu no 32; igualdade dos IDs não foi verificada nessa rodada.
 
 **Atualização: remoção verificada.** [Atalho 31](validation/vm-usb-fixed-918aba2-normal-removal-retry1-2026-10-29.json) confirmou liberação v7/ACK e MSI 0, sem forçar proteção. Serviço/watchdog/processos/NRPT gerenciado/diários ausentes; canário PENMACK passou leitura/escrita/exclusão. USB continua falho nos cenários restantes da rodada original; limpeza bem-sucedida não substitui aceite. A comparação WDAC já aprovada será retomada no snapshot de diagnóstico UID 3, sem instalar agente nem carregar política.
