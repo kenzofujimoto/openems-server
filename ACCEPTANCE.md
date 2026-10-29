@@ -2,6 +2,8 @@
 
 ## Pendência imediata — 29/10/2026
 
+**Pausa solicitada pelo operador:** [atalho 30 falhou antes do MSI](validation/vm-usb-fixed-918aba2-normal-removal-2026-10-29.json). Não houve ACK de liberação; a proteção foi respeitada e não se tentou remover à força. Cache v4 ainda tem default USB block e uma regra; serviço permanece instalado apenas na VM. Remoção/USB/WDAC continuam sem aceite. Retomar quando o operador voltar; não restaurar o snapshot enquanto os dados necessários não estiverem preservados.
+
 **USB 918aba2, repetição 1: falhou; remoção ainda pendente.** [Resultado original](validation/vm-usb-fixed-918aba2-retry1-2026-10-29.json) e [suplemento](validation/vm-usb-fixed-918aba2-retry1-supplement-2026-10-29.json). Passaram instalação/hash, bloqueio de armazenamento com HID saudável e reinício offline. Sem ACK da política seguinte v4 (allow selecionado por VID/PID/serial conforme a sequência do roteiro), nem da liberação v5 no finally. Serviço/watchdog/processos continuam na VM; não marcar limpeza ou aceite. Atalho 30 preparado para remoção pelo MSI normal após confirmação de liberação recebida, sem contornar proteção; aguardar seu relatório. Instância, somente leitura e restauração final continuam sem aceite desta fonte. WDAC continua pendente; snapshot de diagnóstico UID 3 preservado.
 
 ## Correção dos controles Windows — 28/10/2026

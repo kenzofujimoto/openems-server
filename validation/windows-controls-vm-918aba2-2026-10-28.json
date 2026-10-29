@@ -3,7 +3,7 @@
   "source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
   "package_report": "validation/windows-controls-canonical-package-2026-10-28.json",
   "passed": false,
-  "status": "applications_and_usb_failed; latest_USB_normal_removal_pending",
+  "status": "paused by operator; USB release not acknowledged; MSI removal not attempted",
   "applications": {
     "status": "failed",
     "report": "validation/vm-applications-fixed-918aba2-2026-10-28.json",
@@ -168,7 +168,11 @@
       "error": "No success ACK for next policy; automatic cleanup also did not receive its release ACK",
       "failed_policy_version_inferred_from_harness_and_acks": 4,
       "failed_stage_inferred": "physical selected allow by VID PID serial",
-      "successful_ack_versions": [1, 2, 3],
+      "successful_ack_versions": [
+        1,
+        2,
+        3
+      ],
       "final_release_version_without_success_ack": 5,
       "installed_hash_matches": true,
       "cleanup_verified": false,
@@ -178,18 +182,33 @@
       "managed_nrpt_count": 0,
       "control_journals_present": [],
       "normal_removal_shortcut": "30 - Remove USB test agent normally inside VM as administrator",
-      "normal_removal_status": "waiting for operator; helper requires confirmed received release and stops if uninstall code is required",
+      "normal_removal_status": "failed before MSI: no confirmed release; no forced removal",
       "forced_removal_allowed": false,
       "partial_checks_not_acceptance": [
         "production MSI and authenticated inventory",
         "storage block with healthy HID",
         "offline restart retains storage policy and healthy HID"
-      ]
+      ],
+      "normal_removal_report": "validation/vm-usb-fixed-918aba2-normal-removal-2026-10-29.json",
+      "normal_removal_release_ack_confirmed": false,
+      "normal_removal_msi_attempted": false,
+      "cached_version_at_removal_attempt": 4,
+      "cached_usb_default_action_at_removal_attempt": "block",
+      "cached_usb_rule_count_at_removal_attempt": 1,
+      "uninstall_secret_present": false,
+      "last_observed_service_absent": false
     }
   },
   "old_inputs_or_reports_overwritten": false,
   "physical_host_controls_executed_in_this_round": false,
   "push": false,
   "pull_request": false,
-  "ci_modified": false
+  "ci_modified": false,
+  "operator_pause": {
+    "guest_snapshot_restore_allowed_while_paused": false,
+    "additional_tests_started": false,
+    "requested_local_date": "2026-10-29",
+    "automation_scheduled": false,
+    "reason": "Operator going to sleep; resume when operator returns"
+  }
 }
