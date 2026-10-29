@@ -371,7 +371,7 @@ function Invoke-Fixture([string]$Path, [string]$Sentinel, [string]$Url = '-') {
 function Assert-ExecutionDenied([string]$Path) {
     $sentinel = Join-Path $work ([Guid]::NewGuid().ToString('N') + '.started')
     $observed = Invoke-Fixture $Path $sentinel
-    if ($observed.started -or $observed.native_error -notin @(577,1260)) {
+    if ($observed.started -or $observed.native_error -notin @(577,1260,4551)) {
         throw ('Expected a Windows policy refusal before execution; observed ' + ($observed | ConvertTo-Json -Compress))
     }
 }
