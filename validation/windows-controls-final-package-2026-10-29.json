@@ -40,5 +40,7 @@
     "ACCEPT-WDAC-52",
     "ACCEPT-USB-53"
   ],
-  "launcher_parsed_without_execution_on_host": true
+  "launcher_parsed_without_execution_on_host": true,
+  "rust_suite": "230 passed",
+  "host_suite": "1194 passed, 58 skipped, 4 whole-harness cases deselected; 1 failed: known native inventory 90 s timeout (unchanged Machine.inventory path)"
 }
