@@ -456,6 +456,8 @@ try {
         Wait-Ack (Publish-Body (Empty-Body))
         if ($PhysicalDrive) {
             $PhysicalDrive = $PhysicalDrive.ToUpperInvariant()
+            # The agent uploads inventory from a background collection, after the release ACK.
+            Wait-Until { $null -ne (Get-UsbDevice $PhysicalDrive) -and (Test-Path -LiteralPath ($PhysicalDrive + '\')) } 120 'The released physical USB storage was not reported by the inventory.'
             $device = Get-UsbDevice $PhysicalDrive
             if ($null -eq $device -or -not $device.instance_id -or -not $device.serial -or -not $device.vid -or -not $device.pid) { throw 'Select a reported physical USB storage device with VID, PID and serial.' }
             $partition = Get-Partition -DriveLetter $PhysicalDrive.Substring(0,1)
