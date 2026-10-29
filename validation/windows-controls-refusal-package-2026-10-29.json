@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "1944e4a66e563ae6577a4130fe2907b731ca1f64",
+  "agent_source_revision": "959e9de55ec365899086290b404c29ce1f791bb4",
+  "harness_source_revision": "1944e4a66e563ae6577a4130fe2907b731ca1f64",
+  "agent_executable_sha256": "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "478531dc3748293634ca2c593e92531192d281ac15b568adad61a8506d4e80f0",
+      "bytes": 8531968
+    },
+    "openems-agent-next.msi": {
+      "sha256": "c8e6a27f224abec4c41d1855629703073e5635b45f5b3d91b72ae68f7bf31e4b",
+      "bytes": 8531968
+    }
+  },
+  "msi_bytes_reused_without_rebuild": true,
+  "files_checked": 10,
+  "all_manifest_hashes_match": true,
+  "old_inputs_overwritten": false,
+  "harness_sha256": "91757922c5fb9f518222cac299763a93701888038c7ce37488877a833f00ea49",
+  "launcher_sha256": "a3148e6a621c6d13a118a049db2599a573f19ce9b6c5ddba5cff3611851fcc0b",
+  "automatic_sanitized_ci_events_and_policy_collection": true,
+  "installed_on_host": false,
+  "iso": "openems-controls-refusal-1944e4a.iso",
+  "payload": "payload-refusal-1944e4a",
+  "results": "refusal-1944e4a",
+  "wdac_acceptance": "pending",
+  "usb_acceptance": "pending",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "iso_sha256": "e36116a431234ee107e9eca8963677ad257a95af4b380c857dfad7a32e9ff9b9",
+  "iso_bytes": 34285568,
+  "volume_label": "OPENEMS_FIXED",
+  "shortcut": "ACCEPT-WDAC-41",
+  "clean_snapshot_required": "clean-preflight-before-controls (UID 2)",
+  "launcher_parsed_without_execution_on_host": true,
+  "ci_collector_fix": "Data elements read with GetElementsByTagName so unattributed and Name-attributed EventData both sanitize; synthetic sanitizer check passed on host without OS queries",
+  "host_suite": {
+    "non_windows_marker": "996 passed, 55 skipped, 191 deselected",
+    "windows_only": "184 passed, 3 skipped, 1055 deselected",
+    "failed": 0,
+    "whole_harness_cases_deselected": 4
+  }
+}
