@@ -1,0 +1,117 @@
+﻿{
+    "started":  "2026-10-29T17:55:20.4803306Z",
+    "identity":  "S-1-5-18",
+    "prior_run":  [
+                      {
+                          "fixture_cer":  true,
+                          "publisher_fixture":  true,
+                          "publisher_signature":  "NotSigned",
+                          "publisher_copy":  false
+                      }
+                  ],
+    "leftover_fixture_certificates":  {
+                                          "My":  0,
+                                          "Root":  0,
+                                          "TrustedPublisher":  0
+                                      },
+    "steps":  [
+                  {
+                      "name":  "compile_fixture",
+                      "ok":  true,
+                      "seconds":  1.12,
+                      "value":  3584,
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  },
+                  {
+                      "name":  "new_self_signed_certificate",
+                      "ok":  true,
+                      "seconds":  1.02,
+                      "value":  "F4D2FB68C8841095CF6C64F9C40094C690A257A6",
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  },
+                  {
+                      "name":  "export_certificate",
+                      "ok":  true,
+                      "seconds":  0.06,
+                      "value":  794,
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  },
+                  {
+                      "name":  "import_root",
+                      "ok":  true,
+                      "seconds":  0.07,
+                      "value":  "F4D2FB68C8841095CF6C64F9C40094C690A257A6",
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  },
+                  {
+                      "name":  "import_trusted_publisher",
+                      "ok":  false,
+                      "seconds":  0.11,
+                      "value":  null,
+                      "error_type":  "System.UnauthorizedAccessException",
+                      "hresult":  "0x80070005",
+                      "message":  "Access is denied. (Exception from HRESULT: 0x80070005 (E_ACCESSDENIED))",
+                      "inner_type":  null,
+                      "statement":  "$null = Step \u0027import_trusted_publisher\u0027 { (Import-Certificate -FilePath $public -CertStoreLocation Cert:\\LocalMachine\\TrustedPublisher).Thumbprint }"
+                  },
+                  {
+                      "name":  "sign_fixture",
+                      "ok":  true,
+                      "seconds":  0.33,
+                      "value":  "Valid: Signature verified.",
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  },
+                  {
+                      "name":  "signature_after_sign",
+                      "ok":  true,
+                      "seconds":  0.05,
+                      "value":  "Valid",
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  },
+                  {
+                      "name":  "run_signed_fixture",
+                      "ok":  true,
+                      "seconds":  1.97,
+                      "value":  0,
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  },
+                  {
+                      "name":  "private_key_access",
+                      "ok":  true,
+                      "seconds":  0.03,
+                      "value":  true,
+                      "error_type":  null,
+                      "hresult":  null,
+                      "message":  null,
+                      "inner_type":  null
+                  }
+              ],
+    "cleanup":  [
+                    "My: removed or absent",
+                    "Root: removed or absent",
+                    "TrustedPublisher: removed or absent"
+                ],
+    "finished":  "2026-10-29T17:55:27.0328089Z",
+    "remaining_probe_certificates":  0
+}
