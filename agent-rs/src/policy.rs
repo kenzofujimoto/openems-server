@@ -671,6 +671,37 @@ fn validate_category_actions(settings: &Map<String, Value>) -> Result<()> {
 
 /// Port of `_validate_web_extensions`: categories, safe_search, timezone and scheduled windows.
 fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
+    if let Some(value) = settings.get("domain_rules") {
+        let rows = value
+            .as_array()
+            .filter(|rows| rows.len() <= MAX_ENTRIES)
+            .ok_or_else(|| invalid("domain_rules must be a list of at most 10000 rules"))?;
+        if !text_list(settings.get("blocked")).is_empty() || !text_list(settings.get("allowed")).is_empty() {
+            return Err(invalid("domain_rules cannot be mixed with legacy domain lists"));
+        }
+        let mut normalized = Vec::with_capacity(rows.len());
+        let mut seen = std::collections::BTreeSet::new();
+        for row in rows {
+            let row = row
+                .as_object()
+                .filter(|row| row.len() == 3 && ["domain", "type", "action"].iter().all(|key| row.contains_key(*key)))
+                .ok_or_else(|| invalid("domain rule needs only domain, type and action"))?;
+            let kind = row["type"]
+                .as_str()
+                .filter(|kind| matches!(*kind, "simple" | "wildcard"))
+                .ok_or_else(|| invalid("unsupported domain rule type"))?;
+            let action = row["action"]
+                .as_str()
+                .filter(|action| matches!(*action, "allow" | "block" | "monitor"))
+                .ok_or_else(|| invalid("unsupported domain rule action"))?;
+            let domain = normalize_domain(row["domain"].as_str().ok_or_else(|| invalid("invalid domain"))?)?;
+            if !seen.insert((domain.clone(), kind)) {
+                return Err(invalid("duplicate domain rule pattern"));
+            }
+            normalized.push(serde_json::json!({"domain":domain,"type":kind,"action":action}));
+        }
+        settings.insert("domain_rules".to_owned(), Value::Array(normalized));
+    }
     if let Some(value) = settings.get("blocked_categories") {
         validate_categories(value)?;
     }
@@ -807,6 +838,7 @@ impl BlockReason {
 pub struct WebFilter {
     blocked: Vec<String>,
     allowed: Vec<String>,
+    domain_rules: Vec<(String, WebAction)>,
     categories: Vec<String>,
     actions: BTreeMap<String, WebAction>,
     monitor_all: bool,
@@ -874,6 +906,21 @@ impl WebFilter {
         Ok(WebFilter {
             blocked: rules.blocked,
             allowed: rules.allowed,
+            domain_rules: settings
+                .get("domain_rules")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(|row| {
+                    let prefix = if row["type"] == "wildcard" { "*." } else { "" };
+                    let action = match row["action"].as_str() {
+                        Some("allow") => WebAction::Allow,
+                        Some("monitor") => WebAction::Monitor,
+                        _ => WebAction::Block,
+                    };
+                    (format!("{prefix}{}", row["domain"].as_str().unwrap_or_default()), action)
+                })
+                .collect(),
             categories: text_list(settings.get("blocked_categories")),
             actions: category_actions(settings),
             monitor_all: settings.get("monitor_all").and_then(Value::as_bool).unwrap_or(false),
@@ -969,6 +1016,13 @@ impl WebFilter {
     ) -> WebDecision {
         let allow = || WebDecision { action: WebAction::Allow, reason: None, log: false };
         let Ok(domain) = normalize_domain(name) else { return allow() };
+        if let Some((_, action)) = self.domain_rules.iter().find(|(pattern, _)| rule_matches(pattern, &domain)) {
+            return WebDecision {
+                action: *action,
+                reason: (*action != WebAction::Allow).then_some(BlockReason::Rule),
+                log: *action != WebAction::Allow,
+            };
+        }
         if self.allowed.iter().any(|rule| rule_matches(rule, &domain)) {
             return allow();
         }
@@ -1029,7 +1083,8 @@ impl WebFilter {
     }
 
     pub fn requires_monitoring(&self) -> bool {
-        self.monitor_all
+        !self.domain_rules.is_empty()
+            || self.monitor_all
             || self
                 .actions
                 .values()

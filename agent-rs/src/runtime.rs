@@ -187,6 +187,7 @@ pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enfor
     if cfg.dns_filter {
         tags.push("web-filter:dns".into());
         tags.push("web-filter:monitor".into());
+        tags.push("web-filter:domain-rules:v1".into());
     }
     if cfg.anti_bypass {
         tags.push("web-filter:anti-bypass".into());
@@ -514,7 +515,11 @@ impl Runtime {
                     "web-filter:actions".into(),
                 ];
                 if self.cfg.dns_filter {
-                    tags.extend(["web-filter:dns".into(), "web-filter:monitor".into()]);
+                    tags.extend([
+                        "web-filter:dns".into(),
+                        "web-filter:monitor".into(),
+                        "web-filter:domain-rules:v1".into(),
+                    ]);
                 }
                 if self.cfg.anti_bypass {
                     tags.push("web-filter:anti-bypass".into());

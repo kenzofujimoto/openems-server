@@ -255,6 +255,26 @@ def _validate_window(value: object) -> dict[str, Any]:
 
 
 def _validate_web_extensions(settings: dict[str, Any]) -> None:
+    if "domain_rules" in settings:
+        rules = settings["domain_rules"]
+        if not isinstance(rules, list) or len(rules) > 10000:
+            raise ValueError("domain_rules must be a list of at most 10000 rules")
+        if settings.get("blocked") or settings.get("allowed"):
+            raise ValueError("domain_rules cannot be mixed with legacy domain lists")
+        normalized = []
+        seen = set()
+        for rule in rules:
+            if not isinstance(rule, dict) or set(rule) != {"domain", "type", "action"}:
+                raise ValueError("domain rule needs only domain, type and action")
+            if rule["type"] not in ("simple", "wildcard") or rule["action"] not in ("allow", "block", "monitor"):
+                raise ValueError("domain rule type or action is unsupported")
+            domain = normalize_domain(rule["domain"])
+            key = (domain, rule["type"])
+            if key in seen:
+                raise ValueError("duplicate domain rule pattern")
+            seen.add(key)
+            normalized.append({"domain": domain, "type": rule["type"], "action": rule["action"]})
+        settings["domain_rules"] = normalized
     if "blocked_categories" in settings:
         _validate_categories(settings["blocked_categories"])
     _validate_category_actions(settings)
@@ -368,6 +388,12 @@ def web_decision(name: object, web_filter: dict[str, Any], when: datetime,
         domain = normalize_domain(name)
     except ValueError:
         return allowed
+    for rule in web_filter.get("domain_rules", []):
+        pattern = ("*." if rule["type"] == "wildcard" else "") + rule["domain"]
+        if _rule_matches(pattern, domain):
+            action = rule["action"]
+            return {"action": action, "reason": None if action == "allow" else "rule",
+                    "category": None, "log": action != "allow"}
     if any(_rule_matches(normalize_domain_rule(rule), domain) for rule in web_filter.get("allowed", [])):
         return allowed
     if domain_blocked(domain, active_rules(web_filter, when), []):

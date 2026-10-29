@@ -176,6 +176,14 @@ VALIDATE: list[Any] = [
     {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": ["mon"], "from": "08:00", "to": "24:00"}]}},
     {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": [], "from": "08:00", "to": "09:00"}]}},
     {"web_filter": {"timezone": "UTC", "scheduled": [{"blocked": [], "days": ["mon"], "from": "08:00", "to": "09:00", "x": 1}]}},
+    *({"web_filter": {"domain_rules": rules}} for rules in [
+        [], None, {},
+        [{"domain": "BÜCHER.de", "type": "wildcard", "action": "monitor"}],
+        [{"domain": "example.net", "type": "regex", "action": "block"}],
+        [{"domain": "example.net", "type": "simple", "action": "log"}],
+        [{"domain": "*.example.net", "type": "wildcard", "action": "block"}],
+        [{"domain": "example.net", "type": "simple", "action": "block"}] * 2,
+    ]),
 ]
 
 
@@ -237,6 +245,13 @@ def _web_actions() -> list[dict[str, Any]]:
     scheduled = {"category_actions": {"streaming": "monitor"}, "timezone": "UTC", "scheduled": [
         {"days": ["mon"], "from": "08:00", "to": "18:00", "category_actions": {"streaming": "block"}}]}
     cases.extend((scheduled, "watch.example", when) for when in ("2026-10-26T12:00:00", "2026-10-26T20:00:00"))
+    for action in ("allow", "block", "monitor"):
+        for kind in ("simple", "wildcard"):
+            cases.extend(({"domain_rules": [
+                    {"domain": "watch.example", "type": kind, "action": action},
+                    {"domain": "watch.example", "type": "wildcard" if kind == "simple" else "simple", "action": "block"},
+                ], "category_actions": {"streaming": "block"}}, name, "2026-10-26T12:00:00")
+                for name in ("watch.example", "www.watch.example", "api.watch.example", "other.example"))
     return [{"web_filter": raw, "sets": sets, "name": name, "when": when,
              "decision": web_decision(name, validate_policy({"web_filter": raw})["web_filter"],
                                       datetime.fromisoformat(when).replace(tzinfo=UTC), data)}
