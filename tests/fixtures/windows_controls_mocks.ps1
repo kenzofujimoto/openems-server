@@ -180,13 +180,16 @@ function Get-AuthenticodeSignature {
     Assert-FixturePath $LiteralPath
     Trace-Mock 'Get-AuthenticodeSignature' @{path=$LiteralPath}
     if($fixture.scenario -eq 'signature_failure') { throw 'Fixture signature lookup failed.' }
-    [pscustomobject]@{Status='Valid';SignerCertificate=[pscustomobject]@{Subject='CN=Fixture Publisher'}}
+    $type=if($fixture.scenario -eq 'catalog_signed') {'Catalog'} else {'Authenticode'}
+    [pscustomobject]@{Status='Valid';SignatureType=$type;SignerCertificate=[pscustomobject]@{Subject='CN=Fixture Publisher'}}
 }
 function Get-SystemDriver {
-    [CmdletBinding()] param([string]$ScanPath,[switch]$UserPEs,[switch]$NoScript,[switch]$NoShadowCopy)
+    [CmdletBinding()] param([string]$ScanPath,[switch]$UserPEs,[switch]$NoScript,[switch]$NoShadowCopy,[string]$PathToCatroot)
     Assert-FixturePath $ScanPath
     $files=@(Microsoft.PowerShell.Management\Get-ChildItem -LiteralPath $ScanPath -File -Filter '*.exe')
-    Trace-Mock 'Get-SystemDriver' @{path=$ScanPath;files=@($files | ForEach-Object FullName);user_pes=[bool]$UserPEs;no_script=[bool]$NoScript;no_shadow_copy=[bool]$NoShadowCopy}
+    $catalogFiles=@()
+    if($PathToCatroot) { Assert-FixturePath $PathToCatroot; $catalogFiles=@(Microsoft.PowerShell.Management\Get-ChildItem -LiteralPath $PathToCatroot -Force | ForEach-Object Name) }
+    Trace-Mock 'Get-SystemDriver' @{path=$ScanPath;files=@($files | ForEach-Object FullName);user_pes=[bool]$UserPEs;no_script=[bool]$NoScript;no_shadow_copy=[bool]$NoShadowCopy;catalog_path=$PathToCatroot;catalog_files=$catalogFiles}
     $drivers=New-Object 'Collections.Generic.List[object]'
     if($fixture.scenario -ne 'drivers_empty') {
         foreach($file in $files) {

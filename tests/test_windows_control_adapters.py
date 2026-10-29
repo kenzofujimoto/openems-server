@@ -143,7 +143,6 @@ def test_wdac_uses_verified_explicit_user_pe_driver_files(tmp_path, kind):
     assert Path(scan["path"]).parent.parent == directory
     generated = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicyRule")
     assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
-    assert not list(directory.glob("app-control-*/catalog-*"))
     assert generated["driver_paths"] == scan["files"]
     assert generated["driver_user_modes"] == [True]
     assert generated["legacy_path"] == ""
@@ -313,6 +312,40 @@ def test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading
     assert json.loads(result.stdout) == {"error": "control_failed"}
     assert not (directory / "active-policy.json").exists()
     assert not any(call["name"] == "Merge-CIPolicy" for call in calls(directory))
+
+
+def _private_catalog(directory, scan):
+    path = Path(scan["catalog_path"])
+    assert path.is_absolute() and path.is_dir() and scan["catalog_files"] == [] and not list(path.iterdir())
+    assert path.parent == Path(scan["path"]).parent and not path.is_relative_to(directory / "systemroot")
+    descriptors = [entry["detail"] for entry in calls(directory)
+                   if entry["name"] == "Set-AclDescriptor" and entry["detail"]["path"] == str(path)]
+    assert len(descriptors) == 1 and descriptors[0]["owner_sid"] == "S-1-5-18" and descriptors[0]["protected"]
+    assert [rule["sid"] for rule in descriptors[0]["rules"]] == ["S-1-5-18"]
+    return path
+
+
+@pytest.mark.parametrize("kind", ["publisher", "name"])
+def test_wdac_driver_scan_uses_a_fresh_empty_private_catalog_for_embedded_signatures(tmp_path, kind):
+    # The system catalog root took 51 s to scan in the acceptance guest and exceeded the adapter limit.
+    directory = fixture_environment(tmp_path, scenario="requires_driver_files")
+    request = wdac_request(directory, kind)
+    assert_success(invoke_adapter(directory, "applications", request))
+    request["policy"]["execution_rules"][0]["id"] = "updated-rule"
+    assert_success(invoke_adapter(directory, "applications", request))
+    scans = [call["detail"] for call in calls(directory) if call["name"] == "Get-SystemDriver"]
+    assert len(scans) == 2
+    paths = [_private_catalog(directory, scan) for scan in scans]
+    assert paths[0] != paths[1]
+
+
+def test_wdac_catalog_signed_publisher_keeps_the_system_catalog_root(tmp_path):
+    # A catalog-only signature has no embedded signer; an empty catalog root would lose the publisher.
+    directory = fixture_environment(tmp_path, scenario="catalog_signed")
+    assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "publisher")))
+    scan = next(call["detail"] for call in calls(directory) if call["name"] == "Get-SystemDriver")
+    assert scan["catalog_path"] in (None, "")
+    assert not list(directory.glob("app-control-*/catalog-*"))
 
 
 def test_wdac_mixed_rules_keep_the_driver_file_route(tmp_path):
