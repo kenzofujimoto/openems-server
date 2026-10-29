@@ -1,0 +1,22 @@
+{
+  "powershell": "5.1.26100.9711",
+  "scope": "private temporary files only; no acceptance harness or controls",
+  "results": [
+    {
+      "passed": false,
+      "error_type": "MethodInvocationException",
+      "inner_error_type": "ArgumentException",
+      "empty_path_message": false,
+      "kind": "powershell_null"
+    },
+    {
+      "passed": true,
+      "error_type": null,
+      "inner_error_type": null,
+      "kind": "dotnet_null_string"
+    }
+  ],
+  "checked_at_utc": "2026-10-29T03:03:52.6747558Z",
+  "acceptance_harness_invoked": false,
+  "guest_controls_modified": false
+}

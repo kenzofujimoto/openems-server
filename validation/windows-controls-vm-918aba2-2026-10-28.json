@@ -97,7 +97,7 @@
         "next_step": "Propose scoped generation using explicit user-mode DriverFile objects; validate in guest before implementing with approved TDD"
       },
       "next_fix_plan": {
-        "phase": "comparative probe timed out before ConfigCI; candidate remains unvalidated",
+        "phase": "candidate remains unvalidated; auxiliary PS 5.1 diagnostic writer failure discovered",
         "shortcut": "23 - Probe explicit user-mode WDAC generation inside VM",
         "agent_validation_and_90_120_second_limits_unchanged": true,
         "loads_policy_in_comparison": false,
@@ -140,10 +140,30 @@
     "backend_diagnostics": {
       "first_report": "validation/vm-usb-fixed-918aba2-backend-probe-timeout-2026-10-28.json",
       "after_guest_reboot_report": "validation/vm-usb-fixed-918aba2-backend-probe-reboot-timeout-2026-10-28.json",
-      "status": "both probes timed out in diagnostic WMI baseline before backend measurement",
+      "status": "diagnostic writer failed; original progress was stale, not proof of a WMI stall",
       "no_agent_installation_or_control_mutation": true,
       "next_probe": "26 - Isolate USB backend without WMI baseline inside VM",
-      "acceptance_harness_changed": false
+      "acceptance_harness_changed": false,
+      "recovery_report": "validation/vm-usb-fixed-918aba2-diagnostic-recovery-2026-10-28.json",
+      "file_only_reproduction": "validation/windows-diagnostic-ipc-nullstring-2026-10-29.json",
+      "measured_report": "validation/vm-usb-fixed-918aba2-backend-startup-measured-2026-10-28.json",
+      "writer_fix": "Pass NullString.Value as File.Replace backup path instead of PowerShell null",
+      "ready_elapsed_ms": 8238,
+      "ready_within_unchanged_20_second_acceptance_deadline": true,
+      "loopback_http_status": 204
+    },
+    "retry": {
+      "status": "running",
+      "shortcut": "29 - Retry 918aba2 USB acceptance inside clean VM as administrator",
+      "guest_results": "fixed-918aba2/usb-retry1",
+      "same_package_harness_and_deadlines": true,
+      "launcher_sha256": "69410b25ff0d5b9bbe305604be328612d726178b5f05be33c6e31d7008e80b98",
+      "started_utc": "2026-10-29T02:57:24.5033766Z",
+      "partial_checks_not_acceptance": [
+        "production MSI and authenticated inventory",
+        "storage block with healthy HID",
+        "offline restart retains storage policy and healthy HID"
+      ]
     }
   },
   "old_inputs_or_reports_overwritten": false,

@@ -1,0 +1,24 @@
+﻿{
+    "status":  "timed_out",
+    "deadline_seconds":  90,
+    "last_observation":  {
+                             "started_utc":  "2026-10-29T02:43:39.3871474Z",
+                             "status":  "running",
+                             "context":  "SYSTEM",
+                             "controls_modified":  false,
+                             "agent_installed":  false,
+                             "stage":  "baseline",
+                             "job_observations":  [
+
+                                                  ],
+                             "job_error_types":  [
+
+                                                 ],
+                             "ready_within_acceptance_20_seconds":  false,
+                             "ready_elapsed_ms":  null,
+                             "http_status":  null,
+                             "error_type":  null
+                         },
+    "controls_modified":  false,
+    "agent_installed":  false
+}
