@@ -40,7 +40,7 @@ def test_released_usb_waits_for_an_inventory_that_reports_the_drive():
 def test_fixture_backend_startup_allows_a_cold_guest_and_reports_the_job_state():
     start = HARNESS.index("function Start-Backend {")
     backend = HARNESS[start:HARNESS.index("function Stop-Backend {", start)]
-    assert "Test-Path -LiteralPath $ready } 120 (" in backend
+    assert "Test-Path -LiteralPath $ready } 120 'startup'" in backend
     assert "'Fixture backend did not start; job state ' + $job.State" in backend
     # ACK and inventory deadlines are acceptance criteria and stay unchanged.
     assert "$_.success }).Count -gt 0 } 90 'The service did not successfully apply and ACK" in HARNESS

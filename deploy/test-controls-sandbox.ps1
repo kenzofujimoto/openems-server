@@ -320,7 +320,12 @@ function Start-Backend {
             }
         } finally { $listener.Close() }
     }
-    Wait-Until { if ($job.State -eq 'Failed') { throw 'Fixture backend failed.' }; Test-Path -LiteralPath $ready } 20 'Fixture backend did not start.'
+    # Starting a job process in a freshly restored guest can exceed 20 s; this is fixture startup, not a control deadline.
+    try { Wait-Until { if ($job.State -eq 'Failed') { throw 'Fixture backend failed.' }; Test-Path -LiteralPath $ready } 120 'startup' }
+    catch {
+        $reason = @($job.ChildJobs | ForEach-Object { if ($_.JobStateInfo.Reason) { $_.JobStateInfo.Reason.GetType().Name } }) -join ','
+        throw ('Fixture backend did not start; job state ' + $job.State + '; reason ' + $reason)
+    }
     return $job
 }
 function Stop-Backend {
