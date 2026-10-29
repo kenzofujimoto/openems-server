@@ -135,6 +135,7 @@ fn a_policy_change_during_collection_discards_the_stale_inventory() {
     let manager = ControlManager::new(&dir.path().join("state.json"), backend.clone()).unwrap();
     manager.enable_inventory();
     let now = Instant::now();
+    manager.apply(&json!({"usb_control":{"default_action":"allow","rules":[]}}), false).unwrap();
     assert!(manager.inventory_due(now).unwrap().is_none());
     manager.apply(&json!({"usb_control":{"default_action":"block","rules":[]}}), false).unwrap();
     backend.release();
@@ -163,6 +164,20 @@ fn reapplying_an_unchanged_policy_keeps_the_inventory_but_a_release_refreshes_it
     manager.apply(&json!({"usb_control":{"default_action":"allow","rules":[]}}), false).unwrap();
     backend.release();
     assert_eq!(collected(&manager, now).unwrap().applications, vec![json!({"name":"collection-2"})]);
+}
+
+#[test]
+fn the_first_policy_after_start_keeps_the_startup_collection() {
+    let dir = tempfile::tempdir().unwrap();
+    let backend = Arc::new(Gated::default());
+    let manager = ControlManager::new(&dir.path().join("state.json"), backend.clone()).unwrap();
+    manager.enable_inventory();
+    let now = Instant::now();
+    assert!(manager.inventory_due(now).unwrap().is_none());
+    manager.apply(&json!({"usb_control":{"default_action":"block","rules":[]}}), false).unwrap();
+    backend.release();
+    assert_eq!(collected(&manager, now).unwrap().applications, vec![json!({"name":"collection-1"})]);
+    assert_eq!(backend.calls.load(Ordering::SeqCst), 1, "startup must not wait for a second collection");
 }
 
 #[test]
