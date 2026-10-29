@@ -1,0 +1,13 @@
+﻿{
+    "started_utc":  "2026-10-29T20:52:22.8301386Z",
+    "source_revision":  "f7c6e1797d4885eaddc17e40993f14c31c64be8e",
+    "kind":  "Applications",
+    "model":  "VMware20,1",
+    "os_version":  "10.0.26300",
+    "powershell":  "5.1.26100.9711",
+    "msi_sha256":  "a8b3c1d982f7cd91765a3f62c208c4cb7d897f4c7ec5ae3e0ae0b84a94704459",
+    "expected_agent_sha256":  "1446e8f766553c8c1b7d7c2502781e66726da668e658c93caac089c84b2711e3",
+    "all_input_hashes_match":  true,
+    "existing_agent":  false,
+    "physical_drive":  ""
+}
