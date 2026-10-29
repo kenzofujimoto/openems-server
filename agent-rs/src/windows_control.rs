@@ -86,6 +86,10 @@ pub fn run(_script: &'static str, _request: &Value) -> Result<Value> {
     Err(AgentError::Local("this control adapter requires Windows".into()))
 }
 
+pub fn run_background(script: &'static str, request: &Value) -> Result<Value> {
+    run(script, request)
+}
+
 pub fn path(path: &std::path::Path) -> Result<&str> {
     path.to_str().ok_or_else(|| AgentError::Local("control state path is not valid Unicode".into()))
 }
@@ -112,6 +116,22 @@ mod tests {
 
     const USB: &str = include_str!("../../deploy/agent-usb.ps1");
     const APPLICATIONS: &str = include_str!("../../deploy/agent-applications.ps1");
+
+    #[test]
+    fn background_collection_yields_cpu_to_enforcement() {
+        const PRIORITY: &str =
+            "[Console]::In.ReadToEnd()|Out-Null; @{priority=[string](Get-Process -Id $PID).PriorityClass}|ConvertTo-Json -Compress";
+        assert_eq!(run(PRIORITY, &json!({})).unwrap()["priority"], "Normal");
+        assert_eq!(run_background(PRIORITY, &json!({})).unwrap()["priority"], "BelowNormal");
+    }
+
+    #[test]
+    fn inventories_run_as_background_collections() {
+        for source in [include_str!("usb.rs"), include_str!("applications.rs")] {
+            assert!(source.contains(r#"adapter::run_background(SCRIPT, &json!({"mode":"inventory"}))"#));
+            assert!(!source.contains(r#"adapter::run(SCRIPT, &json!({"mode":"inventory"}))"#));
+        }
+    }
 
     #[test]
     fn embedded_scripts_parse_without_running_any_mutation() {
