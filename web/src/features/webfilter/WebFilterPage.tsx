@@ -8,6 +8,8 @@ import { formatDateTime, formatNumber } from "@/lib/format";
 import { useCategories } from "@/lib/queries";
 import type { Category } from "@/lib/schemas";
 import type { Profile } from "@/lib/management";
+import { migrateDomainRules, normalizeDomainRows } from "@/lib/domainRules";
+import { DomainRulesTable } from "./DomainRulesTable";
 import { FIELD_CLASS, Field, lines, PolicyForm, PolicyWorkspace, record, strings, TextArea } from "@/features/policies/PolicyWorkspace";
 
 function byGroup(categories: Category[]): [string, Category[]][] {
@@ -39,8 +41,7 @@ function WebEditor({ profile, vdom, readonly }: { profile: Profile | undefined; 
   const published = categories.data?.categories ?? [];
   const settings = record(profile?.body.web_filter);
   const safe = record(settings.safe_search);
-  const [blocked, setBlocked] = useState(strings(settings.blocked).join("\n"));
-  const [allowed, setAllowed] = useState(strings(settings.allowed).join("\n"));
+  const [domainRows, setDomainRows] = useState(() => migrateDomainRules(settings));
   const [actions, setActions] = useState(() => categoryActions(settings));
   const [monitorAll, setMonitorAll] = useState(settings.monitor_all === true);
   const [engines, setEngines] = useState(strings(safe.engines));
@@ -50,7 +51,9 @@ function WebEditor({ profile, vdom, readonly }: { profile: Profile | undefined; 
   const toggle = (values: string[], value: string) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
   const updateWindow = (index: number, patch: Partial<Window>) => setWindows((values) => values.map((window, at) => at === index ? { ...window, ...patch } : window));
   return <PolicyForm profile={profile} vdom={vdom} section="web_filter" readonly={readonly} build={() => {
-    const next: Record<string, unknown> = { ...settings, blocked: validDomains(lines(blocked)), allowed: validDomains(lines(allowed)) };
+    const next: Record<string, unknown> = { ...settings, domain_rules: normalizeDomainRows(domainRows) };
+    delete next.blocked;
+    delete next.allowed;
     delete next.blocked_categories;
     if (Object.keys(actions).length) next.category_actions = actions; else delete next.category_actions;
     if (monitorAll) next.monitor_all = true; else delete next.monitor_all;
@@ -65,7 +68,7 @@ function WebEditor({ profile, vdom, readonly }: { profile: Profile | undefined; 
     } else { delete next.scheduled; delete next.timezone; }
     return next;
   }}>
-    <Card><CardHeader title="Domínios" description="Permitidos têm prioridade e não geram log de navegação. Use *.example.com para o domínio e seus subdomínios." /><div className="grid gap-4 p-5 md:grid-cols-2"><TextArea label="Domínios bloqueados" value={blocked} onChange={setBlocked} /><TextArea label="Domínios permitidos" value={allowed} onChange={setAllowed} /></div></Card>
+    <DomainRulesTable rows={domainRows} onChange={setDomainRows} readonly={readonly} />
       {categories.isError ? <ErrorNotice message="Não foi possível carregar as categorias." onRetry={() => void categories.refetch()} /> : null}
       <Card>
         <CardHeader

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/node";
@@ -24,7 +24,7 @@ describe("policy editors", () => {
     backend();
     server.use(http.get("*/api/v1/categories", () => HttpResponse.json({ version: "2026-10-20T00:00:00Z", attribution: "UT1", categories: [], health: { status: "stale" } })));
     renderApp("/policies/web");
-    await screen.findByLabelText("Domínios bloqueados");
+    await screen.findByRole("table", { name: "Regras de domínio" });
     expect(await screen.findByRole("note")).toHaveTextContent(/listas de categorias estão desatualizadas/i);
   });
 
@@ -32,14 +32,17 @@ describe("policy editors", () => {
     const writes = backend();
     const user = userEvent.setup();
     renderApp("/policies/web");
-    const blocked = await screen.findByLabelText("Domínios bloqueados");
-    await user.clear(blocked);
-    await user.click(blocked); await user.paste("*.games.example");
+    await user.click(await screen.findByRole("button", { name: "Editar old.example" }));
+    const dialog = screen.getByRole("dialog", { name: "Editar domínio" });
+    const domain = within(dialog).getByLabelText("Domínio");
+    await user.clear(domain); await user.type(domain, "games.example");
+    await user.selectOptions(within(dialog).getByLabelText("Tipo"), "wildcard");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar domínio" }));
     await user.click(screen.getByRole("radio", { name: "Bloquear Jogos" }));
     await user.click(screen.getByRole("checkbox", { name: "Google" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     expect(await screen.findByRole("status")).toHaveTextContent("v5");
-    expect(writes).toEqual([{ body: { ...body, web_filter: { blocked: ["*.games.example"], allowed: ["safe.example"], category_actions: { games: "block" }, safe_search: { engines: ["google"], youtube: "strict" } } }, match: profile.digest, csrf: "mock-csrf-token" }]);
+    expect(writes).toEqual([{ body: { ...body, web_filter: { domain_rules: [{ domain:"safe.example", type:"simple", action:"allow" }, { domain:"games.example", type:"wildcard", action:"block" }], category_actions: { games: "block" }, safe_search: { engines: ["google"], youtube: "strict" } } }, match: profile.digest, csrf: "mock-csrf-token" }]);
   });
 
   it("migrates legacy blocks and allows selecting monitor without retaining conflicting legacy fields", async () => {
@@ -101,12 +104,15 @@ describe("policy editors", () => {
     const writes = backend();
     const user = userEvent.setup();
     renderApp("/policies/web");
-    const blocked = await screen.findByLabelText("Domínios bloqueados");
-    await user.clear(blocked); await user.click(blocked); await user.paste("https://bad.example/path");
-    await user.click(screen.getByRole("button", { name: "Publicar política" }));
+    await user.click(await screen.findByRole("button", { name: "Editar old.example" }));
+    const dialog = screen.getByRole("dialog", { name: "Editar domínio" });
+    const domain = within(dialog).getByLabelText("Domínio");
+    await user.clear(domain); await user.type(domain, "https://bad.example/path");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar domínio" }));
     expect(screen.getByRole("alert")).toHaveTextContent("domínio");
     expect(writes).toEqual([]);
-    await user.clear(blocked); await user.click(blocked); await user.paste("valid.example");
+    await user.clear(domain); await user.type(domain, "valid.example");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar domínio" }));
     server.use(http.post("*/api/v1/profiles/:vdom", () => HttpResponse.json({ detail: "changed" }, { status: 412 })));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("alterada por outro administrador");
@@ -140,7 +146,9 @@ describe("policy editors", () => {
     backend();
     server.use(http.get("*/api/v1/auth/session", () => HttpResponse.json({ username: "reader", role: "viewer", csrf_token: "reader" })));
     renderApp("/policies/web");
-    expect(await screen.findByLabelText("Domínios bloqueados")).toBeDisabled();
+    expect(await screen.findByRole("table", { name: "Regras de domínio" })).toHaveTextContent("old.example");
+    expect(screen.queryByRole("button", { name: "Adicionar domínio" })).toBeNull();
+    expect(screen.queryByLabelText("Importar CSV")).toBeNull();
     expect(screen.queryByRole("button", { name: "Publicar política" })).toBeNull();
   });
 
