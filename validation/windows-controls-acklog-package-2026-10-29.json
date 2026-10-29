@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "f7c6e1797d4885eaddc17e40993f14c31c64be8e",
+  "agent_source_revision": "c0192b1c188ee073c04825786419ea9ea370a1b4",
+  "harness_source_revision": "f7c6e1797d4885eaddc17e40993f14c31c64be8e",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "a8b3c1d982f7cd91765a3f62c208c4cb7d897f4c7ec5ae3e0ae0b84a94704459",
+      "bytes": 8552448
+    },
+    "openems-agent-next.msi": {
+      "sha256": "3db79aa5080fde2bfd046fde7cac2b4e7165122615c25ec00b22aa074d3a8f65",
+      "bytes": 8552448
+    }
+  },
+  "msi_bytes_reused_without_rebuild": true,
+  "all_manifest_hashes_match": true,
+  "old_inputs_overwritten": false,
+  "harness_sha256": "1080e4739a8e4343118dd0e12bd671d3762681fd33009724a78cc474e7fcc80e",
+  "launcher_sha256": "e0d3cf2b1851bad3346cd26f01d117448afc0c317e1b31e6585132e9eeb83e44",
+  "includes": [
+    "fixture logs appended through shared handles with bounded retries"
+  ],
+  "installed_on_host": false,
+  "iso": "openems-controls-acklog-f7c6e17.iso",
+  "payload": "payload-acklog-f7c6e17",
+  "results": "acklog-f7c6e17",
+  "wdac_acceptance": "pending",
+  "usb_acceptance": "pending",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "iso_sha256": "aa6ce6bb8d50834c23c4e2e02266e2233be88119b3fb455b3f4178467f784080",
+  "shortcuts": [
+    "ACCEPT-WDAC-47",
+    "ACCEPT-USB-48"
+  ],
+  "launcher_parsed_without_execution_on_host": true
+}
