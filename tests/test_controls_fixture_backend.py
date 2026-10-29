@@ -132,7 +132,7 @@ def test_fixture_backend_traces_every_request_without_secrets_or_bodies(observed
     raw = trace_path.read_text(encoding="utf-8-sig")
     assert "sandbox-fixture-only" not in raw and "secret-body-marker" not in raw and "not-a-route" not in raw
     events = [json.loads(line) for line in raw.splitlines() if line.strip()]
-    assert {tuple(sorted(event)) for event in events} == {("at_utc", "error_type", "response_written", "route", "status")}
+    assert {tuple(sorted(event)) for event in events} == {("at_utc", "error_type", "response_written", "route", "status", "trace_write_failures")}
     routes = [(event["route"], event["status"], event["response_written"]) for event in events]
     assert routes[0] == ("config/assigned", 200, True)
     aborted = [event for event in events if event["route"] == "config/ack" and not event["response_written"]]

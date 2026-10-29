@@ -260,34 +260,52 @@ function Start-Backend {
         $ErrorActionPreference = 'Stop'
         $listener = New-Object Net.HttpListener
         $listener.Prefixes.Add($Origin + '/')
+        $routes = @('register','config/assigned','config/ack','inventory','control_events','host_tags','messages/pull','refresh','events','tamper')
+        $traceErrors = 0
         try {
             $listener.Start(); Set-Content -LiteralPath (Join-Path $Work 'backend-ready') -Value ready
             while ($true) {
                 $waiting = $listener.GetContextAsync()
                 while (-not $waiting.Wait(500)) { }
                 $context = $waiting.Result
-                $reader = New-Object IO.StreamReader($context.Request.InputStream, [Text.Encoding]::UTF8)
-                try { $upload = $reader.ReadToEnd() } finally { $reader.Dispose() }
-                $route = $context.Request.Url.AbsolutePath.Replace('/fct/api/public/v1/', '').Trim('/')
-                $answer = @{}; $context.Response.StatusCode = 200
-                if ($route -ne 'register' -and $context.Request.Headers['Authorization'] -ne 'Bearer sandbox-fixture-only') {
-                    $context.Response.StatusCode = 403
-                } else { switch ($route) {
-                    'register' { $answer = @{ client_id='sandbox-controls'; device_token='sandbox-fixture-only' } }
-                    'config/assigned' { $answer = Get-Content -LiteralPath (Join-Path $Work 'policy.json') -Raw | ConvertFrom-Json }
-                    'config/ack' { Add-Content -LiteralPath (Join-Path $Work 'ack.log') -Value ($upload -replace "`r?`n", ' ') }
-                    'inventory' { Add-Content -LiteralPath (Join-Path $Work 'inventory.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=$true} }
-                    'control_events' { Add-Content -LiteralPath (Join-Path $Work 'control-events.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=1;rejected=0} }
-                    'host_tags' { }
-                    'messages/pull' { }
-                    'refresh' { }
-                    'events' { $answer=@{accepted=0;rejected=0} }
-                    'tamper' { $answer=@{accepted=0;rejected=0} }
-                    default { $context.Response.StatusCode = 404 }
-                } }
-                $bytes = [Text.Encoding]::UTF8.GetBytes(($answer | ConvertTo-Json -Depth 24 -Compress))
-                $context.Response.ContentType='application/json'; $context.Response.ContentLength64=$bytes.Length
-                try { $context.Response.OutputStream.Write($bytes,0,$bytes.Length) } finally { $context.Response.Close() }
+                # One aborted or failed request must not stop the fixture; the agent retries on its next sync.
+                $trace = [ordered]@{ at_utc=[DateTime]::UtcNow.ToString('o'); route='other'; status=500; response_written=$false; error_type=$null; trace_write_failures=$traceErrors }
+                try {
+                    $route = $context.Request.Url.AbsolutePath.Replace('/fct/api/public/v1/', '').Trim('/')
+                    if ($route -in $routes) { $trace.route = $route }
+                    $reader = New-Object IO.StreamReader($context.Request.InputStream, [Text.Encoding]::UTF8)
+                    try { $upload = $reader.ReadToEnd() } finally { $reader.Dispose() }
+                    $answer = @{}; $context.Response.StatusCode = 200
+                    if ($route -ne 'register' -and $context.Request.Headers['Authorization'] -ne 'Bearer sandbox-fixture-only') {
+                        $context.Response.StatusCode = 403
+                    } else { switch ($route) {
+                        'register' { $answer = @{ client_id='sandbox-controls'; device_token='sandbox-fixture-only' } }
+                        'config/assigned' { $answer = Get-Content -LiteralPath (Join-Path $Work 'policy.json') -Raw | ConvertFrom-Json }
+                        'config/ack' { Add-Content -LiteralPath (Join-Path $Work 'ack.log') -Value ($upload -replace "`r?`n", ' ') }
+                        'inventory' { Add-Content -LiteralPath (Join-Path $Work 'inventory.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=$true} }
+                        'control_events' { Add-Content -LiteralPath (Join-Path $Work 'control-events.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=1;rejected=0} }
+                        'host_tags' { }
+                        'messages/pull' { }
+                        'refresh' { }
+                        'events' { $answer=@{accepted=0;rejected=0} }
+                        'tamper' { $answer=@{accepted=0;rejected=0} }
+                        default { $context.Response.StatusCode = 404 }
+                    } }
+                    $trace.status = $context.Response.StatusCode
+                    $bytes = [Text.Encoding]::UTF8.GetBytes(($answer | ConvertTo-Json -Depth 24 -Compress))
+                    $context.Response.ContentType='application/json'; $context.Response.ContentLength64=$bytes.Length
+                    $context.Response.OutputStream.Write($bytes,0,$bytes.Length)
+                    $trace.response_written = $true
+                } catch {
+                    $trace.error_type = $_.Exception.GetType().Name
+                    $trace.status = 500
+                    try { $context.Response.StatusCode = 500 } catch { }
+                } finally {
+                    try { $context.Response.Close() } catch { if (-not $trace.error_type) { $trace.error_type = $_.Exception.GetType().Name } }
+                    # Route names, status and exception types only: never bodies, paths or credentials.
+                    try { [IO.File]::AppendAllText((Join-Path $Work 'backend-events.log'), ($trace | ConvertTo-Json -Compress) + [Environment]::NewLine) }
+                    catch { $traceErrors++ }
+                }
             }
         } finally { $listener.Close() }
     }
