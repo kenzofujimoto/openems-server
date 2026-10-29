@@ -168,6 +168,9 @@
     "integration_approved_explicitly": true,
     "tdd_required": true,
     "scope": "fresh private catalog only in the single-hash branch; retain all identity/XML guards and fallback paths",
-    "next": "commit failing specs, implement minimum, full permitted suites, separate MSI/ISO, real clean-VM acceptance"
+    "next": "ACCEPT-WDAC-40 in clean UID 2 with frozen 959e9de media; full acceptance remains pending",
+    "integration_commit": "959e9de55ec365899086290b404c29ce1f791bb4",
+    "validation_report": "validation/windows-wdac-catalog-fix-2026-10-29.json",
+    "package_report": "validation/windows-wdac-catalog-package-2026-10-29.json"
   }
 }

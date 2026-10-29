@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-29",
+  "branch": "fix/windows-control-adapters",
+  "source_revision": "959e9de55ec365899086290b404c29ce1f791bb4",
+  "scope": "Fresh empty SYSTEM-private PathToCatroot only for one verified hash rule; other routes unchanged",
+  "plan": "docs/windows-wdac-catalog-scan-plan.md",
+  "operator_explicitly_approved_integration": true,
+  "tdd": {
+    "red_commit": "b26708bdf527fe610723443636adb1dd5e50132e",
+    "red": {
+      "passed": 58,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 110.768,
+      "junit_sha256": "ecf2d0ee0dfeab4c9006898f4498f685dfe5342b632cd66ee453286f6347877b",
+      "failed_test_names": [
+        "test_wdac_single_hash_uses_fresh_empty_system_private_catalogs_without_changing_windows"
+      ]
+    },
+    "green": {
+      "passed": 59,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 116.493,
+      "junit_sha256": "3aeb5ea9bbb569f11fe7708510b9b16ce24a34eb711c987c104d0d697630a3a7",
+      "failed_test_names": []
+    },
+    "windows_mutations_mocked": true
+  },
+  "host_checks": {
+    "python": {
+      "passed": 1159,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 58,
+      "seconds": 536.523,
+      "junit_sha256": "394153e1367177a9633c1798de80831f466b5426d7bff19526843631ffe98e50",
+      "failed_test_names": [
+        "test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals"
+      ],
+      "deselected": 4,
+      "harness_invoked_on_host": false,
+      "native_agent_required": true,
+      "service_tests_enabled": false,
+      "msi_tests_enabled": false,
+      "deselected_tests": [
+        "tests/test_controls_sandbox.py::test_plan_has_verified_policies_and_never_accepts_unobserved_hardware",
+        "tests/test_controls_sandbox.py::test_host_is_refused_before_writes_even_with_system_or_vm_flags"
+      ],
+      "coverage_percent": 88.57559552746719,
+      "full_suite_green": false
+    },
+    "rust_passed": 225,
+    "native_inventory_isolated_repeat": {
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 76.036,
+      "junit_sha256": "11678b04cba01c129626fca860f3d251ae2ca73e424575253fa0944dc4cc3cdf",
+      "failed_test_names": []
+    },
+    "panel_passed": 102,
+    "cargo_fmt": "passed",
+    "cargo_clippy_all_targets_deny_warnings": "passed",
+    "cargo_release": "passed",
+    "panel_lint": "passed",
+    "panel_typecheck": "passed",
+    "changed_test_ruff": "passed",
+    "full_ruff": {
+      "status": "failed",
+      "unchanged_finding": "deploy/linux/build_package.py:123 S603"
+    }
+  },
+  "adapter_source_sha256": "9147f1617faa939ecdb02785e6f259adfc76f55f60a2c8e05725dcaa5573bcc0",
+  "native_agent_sha256": "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2",
+  "new_catalog_argument_embedded": true,
+  "isolated_guest_comparison": {
+    "source_revision": "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+    "report": "validation/vm-applications-fixed-2100dd7-catalog-comparison-2026-10-29.json",
+    "new_ci_policy_ms": 2663,
+    "complete_private_pipeline_ms": 8225,
+    "eight_exact_checks_passed": true,
+    "all_14_policy_ids_unchanged": true,
+    "os_policy_loaded": false,
+    "full_ack_acceptance": false
+  },
+  "prior_real_round": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+  "normal_signature_and_post_copy_hash_checks_kept": true,
+  "xml_identity_scope_guards_kept": true,
+  "system_catalogs_not_modified": true,
+  "publisher_name_path_multiple_rules_unchanged": true,
+  "ack_deadline_seconds": 90,
+  "adapter_deadline_seconds": 120,
+  "deadlines_changed": false,
+  "acceptance_harness_changed": false,
+  "antivirus_or_tls_changed": false,
+  "new_source_installed_on_host": false,
+  "new_source_guest_acceptance": "pending ACCEPT-WDAC-40 in clean UID 2 with exact 959e9de ISO",
+  "host_inventory_limitation": "Full suite hit unchanged 90-second timeout; isolated repeat passed. Inventory code was not modified. Do not report the full suite as green.",
+  "previous_packages_overwritten": false,
+  "coverage_gate": "pending per-module thresholds; aggregate alone does not establish them",
+  "package_report": "validation/windows-wdac-catalog-package-2026-10-29.json",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "package_prepared_and_verified": true
+}

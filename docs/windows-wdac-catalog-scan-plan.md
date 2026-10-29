@@ -2,8 +2,8 @@
 
 Status: isolated comparison 39 completed successfully after the operator said
 "continue" on 2026-10-29. The operator then explicitly approved integrating the
-concrete single-hash patch below with TDD. No product source has changed since
-2100dd7 yet.
+concrete single-hash patch below with TDD. Integration committed as 959e9de;
+separate frozen package prepared. Real acceptance pending ACCEPT-WDAC-40.
 
 ## Confirmed observations
 
@@ -126,3 +126,16 @@ Risk: catalog lookup can affect metadata, so this stays limited to the validated
 single-hash case; publisher/name/multiple rules remain unchanged. Require the
 unchanged real 90-second ACK deadline and actual pre-execution denial. No bypass
 of TLS, antivirus, signature validation or tamper protection; no push/PR/CI.
+
+## Integration and delivery record
+
+- Red b26708b: 1 failure/58 passes; green adapters 59/59. Product 959e9de.
+- Complete Python suite: 1,159 passes, one unchanged native-inventory timeout at
+  90 seconds, 58 skips/four whole-harness cases deselected. Isolated repeat passed
+  in 77.14 seconds; full suite is not reported green. Rust 225/panel 102 and
+  fmt/Clippy/lint/typecheck/release passed. Existing Ruff/coverage gates remain.
+- Validation: `validation/windows-wdac-catalog-fix-2026-10-29.json`.
+  Package: `validation/windows-wdac-catalog-package-2026-10-29.json`.
+- `openems-controls-fixed-959e9de.iso`, source frozen at 959e9de, requires clean
+  snapshot UID 2 and ACCEPT-WDAC-40. All previous inputs preserved. This next
+  run is full acceptance; no additional generation-only collector requested.
