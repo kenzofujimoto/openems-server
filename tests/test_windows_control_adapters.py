@@ -171,7 +171,7 @@ def test_wdac_scans_only_current_copies_once_for_multiple_rules(tmp_path):
     }
 
 
-@pytest.mark.parametrize("scenario", ["drivers_empty", "drivers_kernel", "drivers_unrelated", "drivers_duplicate"])
+@pytest.mark.parametrize("scenario", ["drivers_empty", "drivers_kernel", "drivers_unrelated", "drivers_duplicate", "drivers_conflicting"])
 def test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
     result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))

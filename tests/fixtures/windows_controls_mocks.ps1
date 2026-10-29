@@ -186,8 +186,9 @@ function Get-SystemDriver {
     $drivers=New-Object 'Collections.Generic.List[object]'
     if($fixture.scenario -ne 'drivers_empty') {
         foreach($file in $files) {
-            $path=if($fixture.scenario -eq 'drivers_unrelated') {Join-Path $script:fixtureRoot 'unrelated.exe'} else {$file.FullName}
-            $drivers.Add([pscustomobject]@{FilePath=$path;FriendlyName=$path;UserMode=($fixture.scenario -ne 'drivers_kernel')})
+            $path=if($fixture.scenario -in @('drivers_unrelated','drivers_conflicting')) {Join-Path $script:fixtureRoot 'unrelated.exe'} else {$file.FullName}
+            $friendly=if($fixture.scenario -eq 'drivers_conflicting') {$file.FullName} else {$path}
+            $drivers.Add([pscustomobject]@{FilePath=$path;FriendlyName=$friendly;UserMode=($fixture.scenario -ne 'drivers_kernel')})
             if($fixture.scenario -eq 'drivers_duplicate') { $drivers.Add([pscustomobject]@{FilePath=$path;FriendlyName=$path;UserMode=$true}) }
         }
     }
