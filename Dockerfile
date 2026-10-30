@@ -27,11 +27,12 @@ COPY --from=panel /app/panel_dist ./app/panel_dist
 # Shared policy, categories and uninstall-code modules must ship together.
 COPY agent ./agent
 COPY tools/update_categories.py ./tools/update_categories.py
+COPY tools/update_app_catalog.py ./tools/update_app_catalog.py
 # No package installer remains in the runtime layer. A new named volume copies this owner,
 # so the daily category job can publish as the unprivileged user.
 RUN /usr/local/bin/python -m pip uninstall -y pip \
     && useradd --system --uid 10001 --no-create-home openems \
-    && mkdir -p /var/lib/openems/categories && chown 10001:10001 /var/lib/openems/categories
+    && mkdir -p /var/lib/openems/categories /var/lib/openems/app-catalog && chown 10001:10001 /var/lib/openems/categories /var/lib/openems/app-catalog
 USER 10001:10001
 EXPOSE 8013
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
