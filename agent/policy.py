@@ -508,8 +508,11 @@ def _validate_usb(settings: object) -> None:
 def _validate_app_extensions(settings: dict[str, Any]) -> None:
     if "execution_rules" in settings:
         for rule in _control_rules(settings["execution_rules"]):
-            if set(rule) - {"id", "kind", "value", "sample_path"}:
+            if set(rule) - {"id", "kind", "value", "sample_path", "if_present"}:
                 raise ValueError("unsupported application rule field")
+            # Catalog rules apply only on machines where the application exists.
+            if "if_present" in rule and not isinstance(rule["if_present"], bool):
+                raise ValueError("if_present must be true or false")
             kind = rule.get("kind")
             value = _control_text(rule.get("value"), 2048)
             if kind == "hash":

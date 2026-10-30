@@ -138,7 +138,14 @@ fn present_only_rules_are_skipped_without_a_local_sample_while_strict_rules_stil
     .unwrap();
     let resolved = resolve_rules(&policy, &[application()]).unwrap();
     assert_eq!(resolved.iter().map(|rule| rule.id.as_str()).collect::<Vec<_>>(), ["catalog-b"]);
-    let strict = validate(Some(&json!({"execution_rules":[{"id":"a", "kind":"publisher", "value":"CN=Absent Vendor"}]}))).unwrap();
+    let strict =
+        validate(Some(&json!({"execution_rules":[{"id":"a", "kind":"publisher", "value":"CN=Absent Vendor"}]})))
+            .unwrap();
     assert!(resolve_rules(&strict, &[application()]).is_err());
-    assert!(validate(Some(&json!({"execution_rules":[{"id":"a", "kind":"publisher", "value":"CN=X", "if_present":"yes"}]}))).is_err());
+    assert!(
+        validate(Some(
+            &json!({"execution_rules":[{"id":"a", "kind":"publisher", "value":"CN=X", "if_present":"yes"}]})
+        ))
+        .is_err()
+    );
 }

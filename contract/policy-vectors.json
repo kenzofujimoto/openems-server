@@ -2935,6 +2935,12 @@
               "id": "c",
               "kind": "publisher",
               "value": "Example Publisher"
+            },
+            {
+              "id": "catalog-d",
+              "kind": "publisher",
+              "value": "Catalog Vendor",
+              "if_present": true
             }
           ],
           "network_blocked": [
@@ -2961,6 +2967,12 @@
               "id": "c",
               "kind": "publisher",
               "value": "Example Publisher"
+            },
+            {
+              "id": "catalog-d",
+              "kind": "publisher",
+              "value": "Catalog Vendor",
+              "if_present": true
             }
           ],
           "network_blocked": [
@@ -2978,6 +2990,21 @@
               "id": "a",
               "kind": "hash",
               "value": "bad"
+            }
+          ]
+        }
+      },
+      "error": true
+    },
+    {
+      "input": {
+        "app_control": {
+          "execution_rules": [
+            {
+              "id": "a",
+              "kind": "publisher",
+              "value": "X",
+              "if_present": "yes"
             }
           ]
         }

@@ -143,9 +143,11 @@ VALIDATE: list[Any] = [
     {"app_control": {"execution_rules": [
         {"id": "a", "kind": "hash", "value": "AB" * 32, "sample_path": r"C:\Apps\a.exe"},
         {"id": "b", "kind": "name", "value": "Example.EXE"},
-        {"id": "c", "kind": "publisher", "value": "Example Publisher"}],
+        {"id": "c", "kind": "publisher", "value": "Example Publisher"},
+        {"id": "catalog-d", "kind": "publisher", "value": "Catalog Vendor", "if_present": True}],
         "network_blocked": [r"C:\Apps\a.exe", r"C:\Apps\a.exe"]}},
     {"app_control": {"execution_rules": [{"id": "a", "kind": "hash", "value": "bad"}]}},
+    {"app_control": {"execution_rules": [{"id": "a", "kind": "publisher", "value": "X", "if_present": "yes"}]}},
     {"app_control": {"execution_rules": [{"id": "a", "kind": "name", "value": "../bad.exe"}]}},
     {"app_control": {"execution_rules": [{"id": "a", "kind": "path", "value": "relative.exe"}]}},
     {"app_control": {"network_blocked": [r"\\server\share\app.exe"]}},

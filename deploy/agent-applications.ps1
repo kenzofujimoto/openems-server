@@ -29,6 +29,11 @@ function Save-State {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
     }
 }
+function Set-StateField([string]$Name, $Value) {
+    # Journals written before a field existed are upgraded in place.
+    if ($null -eq $script:state.PSObject.Properties[$Name]) { $script:state | Add-Member -NotePropertyName $Name -NotePropertyValue $Value }
+    else { $script:state.$Name = $Value }
+}
 function Get-Application([string]$Path, [bool]$Running, [string]$Name, [string]$Version) {
     $hash = ''; $publisher = ''; $valid = $false; $original = ''
     if ($Path -and (Test-Path -LiteralPath $Path -PathType Leaf)) {
@@ -106,9 +111,11 @@ function Resolve-Samples($Policy) {
             }) | Select-Object -First 1
             if ($null -ne $found) { $sample = $found.path }
         }
-        if (-not $sample) { throw 'OPENEMS_SAMPLE_REQUIRED' }
+        # Catalog rules apply only where the application exists; explicit rules still require their sample.
+        $optional = [bool](Field $rule 'if_present' $false)
+        if (-not $sample) { if ($optional) { continue }; throw 'OPENEMS_SAMPLE_REQUIRED' }
         $sample = Safe-Path $sample
-        if (-not (Test-Path -LiteralPath $sample -PathType Leaf)) { throw 'OPENEMS_SAMPLE_REQUIRED' }
+        if (-not (Test-Path -LiteralPath $sample -PathType Leaf)) { if ($optional) { continue }; throw 'OPENEMS_SAMPLE_REQUIRED' }
         $copied += (Get-Item -LiteralPath $sample -ErrorAction Stop).Length
         if ($copied -gt 134217728) { throw 'OPENEMS_SAMPLE_SIZE_LIMIT' }
         # Work on a protected copy so later user writes cannot change which image is denied.
@@ -292,9 +299,28 @@ try {
         try { $digest = ([BitConverter]::ToString($hasher.ComputeHash([Text.Encoding]::UTF8.GetBytes($serialized)))).Replace('-','').ToLowerInvariant() }
         finally { $hasher.Dispose() }
         $active = Own-Policy
-        if (-not ($script:state.execution_digest -eq $digest -and $null -ne $active -and ([string]$active.IsEnforced -ieq 'true'))) {
+        $enforced = $null -ne $active -and ([string]$active.IsEnforced -ieq 'true')
+        # Present-only catalog rules are re-resolved hourly so an application installed later gets denied.
+        $optional = @($execution | Where-Object { [bool](Field $_ 'if_present' $false) }).Count -gt 0
+        $presentBefore = [string](Field $script:state 'present_rules' '')
+        # Unix seconds: PS 5.1 ConvertFrom-Json would turn an ISO string into a local DateTime.
+        $checked = [long](Field $script:state 'optional_checked_at' 0)
+        $recheck = $optional -and ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $checked) -ge 3600
+        $current = $script:state.execution_digest -eq $digest -and ($enforced -or ($optional -and -not $presentBefore -and $null -eq $active))
+        $samples = @()
+        if (-not $current -or $recheck) {
             if ($null -ne $active -and (-not $script:state.wdac_owned -or [string]$active.FriendlyName -cne 'openems application control')) { throw 'OPENEMS_EXTERNAL_POLICY_CHANGE' }
             $samples = @(Resolve-Samples $request.policy)
+            $present = (@($samples | ForEach-Object { [string]$_.id }) | Sort-Object) -join ','
+            if ($optional) { Set-StateField 'optional_checked_at' ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) }
+            if ($current -and $present -ceq $presentBefore) { Save-State; $samples = @() }
+            elseif ($samples.Count -eq 0) {
+                # Every rule was present-only and absent here: no policy, nothing to deny.
+                Remove-Wdac
+                $script:state.execution_digest = $digest; Set-StateField 'present_rules' ''; Save-State
+            } else { Set-StateField 'present_rules' $present }
+        }
+        if ($samples.Count) {
             $consoleOut = [Console]::Out
             try {
                 # ConfigCI writes directly to Console.Out, outside PowerShell's redirectable streams.
@@ -416,7 +442,9 @@ try {
     }
     $script:state.firewall = @($desired)
     if ($script:state.wdac_owned) { $events += @(Execution-Events) }
-    if ($script:state.wdac_owned -or $desired.Count) { Save-State }
+    # Present-only rules keep the journal so the hourly re-check is remembered while nothing is owned.
+    $presentOnly = @($execution | Where-Object { [bool](Field $_ 'if_present' $false) }).Count -gt 0
+    if ($script:state.wdac_owned -or $desired.Count -or $presentOnly) { Save-State }
     else { Remove-Item -LiteralPath $request.state_path -Force -ErrorAction SilentlyContinue }
     $capabilities = @('app-control:network')
     if (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\CiTool.exe')) { $capabilities += 'app-control:wdac' }

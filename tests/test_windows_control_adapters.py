@@ -487,8 +487,28 @@ def test_present_only_rules_keep_the_present_sample_and_strict_rules_still_fail(
     assert_success(invoke_adapter(directory, "applications", request))
     generated = [call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicyRule"]
     assert len(generated) == 1 and generated[0]["level"] == "Publisher"
+    (tmp_path / "strict").mkdir()
     strict = fixture_environment(tmp_path / "strict")
     request = wdac_request(strict, "publisher")
     request["policy"]["execution_rules"][0]["sample_path"] = str(strict / "absent.exe")
     result = invoke_adapter(strict, "applications", request)
     assert result.returncode == 1 and json.loads(result.stdout) == {"error": "control_failed"}
+
+
+def test_present_only_rules_are_rechecked_hourly_so_later_installs_get_denied(tmp_path):
+    directory = fixture_environment(tmp_path, scenario="requires_driver_files")
+    request = wdac_request(directory, "publisher")
+    later = directory / "later.exe"
+    request["policy"]["execution_rules"] = [{"id": "catalog-later", "kind": "publisher", "value": "CN=Fixture Publisher",
+                                             "sample_path": str(later), "if_present": True}]
+    assert_success(invoke_adapter(directory, "applications", request))
+    later.write_bytes(b"installed later; never executable")
+    assert_success(invoke_adapter(directory, "applications", request))
+    assert not any(call["name"] == "New-CIPolicyRule" for call in calls(directory)), "a fresh check must not redo heavy work"
+    journal = directory / "application-control.json"
+    state = json.loads(journal.read_text(encoding="utf-8-sig"))
+    state["optional_checked_at"] = 0
+    journal.write_text(json.dumps(state), encoding="utf-8")
+    assert_success(invoke_adapter(directory, "applications", request))
+    assert [call["detail"]["level"] for call in calls(directory) if call["name"] == "New-CIPolicyRule"] == ["Publisher"]
+    assert (directory / "active-policy.json").exists()

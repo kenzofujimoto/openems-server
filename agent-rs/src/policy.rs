@@ -499,8 +499,12 @@ fn validate_app_extensions(settings: &mut Map<String, Value>) -> Result<()> {
         control_rule_ids(rules)?;
         for rule in rules {
             let rule = rule.as_object_mut().ok_or_else(|| invalid("application rule must be an object"))?;
-            if rule.keys().any(|key| !["id", "kind", "value", "sample_path"].contains(&key.as_str())) {
+            if rule.keys().any(|key| !["id", "kind", "value", "sample_path", "if_present"].contains(&key.as_str())) {
                 return Err(invalid("unsupported application rule field"));
+            }
+            // Catalog rules apply only on machines where the application exists.
+            if rule.get("if_present").is_some_and(|value| !value.is_boolean()) {
+                return Err(invalid("if_present must be true or false"));
             }
             let value = control_text(rule.get("value").unwrap_or(&Value::Null), 2048)?.to_owned();
             match rule.get("kind").and_then(Value::as_str) {
