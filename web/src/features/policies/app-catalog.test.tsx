@@ -78,3 +78,23 @@ describe("application catalog", () => {
     expect(writes[0]).not.toHaveProperty("app_catalog");
   });
 });
+
+describe("application catalog network and process decisions", () => {
+  afterEach(() => { window.sessionStorage.clear(); });
+  it("offers network blocking and keeps generated processes and paths out of the manual lists", async () => {
+    const writes = backend({ app_control: { blocked: ["manual.exe", "steam.exe"], network_blocked: ["C:\\Manual\\tool.exe", "C:\\Torrent\\qbittorrent.exe"] },
+      app_catalog: { actions: { "category:games": "block" }, generated: { processes: ["steam.exe"], network: ["C:\\Torrent\\qbittorrent.exe"] } } });
+    const user = userEvent.setup();
+    renderApp("/policies/apps");
+    const section = await screen.findByRole("region", { name: "Catálogo de aplicativos" });
+    await within(section).findByText(/377 apps/);
+    expect(screen.getByLabelText("Processos a encerrar")).toHaveValue("manual.exe");
+    expect(screen.getByLabelText("Aplicativos sem acesso à rede")).toHaveValue("C:\\Manual\\tool.exe");
+    await user.click(within(section).getByRole("radio", { name: "Bloquear rede P2P e torrent" }));
+    await user.click(screen.getByRole("button", { name: "Publicar política" }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.app_catalog).toEqual({ actions: { "category:games": "block", "category:p2p": "block_network" },
+      generated: { processes: ["steam.exe"], network: ["C:\\Torrent\\qbittorrent.exe"] } });
+    expect(writes[0]?.app_control).toMatchObject({ blocked: ["manual.exe"], network_blocked: ["C:\\Manual\\tool.exe"] });
+  });
+});
