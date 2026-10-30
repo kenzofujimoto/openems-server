@@ -466,3 +466,29 @@ def test_usb_inventory_serial_remains_usable_as_a_policy_selector(tmp_path, wmi_
     result = assert_success(invoke_adapter(directory, "usb", {"mode": "inventory"}))
     assert result["inventory"][0]["serial"] == expected
     assert calls(directory) == [], "serial selection must not mutate Windows state"
+
+
+def test_present_only_rule_without_a_local_sample_succeeds_without_deploying_wdac(tmp_path):
+    directory = fixture_environment(tmp_path)
+    request = wdac_request(directory, "publisher")
+    request["policy"]["execution_rules"] = [{"id": "catalog-absent", "kind": "publisher", "value": "CN=Absent Vendor",
+                                             "sample_path": str(directory / "absent.exe"), "if_present": True}]
+    assert_success(invoke_adapter(directory, "applications", request))
+    assert not any(call["name"] in {"Get-SystemDriver", "New-CIPolicy", "New-CIPolicyRule", "Merge-CIPolicy"} for call in calls(directory))
+    assert not (directory / "active-policy.json").exists()
+
+
+def test_present_only_rules_keep_the_present_sample_and_strict_rules_still_fail(tmp_path):
+    directory = fixture_environment(tmp_path, scenario="requires_driver_files")
+    request = wdac_request(directory, "publisher")
+    request["policy"]["execution_rules"][0]["if_present"] = True
+    request["policy"]["execution_rules"].append({"id": "catalog-absent", "kind": "publisher", "value": "CN=Absent Vendor",
+                                                 "sample_path": str(directory / "absent.exe"), "if_present": True})
+    assert_success(invoke_adapter(directory, "applications", request))
+    generated = [call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicyRule"]
+    assert len(generated) == 1 and generated[0]["level"] == "Publisher"
+    strict = fixture_environment(tmp_path / "strict")
+    request = wdac_request(strict, "publisher")
+    request["policy"]["execution_rules"][0]["sample_path"] = str(strict / "absent.exe")
+    result = invoke_adapter(strict, "applications", request)
+    assert result.returncode == 1 and json.loads(result.stdout) == {"error": "control_failed"}
