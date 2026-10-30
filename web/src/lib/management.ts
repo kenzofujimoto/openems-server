@@ -28,6 +28,20 @@ export function usePublishProfile() {
   });
 }
 
+export const appCatalogSchema = z.object({
+  available: z.boolean(), version: z.string().nullable(), attribution: z.string(),
+  categories: z.array(z.object({ id: z.string(), label: z.string(), apps: z.number().int(), observed_endpoints: z.number().int() })),
+  observed: z.record(z.string(), z.number().int()),
+});
+export const catalogAppSchema = z.object({ id: z.string(), name: z.string(), vendor: z.string(), category: z.string().nullable(), blockable: z.boolean(), observed_endpoints: z.number().int() });
+export type CatalogApp = z.infer<typeof catalogAppSchema>;
+export function useAppCatalog() {
+  return useQuery({ queryKey: ["app-catalog"], queryFn: () => apiFetch("/api/v1/app_catalog", appCatalogSchema) });
+}
+export function useAppCatalogSearch(query: string) {
+  const q = query.trim();
+  return useQuery({ queryKey: ["app-catalog-search", q], queryFn: () => apiFetch(`/api/v1/app_catalog/search?${new URLSearchParams({ q })}`, z.array(catalogAppSchema)), enabled: q.length >= 2 });
+}
 export function useInventory(devid: string) {
   return useQuery({ queryKey: ["inventory", devid], queryFn: () => apiFetch(`/api/v1/endpoints/inventory?${new URLSearchParams({ devid })}`, inventorySchema), enabled: Boolean(devid) });
 }
@@ -37,7 +51,11 @@ export const ruleSchema = z.object({ id: z.string(), target_vdom: z.string(), pr
 export type AssignmentRule = z.infer<typeof ruleSchema>;
 export type Condition = z.infer<typeof conditionSchema>;
 export function useAssignmentRules() { return useQuery({ queryKey: ["assignment-rules"], queryFn: () => apiFetch("/api/v1/assignment_rules", z.array(ruleSchema)) }); }
-export function useSaveAssignmentRule() {
+/** Moving one machine is a hostname rule at priority 1, so it always wins over broader group rules. */
+export function moveEndpointRule(hostname: string, vdom: string): AssignmentRule {
+  return { id: `endpoint-${hostname.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`, target_vdom: vdom, priority: 1, enabled: true,
+    conditions: [{ field: "hostname", op: "equals", value: hostname }] };
+}export function useSaveAssignmentRule() {
   const client = useQueryClient();
   return useMutation({ mutationFn: (rule: AssignmentRule) => apiFetch("/api/v1/assignment_rules", z.unknown(), { method: "POST", json: rule }), onSuccess: async () => { await Promise.all([client.invalidateQueries({ queryKey: ["assignment-rules"] }), client.invalidateQueries({ queryKey: ["endpoints"] })]); } });
 }

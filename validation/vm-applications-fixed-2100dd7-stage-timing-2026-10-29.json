@@ -1,0 +1,109 @@
+﻿{
+    "source_revision":  "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+    "started_utc":  "2026-10-29T14:22:33.8241304Z",
+    "status":  "completed",
+    "stage":  "complete",
+    "context":  "SYSTEM",
+    "controls_modified":  false,
+    "policy_loading_included":  false,
+    "generation_repeated":  false,
+    "artifact_times":  [
+                           {
+                               "role":  "original_fixture",
+                               "leaf":  "OpenemsFixture.exe",
+                               "created_utc":  "2026-10-29T13:57:11.3610630Z",
+                               "modified_utc":  "2026-10-29T13:57:11.3633954Z",
+                               "directory":  false,
+                               "bytes":  4608,
+                               "sha256":  "81a8b254570213d105f3d2db17b4f400e71e9276b02004a0fb8d637c9a1ac019"
+                           },
+                           {
+                               "role":  "application_directory",
+                               "leaf":  "app-control-54bb64dc-9e2e-418b-bbaf-e5b1610efd81",
+                               "created_utc":  "2026-10-29T13:57:57.5733979Z",
+                               "modified_utc":  "2026-10-29T13:57:57.5733979Z",
+                               "directory":  true
+                           },
+                           {
+                               "role":  "application_directory",
+                               "leaf":  "app-control-8ec26af7-7af2-4df1-8398-84f05335bd31",
+                               "created_utc":  "2026-10-29T13:59:32.4835197Z",
+                               "modified_utc":  "2026-10-29T14:01:09.6050737Z",
+                               "directory":  true
+                           },
+                           {
+                               "role":  "policy_artifact",
+                               "leaf":  "allow-all.xml",
+                               "created_utc":  "2026-10-29T14:01:09.3637283Z",
+                               "modified_utc":  "2024-04-01T07:22:43.7787038Z",
+                               "directory":  false,
+                               "bytes":  2380,
+                               "sha256":  "364053e44f77a4983d17f8fb12e1271747e9b82e373b4e7d98bc1ee2a9344c2d"
+                           },
+                           {
+                               "role":  "policy_artifact",
+                               "leaf":  "hash-ae888cc3ad4d464b951b577f387103ba.xml",
+                               "created_utc":  "2026-10-29T14:01:08.4594169Z",
+                               "modified_utc":  "2026-10-29T14:01:09.3562736Z",
+                               "directory":  false,
+                               "bytes":  2721,
+                               "sha256":  "b923f459a7ac47371c50099a82228e028774f81b93ca930eea7320bd90cfcfe0"
+                           },
+                           {
+                               "role":  "policy_artifact",
+                               "leaf":  "policy.xml",
+                               "created_utc":  "2026-10-29T14:01:09.4384190Z",
+                               "modified_utc":  "2026-10-29T14:01:09.5885370Z",
+                               "directory":  false,
+                               "bytes":  3734,
+                               "sha256":  "a93a528682aec46af74f342e96c5fbeb2734492862e241e1cac1bd4ceb9ab9f8"
+                           },
+                           {
+                               "role":  "policy_artifact",
+                               "leaf":  "{8ec26af7-7af2-4df1-8398-84f05335bd31}.cip",
+                               "created_utc":  "2026-10-29T14:01:09.6050737Z",
+                               "modified_utc":  "2026-10-29T14:01:09.6941742Z",
+                               "directory":  false,
+                               "bytes":  1248,
+                               "sha256":  "e8625604a7f2ba1eed732c16403784352e890b9e0fa3b865f9d4684253b39148"
+                           },
+                           {
+                               "role":  "private_sample_directory",
+                               "leaf":  "samples-d717dbfeb3c543f79121f778366e5a33",
+                               "created_utc":  "2026-10-29T13:59:32.8042684Z",
+                               "modified_utc":  "2026-10-29T13:59:32.8194670Z",
+                               "directory":  true
+                           },
+                           {
+                               "role":  "private_sample",
+                               "leaf":  "e564f278327c4236acf3c267f607c030.exe",
+                               "created_utc":  "2026-10-29T13:59:32.8194670Z",
+                               "modified_utc":  "2026-10-29T13:57:11.3633954Z",
+                               "directory":  false,
+                               "bytes":  4608,
+                               "sha256":  "81a8b254570213d105f3d2db17b4f400e71e9276b02004a0fb8d637c9a1ac019"
+                           }
+                       ],
+    "signature_measurements":  [
+                                   {
+                                       "role":  "original",
+                                       "status":  "NotSigned",
+                                       "elapsed_ms":  276,
+                                       "cpu_ms":  172,
+                                       "file_hash_unchanged":  true
+                                   },
+                                   {
+                                       "role":  "private_copy",
+                                       "status":  "NotSigned",
+                                       "elapsed_ms":  5,
+                                       "cpu_ms":  0,
+                                       "file_hash_unchanged":  true
+                                   }
+                               ],
+    "error_type":  null,
+    "fixture_sha256":  "81a8b254570213d105f3d2db17b4f400e71e9276b02004a0fb8d637c9a1ac019",
+    "original_production_timing_not_replayed":  true,
+    "signature_queries_use_existing_files_and_normal_validation":  true,
+    "finished_utc":  "2026-10-29T14:22:36.3220369Z",
+    "elapsed_ms":  2476
+}

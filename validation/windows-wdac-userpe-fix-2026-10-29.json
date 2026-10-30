@@ -1,0 +1,157 @@
+{
+  "date": "2026-10-29",
+  "branch": "fix/windows-control-adapters",
+  "source_revision": "ad3e6d42da1addae87284876dec64d806db3dfad",
+  "scope": "Verified private sample enumeration and real user-mode DriverFile selection; no deadline or acceptance harness changes",
+  "tdd": {
+    "red_commit": "1c49c2541ddf6e72057051603271ac79f006ed01",
+    "red": {
+      "passed": 32,
+      "failed": 8,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 62.795,
+      "junit_sha256": "7b0a9f65fbe972e2831dc30d0809ef9b3e5b582d5e4b7ba3442faf31b3161e2b",
+      "failed_test_names": [
+        "test_wdac_uses_verified_explicit_user_pe_driver_files[hash]",
+        "test_wdac_uses_verified_explicit_user_pe_driver_files[publisher]",
+        "test_wdac_uses_verified_explicit_user_pe_driver_files[name]",
+        "test_wdac_scans_only_current_copies_once_for_multiple_rules",
+        "test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples[drivers_empty]",
+        "test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples[drivers_kernel]",
+        "test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples[drivers_unrelated]",
+        "test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples[drivers_duplicate]"
+      ]
+    },
+    "conflicting_identity_red_commit": "b8f0eda38251f18eac1af406f6127099ed4e3e22",
+    "conflicting_identity_red": {
+      "passed": 4,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 5.542,
+      "junit_sha256": "e358416b8af34ee99fbfadeb6100c0b70057697095932f241231db1f6ef9e9e0",
+      "failed_test_names": [
+        "test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples[drivers_conflicting]"
+      ]
+    },
+    "path_alias_coverage_commit": "faa4e5aba79721c57c3e68fdc5495a7f23c6e0ad",
+    "green": {
+      "passed": 43,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 64.665,
+      "junit_sha256": "94f168eda483ab2cf4cf0692142abace009c1a3da0b2d7b6dd99511c19175530",
+      "failed_test_names": []
+    },
+    "windows_control_tests_mocked": true
+  },
+  "host_checks": {
+    "python": {
+      "passed": 1144,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 58,
+      "seconds": 415.181,
+      "junit_sha256": "1ad15b63538f5e8d3660c443c268c7b065845ff09595d21012b09878c60832e0",
+      "failed_test_names": [],
+      "deselected": 4,
+      "deselected_tests": [
+        "tests/test_controls_sandbox.py::test_plan_has_verified_policies_and_never_accepts_unobserved_hardware",
+        "tests/test_controls_sandbox.py::test_host_is_refused_before_writes_even_with_system_or_vm_flags"
+      ],
+      "harness_invoked_on_host": false,
+      "service_tests_enabled": false,
+      "msi_tests_enabled": false,
+      "native_agent_required": true,
+      "native_agent_sha256": "68d3ebe5481f7bfae3cde2ea3486254a12af796fce3be64557ccf4a76efaa4fb",
+      "coverage_percent": 88.57559552746719
+    },
+    "rust_passed": 225,
+    "rust_failed": 0,
+    "cargo_fmt": "passed",
+    "cargo_clippy_all_targets_deny_warnings": "passed",
+    "cargo_release": "passed",
+    "panel_passed": 102,
+    "panel_lint": "passed",
+    "panel_typecheck": "passed",
+    "changed_test_ruff": "passed",
+    "full_ruff": {
+      "status": "failed",
+      "unchanged_finding": "deploy/linux/build_package.py:123 S603"
+    }
+  },
+  "guest_generation_comparison": {
+    "source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
+    "report": "validation/vm-applications-fixed-918aba2-userpes-expanded-2026-10-29.json",
+    "report_sha256": "730f0481488fdd36749535232c864773ba463780a011290873874a4575a13752",
+    "fixture_sha256": "d8e87c5d1bbe82cdb17b09472e31f04200097dd5daaf6d744dfacfd371363a2d",
+    "real_user_mode_deny_rules": 4,
+    "private_xml_and_cip_generated": true,
+    "policy_ids_before_after_equal": true,
+    "policy_count": 14,
+    "elapsed_ms": 97826,
+    "get_system_driver_ms": 90125,
+    "within_120_second_probe": true,
+    "within_90_second_ack_deadline": false,
+    "os_policy_loaded": false,
+    "agent_installed_by_comparison": false,
+    "enforcement_acceptance": false,
+    "new_adapter_executed_in_guest": false
+  },
+  "next_comparison": {
+    "plan": "docs/windows-wdac-latency-plan.md",
+    "operator_approved": true,
+    "helper_sha256": "4a8ac4bcf8a8c6e4d8eced11e0015b28164200db9eef9eeb207b5f5efaa41711",
+    "shortcut": "34 - Compare direct WDAC policy generation inside VM as administrator",
+    "result": "fixed-918aba2/wdac-direct-policy-probe.json",
+    "status": "completed; seven scope checks passed but normalized options differ",
+    "host_preparation_checks": "PowerShell 5.1 parser and six pure XML/scope checks passed; ConfigCI and controller not executed on host",
+    "policy_loading_allowed": false,
+    "deadline_seconds": 120,
+    "ack_deadline_seconds": 90,
+    "report": "validation/vm-applications-fixed-918aba2-direct-policy-2026-10-29.json",
+    "report_sha256": "60b0770c3e962f6fcc9ae872460dd18f444cb2cbaf71b6be2238d5a8b19c9e56",
+    "elapsed_ms": 77632,
+    "new_ci_policy_scan_ms": 72092,
+    "process_cpu_ms": 51781,
+    "correctness_validated": false,
+    "extra_candidate_option": "12 Required:Enforce Store Applications",
+    "policy_ids_unchanged": true,
+    "full_ack_feasibility_not_proven": true,
+    "counters_note": "Legacy DriverFile/Rule counters are unused by direct XML generation; four deny rules verified in XML summaries.",
+    "private_normalization_followup": {
+      "shortcut": "35 - Normalize saved WDAC XML only inside VM as administrator",
+      "helper_sha256": "d0eb592c11b2038d82827b2d4b24b0cf18011a7a495e516751707101b758e8c2",
+      "result": "fixed-918aba2/wdac-direct-options-probe.json",
+      "status": "completed; all eight strict checks passed",
+      "scan_repeated": false,
+      "os_policy_loading_allowed": false,
+      "agent_installation_allowed": false,
+      "host_checks": "PowerShell 5.1 parser and six pure XML/scope checks passed without ConfigCI or controller execution",
+      "same_approved_normalization_scope_and_strict_validation": true,
+      "report": "validation/vm-applications-fixed-918aba2-direct-options-2026-10-29.json",
+      "report_sha256": "7f2035e14b1e50694805dfd05c727328483a8962618a9306fa487bf2b2fc9617",
+      "correctness_validated": true,
+      "elapsed_ms": 1968,
+      "policy_ids_unchanged": true
+    },
+    "production_followup": {
+      "source_revision": "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+      "validation_report": "validation/windows-wdac-direct-fix-2026-10-29.json",
+      "package_report": "validation/windows-wdac-direct-package-2026-10-29.json",
+      "guest_acceptance": "pending shortcut 36 in clean UID 2 snapshot",
+      "scope": "one verified hash rule only; other rule paths preserved"
+    }
+  },
+  "new_msi_or_iso_created": false,
+  "previous_inputs_or_reports_overwritten": false,
+  "wdac_acceptance": "pending",
+  "usb_acceptance": "failed",
+  "usb_normal_removal": "passed; release ACK v7 and MSI exit 0, including PENMACK read/write/delete",
+  "coverage_gate": "pending; aggregate coverage does not establish all per-module thresholds",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false
+}

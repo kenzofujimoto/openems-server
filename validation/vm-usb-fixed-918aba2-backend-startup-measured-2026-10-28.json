@@ -1,0 +1,42 @@
+﻿{
+    "started_utc":  "2026-10-29T02:51:41.9092251Z",
+    "status":  "completed",
+    "context":  "SYSTEM",
+    "controls_modified":  false,
+    "agent_installed":  false,
+    "stage":  "loopback_request",
+    "job_observations":  [
+                             {
+                                 "state":  "Running",
+                                 "child_state":  "NotStarted",
+                                 "elapsed_ms":  2041
+                             },
+                             {
+                                 "state":  "Running",
+                                 "child_state":  "NotStarted",
+                                 "elapsed_ms":  4141
+                             },
+                             {
+                                 "state":  "Running",
+                                 "child_state":  "Running",
+                                 "elapsed_ms":  6196
+                             },
+                             {
+                                 "state":  "Running",
+                                 "child_state":  "Running",
+                                 "elapsed_ms":  8230
+                             }
+                         ],
+    "job_error_types":  [
+
+                        ],
+    "ready_within_acceptance_20_seconds":  true,
+    "ready_elapsed_ms":  8238,
+    "http_status":  204,
+    "error_type":  null,
+    "os_version":  "10.0.26300.0",
+    "baseline_wmi_included":  false,
+    "port_18017_listener_count":  0,
+    "finished_utc":  "2026-10-29T02:51:50.7627528Z",
+    "elapsed_ms":  8857
+}

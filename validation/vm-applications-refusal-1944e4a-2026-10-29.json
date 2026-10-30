@@ -1,0 +1,62 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  false,
+    "status":  "failed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-29T17:43:01.1502510Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "the application inventory includes the running fixture with its path and SHA-256",
+                       "at":  "2026-10-29T17:43:01.4368504Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "both independent fixture paths start and reach the external network before policy",
+                       "at":  "2026-10-29T17:43:04.0584814Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network block kept the selected app runnable while its connection failed and the control copy connected",
+                       "at":  "2026-10-29T17:44:33.8679526Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network policy release restored the selected app connection",
+                       "at":  "2026-10-29T17:45:14.8347344Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "WDAC denied the original hash and renamed copy before their first instruction wrote a sentinel",
+                       "at":  "2026-10-29T17:46:17.1180446Z"
+                   }
+               ],
+    "pending":  [
+
+                ],
+    "error":  "Access is denied. (Exception from HRESULT: 0x80070005 (E_ACCESSDENIED))",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T17:41:44.1049274Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T17:41:44.1828286Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "478531dc3748293634ca2c593e92531192d281ac15b568adad61a8506d4e80f0",
+                                                                       "bytes":  8531968
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "c8e6a27f224abec4c41d1855629703073e5635b45f5b3d91b72ae68f7bf31e4b",
+                                                                            "bytes":  8531968
+                                                                        }
+                                         },
+                            "source_revision":  "1944e4a66e563ae6577a4130fe2907b731ca1f64"
+                        },
+    "finished_utc":  "2026-10-29T17:47:09.3392342Z"
+}

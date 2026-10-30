@@ -1,0 +1,176 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+  "status": "failed",
+  "passed": false,
+  "kind": "Applications",
+  "started_utc": "2026-10-29T13:57:00.0707405Z",
+  "finished_utc": "2026-10-29T14:01:36.4509613Z",
+  "reports": {
+    "vm-applications-fixed-2100dd7-2026-10-29.json": {
+      "path": "validation/vm-applications-fixed-2100dd7-2026-10-29.json",
+      "sha256": "fece6b6dd676bcb4fa3f0e751473789f3682797bafb29e2fcf221bbb75a2e59c"
+    },
+    "vm-applications-fixed-2100dd7-supplement-2026-10-29.json": {
+      "path": "validation/vm-applications-fixed-2100dd7-supplement-2026-10-29.json",
+      "sha256": "7ce58035a46909d6faea3262f0ff35b1d0d00843a5e802cbc1e3dce24006bb71"
+    },
+    "vm-applications-fixed-2100dd7-preflight-2026-10-29.json": {
+      "path": "validation/vm-applications-fixed-2100dd7-preflight-2026-10-29.json",
+      "sha256": "4e240f133bc9c9d9da6220e858522718824f3aa3ad1bd024694a258966a455cc"
+    }
+  },
+  "passed_checks": [
+    {
+      "status": "passed",
+      "name": "production MSI installed and an authenticated inventory was uploaded",
+      "at": "2026-10-29T13:57:38.7446943Z"
+    },
+    {
+      "status": "passed",
+      "name": "the application inventory includes the running fixture with its path and SHA-256",
+      "at": "2026-10-29T13:57:38.8449731Z"
+    },
+    {
+      "status": "passed",
+      "name": "both independent fixture paths start and reach the external network before policy",
+      "at": "2026-10-29T13:57:41.1052532Z"
+    },
+    {
+      "status": "passed",
+      "name": "network block kept the selected app runnable while its connection failed and the control copy connected",
+      "at": "2026-10-29T13:58:47.0510166Z"
+    },
+    {
+      "status": "passed",
+      "name": "network policy release restored the selected app connection",
+      "at": "2026-10-29T13:59:15.1420619Z"
+    }
+  ],
+  "failure_stage_inferred_from_harness_sequence": "hash execution policy v4 success ACK",
+  "failed_assignment_version_inferred": 4,
+  "successful_ack_versions": [
+    1,
+    2,
+    3,
+    5
+  ],
+  "success_ack_v4_observed": false,
+  "negative_ack_v4_observed": false,
+  "app_control_applied_event_observed": true,
+  "event_alone_not_enforcement_acceptance": true,
+  "root_cause": "End-to-end policy application exceeded the original ACK window; time spent in preparation, generation and queueing is not yet isolated",
+  "installed_executable_sha256": "d1e56f1abb66ea70f9c2439df8f00fc0367e01aaeaa6feb481db5119423549f7",
+  "installed_hash_matches": true,
+  "preflight_all_input_hashes_match": true,
+  "release_ack_v5_success": true,
+  "cleanup_errors": [],
+  "core_cleanup": {
+    "service_absent": true,
+    "watchdog_count": 0,
+    "managed_nrpt_count": 0,
+    "agent_process_count": 0,
+    "control_journals_present": []
+  },
+  "msi_exit_zero_inferred_from_harness_no_cleanup_errors": true,
+  "current_code_integrity_policy_cleanup": "zero current OpenEMS policies; 14 existing policies enumerated; full per-round before/after baseline was not persisted externally",
+  "not_accepted": [
+    "hash pre-execution denial",
+    "renamed image denial",
+    "publisher pre-execution denial",
+    "publisher release"
+  ],
+  "next_diagnostic": {
+    "shortcut": "37 - Read 2100dd7 WDAC timing and cleanup inside VM as administrator",
+    "helper_sha256": "ee6b93c57dda50e484b6363f4e2aba09530bf0f1ca6a9a1dd4a2d58739b4af45",
+    "result": "fixed-2100dd7/wdac-failure-diagnostic.json",
+    "status": "completed using READ-WDAC-37 alias",
+    "read_only_controls": true,
+    "installs_agent": false,
+    "loads_or_removes_policy": false,
+    "deadline_seconds": 120,
+    "host_validation": "PowerShell parser and read-only/deadline/atomic-writer guards passed; diagnostic not run on host"
+  },
+  "snapshot_restore_before_diagnostic": false,
+  "package_or_harness_modified": false,
+  "deadlines_changed": false,
+  "physical_host_controls_executed": false,
+  "new_product_code_changes": false,
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "read_only_diagnostic": {
+    "report": "validation/vm-applications-fixed-2100dd7-diagnostic-2026-10-29.json",
+    "report_sha256": "2972753d017f70b16cbc55116b240d51ce88ec8594f4cf4b79a9ce703450d3ec",
+    "status": "completed",
+    "agent_log_error_categories": [],
+    "final_release_policy_file_last_write_utc": "2026-10-29T14:00:45.5172890Z",
+    "openems_policy_load_event_utc": "2026-10-29T14:01:09.9319246Z",
+    "app_control_applied_event_utc": "2026-10-29T14:01:10.6322797Z",
+    "policy_load_after_release_file_write_seconds": 24.414635,
+    "policy_load_after_original_ack_window": true,
+    "original_v4_publication_time_not_independently_logged": true,
+    "cleanup": {
+      "service_absent": true,
+      "watchdog_count": 0,
+      "agent_process_count": 0,
+      "managed_nrpt_count": 0,
+      "control_journals_present": [],
+      "openems_code_policy_count": 0
+    },
+    "current_code_policy_count": 14,
+    "private_xml_cip_artifacts_preserved": true
+  },
+  "accidental_repeat_refused_before_installation": {
+    "report": "validation/vm-applications-fixed-2100dd7-repeat-refused-2026-10-29.json",
+    "sha256": "708d8a023ae3e5952c4a0091b8b5c6d76fc4c3bc375f844392e69d4677130acd",
+    "diagnostic_target_verified": true
+  },
+  "next_stage_timing": {
+    "shortcut": "READ-WDAC-38",
+    "helper_sha256": "1a0e32b3c81298dc1e977af6bb10d9fc25400890ba6263d0fe4620f296d048d4",
+    "result": "fixed-2100dd7/wdac-stage-timing.json",
+    "status": "completed",
+    "scope": "Existing private artifact timestamps and two normal signature queries on inventory-authenticated existing files",
+    "generation_repeated": false,
+    "installs_agent": false,
+    "executes_fixture": false,
+    "loads_policy": false,
+    "deadline_seconds": 120,
+    "original_production_timing_not_replayed": true,
+    "report": "validation/vm-applications-fixed-2100dd7-stage-timing-2026-10-29.json",
+    "report_sha256": "24305d304bc1b00de57e0669f760af0609a7fdfa92b2611a7b424be380e34735",
+    "private_copy_to_generated_xml_timestamp_span_seconds": 95.639949,
+    "repeated_signature_elapsed_ms": [
+      276,
+      5
+    ],
+    "signature_queries_replay_original_cold_timing": false
+  },
+  "catalog_scope_comparison": {
+    "report": "validation/vm-applications-fixed-2100dd7-catalog-comparison-2026-10-29.json",
+    "report_sha256": "7310af0b52b8dcf7be5a12b08010c812f0c8f1580b14317816a04f501f5f907e",
+    "helper_sha256": "2451d8201489b02b6a86dc9df3c398e5028888b78992b34f233f2b129004f977",
+    "status": "completed",
+    "all_eight_exact_checks_passed": true,
+    "sample_preparation_ms": 637,
+    "new_ci_policy_ms": 2663,
+    "complete_private_pipeline_ms": 8225,
+    "within_experiment_30_second_gate": true,
+    "all_14_policy_ids_unchanged": true,
+    "normal_signature_and_post_copy_hash_checks_preserved": true,
+    "agent_installed": false,
+    "os_policy_loaded": false,
+    "full_ack_acceptance": false
+  },
+  "next_product_plan": {
+    "path": "docs/windows-wdac-catalog-scan-plan.md",
+    "integration_approved_explicitly": true,
+    "tdd_required": true,
+    "scope": "fresh private catalog only in the single-hash branch; retain all identity/XML guards and fallback paths",
+    "next": "ACCEPT-WDAC-40 in clean UID 2 with frozen 959e9de media; full acceptance remains pending",
+    "integration_commit": "959e9de55ec365899086290b404c29ce1f791bb4",
+    "validation_report": "validation/windows-wdac-catalog-fix-2026-10-29.json",
+    "package_report": "validation/windows-wdac-catalog-package-2026-10-29.json"
+  }
+}

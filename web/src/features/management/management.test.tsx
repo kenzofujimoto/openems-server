@@ -46,7 +46,8 @@ describe("management pages", () => {
     renderApp("/groups");
     await screen.findByRole("button", { name: "Salvar regra" });
     await user.click(screen.getByLabelText("Identificador da regra")); await user.paste("systems");
-    await user.click(screen.getByLabelText("Grupo de destino")); await user.paste("Strict");
+    await screen.findByRole("option", { name: "Strict" });
+    await user.selectOptions(screen.getByLabelText("Grupo de destino"), "Strict");
     await user.click(screen.getByRole("button", { name: "Adicionar condição" }));
     await user.selectOptions(screen.getByLabelText("Operador da condição 1"), "in");
     await user.click(screen.getByLabelText("Valor da condição 1")); await user.paste("win32\nlinux");

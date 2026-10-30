@@ -5,6 +5,7 @@ import { ConnectionDot, PolicyBadge } from "@/components/StatusBadge";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { relativeTime } from "@/lib/format";
+import { moveEndpointRule, useProfiles, useSaveAssignmentRule } from "@/lib/management";
 import { useEndpoints, useIsAdmin } from "@/lib/queries";
 import type { Endpoint } from "@/lib/schemas";
 import { connectionStatus, policyStatus } from "@/lib/status";
@@ -37,6 +38,21 @@ export function EndpointsPage() {
   const rows = useMemo(() => (endpoints.data ?? []).filter((endpoint) => matches(endpoint, filter, query.trim())), [endpoints.data, filter, query]);
   const selectedEndpoint = endpoints.data?.find((endpoint) => endpoint.devid === selected) ?? null;
   const isAdmin = useIsAdmin();
+  const profiles = useProfiles();
+  const save = useSaveAssignmentRule();
+  const [picked, setPicked] = useState<string[]>([]);
+  const [bulkTarget, setBulkTarget] = useState("");
+  const [moved, setMoved] = useState("");
+  const published = useMemo(() => (profiles.data ?? []).map((profile) => profile.vdom).sort((a, b) => a.localeCompare(b)), [profiles.data]);
+  // Only published groups are offered; a machine's current group stays visible even without a profile.
+  const choices = (current: string) => [...new Set([...published, current])].sort((a, b) => a.localeCompare(b));
+  const label = (endpoint: Endpoint) => endpoint.hostname || endpoint.devid;
+  async function moveSelected() {
+    const targets = rows.filter((endpoint) => picked.includes(endpoint.devid) && endpoint.hostname);
+    for (const endpoint of targets) await save.mutateAsync(moveEndpointRule(endpoint.hostname, bulkTarget));
+    setMoved(`${targets.length} ${targets.length === 1 ? "máquina movida" : "máquinas movidas"} para ${bulkTarget}.`);
+    setPicked([]);
+  }
   const groups = useMemo(
     () => [...new Set((endpoints.data ?? []).map((endpoint) => endpoint.effective_vdom))].sort((a, b) => a.localeCompare(b)),
     [endpoints.data],
@@ -51,6 +67,14 @@ export function EndpointsPage() {
       />
       {endpoints.isError ? <ErrorNotice message="Não foi possível carregar os endpoints." onRetry={() => void endpoints.refetch()} /> : null}
       <Card>
+        {isAdmin && picked.length ? <div className="flex flex-wrap items-center gap-3 border-b border-line bg-rsm-blue-soft px-5 py-3 text-sm">
+          <span className="font-medium">{picked.length} selecionados</span>
+          <select aria-label="Mover selecionados para o grupo" className="h-9 rounded-lg border border-line bg-surface px-2" value={bulkTarget} onChange={(event) => setBulkTarget(event.target.value)}>
+            <option value="" disabled>Escolha um grupo</option>{published.map((vdom) => <option key={vdom} value={vdom}>{vdom}</option>)}
+          </select>
+          <button type="button" disabled={!bulkTarget || save.isPending} onClick={() => void moveSelected()} className="rounded-lg bg-rsm-blue px-3 py-1.5 font-medium text-white disabled:opacity-50">Mover selecionados</button>
+        </div> : null}
+        {moved ? <p role="status" className="border-b border-line px-5 py-2 text-sm text-rsm-green">{moved}</p> : null}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
           <div className="flex flex-wrap gap-1 rounded-lg bg-canvas p-1">
             {FILTERS.map((item) => (
@@ -84,6 +108,7 @@ export function EndpointsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-muted">
+                {isAdmin ? <th className="w-10 px-5 py-3"><span className="sr-only">Selecionar</span></th> : null}
                 <th className="px-5 py-3 font-medium">Dispositivo</th>
                 <th className="px-5 py-3 font-medium">Sistema</th>
                 <th className="px-5 py-3 font-medium">Grupo</th>
@@ -95,6 +120,7 @@ export function EndpointsPage() {
             <tbody className="divide-y divide-line border-t border-line">
               {rows.map((endpoint) => (
                 <tr key={endpoint.devid} className="hover:bg-canvas/60">
+                  {isAdmin ? <td className="px-5 py-3"><input type="checkbox" aria-label={`Selecionar ${label(endpoint)}`} disabled={!endpoint.hostname} checked={picked.includes(endpoint.devid)} onChange={(event) => setPicked((current) => event.target.checked ? [...current, endpoint.devid] : current.filter((devid) => devid !== endpoint.devid))} /></td> : null}
                   <td className="px-5 py-3">
                     <button
                       type="button"
@@ -107,7 +133,12 @@ export function EndpointsPage() {
                     </button>
                   </td>
                   <td className="px-5 py-3 text-ink-soft">{endpoint.os || "—"}</td>
-                  <td className="px-5 py-3 text-ink-soft">{endpoint.effective_vdom}</td>
+                  <td className="px-5 py-3 text-ink-soft">{isAdmin && endpoint.hostname ? (
+                    <select aria-label={`Grupo de ${label(endpoint)}`} className="h-8 rounded-lg border border-line bg-surface px-2" value={endpoint.effective_vdom} disabled={save.isPending}
+                      onChange={(event) => { setMoved(""); save.mutate(moveEndpointRule(endpoint.hostname, event.target.value)); }}>
+                      {choices(endpoint.effective_vdom).map((vdom) => <option key={vdom} value={vdom}>{vdom}</option>)}
+                    </select>
+                  ) : endpoint.effective_vdom}</td>
                   <td className="px-5 py-3"><ConnectionDot status={connectionStatus(endpoint)} /></td>
                   <td className="px-5 py-3"><PolicyBadge status={policyStatus(endpoint)} /></td>
                   <td className="px-5 py-3 text-ink-soft">{relativeTime(endpoint.last_seen)}</td>

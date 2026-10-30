@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-28",
+  "source_revision": "f1fb89192c003cec457230cc507873f9837435ad",
+  "probe_type": "pure JSON encoding only; copied one function, not the acceptance script",
+  "harness_executed_on_host": false,
+  "controls_mutated": false,
+  "cases": [
+    {
+      "case": "ordinary_selector",
+      "synthetic_identity": true,
+      "same_json_value": true,
+      "canonical_bytes_match": true,
+      "harness_sha256": "955145ba309f29db16ed11349faf9755a29f6b651c8679b2fd30496825345801",
+      "server_native_sha256": "955145ba309f29db16ed11349faf9755a29f6b651c8679b2fd30496825345801",
+      "ps51_escapes_ampersand_as_unicode": false
+    },
+    {
+      "case": "usb_instance_selector",
+      "synthetic_identity": true,
+      "same_json_value": true,
+      "canonical_bytes_match": false,
+      "harness_sha256": "c80bbcafa6f6ed951eb10ff6873bf4b68884db416c54a43b85cd31a96b3d0c93",
+      "server_native_sha256": "9109deeeab9010151d016aa70652ebe11d9ea0177412af396d54948cfed1a208",
+      "ps51_escapes_ampersand_as_unicode": true
+    }
+  ],
+  "conclusion": "PS 5.1 harness digest differs from the server/native canonical form for USB instance IDs containing ampersands. This is consistent with missing v5 ACK; guest logs still required for attribution.",
+  "production_or_harness_modified": false
+}

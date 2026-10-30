@@ -1,0 +1,62 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  false,
+    "status":  "failed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-29T19:09:04.3852108Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "the application inventory includes the running fixture with its path and SHA-256",
+                       "at":  "2026-10-29T19:09:04.4572706Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "both independent fixture paths start and reach the external network before policy",
+                       "at":  "2026-10-29T19:09:05.8677541Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network block kept the selected app runnable while its connection failed and the control copy connected",
+                       "at":  "2026-10-29T19:10:14.2557861Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network policy release restored the selected app connection",
+                       "at":  "2026-10-29T19:10:51.2891779Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "WDAC denied the original hash and renamed copy before their first instruction wrote a sentinel",
+                       "at":  "2026-10-29T19:12:11.6487675Z"
+                   }
+               ],
+    "pending":  [
+                    "Inspect the application-control journal and agent.log in this guest. A required reboot/capability prevents full acceptance; use the documented disposable VM procedure."
+                ],
+    "error":  "The service did not successfully apply and ACK this control policy. Inspect agent.log; reboot or an unsupported capability is not a pass.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T19:08:11.4989394Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T19:08:11.5169422Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "a8b3c1d982f7cd91765a3f62c208c4cb7d897f4c7ec5ae3e0ae0b84a94704459",
+                                                                       "bytes":  8552448
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "3db79aa5080fde2bfd046fde7cac2b4e7165122615c25ec00b22aa074d3a8f65",
+                                                                            "bytes":  8552448
+                                                                        }
+                                         },
+                            "source_revision":  "c0192b1c188ee073c04825786419ea9ea370a1b4"
+                        },
+    "finished_utc":  "2026-10-29T19:15:24.0800893Z"
+}

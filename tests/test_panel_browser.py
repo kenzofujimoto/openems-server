@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+import csv
+import io
 from pathlib import Path
 
 import pytest
@@ -68,19 +70,48 @@ def test_real_cookie_login_error_and_csrf_logout(page, server):
 def test_real_policy_publication_preserves_other_sections_and_uses_csrf(page, server):
     _, origin, client, _ = server
     login(page, origin, path="/panel/policies/web")
-    field = page.get_by_role("textbox", name="Domínios bloqueados", exact=True)
+    expect(page.get_by_role("table", name="Regras de domínio")).to_contain_text("old.example")
+    page.get_by_role("button", name="Editar old.example", exact=True).click()
+    dialog = page.get_by_role("dialog", name="Editar domínio")
+    field = dialog.get_by_role("textbox", name="Domínio", exact=True)
     expect(field).to_have_value("old.example")
     field.fill("https://invalid.example/path")
-    page.get_by_role("button", name="Publicar política", exact=True).click()
+    dialog.get_by_role("button", name="Salvar domínio", exact=True).click()
     expect(page.get_by_role("alert")).to_contain_text("domínio válido")
-    field.fill("*.new.example")
-    page.get_by_role("textbox", name="Domínios permitidos", exact=True).fill("safe.new.example")
+    field.fill("new.example")
+    dialog.get_by_label("Tipo", exact=True).select_option("wildcard")
+    dialog.get_by_role("button", name="Salvar domínio", exact=True).click()
+    page.get_by_role("button", name="Adicionar domínio", exact=True).click()
+    dialog = page.get_by_role("dialog", name="Adicionar domínio")
+    dialog.get_by_label("Domínio", exact=True).fill("safe.new.example")
+    dialog.get_by_label("Ação", exact=True).select_option("allow")
+    dialog.get_by_role("button", name="Salvar domínio", exact=True).click()
+    page.get_by_role("button", name="Mover safe.new.example para cima", exact=True).click()
+    page.get_by_label("Importar CSV", exact=True).set_input_files({
+        "name": "domains.csv", "mimeType": "text/csv",
+        "buffer": b"domain,type,action\r\nwatch.example,simple,log\r\n",
+    })
+    preview = page.get_by_role("dialog", name="Prévia da importação")
+    expect(preview).to_contain_text("watch.example")
+    preview.get_by_role("button", name="Importar 1 domínio", exact=True).click()
+    with page.expect_download() as download:
+        page.get_by_role("button", name="Exportar CSV", exact=True).click()
+    downloaded = Path(download.value.path()).read_text(encoding="utf-8-sig")
+    assert list(csv.reader(io.StringIO(downloaded))) == [
+        ["domain", "type", "action"], ["safe.new.example", "simple", "allow"],
+        ["new.example", "wildcard", "block"], ["watch.example", "simple", "monitor"],
+    ]
     with page.expect_request(re.compile(r"/api/v1/profiles/Default$")) as request:
         page.get_by_role("button", name="Publicar política", exact=True).click()
     assert request.value.headers.get("x-csrf-token") and request.value.headers.get("if-match")
     expect(page.get_by_role("status")).to_contain_text("v2 publicado")
     profile = next(item for item in client.get("/api/v1/profiles").json() if item["vdom"] == "Default")
-    assert profile["body"]["web_filter"]["blocked"] == ["*.new.example"]
+    assert profile["body"]["web_filter"]["domain_rules"] == [
+        {"domain": "safe.new.example", "type": "simple", "action": "allow"},
+        {"domain": "new.example", "type": "wildcard", "action": "block"},
+        {"domain": "watch.example", "type": "simple", "action": "monitor"},
+    ]
+    assert profile["body"]["web_filter"]["blocked"] == []
     assert profile["body"]["app_control"] == {"blocked": ["legacy.exe"]}
     assert profile["body"]["usb_control"] == {"default_action": "allow", "rules": []}
 
@@ -129,7 +160,10 @@ def test_endpoint_strings_are_text_and_failed_ack_is_visible(page, server):
 def test_viewer_has_no_policy_writes_and_mobile_navigation_retains_theme(page, server):
     _, origin, _, _ = server
     login(page, origin, "reader", "reader-test-password", "/panel/policies/web")
-    expect(page.get_by_role("textbox", name="Domínios bloqueados", exact=True)).to_be_disabled()
+    expect(page.get_by_role("table", name="Regras de domínio")).to_contain_text("old.example")
+    expect(page.get_by_role("textbox", name="Buscar domínio", exact=True)).to_be_disabled()
+    assert page.get_by_role("button", name="Adicionar domínio", exact=True).count() == 0
+    assert page.get_by_label("Importar CSV", exact=True).count() == 0
     assert page.get_by_role("button", name="Publicar política", exact=True).count() == 0
     page.set_viewport_size({"width": 390, "height": 844})
     page.get_by_role("button", name="Ativar modo escuro", exact=True).click()

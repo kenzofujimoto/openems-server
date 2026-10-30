@@ -1,0 +1,62 @@
+{
+  "source_revision": "959e9de55ec365899086290b404c29ce1f791bb4",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "478531dc3748293634ca2c593e92531192d281ac15b568adad61a8506d4e80f0",
+      "bytes": 8531968
+    },
+    "openems-agent-next.msi": {
+      "sha256": "c8e6a27f224abec4c41d1855629703073e5635b45f5b3d91b72ae68f7bf31e4b",
+      "bytes": 8531968
+    }
+  },
+  "agent_executable": {
+    "sha256": "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2",
+    "bytes": 5979136
+  },
+  "session_executable": {
+    "sha256": "f89f683b9eaf3778d07849d33492885a5f88296c893945834d53ceaada593569",
+    "bytes": 1079296
+  },
+  "phase_files_checked": 20,
+  "all_manifest_hashes_match": true,
+  "original_v2_inputs_replaced": false,
+  "installed_on_host": false,
+  "msi_metadata": [
+    {
+      "name": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_absent": true
+    },
+    {
+      "name": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_absent": true
+    }
+  ],
+  "vm_media": {
+    "iso": "openems-controls-fixed-959e9de.iso",
+    "sha256": "a07dbf273086a8b037ca753f9e9bfe16094c4467fc6f0b78523b125f6ead6f4e",
+    "bytes": 34287616,
+    "volume_label": "OPENEMS_FIXED",
+    "payload_phase_files_verified": 10,
+    "payload_manifest_matches": true,
+    "launcher": "results/fixed-959e9de/run-fixed-controls.ps1",
+    "launcher_sha256": "7f11852fe9c6bd4af2754e56dde449c70ee2e640fc3fbdfd90df375cead479e4",
+    "launcher_parsed_without_execution_on_host": true,
+    "shortcut": "ACCEPT-WDAC-40",
+    "clean_snapshot_required": "clean-preflight-before-controls (UID 2)",
+    "results": "fixed-959e9de/applications",
+    "source_msi_harness_and_installed_executable_pinned": true,
+    "operator_vm_execution": "completed; original report failed at unrecognized denial code"
+  },
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "previous_media_overwritten": false,
+  "new_source_acceptance": "failed in harness denial classification; v4 ACK succeeded and first launch returned 4551 before start",
+  "host_validation_report": "validation/windows-wdac-catalog-fix-2026-10-29.json",
+  "full_host_suite_green": false,
+  "host_inventory_timeout_note": "One unchanged 90-second timeout in full suite; isolated repeat passed in 77.14 seconds. No production release claimed.",
+  "vm_round_report": "validation/windows-controls-vm-959e9de-2026-10-29.json"
+}

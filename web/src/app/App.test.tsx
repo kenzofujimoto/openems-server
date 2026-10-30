@@ -185,7 +185,7 @@ describe("block log", () => {
     expect(within(games).getByText("2.104 domínios")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Consumo de banda e lazer" })).toBeInTheDocument();
     expect(screen.getByText(/CC BY-SA 4.0/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Domínios bloqueados")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Regras de domínio" })).toBeInTheDocument();
   });
 
   it("explains when the server publishes no categories", async () => {

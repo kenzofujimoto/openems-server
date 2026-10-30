@@ -1,0 +1,33 @@
+﻿{
+    "kind":  "USB",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  true,
+    "status":  "failed",
+    "checks":  [
+
+               ],
+    "pending":  [
+
+                ],
+    "error":  "Fixture backend did not start.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T02:26:58.2719469Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T02:26:58.3066560Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "ed7089ee7ef498aff33d6da77437c447f50ad46bd964dcf0cf6836de5bf3c7b4",
+                                                                       "bytes":  8527872
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "e52280d811d46d3bd6a209fff32bca731db9985c48c4676f3d74963889473992",
+                                                                            "bytes":  8527872
+                                                                        }
+                                         },
+                            "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910"
+                        },
+    "finished_utc":  "2026-10-29T02:27:48.0091123Z"
+}

@@ -45,6 +45,24 @@ services:
       - ALL
     restart: unless-stopped
 
+  app-catalog:
+    # Daily application catalog from the public winget index (microsoft/winget-pkgs, MIT).
+    build: .
+    command: ["python", "tools/update_app_catalog.py", "--every-hours", "24", "/var/lib/openems/app-catalog"]
+    # The image healthcheck probes the panel; this job serves nothing.
+    healthcheck:
+      disable: true
+    volumes:
+      - app-catalog:/var/lib/openems/app-catalog
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
   server:
     build: .
     depends_on:
@@ -62,11 +80,13 @@ services:
       OPENEMS_ENROLLMENT_USES: ${OPENEMS_ENROLLMENT_USES:-1}
       OPENEMS_BASE_URL: ${OPENEMS_BASE_URL:?Set public HTTPS base URL}
       OPENEMS_CATEGORIES_DIR: /var/lib/openems/categories
+      OPENEMS_APP_CATALOG_DIR: /var/lib/openems/app-catalog
       OPENEMS_EVENT_RETENTION_DAYS: ${OPENEMS_EVENT_RETENTION_DAYS:-30}
       # Optional; never change it after agents are installed (their uninstall secrets derive from it).
       OPENEMS_UNINSTALL_MASTER_KEY: ${OPENEMS_UNINSTALL_MASTER_KEY:-}
     volumes:
       - categories:/var/lib/openems/categories:ro
+      - app-catalog:/var/lib/openems/app-catalog:ro
     ports:
       - "127.0.0.1:8013:8013"
     read_only: true
@@ -82,3 +102,4 @@ volumes:
   pgdata:
   redisdata:
   categories:
+  app-catalog:

@@ -1,0 +1,52 @@
+﻿{
+    "kind":  "USB",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  true,
+    "status":  "failed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-28T19:54:59.6748527Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "storage block applied without disabling healthy keyboard, mouse or HID devices",
+                       "at":  "2026-10-28T19:55:32.4764200Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "offline restart retained the storage policy and healthy HID devices",
+                       "at":  "2026-10-28T19:55:51.1737611Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "physical USB allowed by matching VID, PID and serial",
+                       "at":  "2026-10-28T19:56:56.0086239Z"
+                   }
+               ],
+    "pending":  [
+                    "Inspect the application-control journal and agent.log in this guest. A required reboot/capability prevents full acceptance; use the documented disposable VM procedure."
+                ],
+    "error":  "The service did not successfully apply and ACK this control policy. Inspect agent.log; reboot or an unsupported capability is not a pass.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-28T19:54:23.5363256Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-28T19:54:23.5428310Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "db0aa75d280a75c56c9eb163bf1a0d6c9321d00c09981fd99ed1c9da81111e4d",
+                                                                       "bytes":  8527872
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "1e66234b7383d40899ab442e60bfa50d75e2ce34f568ea26a2378de6a6811eb6",
+                                                                            "bytes":  8527872
+                                                                        }
+                                         },
+                            "source_revision":  "f1fb89192c003cec457230cc507873f9837435ad"
+                        },
+    "finished_utc":  "2026-10-28T19:58:50.0657322Z"
+}

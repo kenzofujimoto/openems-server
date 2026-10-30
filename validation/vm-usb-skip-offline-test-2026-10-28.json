@@ -1,0 +1,233 @@
+﻿{
+    "kind":  "USB",
+    "variant":  "skip-offline",
+    "started":  "2026-10-28T13:52:52.2074984-03:00",
+    "stage":  "completed",
+    "steps":  [
+                  {
+                      "name":  "inventory",
+                      "exit_code":  0,
+                      "timed_out":  false,
+                      "seconds":  6.9,
+                      "output":  {
+                                     "inventory":  [
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0003\u0026MI_00\\7\u0026220035BB\u00260\u00260000",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0003",
+                                                           "serial":  "",
+                                                           "class":  "hid",
+                                                           "manufacturer":  "(Standard system devices)",
+                                                           "product":  "USB Input Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USBSTOR\\DISK\u0026VEN_GENERIC\u0026PROD_FLASH_DISK\u0026REV_8.07\\19A8A271\u00260",
+                                                           "vid":  "058f",
+                                                           "pid":  "6387",
+                                                           "serial":  "\u00031",
+                                                           "class":  "storage",
+                                                           "manufacturer":  "(Standard disk drives)",
+                                                           "product":  "Generic Flash Disk USB Device",
+                                                           "drive_letters":  [
+                                                                                 "E:"
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  1,
+                                                           "disk_unique_id":  "USBSTOR\\DISK\u0026VEN_GENERIC\u0026PROD_FLASH_DISK\u0026REV_8.07\\19A8A271\u00260:DESKTOP-VK4T969",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0003\\6\u00261E7C416C\u00260\u00265",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0003",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "(Standard USB Host Controller)",
+                                                           "product":  "USB Composite Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0003\u0026MI_01\\7\u0026220035BB\u00260\u00260001",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0003",
+                                                           "serial":  "",
+                                                           "class":  "hid",
+                                                           "manufacturer":  "(Standard system devices)",
+                                                           "product":  "USB Input Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0002\\6\u00261E7C416C\u00260\u00267",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0002",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "(Standard USB HUBs)",
+                                                           "product":  "Generic USB Hub",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_0E0F\u0026PID_0002\\6\u00261E7C416C\u00260\u00268",
+                                                           "vid":  "0e0f",
+                                                           "pid":  "0002",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "(Standard USB HUBs)",
+                                                           "product":  "Generic USB Hub",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       },
+                                                       {
+                                                           "instance_id":  "USB\\VID_058F\u0026PID_6387\\19A8A271",
+                                                           "vid":  "058f",
+                                                           "pid":  "6387",
+                                                           "serial":  "",
+                                                           "class":  "other",
+                                                           "manufacturer":  "Compatible USB storage device",
+                                                           "product":  "USB Mass Storage Device",
+                                                           "drive_letters":  [
+
+                                                                             ],
+                                                           "present":  true,
+                                                           "first_seen":  "",
+                                                           "last_seen":  "",
+                                                           "disk_number":  null,
+                                                           "disk_unique_id":  "",
+                                                           "is_boot":  false,
+                                                           "is_system":  false
+                                                       }
+                                                   ]
+                                 },
+                      "raw_output":  null,
+                      "stderr":  ""
+                  },
+                  {
+                      "name":  "apply_default_block",
+                      "exit_code":  1,
+                      "timed_out":  false,
+                      "seconds":  6.2,
+                      "output":  {
+                                     "error":  "control_failed",
+                                     "diagnostic":  {
+                                                        "statement":  "$value = Get-ItemPropertyValue -LiteralPath $restriction -Name $name -ErrorAction SilentlyContinue",
+                                                        "message":  "Property DenyInstanceIDs does not exist at path HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeviceInstall\\Restrictions.",
+                                                        "inner":  null,
+                                                        "line":  194,
+                                                        "type":  "System.Management.Automation.PSArgumentException",
+                                                        "fqid":  "Argument,Microsoft.PowerShell.Commands.GetItemPropertyValueCommand"
+                                                    }
+                                 },
+                      "raw_output":  null,
+                      "stderr":  ""
+                  }
+              ],
+    "error":  null,
+    "usb_before":  [
+                       {
+                           "class":  "DiskDrive",
+                           "status":  "OK",
+                           "present":  true,
+                           "problem_code":  0,
+                           "usbstor":  true
+                       },
+                       {
+                           "class":  "USB",
+                           "status":  "OK",
+                           "present":  true,
+                           "problem_code":  0,
+                           "usbstor":  false
+                       }
+                   ],
+    "canary_written":  true,
+    "usb_after_apply":  [
+                            {
+                                "class":  "DiskDrive",
+                                "status":  "OK",
+                                "present":  true,
+                                "problem_code":  0,
+                                "usbstor":  true
+                            },
+                            {
+                                "class":  "USB",
+                                "status":  "OK",
+                                "present":  true,
+                                "problem_code":  0,
+                                "usbstor":  false
+                            }
+                        ],
+    "canary_readable_after_apply":  true,
+    "journal_after_apply":  false,
+    "usb_after_cleanup":  [
+                              {
+                                  "class":  "DiskDrive",
+                                  "status":  "OK",
+                                  "present":  true,
+                                  "problem_code":  0,
+                                  "usbstor":  true
+                              },
+                              {
+                                  "class":  "USB",
+                                  "status":  "OK",
+                                  "present":  true,
+                                  "problem_code":  0,
+                                  "usbstor":  false
+                              }
+                          ],
+    "journal_after_cleanup":  false,
+    "canary_restored_after_cleanup":  true,
+    "canary_writable_after_cleanup":  true,
+    "restriction_values_after_cleanup":  [
+
+                                         ],
+    "deny_list_present_after_cleanup":  true,
+    "code_integrity_events":  null,
+    "finished":  "2026-10-28T13:53:15.6963802-03:00"
+}

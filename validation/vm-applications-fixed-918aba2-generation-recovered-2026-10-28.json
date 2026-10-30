@@ -1,0 +1,108 @@
+﻿{
+    "at":  "2026-10-28T23:09:34.4856363Z",
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "diagnostic_only":  true,
+    "controls_modified":  false,
+    "generation_repeated":  false,
+    "reports":  [
+                    {
+                        "generation":  {
+                                           "status":  "failed",
+                                           "stage":  "new_ci_rule",
+                                           "steps":  [
+                                                         {
+                                                             "stage":  "import_configci",
+                                                             "position":  "before",
+                                                             "elapsed_ms":  1006,
+                                                             "at":  "2026-10-28T23:06:06.7630516Z"
+                                                         },
+                                                         {
+                                                             "stage":  "import_configci",
+                                                             "position":  "after",
+                                                             "elapsed_ms":  1358,
+                                                             "at":  "2026-10-28T23:06:07.1139756Z"
+                                                         },
+                                                         {
+                                                             "stage":  "resolve_samples",
+                                                             "position":  "before",
+                                                             "elapsed_ms":  1369,
+                                                             "at":  "2026-10-28T23:06:07.1246044Z"
+                                                         },
+                                                         {
+                                                             "stage":  "sample_signature",
+                                                             "position":  "before",
+                                                             "elapsed_ms":  1813,
+                                                             "at":  "2026-10-28T23:06:07.5704322Z"
+                                                         },
+                                                         {
+                                                             "stage":  "sample_signature",
+                                                             "position":  "after",
+                                                             "elapsed_ms":  1857,
+                                                             "at":  "2026-10-28T23:06:07.6137488Z"
+                                                         },
+                                                         {
+                                                             "stage":  "resolve_samples",
+                                                             "position":  "after",
+                                                             "elapsed_ms":  1939,
+                                                             "at":  "2026-10-28T23:06:07.6967739Z"
+                                                         },
+                                                         {
+                                                             "stage":  "new_ci_rule",
+                                                             "position":  "before",
+                                                             "elapsed_ms":  1948,
+                                                             "at":  "2026-10-28T23:06:07.7056668Z"
+                                                         },
+                                                         {
+                                                             "stage":  "new_ci_rule",
+                                                             "position":  "worker_finished",
+                                                             "elapsed_ms":  125988,
+                                                             "at":  "2026-10-28T23:08:11.7448573Z"
+                                                         }
+                                                     ],
+                                           "error":  {
+                                                         "type":  "RuntimeException",
+                                                         "message":  "OPENEMS_NO_USER_MODE_RULE",
+                                                         "hresult":  -2146233087,
+                                                         "command":  ""
+                                                     },
+                                           "policy_loaded":  false
+                                       },
+                        "controller_status":  "failed",
+                        "controller_error_type":  "IOException",
+                        "controller_policy_ids_before":  [
+                                                             "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                             "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                             "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                             "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                             "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                             "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                             "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                             "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                             "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                             "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                             "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                             "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                             "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                             "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                         ],
+                        "matching_worker_processes":  0
+                    }
+                ],
+    "current_code_policy_ids":  [
+                                    "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                    "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                    "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                    "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                    "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                    "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                    "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                    "5dac656c-21ad-4a02-ab49-649917162e70",
+                                    "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                    "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                    "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                    "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                    "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                    "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                ],
+    "agent_absent":  true
+}

@@ -1,0 +1,5 @@
+﻿{
+    "at":  "2026-10-29T20:03:29.0043443Z",
+    "status":  "launcher_failed",
+    "error":  "Prior controls state exists. A clean snapshot is required."
+}

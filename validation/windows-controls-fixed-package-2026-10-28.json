@@ -1,0 +1,55 @@
+{
+  "source_revision": "548584b2496fdd6872e8f7a2af7afe13304bad5c",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "2e5654248f5975b7082baecc90971b77fad29de87a0006b35e452b9bf5065724",
+      "bytes": 8523776
+    },
+    "openems-agent-next.msi": {
+      "sha256": "98dc08aeb20ec7a21ae55d5528e0a7050af19c158345e64fa46f6da7877ceae5",
+      "bytes": 8523776
+    }
+  },
+  "agent_executable": {
+    "sha256": "f5f2a56c384fda76033095a2e1989c1d745fe2e8603f106807ffb749c8ef2da3",
+    "bytes": 5970944
+  },
+  "session_executable": {
+    "sha256": "0746575c7511e0129528e5e5c7c7bccf804c7a523031958cea8ea8905882c9d7",
+    "bytes": 1079296
+  },
+  "phase_files_checked": 20,
+  "all_manifest_hashes_match": true,
+  "original_v2_inputs_replaced": false,
+  "installed_on_host": false,
+  "msi_metadata": [
+    {
+      "name": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_absent": true
+    },
+    {
+      "name": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_absent": true
+    }
+  ],
+  "metadata_probe_history": [
+    {
+      "engine": "PowerShell 7 COM",
+      "status": "failed",
+      "reason": "DISP_E_TYPEMISMATCH; partial metadata discarded"
+    },
+    {
+      "engine": "Python dynamic StringData call",
+      "status": "failed",
+      "reason": "DISP_E_MEMBERNOTFOUND; no success metadata written"
+    },
+    {
+      "engine": "Python COM property getter",
+      "status": "passed",
+      "read_only": true
+    }
+  ],
+  "original_v2_msi_sha256_reverified": "762c931afe6c84934e02402f28f65776bd11ea1c56cfe829d4f4e12f315ef486"
+}

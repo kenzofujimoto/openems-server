@@ -1,0 +1,109 @@
+﻿{
+    "started_utc":  "2026-10-29T03:36:48.5548192Z",
+    "status":  "failed",
+    "phase":  "publish_release_and_wait_for_ack",
+    "normal_msi_removal":  true,
+    "forced_removal":  false,
+    "release_ack_confirmed":  false,
+    "release_version":  null,
+    "msi_exit":  null,
+    "service_absent":  false,
+    "watchdog_count":  null,
+    "agent_process_count":  null,
+    "control_journals_present":  [
+
+                                 ],
+    "agent_log_categories":  [
+                                 {
+                                     "at":  "2026-10-29T02:58:55Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T02:58:57Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T02:59:33Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:01:41Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "policy status report failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:01:49Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:02:24Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:03:16Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:05:15Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:09:28Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:14:38Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:20:20Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:36:07Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 }
+                             ],
+    "error_type":  "RuntimeException",
+    "error_category":  "operation_failed_details_withheld",
+    "cached_version":  4,
+    "cached_usb_default_action":  "block",
+    "cached_usb_rule_count":  1,
+    "uninstall_secret_present":  false,
+    "finished_utc":  "2026-10-29T03:38:29.2082853Z"
+}

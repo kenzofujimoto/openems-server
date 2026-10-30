@@ -19,6 +19,8 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from agent.policy import CATEGORIES
 from agent.uninstall import master_key_from_text
 
+from .app_catalog import AppCatalog
+from .app_catalog import expand as expand_catalog
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService, LoginRateLimited
 from .capabilities import missing_tags, required_tags
@@ -105,7 +107,8 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                category_dir: Path | None = None, event_store: EventStore | None = None,
                event_retention_days: int = DEFAULT_RETENTION_DAYS, uninstall_master_key: bytes | None = None,
                uninstall_store: UninstallStore | None = None, inventory_store: InventoryStore | None = None,
-               installer_path: Path | None = None, public_base_url: str | None = None) -> FastAPI:
+               installer_path: Path | None = None, public_base_url: str | None = None,
+               app_catalog_dir: Path | None = None) -> FastAPI:
     svc = service or EmsService(require_invitation=not lab_mode)
     saml = saml_sp or SamlSp('http://localhost:8013')
     admin = admin_service or AdminService()
@@ -326,6 +329,62 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         return {'client_id': svc.update_client_id(payload.client_id).client_id}
 
     categories = CategoryRepository(category_dir) if category_dir else None
+    app_catalog = AppCatalog(app_catalog_dir) if app_catalog_dir else None
+
+    def fleet_applications() -> list[tuple[str, list[dict[str, Any]]]]:
+        fleet = []
+        for endpoint in svc.list_endpoints():
+            snapshot = inventory.snapshot(endpoint.devid)
+            if snapshot:
+                fleet.append((endpoint.devid, list(snapshot.get('applications', []))))
+        return fleet
+
+    def with_catalog_rules(body: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str]]]:
+        """Replace everything the catalog generated (execution rules, processes, network paths) from fleet identities."""
+        section = body.get('app_catalog')
+        if section is None:
+            return body, []
+        if app_catalog is None or app_catalog.manifest()['version'] is None:
+            raise ValueError('application catalog unavailable')
+        if not isinstance(section, dict) or set(section) - {'actions', 'generated'}:
+            raise ValueError('app_catalog must contain only actions and generated entries')
+        controls = body.get('app_control', {})
+        if not isinstance(controls, dict) or not all(isinstance(controls.get(key, []), list)
+                                                     for key in ('execution_rules', 'blocked', 'network_blocked')):
+            raise ValueError('app_control lists must be lists')
+        previous = section.get('generated', {})
+        if not isinstance(previous, dict):
+            raise ValueError('app_catalog.generated must be an object')
+        expansion = expand_catalog(section.get('actions', {}),
+                                   [application for _, applications in fleet_applications() for application in applications], app_catalog)
+        manual_rules = [rule for rule in controls.get('execution_rules', [])
+                        if not (isinstance(rule, dict) and str(rule.get('id', '')).startswith('catalog-'))]
+        manual_processes = [name for name in controls.get('blocked', []) if name not in previous.get('processes', [])]
+        manual_network = [path for path in controls.get('network_blocked', []) if path not in previous.get('network', [])]
+        new_processes = [name for name in expansion['processes'] if name not in manual_processes]
+        new_network = [path for path in expansion['network'] if path not in manual_network]
+        return {**body,
+                'app_control': {**controls, 'execution_rules': manual_rules + expansion['rules'],
+                                'blocked': manual_processes + new_processes, 'network_blocked': manual_network + new_network},
+                'app_catalog': {'actions': section.get('actions', {}),
+                                'generated': {'processes': new_processes, 'network': new_network}}}, expansion['skipped']
+    def refresh_catalog_profiles() -> None:
+        """A newly observed identity of a decided application republishes the affected groups."""
+        if app_catalog is None:
+            return
+        for profile in svc.list_profiles():
+            if 'app_catalog' not in profile.body:
+                continue
+            try:
+                body, _ = with_catalog_rules(profile.body)
+                if body == profile.body:
+                    continue
+                updated = svc.set_profile(profile.vdom, body, profile.digest)
+            except (ValueError, ProfilePreconditionError):
+                # The last published rules stay; an administrator publication retries the expansion.
+                continue
+            audit.record(AuditEntry(actor='catalog', action='profile.catalog_refresh', target=profile.vdom,
+                                    metadata={'version': updated.version}))
 
     # Device routes: the middleware has already checked client_id and the device token.
     @app.get('/fct/api/public/v1/categories/')
@@ -413,6 +472,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         snapshot['devid'] = endpoint.devid
         if not inventory.replace(snapshot):
             raise HTTPException(status_code=409, detail='a newer inventory snapshot is already stored')
+        refresh_catalog_profiles()
         return {'accepted': True}
 
     @app.get('/api/v1/endpoints/inventory')
@@ -513,6 +573,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             if not re.fullmatch(r'[a-f0-9]{64}', expected_digest):
                 raise HTTPException(status_code=422, detail='If-Match must contain the current policy digest')
         try:
+            payload, catalog_skipped = with_catalog_rules(payload)
             profile = svc.set_profile(vdom, payload, expected_digest)
         except ProfilePreconditionError as error:
             raise HTTPException(status_code=412, detail='profile changed; reload before publishing') from error
@@ -523,7 +584,8 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                     for endpoint in sorted(svc.list_endpoints(), key=lambda item: item.devid)
                     if endpoint.status is EndpointStatus.REGISTERED and svc.effective_vdom(endpoint) == vdom
                     and (missing := missing_tags(profile.body, endpoint.host_tags))]
-        return {'vdom': profile.vdom, 'version': profile.version, 'digest': profile.digest, 'warnings': warnings}
+        return {'vdom': profile.vdom, 'version': profile.version, 'digest': profile.digest, 'warnings': warnings,
+                'catalog_skipped': catalog_skipped}
 
     @app.get('/api/v1/profiles')
     def list_profiles():
@@ -668,15 +730,25 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
 
     @app.get('/api/v1/events')
     def list_events(request: Request, limit: int = Query(default=50, ge=1, le=1000),
-                    action: str | None = Query(default=None, pattern='^(blocked|monitored)$')):
-        record_view(request)
+                    action: str | None = Query(default=None, pattern='^(blocked|monitored)$'),
+                    devid: str | None = Query(default=None, min_length=1, max_length=256)):
+        if devid is None:
+            record_view(request)
+        else:
+            svc.get_endpoint(devid)
+            # A machine's browsing and control log is personal data: every such read is audited.
+            record(request, 'events.read', devid)
         purge_personal_data()
-        rows = [(event.hour, event_view(event)) for event in events.recent(limit, action=action)]
+        # Per-machine reads scan the most recent bounded window of every source, then filter.
+        window = 1000 if devid else limit
+        rows = [(event.hour, event_view(event)) for event in events.recent(window, action=action)]
         if action is None:
-            rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(limit)]
+            rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(window)]
             rows += [(datetime.fromisoformat(event['at']), {
                 **event, 'detail': event['target'], 'reason': event['rule_id'], 'category': None, 'category_label': None,
-            }) for event in inventory.recent_events(limit)]
+            }) for event in inventory.recent_events(window)]
+        if devid is not None:
+            rows = [row for row in rows if row[1].get('devid') == devid]
         rows.sort(key=lambda row: row[0], reverse=True)
         return [view for _, view in rows[:limit]]
 
@@ -706,6 +778,20 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             'retention_days': retention_days,
         }
 
+    @app.get('/api/v1/app_catalog')
+    def app_catalog_summary():
+        if app_catalog is None or app_catalog.manifest()['version'] is None:
+            return {'available': False, 'version': None, 'attribution': '', 'categories': [], 'observed': {}}
+        return {'available': True, **app_catalog.summary(fleet_applications())}
+
+    @app.get('/api/v1/app_catalog/search')
+    def app_catalog_search(q: str = Query(default='', max_length=128), category: str | None = Query(default=None, max_length=64)):
+        if app_catalog is None or app_catalog.manifest()['version'] is None:
+            return []
+        observed = app_catalog.summary(fleet_applications())['observed']
+        return [{'id': app['id'], 'name': app['name'], 'vendor': app['vendor'], 'category': app['category'],
+                 'blockable': app['blockable'], 'observed_endpoints': observed.get(app['id'], 0)}
+                for app in app_catalog.search(q, category=category)]
     @app.get('/api/v1/categories')
     def list_categories():
         health = categories.health() if categories else missing_category_health()
@@ -858,6 +944,7 @@ def build() -> FastAPI:
     if queue:
         resources.append(queue)
     category_dir = os.environ.get('OPENEMS_CATEGORIES_DIR')
+    app_catalog_dir = os.environ.get('OPENEMS_APP_CATALOG_DIR')
     # Optional: empty (docker-compose default) leaves uninstall codes off and removal unprotected.
     uninstall_key_text = os.environ.get('OPENEMS_UNINSTALL_MASTER_KEY', '')
     uninstall_key = None
@@ -876,4 +963,5 @@ def build() -> FastAPI:
                       uninstall_master_key=uninstall_key, uninstall_store=uninstall_store,
                       inventory_store=inventory_store,
                       installer_path=Path(os.environ['OPENEMS_INSTALLER_PATH']) if os.environ.get('OPENEMS_INSTALLER_PATH') else None,
-                      public_base_url=base_url)
+                      public_base_url=base_url,
+                      app_catalog_dir=Path(app_catalog_dir) if app_catalog_dir else None)

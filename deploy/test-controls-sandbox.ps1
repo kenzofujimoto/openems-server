@@ -16,7 +16,28 @@ $totalTimeout = 1800
 function ConvertTo-Canonical($Value) {
     if ($null -eq $Value) { return 'null' }
     if ($Value -is [bool]) { return $Value.ToString().ToLowerInvariant() }
-    if ($Value -is [string]) { return ConvertTo-Json -InputObject $Value -Compress }
+    if ($Value -is [string]) {
+        # Mirror the server's json.dumps(ensure_ascii=False): PS 5.1 ConvertTo-Json also escapes &, <, >, ' and U+0085/2028/2029.
+        $builder = New-Object Text.StringBuilder ($Value.Length + 2)
+        [void]$builder.Append('"')
+        foreach ($character in $Value.ToCharArray()) {
+            switch ([int]$character) {
+                0x22 { [void]$builder.Append('\"') }
+                0x5C { [void]$builder.Append('\\') }
+                0x08 { [void]$builder.Append('\b') }
+                0x0C { [void]$builder.Append('\f') }
+                0x0A { [void]$builder.Append('\n') }
+                0x0D { [void]$builder.Append('\r') }
+                0x09 { [void]$builder.Append('\t') }
+                default {
+                    if ([int]$character -lt 0x20) { [void]$builder.Append('\u' + ([int]$character).ToString('x4')) }
+                    else { [void]$builder.Append($character) }
+                }
+            }
+        }
+        [void]$builder.Append('"')
+        return $builder.ToString()
+    }
     if ($Value -is [Collections.IDictionary]) {
         [string[]]$keys = @($Value.Keys)
         [Array]::Sort($keys, [StringComparer]::Ordinal)
@@ -239,38 +260,72 @@ function Start-Backend {
         $ErrorActionPreference = 'Stop'
         $listener = New-Object Net.HttpListener
         $listener.Prefixes.Add($Origin + '/')
+        $routes = @('register','config/assigned','config/ack','inventory','control_events','host_tags','messages/pull','refresh','events','tamper')
+        $traceErrors = 0
+        # Add-Content fails with a sharing violation while the harness polls these logs; share and retry briefly.
+        function Append-Log([string]$Name, [string]$Text) {
+            $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($Text -replace "`r?`n", ' ') + "`r`n")
+            for ($attempt = 1; ; $attempt++) {
+                try {
+                    $stream = [IO.File]::Open((Join-Path $Work $Name), 'Append', 'Write', 'ReadWrite')
+                    try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
+                    return
+                } catch [IO.IOException] { if ($attempt -ge 40) { throw }; Start-Sleep -Milliseconds 50 }
+            }
+        }
         try {
             $listener.Start(); Set-Content -LiteralPath (Join-Path $Work 'backend-ready') -Value ready
             while ($true) {
                 $waiting = $listener.GetContextAsync()
                 while (-not $waiting.Wait(500)) { }
                 $context = $waiting.Result
-                $reader = New-Object IO.StreamReader($context.Request.InputStream, [Text.Encoding]::UTF8)
-                try { $upload = $reader.ReadToEnd() } finally { $reader.Dispose() }
-                $route = $context.Request.Url.AbsolutePath.Replace('/fct/api/public/v1/', '').Trim('/')
-                $answer = @{}; $context.Response.StatusCode = 200
-                if ($route -ne 'register' -and $context.Request.Headers['Authorization'] -ne 'Bearer sandbox-fixture-only') {
-                    $context.Response.StatusCode = 403
-                } else { switch ($route) {
-                    'register' { $answer = @{ client_id='sandbox-controls'; device_token='sandbox-fixture-only' } }
-                    'config/assigned' { $answer = Get-Content -LiteralPath (Join-Path $Work 'policy.json') -Raw | ConvertFrom-Json }
-                    'config/ack' { Add-Content -LiteralPath (Join-Path $Work 'ack.log') -Value ($upload -replace "`r?`n", ' ') }
-                    'inventory' { Add-Content -LiteralPath (Join-Path $Work 'inventory.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=$true} }
-                    'control_events' { Add-Content -LiteralPath (Join-Path $Work 'control-events.log') -Value ($upload -replace "`r?`n", ' '); $answer=@{accepted=1;rejected=0} }
-                    'host_tags' { }
-                    'messages/pull' { }
-                    'refresh' { }
-                    'events' { $answer=@{accepted=0;rejected=0} }
-                    'tamper' { $answer=@{accepted=0;rejected=0} }
-                    default { $context.Response.StatusCode = 404 }
-                } }
-                $bytes = [Text.Encoding]::UTF8.GetBytes(($answer | ConvertTo-Json -Depth 24 -Compress))
-                $context.Response.ContentType='application/json'; $context.Response.ContentLength64=$bytes.Length
-                try { $context.Response.OutputStream.Write($bytes,0,$bytes.Length) } finally { $context.Response.Close() }
+                # One aborted or failed request must not stop the fixture; the agent retries on its next sync.
+                $trace = [ordered]@{ at_utc=[DateTime]::UtcNow.ToString('o'); route='other'; status=500; response_written=$false; error_type=$null; trace_write_failures=$traceErrors }
+                try {
+                    $route = $context.Request.Url.AbsolutePath.Replace('/fct/api/public/v1/', '').Trim('/')
+                    if ($route -in $routes) { $trace.route = $route }
+                    $reader = New-Object IO.StreamReader($context.Request.InputStream, [Text.Encoding]::UTF8)
+                    try { $upload = $reader.ReadToEnd() } finally { $reader.Dispose() }
+                    $answer = @{}; $context.Response.StatusCode = 200
+                    if ($route -ne 'register' -and $context.Request.Headers['Authorization'] -ne 'Bearer sandbox-fixture-only') {
+                        $context.Response.StatusCode = 403
+                    } else { switch ($route) {
+                        'register' { $answer = @{ client_id='sandbox-controls'; device_token='sandbox-fixture-only' } }
+                        'config/assigned' { $answer = Get-Content -LiteralPath (Join-Path $Work 'policy.json') -Raw | ConvertFrom-Json }
+                        'config/ack' { Append-Log 'ack.log' $upload }
+                        'inventory' { Append-Log 'inventory.log' $upload; $answer=@{accepted=$true} }
+                        'control_events' { Append-Log 'control-events.log' $upload; $answer=@{accepted=1;rejected=0} }
+                        'host_tags' { }
+                        'messages/pull' { }
+                        'refresh' { }
+                        'events' { $answer=@{accepted=0;rejected=0} }
+                        'tamper' { $answer=@{accepted=0;rejected=0} }
+                        default { $context.Response.StatusCode = 404 }
+                    } }
+                    $trace.status = $context.Response.StatusCode
+                    $bytes = [Text.Encoding]::UTF8.GetBytes(($answer | ConvertTo-Json -Depth 24 -Compress))
+                    $context.Response.ContentType='application/json'; $context.Response.ContentLength64=$bytes.Length
+                    $context.Response.OutputStream.Write($bytes,0,$bytes.Length)
+                    $trace.response_written = $true
+                } catch {
+                    $trace.error_type = $_.Exception.GetType().Name
+                    $trace.status = 500
+                    try { $context.Response.StatusCode = 500 } catch { }
+                } finally {
+                    try { $context.Response.Close() } catch { if (-not $trace.error_type) { $trace.error_type = $_.Exception.GetType().Name } }
+                    # Route names, status and exception types only: never bodies, paths or credentials.
+                    try { [IO.File]::AppendAllText((Join-Path $Work 'backend-events.log'), ($trace | ConvertTo-Json -Compress) + [Environment]::NewLine) }
+                    catch { $traceErrors++ }
+                }
             }
         } finally { $listener.Close() }
     }
-    Wait-Until { if ($job.State -eq 'Failed') { throw 'Fixture backend failed.' }; Test-Path -LiteralPath $ready } 20 'Fixture backend did not start.'
+    # Starting a job process in a freshly restored guest can exceed 20 s; this is fixture startup, not a control deadline.
+    try { Wait-Until { if ($job.State -eq 'Failed') { throw 'Fixture backend failed.' }; Test-Path -LiteralPath $ready } 120 'startup' }
+    catch {
+        $reason = @($job.ChildJobs | ForEach-Object { if ($_.JobStateInfo.Reason) { $_.JobStateInfo.Reason.GetType().Name } }) -join ','
+        throw ('Fixture backend did not start; job state ' + $job.State + '; reason ' + $reason)
+    }
     return $job
 }
 function Stop-Backend {
@@ -350,7 +405,7 @@ function Invoke-Fixture([string]$Path, [string]$Sentinel, [string]$Url = '-') {
 function Assert-ExecutionDenied([string]$Path) {
     $sentinel = Join-Path $work ([Guid]::NewGuid().ToString('N') + '.started')
     $observed = Invoke-Fixture $Path $sentinel
-    if ($observed.started -or $observed.native_error -notin @(577,1260)) {
+    if ($observed.started -or $observed.native_error -notin @(577,1260,4551)) {
         throw ('Expected a Windows policy refusal before execution; observed ' + ($observed | ConvertTo-Json -Compress))
     }
 }
@@ -417,6 +472,8 @@ try {
         Wait-Ack (Publish-Body (Empty-Body))
         if ($PhysicalDrive) {
             $PhysicalDrive = $PhysicalDrive.ToUpperInvariant()
+            # The agent uploads inventory from a background collection, after the release ACK.
+            Wait-Until { $null -ne (Get-UsbDevice $PhysicalDrive) -and (Test-Path -LiteralPath ($PhysicalDrive + '\')) } 120 'The released physical USB storage was not reported by the inventory.'
             $device = Get-UsbDevice $PhysicalDrive
             if ($null -eq $device -or -not $device.instance_id -or -not $device.serial -or -not $device.vid -or -not $device.pid) { throw 'Select a reported physical USB storage device with VID, PID and serial.' }
             $partition = Get-Partition -DriveLetter $PhysicalDrive.Substring(0,1)
@@ -486,8 +543,8 @@ try {
             $certificate = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Openems Acceptance Fixture' -CertStoreLocation Cert:\LocalMachine\My
             $publicCertificate = Join-Path $work 'fixture.cer'
             Export-Certificate -Cert $certificate -FilePath $publicCertificate | Out-Null
+            # WDAC validates the signer chain only; SYSTEM is refused TrustedPublisher imports on Windows 11 guests.
             Import-Certificate -FilePath $publicCertificate -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-            Import-Certificate -FilePath $publicCertificate -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
             $signature = Set-AuthenticodeSignature -LiteralPath $publisherFixture -Certificate $certificate
             if ($signature.Status -ne 'Valid') { throw 'The dedicated fixture signing certificate was not trusted in this guest.' }
             Copy-Item -LiteralPath $publisherFixture -Destination $publisherCopy

@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "675308c02880afc315705e640e836daabb9ee4c1",
+  "agent_source_revision": "675308c02880afc315705e640e836daabb9ee4c1",
+  "harness_source_revision": "675308c02880afc315705e640e836daabb9ee4c1",
+  "agent_executable_sha256": "6b6e022704a36dece9ebfbba7ebef0bff5ff57b1be1486e633afe42039929d3d",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "d5acc2ac7cce7ecf547bd28d2352935a44f8c9fa5c134b341acea652979c2097",
+      "bytes": 8552448
+    },
+    "openems-agent-next.msi": {
+      "sha256": "320a471adc000da4024f47d0a8051eb846078c29373aa105b7e51931a284b106",
+      "bytes": 8552448
+    }
+  },
+  "msi_rebuilt_from_committed_sources": true,
+  "all_manifest_hashes_match": true,
+  "old_inputs_overwritten": false,
+  "harness_sha256": "7568d3c581cc4d8581fdeef3d8aa930f0ecd25d5d29ae372ec76eb9fd72975c6",
+  "launcher_sha256": "4bdbcc36b4d6ea5167b2525a393461f736d363280ba94eba221a30c8ba81c7ac",
+  "includes": [
+    "background inventory collection that never delays policy ACKs",
+    "4551 refusal recognition",
+    "fixture backend survives aborted requests",
+    "publisher fixture without TrustedPublisher import",
+    "released USB awaited in uploaded inventory"
+  ],
+  "installed_on_host": false,
+  "iso": "openems-controls-final-675308c.iso",
+  "payload": "payload-final-675308c",
+  "results": "final-675308c",
+  "wdac_acceptance": "pending",
+  "usb_acceptance": "pending",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "iso_sha256": "d9f22f0f45bdd69eac3eb2e1089a0eb40a8e303318ad801617cdc1b96695c0b0",
+  "shortcuts": [
+    "ACCEPT-WDAC-54",
+    "ACCEPT-USB-55"
+  ],
+  "launcher_parsed_without_execution_on_host": true,
+  "rust_suite": "232 passed",
+  "host_suite": "1195 passed, 58 skipped, 4 whole-harness cases deselected, 0 failed"
+}

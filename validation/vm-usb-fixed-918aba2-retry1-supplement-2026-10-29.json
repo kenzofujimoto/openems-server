@@ -1,0 +1,54 @@
+﻿{
+    "finished_utc":  "2026-10-29T03:04:23.8968048Z",
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "harness_exit":  1,
+    "installed_executable_hash_observations":  [
+                                                   {
+                                                       "at":  "2026-10-29T02:57:49.1504027Z",
+                                                       "sha256":  "ea759d9b0ed50c13b61ebda73db14546b73c3450f57ed665512fd876f08832b4"
+                                                   }
+                                               ],
+    "installed_hash_matches":  true,
+    "acknowledgments":  [
+                            {
+                                "version":  1,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  3,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            }
+                        ],
+    "control_events":  [
+                           {
+                               "kind":  "usb_block"
+                           }
+                       ],
+    "final_policy":  [
+                         {
+                             "version":  5,
+                             "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                             "usb_default_action":  "allow",
+                             "usb_rule_count":  0,
+                             "execution_rule_count":  0
+                         }
+                     ],
+    "service_absent":  false,
+    "watchdog_count":  1,
+    "managed_nrpt_count":  0,
+    "agent_process_count":  2,
+    "control_journals_present":  [
+
+                                 ],
+    "post_removal_usb_read_write_delete_verified":  false
+}

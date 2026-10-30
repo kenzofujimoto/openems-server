@@ -26,6 +26,9 @@ pub struct Rule {
     pub value: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sample_path: Option<String>,
+    /// Catalog rule: skipped, not failed, on a machine without a matching local sample.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub if_present: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -142,35 +145,36 @@ pub struct Application {
 }
 
 pub fn resolve_rules(policy: &Policy, inventory: &[Application]) -> Result<Vec<Rule>> {
-    policy
-        .execution_rules
-        .iter()
-        .cloned()
-        .map(|mut rule| {
-            if rule.kind == Kind::Path {
-                return Ok(rule);
+    let mut resolved = Vec::new();
+    for mut rule in policy.execution_rules.iter().cloned() {
+        if rule.kind == Kind::Path {
+            resolved.push(rule);
+            continue;
+        }
+        let sample = inventory.iter().find(|application| {
+            rule.sample_path.as_ref().is_none_or(|path| path.eq_ignore_ascii_case(&application.path))
+                && match rule.kind {
+                    Kind::Hash => application.sha256.eq_ignore_ascii_case(&rule.value),
+                    Kind::Publisher => {
+                        application.signature_valid && application.publisher.eq_ignore_ascii_case(&rule.value)
+                    }
+                    Kind::Name => application.original_name.eq_ignore_ascii_case(&rule.value),
+                    Kind::Path => false,
+                }
+        });
+        let Some(sample) = sample else {
+            if rule.if_present {
+                continue;
             }
-            let sample = inventory
-                .iter()
-                .find(|application| {
-                    rule.sample_path.as_ref().is_none_or(|path| path.eq_ignore_ascii_case(&application.path))
-                        && match rule.kind {
-                            Kind::Hash => application.sha256.eq_ignore_ascii_case(&rule.value),
-                            Kind::Publisher => {
-                                application.signature_valid && application.publisher.eq_ignore_ascii_case(&rule.value)
-                            }
-                            Kind::Name => application.original_name.eq_ignore_ascii_case(&rule.value),
-                            Kind::Path => false,
-                        }
-                })
-                .ok_or_else(|| invalid("execution rule has no matching verified local sample"))?;
-            if protected_path(&sample.path) || protected_name(&sample.original_name) {
-                return Err(invalid("execution sample targets a protected system component"));
-            }
-            rule.sample_path = Some(sample.path.clone());
-            Ok(rule)
-        })
-        .collect()
+            return Err(invalid("execution rule has no matching verified local sample"));
+        };
+        if protected_path(&sample.path) || protected_name(&sample.original_name) {
+            return Err(invalid("execution sample targets a protected system component"));
+        }
+        rule.sample_path = Some(sample.path.clone());
+        resolved.push(rule);
+    }
+    Ok(resolved)
 }
 
 pub fn journal_path(state: &Path) -> PathBuf {
@@ -178,7 +182,7 @@ pub fn journal_path(state: &Path) -> PathBuf {
 }
 
 pub fn inventory(_state: &Path) -> Result<Vec<Application>> {
-    let result = adapter::run(SCRIPT, &json!({"mode":"inventory"}))?;
+    let result = adapter::run_background(SCRIPT, &json!({"mode":"inventory"}))?;
     serde_json::from_value(result["inventory"].clone()).map_err(|_| invalid("invalid application inventory"))
 }
 

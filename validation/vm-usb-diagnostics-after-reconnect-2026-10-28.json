@@ -1,0 +1,165 @@
+﻿{
+    "at":  "2026-10-28T13:07:22.6791819-03:00",
+    "acknowledgments":  [
+                            {
+                                "version":  1,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false,
+                                "known_error_categories":  [
+
+                                                           ]
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  false,
+                                "error_present":  true,
+                                "known_error_categories":  [
+                                                               "LocalError"
+                                                           ]
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  false,
+                                "error_present":  true,
+                                "known_error_categories":  [
+                                                               "LocalError"
+                                                           ]
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  false,
+                                "error_present":  true,
+                                "known_error_categories":  [
+                                                               "LocalError"
+                                                           ]
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  false,
+                                "error_present":  true,
+                                "known_error_categories":  [
+                                                               "LocalError"
+                                                           ]
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  false,
+                                "error_present":  true,
+                                "known_error_categories":  [
+                                                               "LocalError"
+                                                           ]
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  false,
+                                "error_present":  true,
+                                "known_error_categories":  [
+                                                               "LocalError"
+                                                           ]
+                            },
+                            {
+                                "version":  3,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false,
+                                "known_error_categories":  [
+
+                                                           ]
+                            }
+                        ],
+    "agent_log_categories":  [
+                                 {
+                                     "at":  "2026-10-28T15:19:27Z",
+                                     "categories":  [
+                                                        "policy enforcement failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-28T15:19:46Z",
+                                     "categories":  [
+                                                        "policy enforcement failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-28T15:19:59Z",
+                                     "categories":  [
+                                                        "policy enforcement failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-28T15:20:23Z",
+                                     "categories":  [
+                                                        "policy enforcement failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-28T15:20:39Z",
+                                     "categories":  [
+                                                        "policy enforcement failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-28T15:20:55Z",
+                                     "categories":  [
+                                                        "policy enforcement failed"
+                                                    ]
+                                 }
+                             ],
+    "service_absent":  true,
+    "watchdog_count":  0,
+    "managed_nrpt_count":  0,
+    "agent_process_count":  0,
+    "usb_journal_present":  false,
+    "cleanup_verified":  true,
+    "stage":  "completed",
+    "disks":  [
+                  {
+                      "Number":  0,
+                      "FriendlyName":  "VMware, VMware Virtual S",
+                      "BusType":  "SAS",
+                      "Size":  85899345920,
+                      "IsBoot":  true,
+                      "IsSystem":  true,
+                      "IsOffline":  false,
+                      "IsReadOnly":  false
+                  },
+                  {
+                      "Number":  1,
+                      "FriendlyName":  "Generic Flash Disk",
+                      "BusType":  "USB",
+                      "Size":  4026531840,
+                      "IsBoot":  false,
+                      "IsSystem":  false,
+                      "IsOffline":  false,
+                      "IsReadOnly":  false
+                  }
+              ],
+    "penmack_pnp":  [
+                        {
+                            "name":  "Generic Flash Disk USB Device",
+                            "class":  "DiskDrive",
+                            "status":  "OK",
+                            "present":  true,
+                            "problem_code":  0
+                        },
+                        {
+                            "name":  "USB Mass Storage Device",
+                            "class":  "USB",
+                            "status":  "OK",
+                            "present":  true,
+                            "problem_code":  0
+                        }
+                    ],
+    "usb_volume_present":  true,
+    "usb_drive":  "E:",
+    "usb_read_only":  false,
+    "usb_offline":  false,
+    "post_removal_canary_read_write_delete_verified":  true
+}

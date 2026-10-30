@@ -1,0 +1,53 @@
+﻿{
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "started_utc":  "2026-10-28T22:43:06.2695508Z",
+    "status":  "completed",
+    "context":  "SYSTEM",
+    "agent_absent":  true,
+    "controls_modified":  false,
+    "certificate_validation_bypassed":  false,
+    "antivirus_modified":  false,
+    "probes":  [
+                   {
+                       "name":  "fixture_no_network",
+                       "completed":  true,
+                       "elapsed_ms":  153,
+                       "exit_code":  0,
+                       "sentinel_created":  true,
+                       "exception_class":  null
+                   },
+                   {
+                       "name":  "fixture_https",
+                       "completed":  true,
+                       "elapsed_ms":  828,
+                       "exit_code":  0,
+                       "sentinel_created":  true,
+                       "exception_class":  null
+                   },
+                   {
+                       "name":  "control_copy_https",
+                       "completed":  true,
+                       "elapsed_ms":  497,
+                       "exit_code":  0,
+                       "sentinel_created":  true,
+                       "exception_class":  null
+                   },
+                   {
+                       "name":  "curl_https",
+                       "completed":  true,
+                       "elapsed_ms":  912,
+                       "exit_code":  0,
+                       "sentinel_created":  null,
+                       "exception_class":  null,
+                       "http_status":  "200"
+                   }
+               ],
+    "error_type":  null,
+    "fixture_sha256":  "f12ca9829e96631e79eaa92021dc18c3d683ad6ae7f8614626421f7f2030e56e",
+    "free_memory_kib":  1140040,
+    "network_adapters_up":  1,
+    "default_ipv4_route_present":  true,
+    "system_proxy_enabled":  false,
+    "system_auto_proxy_url_present":  false,
+    "finished_utc":  "2026-10-28T22:43:24.4743601Z"
+}

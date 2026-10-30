@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "e6c53fc42047e32c3c095156cc1a42d6d091593b",
+  "agent_source_revision": "959e9de55ec365899086290b404c29ce1f791bb4",
+  "harness_source_revision": "e6c53fc42047e32c3c095156cc1a42d6d091593b",
+  "agent_executable_sha256": "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "478531dc3748293634ca2c593e92531192d281ac15b568adad61a8506d4e80f0",
+      "bytes": 8531968
+    },
+    "openems-agent-next.msi": {
+      "sha256": "c8e6a27f224abec4c41d1855629703073e5635b45f5b3d91b72ae68f7bf31e4b",
+      "bytes": 8531968
+    }
+  },
+  "msi_bytes_reused_without_rebuild": true,
+  "files_checked": 10,
+  "all_manifest_hashes_match": true,
+  "old_inputs_overwritten": false,
+  "harness_sha256": "81ef58ae43bc0a9552b36e2593118121f83d2654db262fb31e34ff2df20e38fd",
+  "launcher_sha256": "105250ffa7a07ba238e97d60f5af491980508a721bdb5add0b718f4688df56bc",
+  "includes": [
+    "4551 refusal recognition",
+    "fixture backend survives aborted requests",
+    "publisher fixture without TrustedPublisher import"
+  ],
+  "installed_on_host": false,
+  "iso": "openems-controls-publisher-e6c53fc.iso",
+  "payload": "payload-publisher-e6c53fc",
+  "results": "publisher-e6c53fc",
+  "wdac_acceptance": "pending",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "iso_sha256": "149d2f8a1ece7c6e8036497e0713d3a8f0dea5e046e94fb49a9d1ec406789c8d",
+  "iso_bytes": 34285568,
+  "volume_label": "OPENEMS_FIXED",
+  "shortcut": "ACCEPT-WDAC-44",
+  "clean_snapshot_required": "clean-preflight-before-controls (UID 2)",
+  "launcher_parsed_without_execution_on_host": true,
+  "host_suite": "1189 passed, 58 skipped, 4 whole-harness cases deselected, 0 failed"
+}

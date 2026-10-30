@@ -1,0 +1,68 @@
+{
+  "source_revision": "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "f1d3f1c76e6faa591c3010132bb3cb1dda2dade038ccb994959928ae85862f97",
+      "bytes": 8536064
+    },
+    "openems-agent-next.msi": {
+      "sha256": "1a8224df7f7867c9ae20353388679524b28d30d047464b6f49bc639abdd5980e",
+      "bytes": 8536064
+    }
+  },
+  "agent_executable": {
+    "sha256": "d1e56f1abb66ea70f9c2439df8f00fc0367e01aaeaa6feb481db5119423549f7",
+    "bytes": 5979136
+  },
+  "session_executable": {
+    "sha256": "a8ac7830a7015eb3c978010044448e09593254705903eca2acd6ccc1cd94a560",
+    "bytes": 1079296
+  },
+  "phase_files_checked": 20,
+  "all_manifest_hashes_match": true,
+  "original_v2_inputs_replaced": false,
+  "installed_on_host": false,
+  "msi_metadata": [
+    {
+      "name": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_absent": true
+    },
+    {
+      "name": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_absent": true
+    }
+  ],
+  "vm_media": {
+    "iso": "openems-controls-fixed-2100dd7.iso",
+    "sha256": "7b341722dba53234d5537ca4c091bbdc46f75e6055c1b916215f39431a7823c1",
+    "bytes": 34304000,
+    "volume_label": "OPENEMS_FIXED",
+    "payload_phase_files_verified": 10,
+    "payload_manifest_matches": true,
+    "launcher": "results/fixed-2100dd7/run-fixed-controls.ps1",
+    "launcher_sha256": "00a29a51e4a3158a3d82e5af1cd44b4bce8a7d30400aa14ff8905ec541bbea6c",
+    "launcher_parsed_without_execution_on_host": true,
+    "shortcut": "36 - Run 2100dd7 WDAC inside clean VM as administrator",
+    "clean_snapshot_required": "clean-preflight-before-controls (UID 2)",
+    "results": "fixed-2100dd7/applications",
+    "source_msi_harness_and_installed_executable_pinned": true,
+    "operator_vm_execution": "completed; acceptance failed"
+  },
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "previous_media_overwritten": false,
+  "new_source_acceptance": "failed at v4 hash policy ACK; five initial checks and normal release/removal passed",
+  "vm_round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+  "latest_diagnostic_summary": {
+    "round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+    "late_application_confirmed": true,
+    "active_owned_control_cleanup_verified": true,
+    "private_catalog_variant_validated": true,
+    "private_pipeline_ms": 8225,
+    "integration_approved": true,
+    "new_variant_in_product_yet": false
+  }
+}

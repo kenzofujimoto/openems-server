@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "fb2f73ea797c7c1b391462d9d22223eaa39d629a",
+  "agent_source_revision": "c0192b1c188ee073c04825786419ea9ea370a1b4",
+  "harness_source_revision": "fb2f73ea797c7c1b391462d9d22223eaa39d629a",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "a8b3c1d982f7cd91765a3f62c208c4cb7d897f4c7ec5ae3e0ae0b84a94704459",
+      "bytes": 8552448
+    },
+    "openems-agent-next.msi": {
+      "sha256": "3db79aa5080fde2bfd046fde7cac2b4e7165122615c25ec00b22aa074d3a8f65",
+      "bytes": 8552448
+    }
+  },
+  "msi_bytes_reused_without_rebuild": true,
+  "all_manifest_hashes_match": true,
+  "old_inputs_overwritten": false,
+  "harness_sha256": "7568d3c581cc4d8581fdeef3d8aa930f0ecd25d5d29ae372ec76eb9fd72975c6",
+  "launcher_sha256": "f5ebbb1aef089b1e4c17ca29c1294d1bc7293a31b3f2177afc43d63c61135652",
+  "includes": [
+    "fixture logs appended through shared handles with bounded retries"
+  ],
+  "installed_on_host": false,
+  "iso": "openems-controls-acklog-fb2f73e.iso",
+  "payload": "payload-acklog-fb2f73e",
+  "results": "acklog-fb2f73e",
+  "wdac_acceptance": "pending",
+  "usb_acceptance": "pending",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "iso_sha256": "073474df2dbdad38027daadb6c3a45c453791b3a13eae0b1d85da3e9c277775b",
+  "shortcuts": [
+    "ACCEPT-WDAC-49",
+    "ACCEPT-USB-50"
+  ],
+  "launcher_parsed_without_execution_on_host": true,
+  "host_suite": "1190 passed, 58 skipped, 4 deselected; 1 known native inventory 90 s timeout outside this change"
+}

@@ -1,0 +1,51 @@
+{
+  "source_revision": "f1fb89192c003cec457230cc507873f9837435ad",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "db0aa75d280a75c56c9eb163bf1a0d6c9321d00c09981fd99ed1c9da81111e4d",
+      "bytes": 8527872
+    },
+    "openems-agent-next.msi": {
+      "sha256": "1e66234b7383d40899ab442e60bfa50d75e2ce34f568ea26a2378de6a6811eb6",
+      "bytes": 8527872
+    }
+  },
+  "agent_executable": {
+    "sha256": "ea759d9b0ed50c13b61ebda73db14546b73c3450f57ed665512fd876f08832b4",
+    "bytes": 5975040
+  },
+  "session_executable": {
+    "sha256": "dcad90a181270f05ddacbf4e189b13da832cd9f0e503a2e53c1e05363e95cab9",
+    "bytes": 1079296
+  },
+  "phase_files_checked": 20,
+  "all_manifest_hashes_match": true,
+  "original_v2_inputs_replaced": false,
+  "installed_on_host": false,
+  "msi_metadata": [
+    {
+      "name": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_absent": true
+    },
+    {
+      "name": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_absent": true
+    }
+  ],
+  "vm_media": {
+    "iso_name": "openems-controls-fixed-f1fb891.iso",
+    "sha256": "e0e4fc28a36c78499da2e2d62769f18039706f52ca3f8b76f0dac82b351c9578",
+    "bytes": 34267136,
+    "volume_label": "OPENEMS_FIXED",
+    "copied_phase_files_verified": 10,
+    "guest_launcher": {
+      "sha256": "52a1e24ee4191a68dcbf6c72e6b714a57f774e42d47b5d897da8dfe8b9c84ce9",
+      "bytes": 9768
+    },
+    "guest_launcher_executed_on_host": false,
+    "snapshot_required": "clean-preflight-before-controls (UID 2)",
+    "snapshot_restored": false
+  }
+}

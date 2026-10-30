@@ -1,0 +1,57 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  false,
+    "status":  "failed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-29T13:57:38.7446943Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "the application inventory includes the running fixture with its path and SHA-256",
+                       "at":  "2026-10-29T13:57:38.8449731Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "both independent fixture paths start and reach the external network before policy",
+                       "at":  "2026-10-29T13:57:41.1052532Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network block kept the selected app runnable while its connection failed and the control copy connected",
+                       "at":  "2026-10-29T13:58:47.0510166Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "network policy release restored the selected app connection",
+                       "at":  "2026-10-29T13:59:15.1420619Z"
+                   }
+               ],
+    "pending":  [
+                    "Inspect the application-control journal and agent.log in this guest. A required reboot/capability prevents full acceptance; use the documented disposable VM procedure."
+                ],
+    "error":  "The service did not successfully apply and ACK this control policy. Inspect agent.log; reboot or an unsupported capability is not a pass.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T13:57:00.0707405Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T13:57:00.0832781Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "f1d3f1c76e6faa591c3010132bb3cb1dda2dade038ccb994959928ae85862f97",
+                                                                       "bytes":  8536064
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "1a8224df7f7867c9ae20353388679524b28d30d047464b6f49bc639abdd5980e",
+                                                                            "bytes":  8536064
+                                                                        }
+                                         },
+                            "source_revision":  "2100dd7b54220cd678300bc6c35870b9ad8caf0b"
+                        },
+    "finished_utc":  "2026-10-29T14:01:36.4509613Z"
+}

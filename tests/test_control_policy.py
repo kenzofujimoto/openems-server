@@ -63,3 +63,12 @@ def test_panel_reports_control_capability_gaps_even_without_a_web_filter():
         "network_blocked": [r"C:\Apps\one.exe"],
     }}
     assert set(missing_tags(body, [])) == {"usb-control:v1", "app-control:wdac", "app-control:network"}
+
+
+def test_catalog_rules_may_apply_only_where_present():
+    policy = validate_policy({"app_control": {"execution_rules": [
+        {"id": "catalog-1", "kind": "publisher", "value": "CN=Example", "if_present": True}]}})
+    assert policy["app_control"]["execution_rules"][0]["if_present"] is True
+    with pytest.raises(ValueError, match="if_present"):
+        validate_policy({"app_control": {"execution_rules": [
+            {"id": "catalog-1", "kind": "publisher", "value": "CN=Example", "if_present": "yes"}]}})
