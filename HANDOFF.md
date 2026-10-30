@@ -2,6 +2,9 @@
 
 ## Estado atual — 30/10/2026
 
+- **Para retomar aceite USB/WDAC:** a VM descartável foi apagada em 30/10. Recriar e testar seguindo o [guia da VM](docs/vm-acceptance-guide.md), que inclui versões, critérios e instruções para o agente de código.
+- **Notebook do operador:** agente removido em 30/10 (código offline + `msiexec /x`), sem sobras de serviço, NRPT, firewall, certificado, hosts ou `ProgramData`.
+- **Próxima sessão aprovada:** refinar tabelas/filtros/rolagem do painel e criar identidade própria do OpenEMS (logo, tray com ícone e janela local), sem marca RSM fixa no código.
 - **Branch `feature/policy-groups-catalog`** (empilhada sobre o PR #8). Contém:
   - **seletor de grupos** no painel: lista, busca, "Novo grupo" e seleção mantida entre telas;
   - **tabela de domínios** com Permitir/Bloquear por linha (vinda de `feature/domain-rules-table`);
