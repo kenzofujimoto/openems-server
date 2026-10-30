@@ -3,6 +3,7 @@
 tests
 tools/*
 !tools/update_categories.py
+!tools/update_app_catalog.py
 __pycache__
 **/__pycache__
 .pytest_cache

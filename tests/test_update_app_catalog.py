@@ -48,3 +48,6 @@ def test_compose_runs_the_daily_catalog_job_in_its_own_profile():
     compose = (Path(__file__).resolve().parent.parent / "docker-compose.yml").read_text(encoding="utf-8")
     assert "tools/update_app_catalog.py" in compose and "app-catalog:/var/lib/openems/app-catalog" in compose
     assert "OPENEMS_APP_CATALOG_DIR: /var/lib/openems/app-catalog" in compose
+    root = Path(__file__).resolve().parent.parent
+    assert "!tools/update_app_catalog.py" in (root / ".dockerignore").read_text(encoding="utf-8")
+    assert "COPY tools/update_app_catalog.py ./tools/update_app_catalog.py" in (root / "Dockerfile").read_text(encoding="utf-8")
