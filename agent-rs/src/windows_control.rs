@@ -153,9 +153,15 @@ mod tests {
 
     #[test]
     fn background_collection_yields_cpu_to_enforcement() {
-        const PRIORITY: &str = "[Console]::In.ReadToEnd()|Out-Null; @{priority=[string](Get-Process -Id $PID).PriorityClass}|ConvertTo-Json -Compress";
-        assert_eq!(run(PRIORITY, &json!({})).unwrap()["priority"], "Normal");
-        assert_eq!(run_background(PRIORITY, &json!({})).unwrap()["priority"], "BelowNormal");
+        const PRIORITY: &str = "$request=[Console]::In.ReadToEnd()|ConvertFrom-Json; @{priority=[string](Get-Process -Id $PID).PriorityClass; parent=[string](Get-Process -Id $request.parent).PriorityClass}|ConvertTo-Json -Compress";
+        let request = json!({ "parent": std::process::id() });
+        let foreground = run(PRIORITY, &request).unwrap();
+        // Without a priority flag Windows starts children at Normal, unless the parent runs at Idle or
+        // BelowNormal (as CI runners do), in which case the child inherits the parent's class.
+        let parent = foreground["parent"].as_str().unwrap().to_owned();
+        let expected = if matches!(parent.as_str(), "Idle" | "BelowNormal") { parent.as_str() } else { "Normal" };
+        assert_eq!(foreground["priority"], expected);
+        assert_eq!(run_background(PRIORITY, &request).unwrap()["priority"], "BelowNormal");
     }
 
     #[test]
