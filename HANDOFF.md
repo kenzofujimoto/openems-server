@@ -1,5 +1,17 @@
 # Handoff — roadmap v2
 
+## Estado atual — 30/10/2026
+
+- **Branch `feature/policy-groups-catalog`** (empilhada sobre o PR #8). Contém:
+  - **seletor de grupos** no painel: lista, busca, "Novo grupo" e seleção mantida entre telas;
+  - **tabela de domínios** com Permitir/Bloquear por linha (vinda de `feature/domain-rules-table`);
+  - **catálogo de aplicativos** ([plano](docs/app-catalog-plan.md)).
+- **Catálogo de aplicativos:**
+  - **Fonte:** índice público do winget (`source2.msix`, microsoft/winget-pkgs, MIT), com 15.830 apps em 14 categorias e curadoria própria para os apps corporativos mais comuns. O job diário `app-catalog` do compose publica `app-catalog.json` num volume.
+  - **Servidor:** expande `app_catalog.actions` (`category:<id>`/`app:<id>` = block/allow) em regras `catalog-*` com `if_present` a partir das identidades vistas nos inventários da frota. Um inventário novo com outra identidade republica o grupo (auditado como `profile.catalog_refresh`). Apps da Microsoft nunca são expandidos.
+  - **Agente:** regras `if_present` são ignoradas onde não há amostra local. A política é removida se todas faltarem, e as regras são reavaliadas no máximo de hora em hora.
+  - **Pendente:** MSI novo e aceite WDAC na VM para `if_present`. O FortiGuard não foi usado (base proprietária).
+- **Limite conhecido:** o inventário enviado ao servidor não inclui `original_name`. Sem editor verificado, a expansão cai para regra por hash.
 ## Estado atual — 29/10/2026
 
 - **ACEITE WINDOWS CONCLUÍDO na VM descartável com o agente `675308c` (MSI 0.4.0 de 675308c, ISO `openems-controls-final-675308c.iso`):** Applications/WDAC ([resultado](validation/vm-applications-final-675308c-result-2026-10-29.json)) e USB físico com PENMACK ([resultado](validation/vm-usb-final-675308c-result-2026-10-29.json)) com `passed: true`, sem erros de limpeza e com `physical_acceptance_pending: false` na USB. Suítes no host: Rust 232 e Python 1195 aprovados, sem falhas (4 casos que rodam o roteiro inteiro deselecionados).

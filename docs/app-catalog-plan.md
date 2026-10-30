@@ -1,6 +1,6 @@
 # Catálogo de aplicativos: plano proposto
 
-Status: proposta, aguardando aprovação do operador. Nada implementado.
+Status: aprovado em 30/10/2026 e implementado com TDD na branch `feature/policy-groups-catalog` (gerador, servidor, regra `if_present` no agente, painel). Pendente: MSI novo e aceite WDAC na VM descartável para `if_present`. Wikidata e Scoop ainda não foram integrados: a primeira versão usa só o índice do winget, mais a curadoria própria.
 
 ## Objetivo
 
