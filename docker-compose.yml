@@ -49,6 +49,9 @@ services:
     # Daily application catalog from the public winget index (microsoft/winget-pkgs, MIT).
     build: .
     command: ["python", "tools/update_app_catalog.py", "--every-hours", "24", "/var/lib/openems/app-catalog"]
+    # The image healthcheck probes the panel; this job serves nothing.
+    healthcheck:
+      disable: true
     volumes:
       - app-catalog:/var/lib/openems/app-catalog
     read_only: true
