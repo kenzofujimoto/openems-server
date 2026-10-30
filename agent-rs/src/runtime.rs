@@ -435,6 +435,26 @@ impl Runtime {
                 }
             }
         }
+        self.upload_inventory(client_id, token);
+    }
+
+    /// Upload a collected inventory as soon as its background collection completes, between
+    /// synchronizations; a failed upload stays pending for the regular synchronization.
+    pub fn upload_ready_inventory(&self) {
+        if self.cfg.dry_run || !self.controls.take_inventory_ready() {
+            return;
+        }
+        let (client_id, token) = {
+            let inner = self.lock();
+            (inner.client_id.clone(), inner.device_token.clone())
+        };
+        if let Some(client_id) = client_id {
+            self.upload_inventory(&client_id, token.as_deref());
+        }
+    }
+
+    fn upload_inventory(&self, client_id: &str, token: Option<&str>) {
+        use std::sync::atomic::Ordering;
         if self.inventory_unsupported.load(Ordering::Relaxed) {
             return;
         }
@@ -869,6 +889,7 @@ impl Runtime {
                         runtime.report_pending();
                     }
                     runtime.stop.wait(Duration::from_secs(1));
+                    runtime.upload_ready_inventory();
                 }
             })?
         };

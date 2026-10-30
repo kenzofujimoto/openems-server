@@ -1,0 +1,33 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  false,
+    "status":  "failed",
+    "checks":  [
+
+               ],
+    "pending":  [
+
+                ],
+    "error":  "Fixture backend did not start.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T20:53:14.5296568Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T20:53:14.6740063Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "a8b3c1d982f7cd91765a3f62c208c4cb7d897f4c7ec5ae3e0ae0b84a94704459",
+                                                                       "bytes":  8552448
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "3db79aa5080fde2bfd046fde7cac2b4e7165122615c25ec00b22aa074d3a8f65",
+                                                                            "bytes":  8552448
+                                                                        }
+                                         },
+                            "source_revision":  "f7c6e1797d4885eaddc17e40993f14c31c64be8e"
+                        },
+    "finished_utc":  "2026-10-29T20:55:29.8298729Z"
+}

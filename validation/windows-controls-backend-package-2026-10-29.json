@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "bab175d79f1ee9dba46810b92c47e3d3ed8d32e3",
+  "agent_source_revision": "959e9de55ec365899086290b404c29ce1f791bb4",
+  "harness_source_revision": "bab175d79f1ee9dba46810b92c47e3d3ed8d32e3",
+  "agent_executable_sha256": "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "478531dc3748293634ca2c593e92531192d281ac15b568adad61a8506d4e80f0",
+      "bytes": 8531968
+    },
+    "openems-agent-next.msi": {
+      "sha256": "c8e6a27f224abec4c41d1855629703073e5635b45f5b3d91b72ae68f7bf31e4b",
+      "bytes": 8531968
+    }
+  },
+  "msi_bytes_reused_without_rebuild": true,
+  "files_checked": 10,
+  "all_manifest_hashes_match": true,
+  "old_inputs_overwritten": false,
+  "harness_sha256": "51adde9f837da2837b0e3343095d9b1edafade8bc33c173dbff550e3c7038935",
+  "launcher_sha256": "83caefc7586a92fe76ee69bd974cde08b066e225e260c5811969ed7a0588f12f",
+  "fixture_backend_trace_in_supplement": true,
+  "installed_on_host": false,
+  "iso": "openems-controls-backend-bab175d.iso",
+  "payload": "payload-backend-bab175d",
+  "results": "backend-bab175d",
+  "usb_acceptance": "pending",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "iso_sha256": "b8d0db9db43c362bb35cc4ba96a07d773ad87224e0a0ced9f2e02254184efcf6",
+  "iso_bytes": 34285568,
+  "volume_label": "OPENEMS_FIXED",
+  "shortcut": "ACCEPT-USB-42",
+  "clean_snapshot_required": "clean-preflight-before-controls (UID 2)",
+  "launcher_parsed_without_execution_on_host": true,
+  "host_suite": "1185 passed, 58 skipped, 4 whole-harness cases deselected, 0 failed",
+  "host_reproduction": "AST-extracted original Start-Backend job failed after one aborted upload and refused later connections on PS 5.1 loopback"
+}

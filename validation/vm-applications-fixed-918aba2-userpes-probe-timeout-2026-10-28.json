@@ -1,0 +1,30 @@
+﻿{
+    "status":  "timed_out",
+    "deadline_seconds":  120,
+    "last_observation":  {
+                             "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+                             "started_utc":  "2026-10-29T02:10:05.6025745Z",
+                             "status":  "running",
+                             "stage":  "identify_fixture",
+                             "context":  "SYSTEM",
+                             "controls_modified":  false,
+                             "policy_loading_included":  false,
+                             "steps":  [
+
+                                       ],
+                             "error":  null,
+                             "driver_files":  [
+
+                                              ],
+                             "generated_rule_count":  0,
+                             "user_rule_count":  0,
+                             "code_policy_ids_before":  [
+
+                                                        ],
+                             "code_policy_ids_after":  [
+
+                                                       ]
+                         },
+    "controls_modified":  false,
+    "policy_loading_included":  false
+}

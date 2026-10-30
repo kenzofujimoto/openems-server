@@ -1,0 +1,383 @@
+﻿{
+    "finished_utc":  "2026-10-29T18:12:42.0184605Z",
+    "source_revision":  "bab175d79f1ee9dba46810b92c47e3d3ed8d32e3",
+    "harness_exit":  1,
+    "installed_executable_hash_observations":  [
+                                                   {
+                                                       "at":  "2026-10-29T18:07:23.4976807Z",
+                                                       "sha256":  "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2"
+                                                   }
+                                               ],
+    "installed_hash_matches":  true,
+    "acknowledgments":  [
+                            {
+                                "version":  1,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  2,
+                                "digest":  "685334b625af3b28fb650a101b018445d4fcb5440a57dc51e58f62f2c7be387c",
+                                "success":  true,
+                                "error_present":  false
+                            },
+                            {
+                                "version":  3,
+                                "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                                "success":  true,
+                                "error_present":  false
+                            }
+                        ],
+    "control_events":  [
+                           {
+                               "kind":  "usb_block"
+                           }
+                       ],
+    "final_policy":  [
+                         {
+                             "version":  3,
+                             "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                             "usb_default_action":  "allow",
+                             "usb_rule_count":  0,
+                             "execution_rule_count":  0
+                         }
+                     ],
+    "service_absent":  true,
+    "watchdog_count":  0,
+    "managed_nrpt_count":  0,
+    "agent_process_count":  0,
+    "control_journals_present":  [
+
+                                 ],
+    "agent_source_revision":  "959e9de55ec365899086290b404c29ce1f791bb4",
+    "harness_source_revision":  "bab175d79f1ee9dba46810b92c47e3d3ed8d32e3",
+    "code_integrity_collection_status":  "not_required",
+    "code_integrity_collection_error_type":  null,
+    "code_integrity_baseline_error_type":  null,
+    "code_policy_ids_before":  [
+
+                               ],
+    "current_code_policies":  [
+
+                              ],
+    "code_integrity_events":  [
+
+                              ],
+    "fixture_backend_events":  [
+                                   {
+                                       "at_utc":  "2026-10-29T18:07:32.4362722Z",
+                                       "route":  "register",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:07:33.9157103Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:07:34.1484316Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:07:34.1611074Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:07:34.1710676Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:08:54.6474426Z",
+                                       "route":  "inventory",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:08:54.6756941Z",
+                                       "route":  "other",
+                                       "status":  404,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:08:54.6808931Z",
+                                       "route":  "config/ack",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:08:54.6989399Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:08:55.7232449Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:08:57.0892499Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:08:57.1150320Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:11.2837463Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:11.2889018Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:11.2965278Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:11.3762089Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:27.0388795Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:36.5380916Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:49.6231850Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:52.7125433Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:54.1656774Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:54.4415471Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:09:54.4859669Z",
+                                       "route":  "control_events",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:04.0194615Z",
+                                       "route":  "inventory",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:04.1291632Z",
+                                       "route":  "config/ack",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:04.1538570Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:05.1688475Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:05.1835281Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:05.2063334Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:30.7417179Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:11:57.0066915Z",
+                                       "route":  "messages/pull",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:12:00.5251020Z",
+                                       "route":  "refresh",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:12:00.5329249Z",
+                                       "route":  "config/assigned",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:12:00.6510809Z",
+                                       "route":  "config/ack",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:12:01.1360005Z",
+                                       "route":  "host_tags",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:12:08.3852400Z",
+                                       "route":  "other",
+                                       "status":  404,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   },
+                                   {
+                                       "at_utc":  "2026-10-29T18:12:08.4039143Z",
+                                       "route":  "tamper",
+                                       "status":  200,
+                                       "response_written":  true,
+                                       "error_type":  null,
+                                       "trace_write_failures":  0
+                                   }
+                               ],
+    "agent_log_categories":  [
+                                 {
+                                     "at":  "2026-10-29T18:09:46Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T18:11:30Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 }
+                             ],
+    "agent_log_read_error_type":  null,
+    "post_removal_usb_read_write_delete_verified":  true
+}

@@ -1,0 +1,13 @@
+﻿{
+    "started_utc":  "2026-10-29T02:57:03.6438601Z",
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "kind":  "USB",
+    "model":  "VMware20,1",
+    "os_version":  "10.0.26300",
+    "powershell":  "5.1.26100.9711",
+    "msi_sha256":  "ed7089ee7ef498aff33d6da77437c447f50ad46bd964dcf0cf6836de5bf3c7b4",
+    "expected_agent_sha256":  "ea759d9b0ed50c13b61ebda73db14546b73c3450f57ed665512fd876f08832b4",
+    "all_input_hashes_match":  true,
+    "existing_agent":  false,
+    "physical_drive":  "E:"
+}

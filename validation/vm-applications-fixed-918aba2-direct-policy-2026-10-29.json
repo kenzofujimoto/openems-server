@@ -1,0 +1,245 @@
+﻿{
+    "source_revision":  "918aba25c25de33bce0582a82326e3bb84e03910",
+    "started_utc":  "2026-10-29T13:00:34.7328840Z",
+    "status":  "completed",
+    "stage":  "convert_private_binary",
+    "context":  "SYSTEM",
+    "controls_modified":  false,
+    "policy_loading_included":  false,
+    "steps":  [
+                  {
+                      "stage":  "import_configci",
+                      "position":  "before",
+                      "elapsed_ms":  3508,
+                      "process_cpu_ms":  1422
+                  },
+                  {
+                      "stage":  "import_configci",
+                      "position":  "after",
+                      "elapsed_ms":  3673,
+                      "process_cpu_ms":  1453
+                  },
+                  {
+                      "stage":  "authenticate_previous_xml",
+                      "position":  "before",
+                      "elapsed_ms":  3703,
+                      "process_cpu_ms":  1469
+                  },
+                  {
+                      "stage":  "authenticate_previous_xml",
+                      "position":  "after",
+                      "elapsed_ms":  4138,
+                      "process_cpu_ms":  1734
+                  },
+                  {
+                      "stage":  "new_ci_policy_scan",
+                      "position":  "before",
+                      "elapsed_ms":  4168,
+                      "process_cpu_ms":  1750
+                  },
+                  {
+                      "stage":  "new_ci_policy_scan",
+                      "position":  "after",
+                      "elapsed_ms":  76260,
+                      "process_cpu_ms":  50969
+                  },
+                  {
+                      "stage":  "merge_private_template",
+                      "position":  "before",
+                      "elapsed_ms":  76317,
+                      "process_cpu_ms":  51000
+                  },
+                  {
+                      "stage":  "merge_private_template",
+                      "position":  "after",
+                      "elapsed_ms":  76588,
+                      "process_cpu_ms":  51188
+                  },
+                  {
+                      "stage":  "normalize_private_options",
+                      "position":  "before",
+                      "elapsed_ms":  76619,
+                      "process_cpu_ms":  51188
+                  },
+                  {
+                      "stage":  "normalize_private_options",
+                      "position":  "after",
+                      "elapsed_ms":  76765,
+                      "process_cpu_ms":  51312
+                  },
+                  {
+                      "stage":  "convert_private_binary",
+                      "position":  "before",
+                      "elapsed_ms":  76911,
+                      "process_cpu_ms":  51500
+                  },
+                  {
+                      "stage":  "convert_private_binary",
+                      "position":  "after",
+                      "elapsed_ms":  77110,
+                      "process_cpu_ms":  51750
+                  }
+              ],
+    "error":  null,
+    "driver_files":  [
+
+                     ],
+    "generated_rule_count":  0,
+    "user_rule_count":  0,
+    "code_policy_ids_before":  [
+                                   "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                   "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                   "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                   "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                   "5dac656c-21ad-4a02-ab49-649917162e70",
+                                   "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                   "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                   "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                   "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                   "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                   "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                               ],
+    "code_policy_ids_after":  [
+                                  "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                  "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                  "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                  "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                  "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                  "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                  "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                  "5dac656c-21ad-4a02-ab49-649917162e70",
+                                  "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                  "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                  "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                  "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                  "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                  "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                              ],
+    "strategy":  "New-CIPolicy ScanPath UserPEs Hash Deny",
+    "deadline_seconds":  120,
+    "policy_ack_deadline_seconds":  90,
+    "correctness_validated":  false,
+    "fixture_sha256":  "d8e87c5d1bbe82cdb17b09472e31f04200097dd5daaf6d744dfacfd371363a2d",
+    "fixture_sha256_expected_match":  true,
+    "direct_xml":  {
+                       "deny_count":  4,
+                       "deny_hashes":  [
+                                           "17C75FBD35749E3632C2A55EBDC84CCDF8807D7A",
+                                           "41A7E2F33B3E8129AAAB76144CE7973C6D3C28EE35172C88676792E37FD531A1",
+                                           "46A0A4627EFB3A71B71BCC183A1C11ED31FAF4663B565ADCF9195BC3B085DF19",
+                                           "EADC3C6D55D179ED5E5DBDAD747272FB19A44E90"
+                                       ],
+                       "user_deny_hashes":  [
+                                                "17C75FBD35749E3632C2A55EBDC84CCDF8807D7A",
+                                                "41A7E2F33B3E8129AAAB76144CE7973C6D3C28EE35172C88676792E37FD531A1",
+                                                "46A0A4627EFB3A71B71BCC183A1C11ED31FAF4663B565ADCF9195BC3B085DF19",
+                                                "EADC3C6D55D179ED5E5DBDAD747272FB19A44E90"
+                                            ],
+                       "kernel_deny_hashes":  [
+
+                                              ],
+                       "other_scenario_denies":  0,
+                       "non_hash_denies":  0,
+                       "allow_scope":  [
+
+                                       ],
+                       "signer_count":  0,
+                       "options":  [
+                                       "Disabled:Script Enforcement",
+                                       "Enabled:Advanced Boot Options Menu",
+                                       "Enabled:Audit Mode",
+                                       "Enabled:UMCI",
+                                       "Enabled:Unsigned System Integrity Policy",
+                                       "Required:Enforce Store Applications"
+                                   ]
+                   },
+    "baseline_xml":  {
+                         "deny_count":  4,
+                         "deny_hashes":  [
+                                             "17C75FBD35749E3632C2A55EBDC84CCDF8807D7A",
+                                             "41A7E2F33B3E8129AAAB76144CE7973C6D3C28EE35172C88676792E37FD531A1",
+                                             "46A0A4627EFB3A71B71BCC183A1C11ED31FAF4663B565ADCF9195BC3B085DF19",
+                                             "EADC3C6D55D179ED5E5DBDAD747272FB19A44E90"
+                                         ],
+                         "user_deny_hashes":  [
+                                                  "17C75FBD35749E3632C2A55EBDC84CCDF8807D7A",
+                                                  "41A7E2F33B3E8129AAAB76144CE7973C6D3C28EE35172C88676792E37FD531A1",
+                                                  "46A0A4627EFB3A71B71BCC183A1C11ED31FAF4663B565ADCF9195BC3B085DF19",
+                                                  "EADC3C6D55D179ED5E5DBDAD747272FB19A44E90"
+                                              ],
+                         "kernel_deny_hashes":  [
+
+                                                ],
+                         "other_scenario_denies":  0,
+                         "non_hash_denies":  0,
+                         "allow_scope":  [
+                                             "12:FileName=*",
+                                             "131:FileName=*"
+                                         ],
+                         "signer_count":  0,
+                         "options":  [
+                                         "Disabled:Script Enforcement",
+                                         "Enabled:Advanced Boot Options Menu",
+                                         "Enabled:Inherit Default Policy",
+                                         "Enabled:Revoked Expired As Unsigned",
+                                         "Enabled:UMCI",
+                                         "Enabled:Unsigned System Integrity Policy",
+                                         "Enabled:Update Policy No Reboot"
+                                     ]
+                     },
+    "candidate_xml":  {
+                          "deny_count":  4,
+                          "deny_hashes":  [
+                                              "17C75FBD35749E3632C2A55EBDC84CCDF8807D7A",
+                                              "41A7E2F33B3E8129AAAB76144CE7973C6D3C28EE35172C88676792E37FD531A1",
+                                              "46A0A4627EFB3A71B71BCC183A1C11ED31FAF4663B565ADCF9195BC3B085DF19",
+                                              "EADC3C6D55D179ED5E5DBDAD747272FB19A44E90"
+                                          ],
+                          "user_deny_hashes":  [
+                                                   "17C75FBD35749E3632C2A55EBDC84CCDF8807D7A",
+                                                   "41A7E2F33B3E8129AAAB76144CE7973C6D3C28EE35172C88676792E37FD531A1",
+                                                   "46A0A4627EFB3A71B71BCC183A1C11ED31FAF4663B565ADCF9195BC3B085DF19",
+                                                   "EADC3C6D55D179ED5E5DBDAD747272FB19A44E90"
+                                               ],
+                          "kernel_deny_hashes":  [
+
+                                                 ],
+                          "other_scenario_denies":  0,
+                          "non_hash_denies":  0,
+                          "allow_scope":  [
+                                              "12:FileName=*",
+                                              "131:FileName=*"
+                                          ],
+                          "signer_count":  0,
+                          "options":  [
+                                          "Disabled:Script Enforcement",
+                                          "Enabled:Advanced Boot Options Menu",
+                                          "Enabled:Inherit Default Policy",
+                                          "Enabled:Revoked Expired As Unsigned",
+                                          "Enabled:UMCI",
+                                          "Enabled:Unsigned System Integrity Policy",
+                                          "Enabled:Update Policy No Reboot",
+                                          "Required:Enforce Store Applications"
+                                      ]
+                      },
+    "validation":  {
+                       "exact_hash_deny_set":  true,
+                       "exact_user_hash_deny_set":  true,
+                       "no_kernel_denies":  true,
+                       "no_other_or_non_hash_denies":  true,
+                       "exact_allow_scope":  true,
+                       "no_extra_signers":  true,
+                       "exact_normalized_options":  false,
+                       "genuine_user_deny_rules":  true
+                   },
+    "private_binary_bytes":  1208,
+    "code_policy_ids_unchanged":  true,
+    "finished_utc":  "2026-10-29T13:01:52.3855537Z",
+    "elapsed_ms":  77632,
+    "process_cpu_ms":  51781,
+    "generation_within_90_seconds":  true,
+    "full_ack_feasibility_not_proven":  true
+}

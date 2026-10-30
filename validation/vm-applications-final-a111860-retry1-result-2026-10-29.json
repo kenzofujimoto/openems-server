@@ -1,0 +1,47 @@
+﻿{
+    "kind":  "Applications",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  false,
+    "status":  "failed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-29T22:34:13.7551030Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "the application inventory includes the running fixture with its path and SHA-256",
+                       "at":  "2026-10-29T22:34:14.0806746Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "name":  "both independent fixture paths start and reach the external network before policy",
+                       "at":  "2026-10-29T22:34:16.2029699Z"
+                   }
+               ],
+    "pending":  [
+
+                ],
+    "error":  "Fixture process timed out.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T22:32:09.8119813Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T22:32:09.8528470Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "fd0727cbc4278ba8c96640ea96c562c4cbb6a21aa8864b3b6e8e247e0167083d",
+                                                                       "bytes":  8548352
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "81c9bb5d88ea1d2afbcdbf49b5de3bcd19790bf52b0fb4bd02a498b53131a4f1",
+                                                                            "bytes":  8548352
+                                                                        }
+                                         },
+                            "source_revision":  "a111860657c6ea357477ae23e16b04a95fd9a13c"
+                        },
+    "finished_utc":  "2026-10-29T22:37:20.6715058Z"
+}

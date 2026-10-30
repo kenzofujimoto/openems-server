@@ -1,0 +1,37 @@
+﻿{
+    "kind":  "USB",
+    "passed":  false,
+    "automation_passed":  false,
+    "physical_acceptance_pending":  true,
+    "status":  "failed",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "name":  "production MSI installed and an authenticated inventory was uploaded",
+                       "at":  "2026-10-29T18:08:55.6469919Z"
+                   }
+               ],
+    "pending":  [
+                    "Inspect the application-control journal and agent.log in this guest. A required reboot/capability prevents full acceptance; use the documented disposable VM procedure."
+                ],
+    "error":  "The service did not successfully apply and ACK this control policy. Inspect agent.log; reboot or an unsupported capability is not a pass.",
+    "cleanup_errors":  [
+
+                       ],
+    "started_utc":  "2026-10-29T18:06:23.4676414Z",
+    "package_receipt":  {
+                            "checked_at":  "2026-10-29T18:06:23.5210305Z",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "478531dc3748293634ca2c593e92531192d281ac15b568adad61a8506d4e80f0",
+                                                                       "bytes":  8531968
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "c8e6a27f224abec4c41d1855629703073e5635b45f5b3d91b72ae68f7bf31e4b",
+                                                                            "bytes":  8531968
+                                                                        }
+                                         },
+                            "source_revision":  "bab175d79f1ee9dba46810b92c47e3d3ed8d32e3"
+                        },
+    "finished_utc":  "2026-10-29T18:12:11.2825341Z"
+}

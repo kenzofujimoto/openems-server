@@ -1,0 +1,11 @@
+{
+  "powershell": "5.1.26100.9711",
+  "scope": "synthetic in-memory objects only; no ConfigCI or acceptance harness",
+  "wrapped_count": 1,
+  "wrapped_element_type": "System.Collections.Generic.List`1[[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]",
+  "wrapped_filter_user_count": 0,
+  "direct_filter_user_count": 1,
+  "expanded_rule_count": 2,
+  "expanded_filter_user_count": 1,
+  "checked_at_utc": "2026-10-29T12:17:19.3103062Z"
+}

@@ -81,7 +81,12 @@ function Inventory {
                 if ($candidate.BusType -eq 'USB') {
                     $number = [uint32]$candidate.Number; $unique = [string]$candidate.UniqueId
                     $boot = [bool]$candidate.IsBoot; $system = [bool]$candidate.IsSystem
-                    if ([string]$disk.SerialNumber) { $serial = ([string]$disk.SerialNumber).Trim() }
+                    # Keep the PnP identity when WMI reports malformed or missing serial data.
+                    $wmiSerial = [string]$disk.SerialNumber
+                    if ($wmiSerial -notmatch '\p{Cc}') {
+                        $wmiSerial = $wmiSerial.Trim()
+                        if ($wmiSerial -and $wmiSerial.Length -le 512) { $serial = $wmiSerial }
+                    }
                     $manufacturer = [string]$disk.Manufacturer; $model = [string]$disk.Model
                     $letters = @(Get-Partition -DiskNumber $number -ErrorAction Stop | Where-Object DriveLetter | ForEach-Object { [string]$_.DriveLetter + ':' })
                 } else { continue }
@@ -120,16 +125,21 @@ function Restore-Device($Entry) {
         $disk | Set-Disk -IsOffline ([bool]$Entry.original_offline) -ErrorAction Stop
     }
 }
+function Registry-Value([string]$Path, [string]$Name) {
+    if (-not (Test-Path -LiteralPath $Path -ErrorAction Stop)) { return $null }
+    # PS 5.1 Get-ItemPropertyValue can terminate even with SilentlyContinue for a missing value.
+    return (Get-Item -LiteralPath $Path -ErrorAction Stop).GetValue($Name, $null)
+}
 function Remove-OwnRestrictions {
     $list = Join-Path $restriction 'DenyInstanceIDs'
     foreach ($entry in @($script:state.entries)) {
-        $current = Get-ItemPropertyValue -LiteralPath $list -Name $entry.name -ErrorAction SilentlyContinue
+        $current = Registry-Value $list $entry.name
         if ($null -ne $current -and [string]$current -cne [string]$entry.value) { throw 'OPENEMS_EXTERNAL_POLICY_CHANGE' }
         if ($null -ne $current) { Remove-ItemProperty -LiteralPath $list -Name $entry.name -ErrorAction Stop }
     }
     $script:state.entries = @()
     foreach ($saved in @($script:state.flags)) {
-        $current = Get-ItemPropertyValue -LiteralPath $restriction -Name $saved.name -ErrorAction SilentlyContinue
+        $current = Registry-Value $restriction $saved.name
         if ($null -ne $current -and [int]$current -ne 1 -and $current -ne $saved.value) { throw 'OPENEMS_EXTERNAL_POLICY_CHANGE' }
         if ($saved.name -eq 'DenyInstanceIDs' -and (-not $saved.existed -or [int]$saved.value -eq 0) -and (Test-Path -LiteralPath $list)) {
             $remaining = (Get-Item -LiteralPath $list).GetValueNames()
@@ -181,7 +191,7 @@ try {
     foreach ($entry in @($script:state.entries)) {
         if ($entry.value -notin @($blocked | ForEach-Object { $_.device.instance_id })) {
             $listPath = Join-Path $restriction 'DenyInstanceIDs'
-            $currentValue = Get-ItemPropertyValue -LiteralPath $listPath -Name $entry.name -ErrorAction SilentlyContinue
+            $currentValue = Registry-Value $listPath $entry.name
             if ($null -ne $currentValue -and [string]$currentValue -cne [string]$entry.value) { throw 'OPENEMS_EXTERNAL_POLICY_CHANGE' }
             if ($null -ne $currentValue) { Remove-ItemProperty -LiteralPath $listPath -Name $entry.name -ErrorAction Stop }
             $script:state.entries = @($script:state.entries | Where-Object { $_.name -cne $entry.name }); Save-State
@@ -191,7 +201,7 @@ try {
     if ($blocked.Count -gt 0 -and @($script:state.flags).Count -eq 0) {
         $flags = @()
         foreach ($name in @('DenyInstanceIDs','DenyInstanceIDsRetroactive')) {
-            $value = Get-ItemPropertyValue -LiteralPath $restriction -Name $name -ErrorAction SilentlyContinue
+            $value = Registry-Value $restriction $name
             $flags += @{name=$name; existed=($null -ne $value); value=$value}
         }
         $script:state.flags = $flags; Save-State
@@ -226,9 +236,8 @@ try {
             New-ItemProperty -LiteralPath $restriction -Name DenyInstanceIDs -Value 1 -PropertyType DWord -Force | Out-Null
             New-ItemProperty -LiteralPath $restriction -Name DenyInstanceIDsRetroactive -Value 1 -PropertyType DWord -Force | Out-Null
             if (-not $entry.disabled_by_us) {
-                $entry.applied_offline = $true; $entry.disabled_by_us = $true; Save-State
-                $disk = Get-SafeDisk $entry
-                if ($null -ne $disk) { $disk | Set-Disk -IsOffline $true -ErrorAction Stop }
+                # Removable media cannot be made offline; restrict and disable only its storage child.
+                $entry.disabled_by_us = $true; Save-State
                 Disable-PnpDevice -InstanceId $entry.instance_id -Confirm:$false -ErrorAction Stop
                 $events += @{kind='usb_block'; detail=$entry.instance_id; rule_id=(Rule-Id $request.policy $device)}
             }

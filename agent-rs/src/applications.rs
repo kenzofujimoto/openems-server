@@ -178,7 +178,7 @@ pub fn journal_path(state: &Path) -> PathBuf {
 }
 
 pub fn inventory(_state: &Path) -> Result<Vec<Application>> {
-    let result = adapter::run(SCRIPT, &json!({"mode":"inventory"}))?;
+    let result = adapter::run_background(SCRIPT, &json!({"mode":"inventory"}))?;
     serde_json::from_value(result["inventory"].clone()).map_err(|_| invalid("invalid application inventory"))
 }
 

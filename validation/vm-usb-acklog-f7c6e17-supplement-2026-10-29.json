@@ -1,0 +1,53 @@
+﻿{
+    "finished_utc":  "2026-10-29T21:03:15.8700319Z",
+    "source_revision":  "f7c6e1797d4885eaddc17e40993f14c31c64be8e",
+    "harness_exit":  1,
+    "installed_executable_hash_observations":  [
+
+                                               ],
+    "installed_hash_matches":  false,
+    "acknowledgments":  [
+
+                        ],
+    "control_events":  [
+
+                       ],
+    "final_policy":  [
+                         {
+                             "version":  1,
+                             "digest":  "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+                             "usb_default_action":  "allow",
+                             "usb_rule_count":  0,
+                             "execution_rule_count":  0
+                         }
+                     ],
+    "service_absent":  true,
+    "watchdog_count":  0,
+    "managed_nrpt_count":  0,
+    "agent_process_count":  0,
+    "control_journals_present":  [
+
+                                 ],
+    "agent_source_revision":  "c0192b1c188ee073c04825786419ea9ea370a1b4",
+    "harness_source_revision":  "f7c6e1797d4885eaddc17e40993f14c31c64be8e",
+    "code_integrity_collection_status":  "not_required",
+    "code_integrity_collection_error_type":  null,
+    "code_integrity_baseline_error_type":  null,
+    "code_policy_ids_before":  [
+
+                               ],
+    "current_code_policies":  [
+
+                              ],
+    "code_integrity_events":  [
+
+                              ],
+    "fixture_backend_events":  [
+
+                               ],
+    "agent_log_categories":  [
+
+                             ],
+    "agent_log_read_error_type":  null,
+    "post_removal_usb_read_write_delete_verified":  true
+}

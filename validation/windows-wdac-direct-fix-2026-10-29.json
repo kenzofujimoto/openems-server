@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-29",
+  "branch": "fix/windows-control-adapters",
+  "source_revision": "2100dd7b54220cd678300bc6c35870b9ad8caf0b",
+  "test_commit": "3765ea6",
+  "scope": "Direct ConfigCI generation only for one verified hash rule; publisher/name/path/multiple rules retain the existing DriverFiles route",
+  "tdd": {
+    "red": {
+      "passed": 43,
+      "failed": 14,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 81.373,
+      "junit_sha256": "f46b93d6644fff02789ee81f95bb4905524653c86124b65f781a4e40077b58f1",
+      "failed_test_names": [
+        "test_wdac_single_hash_scans_only_its_verified_private_copy_without_driver_enumeration",
+        "test_wdac_direct_hash_preserves_enforced_options_and_real_deny_references",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_empty]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_kernel]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_unreferenced]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_bad_hash]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_allow]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_signer]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_duplicate_id]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_non_hash]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_extra_reference]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_missing_umci]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_bad_namespace]",
+        "test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading[policy_malformed]"
+      ]
+    },
+    "first_green_attempt": {
+      "passed": 53,
+      "failed": 4,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 76.564,
+      "junit_sha256": "5c5e2437a5f4393459a9a0b67cd984eed80b0eec28a13dbc69483e9acfd3e2c9",
+      "failed_test_names": [
+        "test_mocked_wdac_success_and_cleanup_preserve_the_json_contract",
+        "test_configci_console_output_does_not_corrupt_adapter_json[hash]",
+        "test_wdac_single_hash_scans_only_its_verified_private_copy_without_driver_enumeration",
+        "test_wdac_direct_hash_preserves_enforced_options_and_real_deny_references"
+      ]
+    },
+    "first_green_attempt_issue": "Mock Merge-CIPolicy did not accept omitted Rules; defaulted its optional parameter to an empty array without changing assertions or production behavior",
+    "green": {
+      "passed": 57,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 79.331,
+      "junit_sha256": "d9b02aaa37883b54f218e16f54bae90de9dd062bafb89211522a9c5ef5c92959",
+      "failed_test_names": []
+    },
+    "windows_mutations_mocked": true
+  },
+  "host_checks": {
+    "python": {
+      "passed": 1158,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 58,
+      "seconds": 441.285,
+      "junit_sha256": "123f105301d75d5341d13de0826788c7e042b35e3445145b622454c428c69cc7",
+      "failed_test_names": [],
+      "deselected": 4,
+      "harness_invoked_on_host": false,
+      "native_agent_required": true,
+      "service_tests_enabled": false,
+      "msi_tests_enabled": false,
+      "deselected_tests": [
+        "tests/test_controls_sandbox.py::test_plan_has_verified_policies_and_never_accepts_unobserved_hardware",
+        "tests/test_controls_sandbox.py::test_host_is_refused_before_writes_even_with_system_or_vm_flags"
+      ],
+      "coverage_percent": 88.57559552746719
+    },
+    "rust_passed": 225,
+    "panel_passed": 102,
+    "cargo_fmt": "passed",
+    "cargo_clippy_all_targets_deny_warnings": "passed",
+    "cargo_release": "passed",
+    "panel_lint": "passed",
+    "panel_typecheck": "passed",
+    "changed_test_ruff": "passed",
+    "full_ruff": {
+      "status": "failed",
+      "unchanged_finding": "deploy/linux/build_package.py:123 S603"
+    }
+  },
+  "native_agent_sha256": "d1e56f1abb66ea70f9c2439df8f00fc0367e01aaeaa6feb481db5119423549f7",
+  "new_adapter_embedded_in_native_agent": true,
+  "guest_comparison_source_revision": "918aba25c25de33bce0582a82326e3bb84e03910",
+  "guest_generation": {
+    "report": "validation/vm-applications-fixed-918aba2-direct-policy-2026-10-29.json",
+    "elapsed_ms": 77632,
+    "scan_ms": 72092,
+    "process_cpu_ms": 51781,
+    "original_extra_option_not_accepted": "12 Required:Enforce Store Applications"
+  },
+  "guest_private_normalization": {
+    "report": "validation/vm-applications-fixed-918aba2-direct-options-2026-10-29.json",
+    "elapsed_ms": 1968,
+    "all_eight_checks_passed": true,
+    "scan_repeated": false,
+    "policy_ids_unchanged": true,
+    "os_policy_loaded": false
+  },
+  "single_measurement_does_not_prove_stable_performance_or_full_ack": true,
+  "policy_ack_deadline_seconds": 90,
+  "adapter_deadline_seconds": 120,
+  "deadlines_changed": false,
+  "acceptance_harness_changed": false,
+  "certificate_validation_or_antivirus_changed": false,
+  "new_source_installed_on_host": false,
+  "new_source_guest_acceptance": "failed at v4 hash policy ACK; five initial checks and normal release/removal passed",
+  "previous_packages_and_reports_overwritten": false,
+  "coverage_gate": "pending; aggregate coverage does not establish all per-module thresholds",
+  "package_report": "validation/windows-wdac-direct-package-2026-10-29.json",
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false,
+  "adapter_source_sha256": "275767dfb9ac8400561560f2dfef149e619d3d3d98325825c1ebef332cf62571",
+  "package_prepared_and_verified": true,
+  "vm_round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+  "latest_diagnostic_summary": {
+    "round_report": "validation/windows-controls-vm-2100dd7-2026-10-29.json",
+    "late_application_confirmed": true,
+    "active_owned_control_cleanup_verified": true,
+    "private_catalog_variant_validated": true,
+    "private_pipeline_ms": 8225,
+    "integration_approved": true,
+    "new_variant_in_product_yet": false
+  }
+}

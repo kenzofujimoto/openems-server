@@ -1,0 +1,262 @@
+﻿{
+    "started_utc":  "2026-10-29T11:55:45.3632085Z",
+    "status":  "completed",
+    "phase":  "verify_removal",
+    "normal_msi_removal":  true,
+    "forced_removal":  false,
+    "release_ack_confirmed":  true,
+    "release_version":  7,
+    "msi_exit":  0,
+    "service_absent":  true,
+    "watchdog_count":  0,
+    "agent_process_count":  0,
+    "control_journals_present":  [
+
+                                 ],
+    "agent_log_categories":  [
+                                 {
+                                     "at":  "2026-10-29T02:58:55Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T02:58:57Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T02:59:33Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:01:41Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "policy status report failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:01:49Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:02:24Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:03:16Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:05:15Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:09:28Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:14:38Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:20:20Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T03:36:07Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:41:17Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:41:50Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:42:02Z",
+                                     "categories":  [
+                                                        "LocalError",
+                                                        "policy enforcement failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:42:24Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:42:58Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:43:59Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:46:04Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:50:46Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 },
+                                 {
+                                     "at":  "2026-10-29T11:55:09Z",
+                                     "categories":  [
+                                                        "TransportError",
+                                                        "synchronization failed"
+                                                    ]
+                                 }
+                             ],
+    "error_type":  null,
+    "error_category":  null,
+    "cached_version":  4,
+    "cached_usb_default_action":  "block",
+    "cached_usb_rule_count":  1,
+    "uninstall_secret_present":  false,
+    "release_offered_version":  7,
+    "backend_started":  true,
+    "service_restarted_normally":  true,
+    "release_confirmation":  "new empty policy received and successfully acknowledged",
+    "msi_attempted":  true,
+    "managed_nrpt_count":  0,
+    "post_removal_usb_read_write_delete_verified":  true,
+    "cleanup_verified":  true,
+    "backend_events":  [
+                           {
+                               "at_utc":  "2026-10-29T11:55:52.3702049Z",
+                               "route":  "messages/pull",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:55:52.5431756Z",
+                               "route":  "refresh",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:55:52.5455300Z",
+                               "route":  "host_tags",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:55:52.5455300Z",
+                               "route":  "config/assigned",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:56:04.6444904Z",
+                               "route":  "inventory",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:56:04.6516490Z",
+                               "route":  "uninstall_secret",
+                               "status":  404,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:56:04.6541963Z",
+                               "route":  "config/ack",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:56:04.6634694Z",
+                               "route":  "host_tags",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:56:08.2695223Z",
+                               "route":  "uninstall_secret",
+                               "status":  404,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           },
+                           {
+                               "at_utc":  "2026-10-29T11:56:08.2746037Z",
+                               "route":  "tamper",
+                               "status":  200,
+                               "response_written":  true,
+                               "error_type":  null,
+                               "inner_error_type":  null
+                           }
+                       ],
+    "finished_utc":  "2026-10-29T11:56:16.0798694Z"
+}

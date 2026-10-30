@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-28",
+  "source_revision": "f1fb89192c003cec457230cc507873f9837435ad",
+  "package_report": "validation/windows-controls-serial-fixed-package-2026-10-28.json",
+  "passed": false,
+  "status": "usb_failed_harness_digest_correction_approved",
+  "snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": 2,
+    "restore_confirmed_by_operator": true,
+    "guest_desktop_observed": true,
+    "observed_at": "2026-10-28T16:42:45-03:00"
+  },
+  "media": {
+    "required_iso": "openems-controls-fixed-f1fb891.iso",
+    "required_label": "OPENEMS_FIXED",
+    "sha256": "e0e4fc28a36c78499da2e2d62769f18039706f52ca3f8b76f0dac82b351c9578",
+    "guest_mount_confirmed": true,
+    "observed_at": "2026-10-28T16:53:14.8172825-03:00",
+    "host_configuration_matches": true,
+    "guest_label_observed": "OPENEMS_FIXED"
+  },
+  "usb": {
+    "status": "failed",
+    "device_label": "PENMACK",
+    "vmware_menu_name": "Alcor Micro Mass Storage",
+    "vid": "058f",
+    "pid": "6387",
+    "expected_bytes": 4026531840,
+    "new_runner_shortcut": "12 - Run FIXED USB inside VM as administrator",
+    "guest_report_directory": "OpenEMSResults/fixed-f1fb891/usb",
+    "started_utc": "2026-10-28T19:54:09Z",
+    "passthrough_observed": true,
+    "observed_guest_drive": "E:",
+    "report": "validation/vm-usb-fixed-f1fb891-2026-10-28.json",
+    "preflight": "validation/vm-usb-fixed-f1fb891-preflight-2026-10-28.json",
+    "supplement": "validation/vm-usb-fixed-f1fb891-supplement-2026-10-28.json",
+    "finished_utc": "2026-10-28T19:58:50.0657322Z",
+    "failure_stage": "instance block policy v5: successful ACK absent within unchanged 90-second deadline",
+    "passed_checks": [
+      "production MSI and authenticated inventory",
+      "default storage block preserves HID",
+      "offline restart preserves policy and HID",
+      "physical allow by VID/PID/serial"
+    ],
+    "cleanup_verified": true,
+    "release_policy_version": 6,
+    "release_ack_success": true,
+    "installed_hash_matches": true,
+    "read_write_delete_after_removal_verified": true,
+    "digest_probe": "validation/windows-controls-ps51-digest-probe-2026-10-28.json",
+    "attribution": "Guest inventory has a printable serial and an ampersand in its instance ID. Logs show synchronization failures while v5 has no ACK. The PS 5.1 canonical encoder incompatibility is reproduced independently. Guest logs expose only categories, not detailed validation reasons.",
+    "diagnostic": "validation/vm-usb-fixed-f1fb891-diagnostic-2026-10-28.json"
+  },
+  "applications": {
+    "status": "pending",
+    "requires_another_clean_snapshot_restore": true,
+    "new_runner_shortcut": "13 - Run FIXED WDAC inside VM as administrator",
+    "guest_report_directory": "OpenEMSResults/fixed-f1fb891/applications"
+  },
+  "physical_host_controls_executed": false,
+  "old_inputs_and_reports_overwritten": false,
+  "git": {
+    "push": false,
+    "pull_request": false,
+    "ci_modified": false
+  },
+  "harness_correction": {
+    "approved": true,
+    "scope": "JSON canonical string encoding only",
+    "tdd_required": true,
+    "agent_validation_unchanged": true,
+    "criteria_and_timeouts_unchanged": true,
+    "implementation_started": false
+  },
+  "host_harness_invocation_audit": "validation/windows-controls-host-invocation-audit-2026-10-28.json"
+}

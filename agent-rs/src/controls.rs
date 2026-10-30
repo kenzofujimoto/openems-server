@@ -176,6 +176,21 @@ impl Backend for Machine {
 struct InventoryState {
     collected: Option<Instant>,
     pending: Option<Inventory>,
+    /// Bumped whenever enforcement may have changed what a collection observes.
+    generation: u64,
+    in_flight: bool,
+    ready: bool,
+    failure: Option<AgentError>,
+}
+
+impl InventoryState {
+    fn invalidate(&mut self) {
+        self.generation += 1;
+        self.collected = None;
+        self.pending = None;
+        self.ready = false;
+        self.failure = None;
+    }
 }
 
 pub struct ControlManager {
@@ -183,8 +198,9 @@ pub struct ControlManager {
     pending_path: PathBuf,
     backend: Arc<dyn Backend>,
     events: Mutex<EventBatch>,
-    inventory: Mutex<InventoryState>,
+    inventory: Arc<Mutex<InventoryState>>,
     inventory_enabled: AtomicBool,
+    applied_body: Mutex<Option<Value>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -214,8 +230,9 @@ impl ControlManager {
             pending_path,
             backend,
             events: Mutex::new(pending),
-            inventory: Mutex::new(InventoryState::default()),
+            inventory: Arc::new(Mutex::new(InventoryState::default())),
             inventory_enabled: AtomicBool::new(false),
+            applied_body: Mutex::new(None),
         })
     }
 
@@ -223,7 +240,18 @@ impl ControlManager {
         if dry_run {
             return Ok(Vec::new());
         }
-        let changed = match self.backend.apply(body, &self.state_path) {
+        // Periodic reconciliation reapplies the same body; only a policy change (a release
+        // included, which emits no event) can change what the device inventory must report.
+        // The first body after start only restores persisted state, so the startup collection stays.
+        let previous = lock(&self.applied_body).clone();
+        let result = self.backend.apply(body, &self.state_path);
+        if previous.as_ref() != Some(body) {
+            *lock(&self.applied_body) = Some(body.clone());
+            if previous.is_some() {
+                lock(&self.inventory).invalidate();
+            }
+        }
+        let changed = match result {
             Ok(changed) => changed,
             Err(failure) => {
                 self.record(failure.events)?;
@@ -258,7 +286,7 @@ impl ControlManager {
         }
         self.save_events(&pending)?;
         // A newly observed enforcement may also have changed the live device inventory.
-        *lock(&self.inventory) = InventoryState::default();
+        lock(&self.inventory).invalidate();
         Ok(())
     }
 
@@ -286,28 +314,62 @@ impl ControlManager {
         self.inventory_enabled.store(true, Ordering::Release);
     }
 
+    /// Returns a collected inventory awaiting upload. Collection runs on its own thread: on
+    /// Windows it can take more than a minute and must never delay policy acknowledgments.
     pub fn inventory_due(&self, now: Instant) -> Result<Option<Inventory>> {
         if !self.inventory_enabled.load(Ordering::Acquire) {
             return Ok(None);
         }
         let mut state = lock(&self.inventory);
+        if let Some(failure) = state.failure.take() {
+            return Err(failure);
+        }
         if let Some(pending) = state.pending.as_ref() {
             return Ok(Some(pending.clone()));
         }
-        if state.collected.is_some_and(|at| now.saturating_duration_since(at) < INVENTORY_INTERVAL) {
+        if state.in_flight || state.collected.is_some_and(|at| now.saturating_duration_since(at) < INVENTORY_INTERVAL) {
             return Ok(None);
         }
         // Also throttle collection failures; a missing native dependency must not spawn every second.
         state.collected = Some(now);
-        let inventory = self.backend.inventory(&self.state_path)?;
-        if inventory.applications.len() > 2000
-            || inventory.usb_devices.len() > 512
-            || inventory.collected_at.parse::<jiff::Timestamp>().is_err()
-        {
-            return Err(AgentError::Local("native inventory is invalid or oversized".into()));
+        state.in_flight = true;
+        let generation = state.generation;
+        drop(state);
+        let (backend, shared, path) = (Arc::clone(&self.backend), Arc::clone(&self.inventory), self.state_path.clone());
+        let spawned = std::thread::Builder::new().name("openems-inventory".into()).spawn(move || {
+            let outcome = backend.inventory(&path).and_then(|inventory| {
+                if inventory.applications.len() > 2000
+                    || inventory.usb_devices.len() > 512
+                    || inventory.collected_at.parse::<jiff::Timestamp>().is_err()
+                {
+                    return Err(AgentError::Local("native inventory is invalid or oversized".into()));
+                }
+                Ok(inventory)
+            });
+            let mut state = lock(&shared);
+            state.in_flight = false;
+            // Enforcement changed during collection: drop the stale view and collect again.
+            if state.generation != generation {
+                return;
+            }
+            match outcome {
+                Ok(inventory) => {
+                    state.pending = Some(inventory);
+                    state.ready = true;
+                }
+                Err(error) => state.failure = Some(error),
+            }
+        });
+        if let Err(error) = spawned {
+            lock(&self.inventory).in_flight = false;
+            return Err(error.into());
         }
-        state.pending = Some(inventory.clone());
-        Ok(Some(inventory))
+        Ok(None)
+    }
+
+    /// True once per completed collection, so it can be uploaded without waiting for a sync.
+    pub fn take_inventory_ready(&self) -> bool {
+        std::mem::take(&mut lock(&self.inventory).ready)
     }
 
     pub fn inventory_uploaded(&self, sent: &Inventory) {

@@ -1,0 +1,116 @@
+{
+  "date": "2026-10-29",
+  "source_revision": "959e9de55ec365899086290b404c29ce1f791bb4",
+  "status": "failed",
+  "passed": false,
+  "shortcut": "ACCEPT-WDAC-40",
+  "started_utc": "2026-10-29T15:19:43.6307865Z",
+  "finished_utc": "2026-10-29T15:24:39.1254776Z",
+  "reports": {
+    "vm-applications-fixed-959e9de-2026-10-29.json": {
+      "path": "validation/vm-applications-fixed-959e9de-2026-10-29.json",
+      "sha256": "029cd3ca82b545259489dba1e8b99a83d99a24a7a2da2853a57e4ec3207452a7"
+    },
+    "vm-applications-fixed-959e9de-preflight-2026-10-29.json": {
+      "path": "validation/vm-applications-fixed-959e9de-preflight-2026-10-29.json",
+      "sha256": "a82c5fb1b35745b6aae5814d129bb086049f9e8c68f3fd6241019f0fc3e6e55e"
+    },
+    "vm-applications-fixed-959e9de-supplement-2026-10-29.json": {
+      "path": "validation/vm-applications-fixed-959e9de-supplement-2026-10-29.json",
+      "sha256": "88e3e13e68e2a557dfb51477780c28a46fe01b8e20fac5f7f78696148bdd1a69"
+    }
+  },
+  "passed_checks": [
+    {
+      "status": "passed",
+      "name": "production MSI installed and an authenticated inventory was uploaded",
+      "at": "2026-10-29T15:20:45.9478550Z"
+    },
+    {
+      "status": "passed",
+      "name": "the application inventory includes the running fixture with its path and SHA-256",
+      "at": "2026-10-29T15:20:46.1890003Z"
+    },
+    {
+      "status": "passed",
+      "name": "both independent fixture paths start and reach the external network before policy",
+      "at": "2026-10-29T15:20:54.2374118Z"
+    },
+    {
+      "status": "passed",
+      "name": "network block kept the selected app runnable while its connection failed and the control copy connected",
+      "at": "2026-10-29T15:22:01.5909486Z"
+    },
+    {
+      "status": "passed",
+      "name": "network policy release restored the selected app connection",
+      "at": "2026-10-29T15:22:47.3136968Z"
+    }
+  ],
+  "successful_ack_versions": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "hash_policy_v4_ack_success": true,
+  "installed_executable_sha256": "dbf4d6d5fddf7a756646d0be938f1aa2f252a907843cbe41ae9a542f094378c2",
+  "installed_hash_matches": true,
+  "observed_first_execution_attempt": {
+    "native_error": 4551,
+    "started": false,
+    "exit": -1
+  },
+  "original_fixture_refusal_observed": true,
+  "renamed_fixture_or_publisher_checks_completed": false,
+  "harness_failure": {
+    "function": "Assert-ExecutionDenied",
+    "source": "deploy/test-controls-sandbox.ps1:374",
+    "current_allowed_codes": [
+      577,
+      1260
+    ],
+    "missing_sdk_defined_code": 4551,
+    "classification_defect_confirmed": true,
+    "attribution_to_specific_policy_needs_ci_event_evidence": true
+  },
+  "primary_code_definition": {
+    "sdk_version": "10.0.26100.0",
+    "header": "shared/winerror.h",
+    "line": 14526,
+    "header_sha256": "0284ea46280c14063bb714d08c9ec48de18de6a7f0384323b263fec234428833",
+    "symbol": "ERROR_SYSTEM_INTEGRITY_POLICY_VIOLATION",
+    "value": 4551,
+    "message": "An Application Control policy has blocked this file.",
+    "reference": "https://source.dot.net/Microsoft.Private.Windows.Core/Generated/Basic.CompilerLog.Util/Basic.CompilerLog.Util.Impl.BasicGeneratedFilesAnalyzerReference/Windows.Win32.WIN32_ERROR.g.cs.html"
+  },
+  "release_v5_ack_success": true,
+  "cleanup_errors": [],
+  "core_cleanup": {
+    "service_absent": true,
+    "watchdog_count": 0,
+    "managed_nrpt_count": 0,
+    "agent_process_count": 0,
+    "control_journals_present": []
+  },
+  "independent_current_ci_policy_query": "not yet collected in this round; next full launcher will collect automatically",
+  "next_plan": "docs/windows-wdac-refusal-code-plan.md",
+  "next_plan_approval": "pending explicit approval",
+  "agent_or_msi_changes_proposed": false,
+  "existing_msi_bytes_to_reuse": {
+    "openems-agent.msi": {
+      "sha256": "478531dc3748293634ca2c593e92531192d281ac15b568adad61a8506d4e80f0",
+      "bytes": 8531968
+    },
+    "openems-agent-next.msi": {
+      "sha256": "c8e6a27f224abec4c41d1855629703073e5635b45f5b3d91b72ae68f7bf31e4b",
+      "bytes": 8531968
+    }
+  },
+  "original_failed_report_not_reclassified": true,
+  "new_code_changed_in_this_turn": false,
+  "push": false,
+  "pull_request": false,
+  "ci_modified": false
+}
