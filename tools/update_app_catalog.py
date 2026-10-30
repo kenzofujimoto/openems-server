@@ -18,8 +18,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.app_catalog import SOURCE_URL, build_catalog  # noqa: E402
-from tools.update_categories import _require_https, fetch_archive, run_periodically  # noqa: E402
+from app.app_catalog import SOURCE_URL, build_catalog
+from tools.update_categories import _require_https, fetch_archive, run_periodically
 
 MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024
 MAX_INDEX_BYTES = 256 * 1024 * 1024
