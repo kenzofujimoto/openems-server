@@ -1,0 +1,288 @@
+{
+  "physical_usb": "failed (acceptance unchanged): root causes identified and validated by diagnostic variant in guest; product fix and new acceptance run pending",
+  "network": "NAT",
+  "virtual_disk_capacity_gib": 80,
+  "at": "2026-10-28T09:02:14.5123288-03:00",
+  "docker": "Already stopped by operator; docker-desktop WSL distribution confirmed stopped",
+  "source_revision": "5ba6be67c10237c9015ff1098258494039093f8b",
+  "guest_ram_mib": 4096,
+  "iso": {
+    "expected_bytes": 8225329152,
+    "status": "downloaded_and_verified",
+    "filename": "26300.9457.260913-1737.26h2_ge_release_svc_refresh_CLIENTENTERPRISEEVAL_OEMRET_x64FRE_en-us.iso",
+    "expected_sha256": "BC3F24086EBADC94489066B5AD78089E2CF5C3491E90E790BB81A2B199C10E38",
+    "source_domain": "microsoft.com",
+    "verification": {
+      "bytes": 8225329152,
+      "sha256": "BC3F24086EBADC94489066B5AD78089E2CF5C3491E90E790BB81A2B199C10E38",
+      "verified_at": "2026-10-28T09:06:34.0012161-03:00"
+    }
+  },
+  "shared_folders": "OpenEMSResults enabled read/write for dedicated results directory; guest report successfully received through share",
+  "vmware_version": "26.0.1 build-25688693",
+  "wdac": "failed (acceptance unchanged): root cause identified and fix validated by diagnostic variant in guest; product fix and new acceptance run pending",
+  "guest_vcpus": 2,
+  "vm_name": "OpenEMS Disposable Acceptance",
+  "usb_autoconnect": false,
+  "guest_installation": "Operator clarified snapshot was captured with Windows Setup open; Setup subsequently closed without completing installation. Guest state needs verification before a new clean snapshot.",
+  "snapshot": {
+    "state_bytes": 4395008,
+    "status": "created",
+    "uid": "1",
+    "verified_at": "2026-10-28T11:31:00.9537936-03:00",
+    "state_file": "openems-acceptance-Snapshot1.vmsn",
+    "verified_from": "VMware VMSD and snapshot state file",
+    "name": "clean-win11-tools-before-controls",
+    "operator_completion_confirmed": true,
+    "cleanliness": "not_verified_setup_open_at_capture"
+  },
+  "updated_at": "2026-10-28T14:08:42.9359294-03:00",
+  "virtual_disk_created": true,
+  "vm_configuration_created": true,
+  "guest_encryption": "configured by operator; password not collected",
+  "virtual_tpm": "confirmed present in VMware settings and saved VM configuration",
+  "payload_iso": {
+    "contains": "Unmodified usb-input and applications-input packages plus RECEIPT; no secrets",
+    "bytes": 34265088,
+    "sha256": "A282B8D02A29EEDEC919F06F7D8D8AF223728DEF82DE922900C14BBC7AE73587"
+  },
+  "passed": false,
+  "virtual_hardware_correction": {
+    "openems_source_modified": false,
+    "correction": "Added standard virtual PCI and PCIe root bridges to powered-off VM configuration",
+    "error": "No PCIe slot available for SCSI0",
+    "at": "2026-10-28T09:11:35.5217333-03:00",
+    "initial_power_on": "failed before guest boot",
+    "final_assignment": "Consistent standard PCI/PCIe slot map; guest boot reached official installation media"
+  },
+  "guest_os_observation": {
+    "watermark_build": "26100",
+    "edition": "Windows 11 Enterprise Evaluation",
+    "verification": "Guest CIM preflight reports version 10.0.26300 build 26300; supersedes earlier desktop watermark observation",
+    "note": "Guest watermark differs from the downloaded ISO filename label; retain actual guest version rather than infer from filename"
+  },
+  "vmware_tools": {
+    "installed_legacy_version": 13349,
+    "operator_reboot_and_login_confirmed": true,
+    "status": "installed_and_current",
+    "available_legacy_version": 13349,
+    "observed_at": "2026-10-28T11:25:58.0230741-03:00",
+    "source": "VMware host log ToolsVersionStatus current"
+  },
+  "ui_input_diagnosis": "VMware and ChatGPT processes both not elevated; console/menu input failure not attributable to elevation difference",
+  "test_input_media": "openems-acceptance-input.iso mounted in saved VMX; captured before clean snapshot UID 2",
+  "setup_incident": {
+    "operator_confirmed_install_clicked": true,
+    "controls_started": false,
+    "recovery": "Do not rely on existing snapshot as clean; verify current guest after cancellation and reboot, then create new baseline",
+    "recovery_status": "new baseline snapshot UID 2 created after normal reboot and guest preflight",
+    "installation_completed": false,
+    "guest_restart": {
+      "operator_confirmed_normal_desktop": true,
+      "recorded_at": "2026-10-28T12:02:12.1554446-03:00"
+    }
+  },
+  "guest_preflight": {
+    "at": "2026-10-28T12:08:37.8292983-03:00",
+    "model": "VMware20,1",
+    "hypervisor_present": true,
+    "os_caption": "Microsoft Windows 11 Enterprise Evaluation",
+    "os_version": "10.0.26300",
+    "os_build": "26300",
+    "citool_present": true,
+    "configci_present": true,
+    "agent_present": false,
+    "windows_setup_running": false,
+    "servicing_reboot_pending": false,
+    "windows_update_reboot_pending": false,
+    "snapshot_cleanliness": "Not yet verified; previous snapshot captured with Windows Setup open"
+  },
+  "clean_snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": "2",
+    "status": "created_and_verified",
+    "verified_from": "VMware VMSD and Snapshot2.vmsn",
+    "state_bytes": 5431296,
+    "operator_completion_confirmed": true,
+    "verified_at": "2026-10-28T12:12:06.9148571-03:00"
+  },
+  "authorized_usb_host_baseline": {
+    "drive": "E:",
+    "label": "PENMACK",
+    "model": "Generic Flash Disk",
+    "bus_type": "USB",
+    "size_bytes": 4026531840,
+    "is_boot": false,
+    "is_system": false,
+    "at": "2026-10-28T12:12:06.9255835-03:00",
+    "vid": "058F",
+    "pid": "6387"
+  },
+  "usb_guest_preflight": {
+    "at": "2026-10-28T12:15:12.0303912-03:00",
+    "model": "VMware20,1",
+    "usb_volumes": [
+      {
+        "drive": "E:",
+        "label": "PENMACK",
+        "model": "Generic Flash Disk",
+        "bus_type": "USB",
+        "is_boot": false,
+        "is_system": false,
+        "size_bytes": 4026531840
+      }
+    ]
+  },
+  "usb_launch": {
+    "started_utc": "2026-10-28T15:18:33.1598678Z",
+    "original_script_sha256": "a6d0295ed3ca8f075378ad38ed1f18bbe5d91b58f8393d96b1e3365fb24267f4",
+    "guest_drive": "E:",
+    "initial_non_admin_attempt": "Guard rejected launch before marker creation or original harness execution; subsequent elevated launch started",
+    "result_status": "failed",
+    "finished_utc": "2026-10-28T15:21:26.9480436Z",
+    "report_sha256": "bb72190c50a63ed48e3230ac1b3fa6cb547d2421ba2adcebd4afe12ee9d67a57"
+  },
+  "usb_cleanup_diagnostic_attempt": {
+    "status": "failed_before_saving_diagnostic",
+    "error": "No MSFT_Partition objects found with property DriveLetter equal to E",
+    "screenshot": "validation/vm-usb-cleanup-error-2026-10-28.png",
+    "physical_restoration_verified": false,
+    "next_step": "Auxiliary collector updated to retain ACKs and disk/PnP inventory without assuming E exists; rerun requested",
+    "original_harness_modified": false,
+    "msi_modified": false
+  },
+  "usb_cleanup_diagnostics": {
+    "report": "validation/vm-usb-diagnostics-before-reconnect-2026-10-28.json",
+    "policy_v1_success": true,
+    "policy_v2_failed_ack_count": 6,
+    "release_v3_success": true,
+    "service_absent": true,
+    "watchdog_count": 0,
+    "managed_nrpt_count": 0,
+    "agent_process_count": 0,
+    "usb_journal_present": false,
+    "usb_pnp_present": false,
+    "physical_read_write_verified": false,
+    "next_step": "Completed by usb_post_reconnect_verification"
+  },
+  "usb_post_reconnect_verification": {
+    "report": "validation/vm-usb-diagnostics-after-reconnect-2026-10-28.json",
+    "report_sha256": "2126ad615d7c7e5efbab7dd3de28542c4466c1e0234809dd1851c3912c77f668",
+    "collector_sha256": "ced183dda31f67803345943b8d4e0831a1514c4cf48dcb2f2198b186d43dd0c0",
+    "collected_at": "2026-10-28T13:07:22.6791819-03:00",
+    "operator_action": "Normal VMware Removable Devices reconnect of Alcor Micro Mass Storage after release ACK v3 and MSI removal",
+    "usb_drive": "E:",
+    "usb_read_only": false,
+    "usb_offline": false,
+    "penmack_pnp_ok": true,
+    "service_absent": true,
+    "watchdog_count": 0,
+    "managed_nrpt_count": 0,
+    "agent_process_count": 0,
+    "usb_journal_present": false,
+    "post_removal_canary_read_write_delete_verified": true,
+    "cleanup_verified": true,
+    "usb_acceptance_result": "failed (unchanged): policy v2 never acknowledged success; root cause not determined"
+  },
+  "applications_launch": {
+    "snapshot_restored_before": "clean-preflight-before-controls (UID 2), operator confirmed",
+    "launcher_sha256": "3d26ed5f1e814eeb650a10ca7e135119547e6a29344fbc506dd1d0af5f01501b",
+    "original_script_sha256": "a6d0295ed3ca8f075378ad38ed1f18bbe5d91b58f8393d96b1e3365fb24267f4",
+    "started_utc": "2026-10-28T16:21:32.6589812Z",
+    "finished_utc": "2026-10-28T16:26:20.9079839Z",
+    "result_status": "failed",
+    "report": "validation/vm-applications-2026-10-28.json",
+    "report_sha256": "db7a2dd37b5ec8b6e4f693907b43b057dbf4da1b2932c56464b1768ef690d826",
+    "passed_checks": 5,
+    "failed_step": "WDAC hash execution policy: no successful ACK within 90 s",
+    "cleanup_errors": [],
+    "guest_retains_evidence": true,
+    "shared_pattern": "Same generic enforcement failure (ACK text only LocalError) as USB policy v2; adapter discards exception message and stderr"
+  },
+  "wdac_adapter_diagnostic": {
+    "report": "validation/vm-wdac-adapter-diagnostic-2026-10-28.json",
+    "report_sha256": "6581cbf70331615c18f86c22a60173a217d46da8b0d409b62f0396496128ae91",
+    "tooling_sha256": {
+      "diag-adapter-worker.ps1": "4ee583dd4138b9e05b8bf4c16cfe917f7f52b794d64337ad52b3c1e5df15669e",
+      "run-adapter-diagnostic.ps1": "f5c7f2bfc89d629449e9215e3598df7cb2562ee682bc93959720f7f76e13574d",
+      "diag-agent-applications.ps1": "26a0385ec477a6a5675ab52ad2078fc6f15b260e97d43ad1f781c0daab94dce1"
+    },
+    "method": "Instrumented copy of deploy/agent-applications.ps1 at 18cd811 (catch block also emits exception); run as SYSTEM via scheduled task with a fresh compiled hash fixture; product code unchanged",
+    "failing_line": 261,
+    "failing_statement": "Merge-CIPolicy -PolicyPaths $allow -OutputFilePath $xmlPath -Rules $deny",
+    "exception": "System.UnauthorizedAccessException: access denied to C:\\WINDOWS\\schemas\\CodeIntegrity\\ExamplePolicies\\AllowAll.xml",
+    "latent_issue": "New-CIPolicyRule writes \"Scan completed successfully\" to stdout before the JSON result, which serde_json in windows_control.rs would reject even on success",
+    "apply_seconds": 89.9,
+    "wdac_policy_deployed": false,
+    "cleanup_succeeded": true,
+    "hypothesis": "Confirmed by wdac_template_copy_test"
+  },
+  "wdac_template_copy_test": {
+    "report": "validation/vm-wdac-template-copy-test-2026-10-28.json",
+    "report_sha256": "585bc61e32298cce2571f8e7e40dfbd96237b2f1d96261d215a4ee0d9688aad2",
+    "variant_adapter_sha256": "7c6f7840a8d93688baf688c267b333d5fba6709318a1bae5b220ee1aea1acebc",
+    "change_under_test": "Single line: copy AllowAll.xml into the SYSTEM-only app-control directory and merge from the copy",
+    "template_acl": "Owner TrustedInstaller; SYSTEM and Administrators ReadAndExecute only; open Read ok, open ReadWrite UnauthorizedAccess",
+    "apply_exit_code": 0,
+    "apply_seconds": 36.9,
+    "policy_enforced": true,
+    "policy_id": "c25b22af-9499-4f1b-abb1-ad8041fb0654",
+    "fixture_denied": "Start-Process refused; CodeIntegrity 3077 names the openems policy ID",
+    "cleanup_exit_code": 0,
+    "policy_removed_without_restart": true,
+    "journal_removed": true,
+    "stdout_pollution_confirmed": "Successful apply stdout is \"Scan completed successfully\" line followed by JSON; agent serde parse would reject it",
+    "conclusion": "Root cause of WDAC acceptance failure: Merge-CIPolicy requires write access to its input and the system AllowAll.xml is read-only for SYSTEM. A product fix also needs a clean stdout contract. USB v2 cause still separate and undiagnosed."
+  },
+  "usb_adapter_diagnostic": {
+    "report": "validation/vm-usb-adapter-diagnostic-2026-10-28.json",
+    "report_sha256": "30b47e8130293f9be4e1fb670018603217f58291de417a4e7493fac2764321d0",
+    "method": "Instrumented copy of deploy/agent-usb.ps1 at 18cd811 run as SYSTEM with policy default_action=block (same as acceptance v2); PENMACK reconnected through VMware",
+    "failing_line": 231,
+    "failing_statement": "$disk | Set-Disk -IsOffline $true",
+    "exception": "CimException StorageWMI 1: Not Supported. Removable media cannot be set to offline.",
+    "journal_state_at_failure": "applied_offline and disabled_by_us already saved before the failing call; Disable-PnpDevice not reached",
+    "cleanup_succeeded": true,
+    "device_after_cleanup": "DiskDrive and USB nodes OK, present, problem code 0",
+    "side_observation": "Win32_DiskDrive serial for PENMACK is a control character plus \"1\" (\\u00031); serial-based allow rules may be unreliable for this device",
+    "hypothesis": "Confirmed by usb_safe_read_test"
+  },
+  "usb_skip_offline_test": {
+    "report": "validation/vm-usb-skip-offline-test-2026-10-28.json",
+    "report_sha256": "45dd04b3f2a18c58b0198cba1241c26bba37f91770b94de1ff5b9b733c590b71",
+    "result": "Inconclusive for the offline hypothesis: apply failed earlier, before any device or journal change",
+    "failing_line": 194,
+    "failing_statement": "Get-ItemPropertyValue -LiteralPath $restriction -Name DenyInstanceIDs -ErrorAction SilentlyContinue",
+    "exception": "PSArgumentException: property does not exist (terminating despite SilentlyContinue)",
+    "trigger": "Restrictions key left by the previous diagnostic cleanup exists without the value; the empty DenyInstanceIDs subkey also remains after cleanup",
+    "host_probe": "Windows PowerShell 5.1.26100: existing key + missing value throws PSArgumentException; missing key returns null",
+    "affected_sites": "deploy/agent-usb.ps1 lines 126, 132, 184, 194 (apply and cleanup)",
+    "device_and_canary": "Unchanged: device OK, canary readable and writable, no journal created"
+  },
+  "usb_safe_read_test": {
+    "report": "validation/vm-usb-safe-read-test-2026-10-28.json",
+    "report_sha256": "59f374902fbb8beb83453687058a069ed7778f02d6e32b5396fc448da1b6c244",
+    "variant_adapter_sha256": "22acffe7053342c2025c4164288c82a931fc3f4b78cad2d53c39622f8a837070",
+    "changes_under_test": "Offline step skipped for removable media; four Get-ItemPropertyValue reads replaced by a missing-value-safe registry read",
+    "precondition": "Restrictions key present without values (reproduces the line 194 failure)",
+    "apply_exit_code": 0,
+    "apply_seconds": 9.3,
+    "usb_block_event": true,
+    "storage_after_apply": "USBSTOR DiskDrive problem code 22 (disabled); USB parent and HID nodes unchanged",
+    "canary_after_apply": "not readable",
+    "cleanup_exit_code": 0,
+    "storage_after_cleanup": "OK, problem code 0",
+    "canary_read_write_after_cleanup": true,
+    "restriction_values_after_cleanup": [],
+    "residue": "Empty DenyInstanceIDs subkey remains after cleanup",
+    "stdout_clean": true,
+    "conclusion": "USB v2 acceptance failure root causes: Set-Disk -IsOffline unsupported on removable media (line 231) and PS 5.1 Get-ItemPropertyValue throwing for missing values (lines 126, 132, 184, 194). Product fix and new acceptance pending."
+  },
+  "cipolicy_output_probe": {
+    "report": "validation/vm-cipolicy-output-probe-2026-10-28.json",
+    "report_sha256": "617d3b5cc4e1c98ce320ca9b95337e961e57af1b1143a9a7dbd036cf00454094",
+    "mutates_system": false,
+    "finding": "New-CIPolicyRule writes \"Scan completed successfully\" directly to Console.Out: present with plain call and with PowerShell streams 3-6 silenced; absent only when [Console]::Out is swapped to TextWriter.Null during the call. Rule objects are still returned (4 rules).",
+    "side_finding": "Progress records go to stderr as CLIXML (discarded by windows_control.rs, capped at 64 KiB)"
+  }
+}
