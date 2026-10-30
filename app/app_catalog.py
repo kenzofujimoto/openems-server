@@ -212,20 +212,57 @@ def _signed(application: dict[str, Any]) -> bool:
     return bool(application.get("signature_valid", bool(application.get("publisher"))))
 
 
+# Mirrors the agent's protected components: never terminated or isolated whatever the catalog says.
+_PROTECTED = {"openems-agent.exe", "openems-session.exe", "services.exe", "lsass.exe", "svchost.exe", "winlogon.exe",
+              "csrss.exe", "smss.exe", "powershell.exe", "citool.exe", "explorer.exe"}
+ACTIONS = ("block", "block_network", "allow")
+
+
 def _validate_actions(actions: dict[str, Any], catalog: AppCatalog) -> None:
     for key, action in actions.items():
         kind, _, target = str(key).partition(":")
         valid_target = (kind == "category" and target in _CATEGORY_IDS) or (kind == "app" and catalog.app(target) is not None)
-        if action not in ("block", "allow") or not valid_target:
+        if action not in ACTIONS or not valid_target:
             raise ValueError(f"invalid catalog action for {key}")
 
 
+def _executable(application: dict[str, Any]) -> str | None:
+    """The observed absolute executable path, unless it is a Windows or protected component."""
+    path = str(application.get("path", ""))
+    if not re.fullmatch(r"[A-Za-z]:\\.+\.exe", path, re.IGNORECASE):
+        return None
+    lower = path.lower()
+    if "\\windows\\" in lower or lower.rsplit("\\", 1)[-1] in _PROTECTED:
+        return None
+    return path
+
+
+def _execution_rule(application: dict[str, Any]) -> dict[str, Any] | None:
+    publisher = str(application.get("publisher", ""))
+    if _signed(application) and publisher:
+        kind, value = "publisher", publisher
+    elif application.get("original_name"):
+        kind, value = "name", str(application["original_name"]).lower()
+    elif re.fullmatch(r"[0-9a-fA-F]{64}", str(application.get("sha256", ""))):
+        kind, value = "hash", str(application["sha256"]).lower()
+    else:
+        return None
+    digest = hashlib.sha256(f"{kind}\0{value}".encode()).hexdigest()[:12]
+    return {"id": f"catalog-{digest}", "kind": kind, "value": value, "if_present": True}
+
+
 def expand(actions: dict[str, Any], applications: Iterable[dict[str, Any]], catalog: AppCatalog) -> dict[str, Any]:
-    """Turn catalog decisions into present-only execution rules from identities observed in inventories."""
+    """Turn catalog decisions into controls from identities observed in inventories.
+
+    block: present-only execution rules (WDAC where supported) plus process termination, which works on
+    every Windows edition. block_network: per-executable firewall isolation; the application still opens.
+    """
     if not isinstance(actions, dict):
         raise ValueError("invalid catalog action map")
     _validate_actions(actions, catalog)
     rules: dict[tuple[str, str], dict[str, Any]] = {}
+    processes: set[str] = set()
+    network: dict[str, str] = {}
     skipped: set[str] = set()
     for application in applications:
         identifier = catalog.match(application)
@@ -233,23 +270,23 @@ def expand(actions: dict[str, Any], applications: Iterable[dict[str, Any]], cata
         if entry is None:
             continue
         decision = actions.get(f"app:{identifier}") or actions.get(f"category:{entry['category']}")
-        if decision != "block":
+        if decision not in ("block", "block_network"):
             continue
-        publisher = str(application.get("publisher", ""))
-        if not entry["blockable"] or "microsoft" in publisher.lower():
+        if not entry["blockable"] or "microsoft" in str(application.get("publisher", "")).lower():
             skipped.add(identifier)
             continue
-        if _signed(application) and publisher:
-            kind, value = "publisher", publisher
-        elif application.get("original_name"):
-            kind, value = "name", str(application["original_name"]).lower()
-        elif re.fullmatch(r"[0-9a-fA-F]{64}", str(application.get("sha256", ""))):
-            kind, value = "hash", str(application["sha256"]).lower()
-        else:
+        executable = _executable(application)
+        if decision == "block_network":
+            if executable:
+                network.setdefault(executable.lower(), executable)
             continue
-        digest = hashlib.sha256(f"{kind}\0{value}".encode()).hexdigest()[:12]
-        rules[(kind, value)] = {"id": f"catalog-{digest}", "kind": kind, "value": value, "if_present": True}
-    if len(rules) > MAX_RULES:
+        if executable:
+            processes.add(executable.rsplit("\\", 1)[-1].lower())
+        rule = _execution_rule(application)
+        if rule and executable is not None:
+            rules[(rule["kind"], rule["value"])] = rule
+    if len(rules) > MAX_RULES or len(network) > MAX_RULES:
         raise ValueError(f"catalog expansion exceeds {MAX_RULES} rules")
-    return {"rules": [rules[key] for key in sorted(rules)],
+    return {"rules": [rules[key] for key in sorted(rules)], "processes": sorted(processes),
+            "network": [network[key] for key in sorted(network)],
             "skipped": [{"app": identifier, "reason": "microsoft_publisher"} for identifier in sorted(skipped)]}

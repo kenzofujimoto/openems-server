@@ -340,23 +340,34 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         return fleet
 
     def with_catalog_rules(body: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str]]]:
-        """Replace catalog-generated execution rules from the identities observed across the fleet."""
+        """Replace everything the catalog generated (execution rules, processes, network paths) from fleet identities."""
         section = body.get('app_catalog')
         if section is None:
             return body, []
         if app_catalog is None or app_catalog.manifest()['version'] is None:
             raise ValueError('application catalog unavailable')
-        if not isinstance(section, dict) or set(section) - {'actions'}:
-            raise ValueError('app_catalog must contain only actions')
+        if not isinstance(section, dict) or set(section) - {'actions', 'generated'}:
+            raise ValueError('app_catalog must contain only actions and generated entries')
         controls = body.get('app_control', {})
-        if not isinstance(controls, dict) or not isinstance(controls.get('execution_rules', []), list):
-            raise ValueError('app_control.execution_rules must be a list')
+        if not isinstance(controls, dict) or not all(isinstance(controls.get(key, []), list)
+                                                     for key in ('execution_rules', 'blocked', 'network_blocked')):
+            raise ValueError('app_control lists must be lists')
+        previous = section.get('generated', {})
+        if not isinstance(previous, dict):
+            raise ValueError('app_catalog.generated must be an object')
         expansion = expand_catalog(section.get('actions', {}),
                                    [application for _, applications in fleet_applications() for application in applications], app_catalog)
-        manual = [rule for rule in controls.get('execution_rules', [])
-                  if not (isinstance(rule, dict) and str(rule.get('id', '')).startswith('catalog-'))]
-        return {**body, 'app_control': {**controls, 'execution_rules': manual + expansion['rules']}}, expansion['skipped']
-
+        manual_rules = [rule for rule in controls.get('execution_rules', [])
+                        if not (isinstance(rule, dict) and str(rule.get('id', '')).startswith('catalog-'))]
+        manual_processes = [name for name in controls.get('blocked', []) if name not in previous.get('processes', [])]
+        manual_network = [path for path in controls.get('network_blocked', []) if path not in previous.get('network', [])]
+        new_processes = [name for name in expansion['processes'] if name not in manual_processes]
+        new_network = [path for path in expansion['network'] if path not in manual_network]
+        return {**body,
+                'app_control': {**controls, 'execution_rules': manual_rules + expansion['rules'],
+                                'blocked': manual_processes + new_processes, 'network_blocked': manual_network + new_network},
+                'app_catalog': {'actions': section.get('actions', {}),
+                                'generated': {'processes': new_processes, 'network': new_network}}}, expansion['skipped']
     def refresh_catalog_profiles() -> None:
         """A newly observed identity of a decided application republishes the affected groups."""
         if app_catalog is None:

@@ -72,7 +72,7 @@ def test_publishing_catalog_actions_expands_present_only_rules_and_keeps_manual_
     assert rules[0] == MANUAL
     assert {(rule["kind"], rule["value"]) for rule in rules[1:]} == {("publisher", EPIC["publisher"]), ("hash", "c" * 64)}
     assert all(rule["if_present"] is True for rule in rules[1:])
-    assert stored["app_catalog"] == body["app_catalog"]
+    assert stored["app_catalog"]["actions"] == body["app_catalog"]["actions"]
 
 
 def test_new_inventory_republishes_groups_whose_catalog_now_covers_more_identities(harness):
