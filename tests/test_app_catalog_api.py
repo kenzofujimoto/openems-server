@@ -100,3 +100,20 @@ def test_invalid_catalog_actions_or_an_unavailable_catalog_are_refused(harness, 
     headers = {"Authorization": "Bearer " + admin.issue_token("operator", "admin")}
     assert bare.get("/api/v1/app_catalog", headers=headers).json()["available"] is False
     assert bare.post("/api/v1/profiles/BPO", json={"app_catalog": {"actions": {"category:games": "block"}}}, headers=headers).status_code == 422
+
+
+def test_catalog_process_and_network_decisions_replace_only_their_generated_entries(harness):
+    service, client, management, _, first, _ = harness
+    upload(client, first, [EPIC, TORRENT])
+    body = {"app_control": {"blocked": ["manual.exe"], "network_blocked": [r"C:\Manual\tool.exe"]},
+            "app_catalog": {"actions": {"category:games": "block", "category:p2p": "block_network"}}}
+    assert client.post("/api/v1/profiles/BPO", json=body, headers=management).status_code == 200
+    controls = service.get_profile("BPO").body["app_control"]
+    assert controls["blocked"] == ["manual.exe", "epicgameslauncher.exe"]
+    assert controls["network_blocked"] == [r"C:\Manual\tool.exe", TORRENT["path"]]
+    stored = service.get_profile("BPO").body
+    body = {**stored, "app_catalog": {**stored["app_catalog"], "actions": {"category:p2p": "block_network"}}}
+    assert client.post("/api/v1/profiles/BPO", json=body, headers=management).status_code == 200
+    controls = service.get_profile("BPO").body["app_control"]
+    assert controls["blocked"] == ["manual.exe"]
+    assert controls["network_blocked"] == [r"C:\Manual\tool.exe", TORRENT["path"]]

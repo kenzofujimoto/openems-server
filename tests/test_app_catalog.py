@@ -171,3 +171,22 @@ def test_search_ranks_exact_and_prefix_names_before_substrings(tmp_path):
                 "Example.SteamTools": ("Steam Tools", None, [], ["steamtools"], ["example"], [])}
     build_catalog(winget_index(tmp_path / "index.db", packages), tmp_path / "out", now=NOW)
     assert [app["id"] for app in AppCatalog(tmp_path / "out").search("steam")] == ["Valve.Steam", "Example.SteamTools", "JustArchiNET.ArchiSteamFarm"]
+
+
+def test_block_also_terminates_processes_and_block_network_isolates_observed_executables(catalog):
+    _, apps = catalog
+    epic = steam(name="Epic Games Launcher", path=r"C:\Epic\EpicGamesLauncher.exe", sha256="b" * 64,
+                 publisher="CN=Epic Games Inc., O=Epic Games Inc., C=US", original_name="EpicGamesLauncher.exe")
+    torrent = steam(name="qBittorrent", path=r"C:\qBittorrent\qbittorrent.exe", sha256="c" * 64, publisher="",
+                    signature_valid=False, original_name="qbittorrent.exe")
+    result = expand({"category:games": "block", "app:Valve.Steam": "allow", "category:p2p": "block_network"}, [steam(), epic, torrent], apps)
+    assert result["processes"] == ["epicgameslauncher.exe"]
+    assert result["network"] == [r"C:\qBittorrent\qbittorrent.exe"]
+    assert {rule["value"] for rule in result["rules"]} == {epic["publisher"]}, "network-only decisions add no execution rule"
+
+
+def test_expansion_never_terminates_or_isolates_protected_windows_components(catalog):
+    _, apps = catalog
+    shell = steam(name="qBittorrent", path=r"C:\Windows\System32\svchost.exe", publisher="", signature_valid=False, original_name="")
+    result = expand({"category:p2p": "block_network", "app:qBittorrent.qBittorrent": "block"}, [shell], apps)
+    assert result["processes"] == [] and result["network"] == []
