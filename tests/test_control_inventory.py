@@ -148,3 +148,17 @@ def test_postgres_inventory_serializes_concurrent_purges(monkeypatch):
     for worker in workers:
         worker.join()
     assert connection.overlaps == 0
+
+
+def test_events_can_be_read_for_one_machine_and_each_read_is_audited(harness):
+    _, client, endpoint, other, management, device, audit = harness
+    now = datetime.now(UTC).isoformat()
+    other_device = {"Authorization": "Bearer " + other.device_token}
+    mine = {"client_id": endpoint.client_id, "events": [{"at": now, "kind": "app_block", "target": "game.exe", "rule_id": "catalog-1"}]}
+    theirs = {"client_id": other.client_id, "events": [{"at": now, "kind": "usb_block", "target": "USB disk", "rule_id": "default"}]}
+    assert client.post("/fct/api/public/v1/control_events/", json=mine, headers=device).status_code == 200
+    assert client.post("/fct/api/public/v1/control_events/", json=theirs, headers=other_device).status_code == 200
+    feed = client.get("/api/v1/events", params={"devid": "pc"}, headers=management).json()
+    assert [(event["devid"], event["kind"]) for event in feed] == [("pc", "app_block")]
+    assert any(entry.action == "events.read" and entry.target == "pc" for entry in audit.list())
+    assert client.get("/api/v1/events", params={"devid": "missing"}, headers=management).status_code == 404
