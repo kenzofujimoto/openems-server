@@ -135,6 +135,16 @@ mod tests {
     const APPLICATIONS: &str = include_str!("../../deploy/agent-applications.ps1");
 
     #[test]
+    fn background_inventory_gets_a_longer_limit_than_enforcement() {
+        // A real notebook's application inventory exceeded the 120 s enforcement limit.
+        assert_eq!(CONTROL_TIMEOUT, std::time::Duration::from_secs(120));
+        assert!(INVENTORY_TIMEOUT >= std::time::Duration::from_secs(600));
+        const SLOW: &str = "[Console]::In.ReadToEnd()|Out-Null; Start-Sleep -Seconds 5; '{}'";
+        let error = run_with_limits(SLOW, &json!({}), CREATE_NO_WINDOW, std::time::Duration::from_millis(500)).unwrap_err();
+        assert!(error.to_string().contains("timed out"));
+    }
+
+    #[test]
     fn background_collection_yields_cpu_to_enforcement() {
         const PRIORITY: &str = "[Console]::In.ReadToEnd()|Out-Null; @{priority=[string](Get-Process -Id $PID).PriorityClass}|ConvertTo-Json -Compress";
         assert_eq!(run(PRIORITY, &json!({})).unwrap()["priority"], "Normal");
