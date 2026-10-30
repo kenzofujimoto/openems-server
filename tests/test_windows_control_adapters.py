@@ -512,3 +512,18 @@ def test_present_only_rules_are_rechecked_hourly_so_later_installs_get_denied(tm
     assert_success(invoke_adapter(directory, "applications", request))
     assert [call["detail"]["level"] for call in calls(directory) if call["name"] == "New-CIPolicyRule"] == ["Publisher"]
     assert (directory / "active-policy.json").exists()
+
+
+def test_catalog_rules_are_skipped_where_windows_has_no_application_control(tmp_path):
+    # Windows Home has no CiTool/ConfigCI: catalog process and network controls must still apply.
+    directory = fixture_environment(tmp_path, scenario="requires_driver_files")
+    (directory / "systemroot/System32/Mock-CiTool.ps1").unlink()
+    request = wdac_request(directory, "publisher")
+    request["policy"]["execution_rules"][0]["if_present"] = True
+    result = assert_success(invoke_adapter(directory, "applications", request))
+    assert "app-control:wdac" not in result["capabilities"]
+    assert not any(call["name"] in {"Get-SystemDriver", "New-CIPolicy", "New-CIPolicyRule", "Merge-CIPolicy"} for call in calls(directory))
+    strict = fixture_environment(tmp_path / "strict-home") if (tmp_path / "strict-home").mkdir() is None else None
+    (strict / "systemroot/System32/Mock-CiTool.ps1").unlink()
+    refused = invoke_adapter(strict, "applications", wdac_request(strict, "publisher"))
+    assert refused.returncode == 1 and json.loads(refused.stdout) == {"error": "control_failed"}
