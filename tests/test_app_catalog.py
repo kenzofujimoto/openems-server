@@ -155,3 +155,19 @@ def test_search_and_summary_report_observed_machines(catalog):
     assert summary["observed"]["Valve.Steam"] == 2 and summary["observed"]["qBittorrent.qBittorrent"] == 1
     assert [app["id"] for app in apps.search("steam")] == ["Valve.Steam"]
     assert [app["id"] for app in apps.search("", category="p2p")] == ["qBittorrent.qBittorrent"]
+
+
+def test_curated_overrides_fix_misleading_community_tags(tmp_path):
+    packages = {**PACKAGES, "Discord.Discord": ("Discord", "discord", ["gaming", "chat"], ["discord"], ["discord"], []),
+                "Spotify.Spotify": ("Spotify", "spotify", ["podcasts"], ["spotify"], ["spotify"], [])}
+    manifest = build_catalog(winget_index(tmp_path / "index.db", packages), tmp_path / "out", now=NOW)
+    apps = {app["id"]: app for app in manifest["apps"]}
+    assert apps["Discord.Discord"]["category"] == "messaging"
+    assert apps["Spotify.Spotify"]["category"] == "media"
+
+
+def test_search_ranks_exact_and_prefix_names_before_substrings(tmp_path):
+    packages = {**PACKAGES, "JustArchiNET.ArchiSteamFarm": ("ArchiSteamFarm", None, [], ["archisteamfarm"], ["justarchinet"], []),
+                "Example.SteamTools": ("Steam Tools", None, [], ["steamtools"], ["example"], [])}
+    build_catalog(winget_index(tmp_path / "index.db", packages), tmp_path / "out", now=NOW)
+    assert [app["id"] for app in AppCatalog(tmp_path / "out").search("steam")] == ["Valve.Steam", "Example.SteamTools", "JustArchiNET.ArchiSteamFarm"]
