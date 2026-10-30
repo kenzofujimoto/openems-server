@@ -173,7 +173,7 @@ class AppCatalog:
         candidates = [*by_name.get(normalize_name(str(application.get("name", ""))), []),
                       *(identifier for stem in stems for identifier in by_command.get(stem, [])),
                       *(identifier for stem in stems for identifier in by_name.get(normalize_name(stem), []))]
-        signer = normalize_vendor(str(application.get("publisher", ""))) if application.get("signature_valid") else ""
+        signer = normalize_vendor(str(application.get("publisher", ""))) if _signed(application) else ""
         for identifier in dict.fromkeys(candidates):
             vendor = by_id[identifier]["vendor"]
             if not signer or not vendor or signer.startswith(vendor) or vendor.startswith(signer):
@@ -207,6 +207,11 @@ class AppCatalog:
                 "observed": {identifier: len(devices) for identifier, devices in sorted(observed.items())}}
 
 
+def _signed(application: dict[str, Any]) -> bool:
+    # Uploaded inventories omit signature_valid: agents report a publisher only for a valid signature.
+    return bool(application.get("signature_valid", bool(application.get("publisher"))))
+
+
 def _validate_actions(actions: dict[str, Any], catalog: AppCatalog) -> None:
     for key, action in actions.items():
         kind, _, target = str(key).partition(":")
@@ -234,7 +239,7 @@ def expand(actions: dict[str, Any], applications: Iterable[dict[str, Any]], cata
         if not entry["blockable"] or "microsoft" in publisher.lower():
             skipped.add(identifier)
             continue
-        if application.get("signature_valid") and publisher:
+        if _signed(application) and publisher:
             kind, value = "publisher", publisher
         elif application.get("original_name"):
             kind, value = "name", str(application["original_name"]).lower()
