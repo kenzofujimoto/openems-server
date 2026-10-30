@@ -523,7 +523,8 @@ def test_catalog_rules_are_skipped_where_windows_has_no_application_control(tmp_
     result = assert_success(invoke_adapter(directory, "applications", request))
     assert "app-control:wdac" not in result["capabilities"]
     assert not any(call["name"] in {"Get-SystemDriver", "New-CIPolicy", "New-CIPolicyRule", "Merge-CIPolicy"} for call in calls(directory))
-    strict = fixture_environment(tmp_path / "strict-home") if (tmp_path / "strict-home").mkdir() is None else None
+    (tmp_path / "strict-home").mkdir()
+    strict = fixture_environment(tmp_path / "strict-home")
     (strict / "systemroot/System32/Mock-CiTool.ps1").unlink()
     refused = invoke_adapter(strict, "applications", wdac_request(strict, "publisher"))
-    assert refused.returncode == 1 and json.loads(refused.stdout) == {"error": "control_failed"}
+    assert refused.returncode == 1 and json.loads(refused.stdout) == {"error": "unsupported"}

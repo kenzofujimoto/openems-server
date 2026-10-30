@@ -283,6 +283,12 @@ try {
     $execution = @(Field $request.policy 'execution_rules' @())
     $network = @(Field $request.policy 'network_blocked' @())
     # No persistent writes when an unsupported execution policy cannot be applied at all.
+    # Windows editions without App Control (Home) skip present-only catalog rules; process and network
+    # controls still apply. Explicit execution rules keep failing there, as the administrator asked for them.
+    if ($execution.Count -and -not (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\CiTool.exe'))) {
+        if (@($execution | Where-Object { -not [bool](Field $_ 'if_present' $false) }).Count) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
+        $execution = @()
+    }
     if ($execution.Count) { $null = @(Policies); Import-Module ConfigCI -ErrorAction Stop }
     Save-State
     $script:directory = Join-Path (Split-Path -Parent $request.state_path) ('app-control-' + $script:state.policy_id.Trim('{}'))
