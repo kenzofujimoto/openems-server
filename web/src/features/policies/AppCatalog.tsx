@@ -5,16 +5,17 @@ import { formatNumber } from "@/lib/format";
 import { useAppCatalog, useAppCatalogSearch } from "@/lib/management";
 import { FIELD_CLASS } from "./PolicyWorkspace";
 
-export type CatalogAction = "allow" | "block";
+export type CatalogAction = "allow" | "block" | "block_network";
+export const CATALOG_ACTIONS: readonly CatalogAction[] = ["allow", "block", "block_network"];
 export type CatalogActions = Record<string, CatalogAction>;
 
 const machines = (count: number) => `${formatNumber(count)} ${count === 1 ? "máquina" : "máquinas"}`;
 
 function Decision({ name, label, value, onChange, disabled, readonly }: { name: string; label: string; value: CatalogAction | undefined; onChange: (value: CatalogAction | undefined) => void; disabled?: boolean; readonly: boolean }) {
-  const options: Array<[CatalogAction | undefined, string]> = [[undefined, "Sem regra"], ["allow", "Permitir"], ["block", "Bloquear"]];
+  const options: Array<[CatalogAction | undefined, string]> = [[undefined, "Sem regra"], ["allow", "Permitir"], ["block", "Bloquear"], ["block_network", "Bloquear rede"]];
   return <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Decisão para ${label}`}>
     {options.map(([option, text]) => <label key={text} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${value === option ? "border-rsm-blue bg-rsm-blue-soft text-rsm-blue" : "border-line text-ink-soft"}`}>
-      <input type="radio" name={name} aria-label={`${text} ${label}`} checked={value === option} disabled={readonly || (option === "block" && disabled)} onChange={() => onChange(option)} />{text}
+      <input type="radio" name={name} aria-label={`${text} ${label}`} checked={value === option} disabled={readonly || ((option === "block" || option === "block_network") && disabled)} onChange={() => onChange(option)} />{text}
     </label>)}
   </div>;
 }
@@ -30,7 +31,7 @@ export function AppCatalogSection({ actions, onChange, readonly }: { actions: Ca
     onChange(value ? { ...next, [key]: value } : next);
   };
   return <Card aria-label="Catálogo de aplicativos">
-    <CardHeader title="Catálogo de aplicativos" description="Bloqueie categorias inteiras e libere ou bloqueie aplicativos específicos. A regra só vale nas máquinas onde o aplicativo existe." />
+    <CardHeader title="Catálogo de aplicativos" description="Bloquear impede a execução (WDAC, quando o Windows suporta) e encerra o processo em qualquer edição. Bloquear rede deixa o aplicativo abrir sem acesso à internet. As regras só valem nas máquinas onde o aplicativo existe." />
     <div className="space-y-5 p-5">
       {catalog.isPending ? <p role="status">Carregando catálogo…</p> : null}
       {catalog.data && !catalog.data.available ? <InfoNotice>O catálogo ainda não foi publicado no servidor. Confira o serviço app-catalog antes de usar categorias de aplicativos.</InfoNotice> : null}

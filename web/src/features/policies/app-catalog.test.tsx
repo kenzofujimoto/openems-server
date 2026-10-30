@@ -53,7 +53,7 @@ describe("application catalog", () => {
     await user.click(await within(section).findByRole("radio", { name: "Permitir Steam" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));
-    expect(writes[0]?.app_catalog).toEqual({ actions: { "category:p2p": "block", "category:games": "block", "app:Valve.Steam": "allow" } });
+    expect(writes[0]?.app_catalog).toEqual({ actions: { "category:p2p": "block", "category:games": "block", "app:Valve.Steam": "allow" }, generated: {} });
     expect((writes[0]?.app_control as { execution_rules: unknown[] }).execution_rules).toEqual([manual]);
   });
 
