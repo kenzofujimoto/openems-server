@@ -719,15 +719,25 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
 
     @app.get('/api/v1/events')
     def list_events(request: Request, limit: int = Query(default=50, ge=1, le=1000),
-                    action: str | None = Query(default=None, pattern='^(blocked|monitored)$')):
-        record_view(request)
+                    action: str | None = Query(default=None, pattern='^(blocked|monitored)$'),
+                    devid: str | None = Query(default=None, min_length=1, max_length=256)):
+        if devid is None:
+            record_view(request)
+        else:
+            svc.get_endpoint(devid)
+            # A machine's browsing and control log is personal data: every such read is audited.
+            record(request, 'events.read', devid)
         purge_personal_data()
-        rows = [(event.hour, event_view(event)) for event in events.recent(limit, action=action)]
+        # Per-machine reads scan the most recent bounded window of every source, then filter.
+        window = 1000 if devid else limit
+        rows = [(event.hour, event_view(event)) for event in events.recent(window, action=action)]
         if action is None:
-            rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(limit)]
+            rows += [(event.at, tamper_view(event)) for event in events.recent_tamper(window)]
             rows += [(datetime.fromisoformat(event['at']), {
                 **event, 'detail': event['target'], 'reason': event['rule_id'], 'category': None, 'category_label': None,
-            }) for event in inventory.recent_events(limit)]
+            }) for event in inventory.recent_events(window)]
+        if devid is not None:
+            rows = [row for row in rows if row[1].get('devid') == devid]
         rows.sort(key=lambda row: row[0], reverse=True)
         return [view for _, view in rows[:limit]]
 
