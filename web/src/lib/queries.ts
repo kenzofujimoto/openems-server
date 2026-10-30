@@ -97,6 +97,14 @@ export function useEvents(limit = 8) {
   });
 }
 
+/** One machine's web, protection and control log; the server audits each read. */
+export function useEndpointEvents(devid: string) {
+  return useQuery({
+    queryKey: ["events", "endpoint", devid],
+    queryFn: () => apiFetch(`/api/v1/events?${new URLSearchParams({ devid, limit: "500" })}`, z.array(eventSchema)),
+    enabled: Boolean(devid),
+  });
+}
 export function useCategories() {
   return useQuery({
     queryKey: ["categories"],

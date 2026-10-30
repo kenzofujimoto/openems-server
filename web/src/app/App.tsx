@@ -14,6 +14,7 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { ErrorNotice } from "@/components/PageHeader";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { EndpointDetailPage } from "@/features/endpoints/EndpointDetailPage";
 import { EndpointsPage } from "@/features/endpoints/EndpointsPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
 import { ApplicationsPage, UsbPage } from "@/features/policies/ControlsPages";
@@ -57,6 +58,7 @@ function buildRouter(history?: RouterHistory) {
   const tree = root.addChildren([
     createRoute({ getParentRoute: () => root, path: "/", component: DashboardPage }),
     createRoute({ getParentRoute: () => root, path: "/endpoints", component: EndpointsPage }),
+    createRoute({ getParentRoute: () => root, path: "/endpoints/$devid", component: EndpointDetailPage }),
     createRoute({ getParentRoute: () => root, path: "/events", component: EventsPage }),
     createRoute({ getParentRoute: () => root, path: "/policies/web", component: WebFilterPage }),
     createRoute({ getParentRoute: () => root, path: "/policies/apps", component: ApplicationsPage }),
