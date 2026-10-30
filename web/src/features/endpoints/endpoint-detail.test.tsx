@@ -69,7 +69,7 @@ describe("endpoint detail page", () => {
     expect(within(panel).getByText(/USB: bloquear por padrão/)).toBeInTheDocument();
     await user.selectOptions(within(panel).getByLabelText("Mover para o grupo"), "TI");
     await user.click(within(panel).getByRole("button", { name: "Mover máquina" }));
-    await waitFor(() => expect(rules).toEqual([{ id: "endpoint-nb-financeiro-01", target_vdom: "TI", priority: 10, enabled: true,
+    await waitFor(() => expect(rules).toEqual([{ id: "endpoint-nb-financeiro-01", target_vdom: "TI", priority: 1, enabled: true,
       conditions: [{ field: "hostname", op: "equals", value: "NB-FINANCEIRO-01" }] }]));
   });
 });

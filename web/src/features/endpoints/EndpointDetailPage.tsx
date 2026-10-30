@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FIELD_CLASS } from "@/features/locations/LocationDialog";
 import { formatDateTime } from "@/lib/format";
-import { downloadCsv, useProfiles, useSaveAssignmentRule, type Profile } from "@/lib/management";
+import { downloadCsv, moveEndpointRule, useProfiles, useSaveAssignmentRule, type Profile } from "@/lib/management";
 import { useEndpointEvents, useEndpoints, useIsAdmin } from "@/lib/queries";
 import type { Endpoint, EventKind } from "@/lib/schemas";
 import { EndpointInventory } from "./EndpointInventory";
@@ -60,8 +60,7 @@ function PolicyTab({ endpoint, profile, profiles }: { endpoint: Endpoint; profil
     </ul> : <InfoNotice>O grupo {endpoint.effective_vdom} ainda não tem política publicada: a máquina fica liberada.</InfoNotice>}
     {isAdmin && hostname ? <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
       event.preventDefault();
-      save.mutate({ id: `endpoint-${hostname.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`, target_vdom: target, priority: 10, enabled: true,
-        conditions: [{ field: "hostname", op: "equals", value: hostname }] });
+      save.mutate(moveEndpointRule(hostname, target));
     }}>
       <label className="block text-sm text-ink-soft">Mover para o grupo<select className={`mt-1 ${FIELD_CLASS}`} value={target} onChange={(event) => setTarget(event.target.value)}>
         {others.map((vdom) => <option key={vdom} value={vdom}>{vdom}</option>)}

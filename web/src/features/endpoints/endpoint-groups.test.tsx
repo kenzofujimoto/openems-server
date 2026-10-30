@@ -46,6 +46,7 @@ describe("endpoint group assignment", () => {
     backend();
     renderApp("/groups");
     const target = await screen.findByRole("combobox", { name: "Grupo de destino" });
-    expect(within(target).getAllByRole("option").map((option) => option.textContent)).toEqual(["BPO", "Default", "TI"]);
+    await within(target).findByRole("option", { name: "TI" });
+    expect(within(target).getAllByRole("option").filter((option) => !(option as HTMLOptionElement).disabled).map((option) => option.textContent)).toEqual(["BPO", "Default", "TI"]);
   });
 });
