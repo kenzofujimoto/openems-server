@@ -44,7 +44,7 @@ describe("application catalog", () => {
     const user = userEvent.setup();
     renderApp("/policies/apps");
     const section = await screen.findByRole("region", { name: "Catálogo de aplicativos" });
-    expect(within(section).getByText(/377 apps/)).toBeInTheDocument();
+    expect(await within(section).findByText(/377 apps/)).toBeInTheDocument();
     expect(within(section).getByText(/2 máquinas/)).toBeInTheDocument();
     expect(within(section).getByRole("radio", { name: "Bloquear P2P e torrent" })).toBeChecked();
     expect(screen.queryByDisplayValue(generated.value)).not.toBeInTheDocument();
@@ -62,7 +62,7 @@ describe("application catalog", () => {
     const user = userEvent.setup();
     renderApp("/policies/apps");
     const section = await screen.findByRole("region", { name: "Catálogo de aplicativos" });
-    await user.type(within(section).getByLabelText("Buscar aplicativo"), "teams");
+    await user.type(await within(section).findByLabelText("Buscar aplicativo"), "teams");
     expect(await within(section).findByText(/não bloqueável/i)).toBeInTheDocument();
     expect(within(section).getByRole("radio", { name: "Bloquear Microsoft Teams" })).toBeDisabled();
   });
@@ -72,7 +72,7 @@ describe("application catalog", () => {
     const user = userEvent.setup();
     renderApp("/policies/apps");
     const section = await screen.findByRole("region", { name: "Catálogo de aplicativos" });
-    expect(within(section).getByText(/catálogo ainda não foi publicado/i)).toBeInTheDocument();
+    expect(await within(section).findByText(/catálogo ainda não foi publicado/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]).not.toHaveProperty("app_catalog");

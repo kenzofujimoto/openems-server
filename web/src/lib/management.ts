@@ -28,6 +28,20 @@ export function usePublishProfile() {
   });
 }
 
+export const appCatalogSchema = z.object({
+  available: z.boolean(), version: z.string().nullable(), attribution: z.string(),
+  categories: z.array(z.object({ id: z.string(), label: z.string(), apps: z.number().int(), observed_endpoints: z.number().int() })),
+  observed: z.record(z.string(), z.number().int()),
+});
+export const catalogAppSchema = z.object({ id: z.string(), name: z.string(), vendor: z.string(), category: z.string().nullable(), blockable: z.boolean(), observed_endpoints: z.number().int() });
+export type CatalogApp = z.infer<typeof catalogAppSchema>;
+export function useAppCatalog() {
+  return useQuery({ queryKey: ["app-catalog"], queryFn: () => apiFetch("/api/v1/app_catalog", appCatalogSchema) });
+}
+export function useAppCatalogSearch(query: string) {
+  const q = query.trim();
+  return useQuery({ queryKey: ["app-catalog-search", q], queryFn: () => apiFetch(`/api/v1/app_catalog/search?${new URLSearchParams({ q })}`, z.array(catalogAppSchema)), enabled: q.length >= 2 });
+}
 export function useInventory(devid: string) {
   return useQuery({ queryKey: ["inventory", devid], queryFn: () => apiFetch(`/api/v1/endpoints/inventory?${new URLSearchParams({ devid })}`, inventorySchema), enabled: Boolean(devid) });
 }

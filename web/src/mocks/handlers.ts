@@ -42,6 +42,16 @@ export const handlers = [
   }),
   http.delete("*/api/v1/assignment_rules/:id", ({ params }) => { const index = rules.findIndex((rule) => rule.id === params.id); if (index >= 0) rules.splice(index, 1); return HttpResponse.json({ ok: true }); }),
   http.get("*/api/v1/audit", () => HttpResponse.json(audit)),
+  http.get("*/api/v1/app_catalog", () => HttpResponse.json({ available: true, version: "2026-10-30T12:00:00Z", attribution: "Application names, vendors and tags: microsoft/winget-pkgs, MIT.", categories: [
+    { id: "games", label: "Jogos", apps: 377, observed_endpoints: 2 }, { id: "remote_access", label: "Acesso remoto", apps: 127, observed_endpoints: 1 },
+    { id: "p2p", label: "P2P e torrent", apps: 83, observed_endpoints: 0 }], observed: { "Valve.Steam": 2, "AnyDesk.AnyDesk": 1 } })),
+  http.get("*/api/v1/app_catalog/search", ({ request }) => {
+    const q = new URL(request.url).searchParams.get("q")?.toLowerCase() ?? "";
+    return HttpResponse.json([
+      { id: "Valve.Steam", name: "Steam", vendor: "valve", category: "games", blockable: true, observed_endpoints: 2 },
+      { id: "AnyDesk.AnyDesk", name: "AnyDesk", vendor: "anydesksoftware", category: "remote_access", blockable: true, observed_endpoints: 1 },
+    ].filter((app) => app.name.toLowerCase().includes(q)));
+  }),
   http.get("*/api/v1/categories", () => HttpResponse.json(categories)),
   http.get("*/api/v1/endpoints/inventory", ({ request }) => HttpResponse.json({ devid: new URL(request.url).searchParams.get("devid") ?? "", collected_at: null, applications: [], usb_devices: [] })),
   http.post("*/api/v1/endpoints/revoke", async ({ request }) => { const value = z.object({ devid: z.string() }).parse(await request.json()); const endpoint = endpoints.find((endpoint) => endpoint.devid === value.devid); if (endpoint) endpoint.status = "unregistered"; return HttpResponse.json({ ok: true }); }),

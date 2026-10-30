@@ -38,7 +38,7 @@ export function PolicyWorkspace({ title, description, children }: { title: strin
   </div>;
 }
 
-export function PolicyForm({ profile, vdom, section, readonly, build, children }: { profile: Profile | undefined; vdom: string; section: string; readonly: boolean; build: () => Record<string, unknown>; children: ReactNode }) {
+export function PolicyForm({ profile, vdom, section, readonly, build, extend, children }: { profile: Profile | undefined; vdom: string; section: string; readonly: boolean; build: () => Record<string, unknown>; extend?: (body: PolicyBody) => PolicyBody; children: ReactNode }) {
   const publish = usePublishProfile();
   const profiles = useProfiles();
   const endpoints = useEndpoints();
@@ -50,7 +50,8 @@ export function PolicyForm({ profile, vdom, section, readonly, build, children }
     event.preventDefault(); setValidation("");
     try {
       if (!vdom.trim() || vdom !== vdom.trim()) throw new Error("Informe um grupo sem espaços no início ou no fim.");
-      const body: PolicyBody = { ...profile?.body, [section]: build() };
+      const built: PolicyBody = { ...profile?.body, [section]: build() };
+      const body = extend ? extend(built) : built;
       publish.mutate({ vdom, body, digest: profile?.digest });
     } catch (error) { setValidation(error instanceof Error ? error.message : "Confira os valores da política."); }
   }}>
