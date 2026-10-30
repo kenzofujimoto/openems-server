@@ -20,20 +20,26 @@ fn default_rule_id() -> String {
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 #[cfg(windows)]
 const BELOW_NORMAL_PRIORITY_CLASS: u32 = 0x0000_4000;
+/// Enforcement must answer within the policy ACK window.
+#[cfg(windows)]
+const CONTROL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+/// Inventory hashes and verifies every running image; on busy machines it exceeded two minutes.
+#[cfg(windows)]
+const INVENTORY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
 
 #[cfg(windows)]
 pub fn run(script: &'static str, request: &Value) -> Result<Value> {
-    run_with_flags(script, request, CREATE_NO_WINDOW)
+    run_with_limits(script, request, CREATE_NO_WINDOW, CONTROL_TIMEOUT)
 }
 
 /// Inventory collection: yields CPU so it never slows enforcement or the applications it inventories.
 #[cfg(windows)]
 pub fn run_background(script: &'static str, request: &Value) -> Result<Value> {
-    run_with_flags(script, request, CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS)
+    run_with_limits(script, request, CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, INVENTORY_TIMEOUT)
 }
 
 #[cfg(windows)]
-fn run_with_flags(script: &'static str, request: &Value, flags: u32) -> Result<Value> {
+fn run_with_limits(script: &'static str, request: &Value, flags: u32, timeout: std::time::Duration) -> Result<Value> {
     use std::io::{Read, Write};
     use std::os::windows::process::CommandExt;
     use std::process::{Command, Stdio};
@@ -69,7 +75,7 @@ fn run_with_flags(script: &'static str, request: &Value, flags: u32) -> Result<V
     if write.is_err() {
         let _ = child.kill();
     }
-    let deadline = Instant::now() + Duration::from_secs(120);
+    let deadline = Instant::now() + timeout;
     let status = loop {
         if let Some(status) = child.try_wait()? {
             break status;
@@ -140,7 +146,8 @@ mod tests {
         assert_eq!(CONTROL_TIMEOUT, std::time::Duration::from_secs(120));
         assert!(INVENTORY_TIMEOUT >= std::time::Duration::from_secs(600));
         const SLOW: &str = "[Console]::In.ReadToEnd()|Out-Null; Start-Sleep -Seconds 5; '{}'";
-        let error = run_with_limits(SLOW, &json!({}), CREATE_NO_WINDOW, std::time::Duration::from_millis(500)).unwrap_err();
+        let error =
+            run_with_limits(SLOW, &json!({}), CREATE_NO_WINDOW, std::time::Duration::from_millis(500)).unwrap_err();
         assert!(error.to_string().contains("timed out"));
     }
 
