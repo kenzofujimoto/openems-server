@@ -96,6 +96,7 @@ jobs:
         if: always()
         with:
           name: linux-coverage
+          retention-days: 7
           include-hidden-files: true
           path: |
             *.junit.xml
@@ -126,6 +127,7 @@ jobs:
         if: always()
         with:
           name: windows-coverage
+          retention-days: 7
           include-hidden-files: true
           path: |
             windows.junit.xml
@@ -175,6 +177,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: openems-agent-windows
+          retention-days: 14
           path: |
             openems-agent.msi
             agent-rs/target/release/openems-agent.exe
