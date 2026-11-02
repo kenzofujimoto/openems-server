@@ -1,6 +1,6 @@
 # Bases are pinned by digest; Dependabot proposes digest updates (.github/dependabot.yml).
 # The React panel is compiled in a throwaway Node stage; only static files ship.
-FROM node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS panel
+FROM node:25-slim@sha256:81db02c4b671288a03915da9534dbd54f96d0e7c24d80ccc54f5b36b2e684370 AS panel
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
