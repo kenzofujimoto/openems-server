@@ -2,13 +2,14 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "rea
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export interface TabItem { id: string; label: string; icon?: LucideIcon; count?: number; content: ReactNode }
+/** `free` panels are passed to `wrap` separately, so they can stay outside a disabled fieldset (read-only tools). */
+export interface TabItem { id: string; label: string; icon?: LucideIcon; count?: number; content: ReactNode; free?: boolean }
 
 /**
  * Profile sections. Inactive panels stay mounted (hidden) so unsaved edits survive switching tabs.
  * `wrap` places the panels in a container (a disabled fieldset, for example) while the tab list stays usable.
  */
-export function Tabs({ label, items, initial, wrap = (panels) => panels }: { label: string; items: TabItem[]; initial?: string; wrap?: (panels: ReactNode) => ReactNode }) {
+export function Tabs({ label, items, initial, wrap = (panels, free) => <>{panels}{free}</> }: { label: string; items: TabItem[]; initial?: string; wrap?: (panels: ReactNode, free: ReactNode) => ReactNode }) {
   const base = useId();
   const [active, setActive] = useState(initial ?? items[0]?.id ?? "");
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -20,6 +21,11 @@ export function Tabs({ label, items, initial, wrap = (panels) => panels }: { lab
     setActive(target.id);
     refs.current[target.id]?.focus();
   };
+  const panel = (item: TabItem) => (
+    <div key={item.id} role="tabpanel" id={`${base}-${item.id}-panel`} aria-labelledby={`${base}-${item.id}-tab`} hidden={item.id !== active} className="min-w-0 space-y-4">
+      {item.content}
+    </div>
+  );
   return (
     <div>
       <div role="tablist" aria-label={label} className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
@@ -45,17 +51,13 @@ export function Tabs({ label, items, initial, wrap = (panels) => panels }: { lab
               {item.icon ? <item.icon aria-hidden="true" className="size-4" /> : null}
               {item.label}
               {item.count !== undefined ? (
-                <span aria-hidden="true" className={cn("rounded-full px-1.5 text-[11px]", selected ? "bg-brand-soft text-brand-ink" : "bg-none-soft text-ink-soft")}>{item.count}</span>
+                <span aria-hidden="true" className={cn("rounded-full px-1.5 text-[11px]", selected ? "bg-brand-soft text-brand-ink" : "bg-idle-soft text-ink-soft")}>{item.count}</span>
               ) : null}
             </button>
           );
         })}
       </div>
-      {wrap(items.map((item) => (
-        <div key={item.id} role="tabpanel" id={`${base}-${item.id}-panel`} aria-labelledby={`${base}-${item.id}-tab`} hidden={item.id !== active} className="min-w-0 space-y-4">
-          {item.content}
-        </div>
-      )))}
+      {wrap(items.filter((item) => !item.free).map(panel), items.filter((item) => item.free).map(panel))}
     </div>
   );
 }

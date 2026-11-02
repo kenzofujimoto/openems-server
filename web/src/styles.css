@@ -54,8 +54,8 @@
   --color-block-soft: #fdecec;
   --color-netblock: #c2410c;
   --color-netblock-soft: #fff0e8;
-  --color-none: #6b7280;
-  --color-none-soft: #f1f3f6;
+  --color-idle: #6b7280;
+  --color-idle-soft: #f1f3f6;
 
   --radius-card: 10px;
 }
@@ -111,8 +111,8 @@
     --color-block-soft: #45222a;
     --color-netblock: #ffb68a;
     --color-netblock-soft: #43281b;
-    --color-none: #a6b0c4;
-    --color-none-soft: #222c42;
+    --color-idle: #a6b0c4;
+    --color-idle-soft: #222c42;
   }
   html {
     font-family: var(--font-sans);

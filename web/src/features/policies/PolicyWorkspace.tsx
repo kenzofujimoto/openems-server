@@ -56,15 +56,17 @@ function snapshot(profile: Profile | undefined, section: string, build: () => Re
   } catch { return "invalid"; }
 }
 
-export function PolicyForm({ profile, vdom, section, readonly, build, extend, children, sections, aside }: { profile: Profile | undefined; vdom: string; section: string; readonly: boolean; build: () => Record<string, unknown>; extend?: (body: PolicyBody) => PolicyBody; children?: ReactNode; sections?: { label: string; items: TabItem[] }; aside?: ReactNode }) {
+export function PolicyForm({ profile, vdom, section, readonly, build, extend, children, sections, aside, ready = true }: { profile: Profile | undefined; vdom: string; section: string; readonly: boolean; build: () => Record<string, unknown>; extend?: (body: PolicyBody) => PolicyBody; children?: ReactNode; sections?: { label: string; items: TabItem[] }; aside?: ReactNode; ready?: boolean }) {
   const publish = usePublishProfile();
   const profiles = useProfiles();
   const endpoints = useEndpoints();
   const [validation, setValidation] = useState("");
   const reload = useContext(ReloadContext);
   const current = snapshot(profile, section, build, extend);
-  const [baseline, setBaseline] = useState(current);
-  const dirty = current !== baseline || !profile;
+  // The baseline is taken once the editor's data (for example the app catalog) has loaded.
+  const [baseline, setBaseline] = useState<string | null>(ready ? current : null);
+  if (baseline === null && ready) setBaseline(current);
+  const dirty = !profile || (baseline !== null && current !== baseline);
   const conflict = publish.error instanceof ApiError && [409, 412].includes(publish.error.status);
   const unsupported = endpoints.data?.filter((endpoint) => endpoint.effective_vdom === vdom && endpoint.missing_capabilities.length) ?? [];
   return <form className="space-y-4" onSubmit={(event) => {
@@ -76,9 +78,10 @@ export function PolicyForm({ profile, vdom, section, readonly, build, extend, ch
       publish.mutate({ vdom, body, digest: profile?.digest }, { onSuccess: () => setBaseline(JSON.stringify(body)) });
     } catch (error) { setValidation(error instanceof Error ? error.message : "Confira os valores da política."); }
   }}>
-    {sections ? <Tabs label={sections.label} items={sections.items} wrap={(panels) => <fieldset disabled={readonly || publish.isPending} className={aside ? "grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17.5rem]" : "min-w-0"}>
-      <div className="min-w-0">{children}{panels}</div>{aside ? <aside aria-label="Resumo do perfil" className="space-y-4">{aside}</aside> : null}
-    </fieldset>} /> : <fieldset disabled={readonly || publish.isPending} className="min-w-0 space-y-4">{children}</fieldset>}
+    {sections ? <Tabs label={sections.label} items={sections.items} wrap={(panels, free) => <div className={aside ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17.5rem]" : undefined}>
+      <div className="min-w-0"><fieldset disabled={readonly || publish.isPending} className="min-w-0">{children}{panels}</fieldset>{free}</div>
+      {aside ? <aside aria-label="Resumo do perfil" className="space-y-4">{aside}</aside> : null}
+    </div>} /> : <fieldset disabled={readonly || publish.isPending} className="min-w-0 space-y-4">{children}</fieldset>}
     {unsupported.length ? <InfoNotice>Há agentes sem suporte a parte da política: {unsupported.map((endpoint) => endpoint.devid).join(", ")}. Confira os avisos antes de publicar.</InfoNotice> : null}
     {validation || publish.isError ? <div role="alert" className="rounded-lg bg-danger-soft p-4 text-sm text-danger">{validation || (conflict ? "A política foi alterada por outro administrador. Recarregue antes de publicar." : "Não foi possível publicar a política. Confira os valores e tente de novo.")}{conflict ? <Button className="ml-3" onClick={() => { void profiles.refetch().then(() => reload()); }}>Recarregar política</Button> : null}</div> : null}
     {publish.data ? <div role="status" className="rounded-lg bg-success-soft p-4 text-sm text-success">Perfil {publish.data.vdom} v{publish.data.version} publicado; aguardando confirmação dos agentes.{publish.data.warnings.length ? <ul>{publish.data.warnings.map((warning) => <li key={warning.devid}>{warning.devid}: {warning.missing.join(", ")}</li>)}</ul> : null}</div> : null}

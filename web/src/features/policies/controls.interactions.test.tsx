@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/node";
-import { renderApp } from "@/test/render";
+import { openTab, renderApp } from "@/test/render";
 
 vi.setConfig({ testTimeout: 15000 });
 
@@ -19,16 +19,19 @@ function backend() {
 describe("control editor interactions", () => {
   it("edits and removes manual execution rules before publishing inventory publisher, name and network rules", async () => {
     const writes = backend(); const user = userEvent.setup(); renderApp("/policies/apps");
+    await openTab(user, "Regras de execução");
     await user.click(await screen.findByRole("button", { name: "Adicionar regra de execução" }));
     await user.selectOptions(screen.getByLabelText("Tipo da regra 1"), "path");
     await user.type(screen.getByLabelText("Valor da regra 1"), "C:\\Tools\\manual.exe");
     await user.type(screen.getByLabelText("Amostra local da regra 1"), "C:\\Tools\\manual.exe");
     await user.click(screen.getByRole("button", { name: "Adicionar regra de execução" }));
     await user.click(screen.getByRole("button", { name: "Remover regra 2" }));
+    await openTab(user, "Inventário");
     await user.click(await screen.findByRole("button", { name: "Bloquear editor de Tool" }));
     await user.click(screen.getByRole("button", { name: "Bloquear nome de Tool" }));
     await user.click(screen.getByRole("button", { name: "Bloquear rede de Tool" }));
     await user.click(screen.getByRole("button", { name: "Bloquear rede de Tool" }));
+    await openTab(user, "Rede e encerramento");
     await user.type(screen.getByLabelText("Processos a encerrar"), "tool.exe");
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));

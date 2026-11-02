@@ -67,7 +67,7 @@ export function BlocksChart({ overview }: { overview: Overview }) {
 const EVENT_STYLE: Record<EventKind, { icon: LucideIcon; label: string; tone: string }> = {
   web_block: { icon: Globe, label: "Site bloqueado", tone: "bg-brand-soft text-brand-ink" },
   web_monitor: { icon: Eye, label: "Domínio monitorado", tone: "bg-brand-soft text-brand-ink" },
-  app_block: { icon: AppWindow, label: "Aplicativo bloqueado", tone: "bg-none-soft text-night" },
+  app_block: { icon: AppWindow, label: "Aplicativo bloqueado", tone: "bg-idle-soft text-night" },
   app_network_block: { icon: AppWindow, label: "Conexão do aplicativo bloqueada", tone: "bg-brand-soft text-brand-ink" },
   app_control_applied: { icon: AppWindow, label: "Política de aplicativos aplicada", tone: "bg-success-soft text-success" },
   app_network_policy: { icon: AppWindow, label: "Regra de rede aplicada", tone: "bg-success-soft text-success" },

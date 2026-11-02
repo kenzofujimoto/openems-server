@@ -70,7 +70,7 @@ function WebEditor({ profile, vdom, readonly }: { profile: Profile | undefined; 
   const aside = <>
 
         <Card><CardHeader title="Resumo do perfil" /><div className="space-y-3 p-5 text-sm">
-          <div className="flex h-2 overflow-hidden rounded-full bg-none-soft" aria-hidden="true">{WEB_ACTIONS.map(({ value }) => <span key={value} className={{ allow: "bg-allow", block: "bg-block", monitor: "bg-monitor" }[value]} style={{ width: `${published.length ? (totals[value] / published.length) * 100 : 0}%` }} />)}</div>
+          <div className="flex h-2 overflow-hidden rounded-full bg-idle-soft" aria-hidden="true">{WEB_ACTIONS.map(({ value }) => <span key={value} className={{ allow: "bg-allow", block: "bg-block", monitor: "bg-monitor" }[value]} style={{ width: `${published.length ? (totals[value] / published.length) * 100 : 0}%` }} />)}</div>
           <dl className="space-y-1.5">{WEB_ACTIONS.map(({ value, label }) => <div key={value} className="flex items-center gap-2"><span aria-hidden="true" className={`size-2.5 rounded-sm ${{ allow: "bg-allow", block: "bg-block", monitor: "bg-monitor" }[value]}`} /><dt className="text-ink-soft">{label}</dt><dd className="ml-auto font-semibold">{totals[value]}</dd></div>)}</dl>
           <dl className="space-y-1.5 border-t border-line pt-3">
             <div className="flex"><dt className="text-ink-soft">Regras de URL</dt><dd className="ml-auto font-semibold">{domainRows.length}</dd></div>

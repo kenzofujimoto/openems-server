@@ -129,6 +129,7 @@ describe("policy editors", () => {
     server.use(http.get("*/api/v1/endpoints/inventory", () => HttpResponse.json({ devid: "RSM-SP-001", collected_at: "2026-10-25T10:00:00Z", applications: [{ name: "Test App", path: "C:\\Tools\\test.exe", sha256: "c".repeat(64), publisher: "Trusted Publisher", version: "1", running: true }], usb_devices: [] })));
     const user = userEvent.setup();
     renderApp("/policies/apps");
+    await openTab(user, "Inventário");
     await user.click(await screen.findByRole("button", { name: "Bloquear hash de Test App" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -181,6 +182,7 @@ describe("policy editors", () => {
     );
     const user = userEvent.setup();
     renderApp(`/policies/${section}`);
+    if (section === "apps") await openTab(user, "Inventário");
     const selection = await screen.findByLabelText("Endpoint do inventário");
     expect(selection).toBeEnabled();
     await user.selectOptions(selection, "RSM-SP-002");
