@@ -20,7 +20,7 @@ export function KpiCard({ label, value, icon: Icon, delta, caption, invertTone =
   return (
     <section role="group" aria-labelledby={labelId} className="rounded-[var(--radius-card)] border border-line bg-surface p-5">
       <div className="flex items-center gap-2.5">
-        <span className="grid size-8 place-items-center rounded-lg bg-rsm-blue-soft text-rsm-blue-dark">
+        <span className="grid size-8 place-items-center rounded-lg bg-brand-soft text-brand-ink">
           <Icon aria-hidden="true" className="size-4" />
         </span>
         <h3 id={labelId} className="text-sm font-medium text-ink-soft">{label}</h3>
@@ -34,7 +34,7 @@ export function KpiCard({ label, value, icon: Icon, delta, caption, invertTone =
               className={cn(
                 "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-medium",
                 good === null && "bg-canvas text-ink-soft",
-                good === true && "bg-rsm-green-soft text-rsm-green",
+                good === true && "bg-success-soft text-success",
                 good === false && "bg-danger-soft text-danger",
               )}
             >

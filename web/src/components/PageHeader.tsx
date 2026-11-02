@@ -13,7 +13,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function InfoNotice({ children }: { children: ReactNode }) {
-  return <div className="rounded-xl bg-rsm-blue-soft px-4 py-3 text-sm text-rsm-blue-dark">{children}</div>;
+  return <div className="rounded-xl bg-brand-soft px-4 py-3 text-sm text-brand-ink">{children}</div>;
 }
 
 export function ErrorNotice({ message, onRetry }: { message: string; onRetry: () => void }) {

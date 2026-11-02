@@ -8,7 +8,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { useState } from "react";
-import { MobileNavigation, Sidebar } from "@/components/layout/Sidebar";
+import { Sidebar, TopBar } from "@/components/layout/Sidebar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ErrorNotice } from "@/components/PageHeader";
@@ -38,14 +38,11 @@ function Shell() {
   }
   if (session.data === null) return <LoginPage />;
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-line bg-surface px-6">
-          <MobileNavigation />
-          <div className="ml-auto flex items-center gap-3"><ThemeToggle /><UserMenu session={session.data} /></div>
-        </header>
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-8">
+    <div className="min-h-screen">
+      <TopBar><ThemeToggle /><UserMenu session={session.data} /></TopBar>
+      <div className="flex">
+        <Sidebar />
+        <main className="mx-auto w-full max-w-[1600px] min-w-0 flex-1 px-6 pt-5 pb-10">
           <Outlet />
         </main>
       </div>

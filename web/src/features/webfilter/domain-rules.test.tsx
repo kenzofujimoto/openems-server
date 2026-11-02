@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/node";
-import { renderApp } from "@/test/render";
+import { openTab, renderApp } from "@/test/render";
 
 const legacy = { web_filter: { allowed: ["safe.example"], blocked: ["*.games.example"] }, app_control: { blocked: ["old.exe"] } };
 function backend() {
@@ -13,7 +13,7 @@ function backend() {
 }
 
 it("migrates allowed rows first, reorders entries and preserves other sections when publishing", async () => {
-  const writes = backend(); const user = userEvent.setup(); renderApp("/policies/web");
+  const writes = backend(); const user = userEvent.setup(); renderApp("/policies/web"); await openTab(user, "Filtro de URL estático");
   const table = await screen.findByRole("table", { name: "Regras de domínio" });
   expect(within(table).getAllByRole("row")[1]).toHaveTextContent("safe.example");
   await user.click(screen.getByRole("button", { name: "Mover games.example para cima" }));
@@ -27,7 +27,7 @@ it("migrates allowed rows first, reorders entries and preserves other sections w
 });
 
 it("adds and edits individual domain rules with explicit match type and monitoring", async () => {
-  const writes = backend(); const user = userEvent.setup(); renderApp("/policies/web");
+  const writes = backend(); const user = userEvent.setup(); renderApp("/policies/web"); await openTab(user, "Filtro de URL estático");
   await user.click(await screen.findByRole("button", { name: "Adicionar domínio" }));
   const dialog = screen.getByRole("dialog", { name: "Adicionar domínio" });
   await user.type(within(dialog).getByLabelText("Domínio"), "watch.example");
@@ -44,7 +44,7 @@ it("adds and edits individual domain rules with explicit match type and monitori
 });
 
 it("previews CSV and rejects invalid rows without partial imports or automatic publication", async () => {
-  const writes = backend(); const user = userEvent.setup(); renderApp("/policies/web");
+  const writes = backend(); const user = userEvent.setup(); renderApp("/policies/web"); await openTab(user, "Filtro de URL estático");
   const upload = await screen.findByLabelText("Importar CSV");
   await user.upload(upload, new File(["domain,type,action\r\nvideo.example,wildcard,log\r\nhttps://bad.example,simple,block"], "bad.csv", { type: "text/csv" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/linha 3/i);

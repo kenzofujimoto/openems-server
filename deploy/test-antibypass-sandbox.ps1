@@ -73,7 +73,7 @@ if (-not $SystemPhase) {
                 $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'
                 # Edge ignores edge:// URLs on its command line, so the settings page is opened by hand.
                 Start-Process -FilePath $edge -ArgumentList @('--inprivate', 'https://a.b.iana.org/')
-                Write-Host 'Edge opened https://a.b.iana.org/, which should show the RSM block page.'
+                Write-Host 'Edge opened https://a.b.iana.org/, which should show the block page.'
                 Write-Host 'Open a new tab at edge://settings/privacy and find "Use secure DNS" under Security.'
                 $reply = Read-Host 'Is secure DNS turned off and managed by your organization, AND does the block page show? Type YES or NO, then Enter'
                 Set-Content -LiteralPath $answer -Value $reply.Trim().ToUpperInvariant()

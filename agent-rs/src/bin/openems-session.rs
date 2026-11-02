@@ -68,7 +68,7 @@ mod tray {
     };
 
     const POLL_MS: u32 = 5000;
-    const TITLE: &str = "RSM Endpoint";
+    const TITLE: &str = openems_agent::brand::PRODUCT;
 
     struct Tray {
         board: PathBuf,

@@ -8,9 +8,9 @@ import type { Endpoint, EventKind, FleetEvent, Overview } from "@/lib/schemas";
 import type { FleetSummary } from "@/lib/status";
 
 const SERIES = [
-  { key: "web", label: "Web", color: "#009cde" },
-  { key: "apps", label: "Aplicativos", color: "#27455c" },
-  { key: "usb", label: "USB", color: "#3f9c35" },
+  { key: "web", label: "Web", color: "#4f46e5" },
+  { key: "apps", label: "Aplicativos", color: "#0369a1" },
+  { key: "usb", label: "USB", color: "#0d9488" },
 ] as const;
 
 function shortDay(date: string): string {
@@ -39,11 +39,11 @@ export function BlocksChart({ overview }: { overview: Overview }) {
       <div className="h-72 min-h-72 flex-1 px-2 pt-4 pb-3">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barCategoryGap="28%">
-            <CartesianGrid vertical={false} stroke="#eef0f2" />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#888b8d", fontSize: 12 }} />
-            <YAxis tickLine={false} axisLine={false} width={40} tick={{ fill: "#888b8d", fontSize: 12 }} />
+            <CartesianGrid vertical={false} stroke="var(--color-line)" />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#8a93a6", fontSize: 12 }} />
+            <YAxis tickLine={false} axisLine={false} width={40} tick={{ fill: "#8a93a6", fontSize: 12 }} />
             <Tooltip
-              cursor={{ fill: "#f6f7f9" }}
+              cursor={{ fill: "var(--color-canvas)" }}
               contentStyle={{ borderRadius: 10, border: "1px solid var(--color-line)", background: "var(--color-surface)", color: "var(--color-ink)", fontSize: 13 }}
               formatter={(value) => formatNumber(Number(value))}
             />
@@ -65,13 +65,13 @@ export function BlocksChart({ overview }: { overview: Overview }) {
 }
 
 const EVENT_STYLE: Record<EventKind, { icon: LucideIcon; label: string; tone: string }> = {
-  web_block: { icon: Globe, label: "Site bloqueado", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
-  web_monitor: { icon: Eye, label: "Domínio monitorado", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
-  app_block: { icon: AppWindow, label: "Aplicativo bloqueado", tone: "bg-[#e9eef2] text-rsm-navy" },
-  app_network_block: { icon: AppWindow, label: "Conexão do aplicativo bloqueada", tone: "bg-rsm-blue-soft text-rsm-blue-dark" },
-  app_control_applied: { icon: AppWindow, label: "Política de aplicativos aplicada", tone: "bg-rsm-green-soft text-rsm-green" },
-  app_network_policy: { icon: AppWindow, label: "Regra de rede aplicada", tone: "bg-rsm-green-soft text-rsm-green" },
-  usb_block: { icon: Usb, label: "USB bloqueado", tone: "bg-rsm-green-soft text-rsm-green" },
+  web_block: { icon: Globe, label: "Site bloqueado", tone: "bg-brand-soft text-brand-ink" },
+  web_monitor: { icon: Eye, label: "Domínio monitorado", tone: "bg-brand-soft text-brand-ink" },
+  app_block: { icon: AppWindow, label: "Aplicativo bloqueado", tone: "bg-idle-soft text-night" },
+  app_network_block: { icon: AppWindow, label: "Conexão do aplicativo bloqueada", tone: "bg-brand-soft text-brand-ink" },
+  app_control_applied: { icon: AppWindow, label: "Política de aplicativos aplicada", tone: "bg-success-soft text-success" },
+  app_network_policy: { icon: AppWindow, label: "Regra de rede aplicada", tone: "bg-success-soft text-success" },
+  usb_block: { icon: Usb, label: "USB bloqueado", tone: "bg-success-soft text-success" },
   usb_read_only: { icon: Usb, label: "USB em somente leitura", tone: "bg-warning-soft text-warning" },
   tamper: { icon: ShieldAlert, label: "Tentativa de adulteração", tone: "bg-warning-soft text-warning" },
   policy_error: { icon: TriangleAlert, label: "Erro de política", tone: "bg-danger-soft text-danger" },
@@ -131,10 +131,10 @@ export function RecentEvents({ events, wide = false, retentionDays }: { events: 
 
 export function PolicyStatusCard({ summary }: { summary: FleetSummary }) {
   const rows = [
-    { label: "Aplicada", value: summary.applied, color: "bg-rsm-green" },
+    { label: "Aplicada", value: summary.applied, color: "bg-success" },
     { label: "Pendente", value: summary.pending, color: "bg-warning" },
     { label: "Erro", value: summary.error, color: "bg-danger" },
-    { label: "Offline", value: summary.offline, color: "bg-rsm-gray-mid" },
+    { label: "Offline", value: summary.offline, color: "bg-neutral" },
   ];
   const max = Math.max(1, ...rows.map((row) => row.value));
   return (
@@ -182,7 +182,7 @@ function osFamily(os: string): string {
   return "Outros";
 }
 
-const OS_COLOR: Record<string, string> = { Windows: "#009cde", macOS: "#27455c", Linux: "#3f9c35", Outros: "#888b8d" };
+const OS_COLOR: Record<string, string> = { Windows: "#4f46e5", macOS: "#0369a1", Linux: "#0d9488", Outros: "#8a93a6" };
 
 export function OsBreakdownCard({ endpoints }: { endpoints: Endpoint[] }) {
   const counts = new Map<string, number>();

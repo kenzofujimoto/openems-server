@@ -26,7 +26,7 @@ export function EndpointActions({ devid }: { devid: string }) {
     <h3 className="text-sm font-medium">Acesso do agente</h3>
     <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => { setError(false); setAction("rotate"); }}>Trocar credencial do agente</Button><Button size="sm" onClick={() => { setError(false); setAction("revoke"); }}>Revogar cadastro</Button></div>
     {token ? <div className="rounded-xl bg-canvas p-3 text-sm"><p>Guarde a nova credencial para reconfigurar este agente. Ela desaparece ao fechar a ficha.</p><code className="mt-2 block break-all">{token}</code></div> : null}
-    {message ? <p role="status" className="text-sm text-rsm-green">{message}</p> : null}
+    {message ? <p role="status" className="text-sm text-success">{message}</p> : null}
     {action ? <ConfirmDialog title={action === "rotate" ? "Trocar credencial" : "Revogar cadastro"} message={action === "rotate" ? "A credencial atual deixará de funcionar. Será necessário reconfigurar o agente com a nova credencial para voltar a sincronizar." : "O agente perderá acesso ao servidor. A última política continua no cache local; revogar não desinstala nem libera o filtro."} confirm={action === "rotate" ? "Confirmar troca de credencial" : "Confirmar revogação do cadastro"} pending={pending} error={error} onClose={() => setAction(null)} onConfirm={() => void confirm()} /> : null}
   </section>;
 }

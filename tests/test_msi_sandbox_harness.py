@@ -40,7 +40,8 @@ BUILDER = Path(__file__).resolve().parents[1] / 'tools/build-msi-fixtures.ps1'
 
 def test_fault_injection_exists_only_in_fixture_builds():
     text = WXS.read_text(encoding='utf-8')
-    start, end = text.index('<?ifdef FaultInjection ?>'), text.index('<?endif?>')
+    start = text.index('<?ifdef FaultInjection ?>')
+    end = text.index('<?endif?>', start)
     guarded, outside = text[start:end], text[:start] + text[end:]
     for name in ('FAIL_SETUP', 'FAIL_REMOVAL', 'InjectSetupFailure', 'InjectRemovalFailure'):
         assert name in guarded

@@ -97,7 +97,7 @@ if (-not $SystemPhase) {
         $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'
         if (-not (Test-Path -LiteralPath $edge)) { throw 'Edge executable not found.' }
         Start-Process -FilePath $edge -ArgumentList '--inprivate', 'https://example.com/' | Out-Null
-        $answer = Read-Host 'Does Edge show the RSM page without a certificate warning? Type YES or NO, then Enter'
+        $answer = Read-Host 'Does Edge show the block page without a certificate warning? Type YES or NO, then Enter'
         if ($answer -ne 'YES') { throw 'Browser acceptance was not confirmed.' }
         Set-Content -LiteralPath (Join-Path $work 'revoke') -Value 'release'
         $deadline = [DateTime]::UtcNow.AddSeconds(30)

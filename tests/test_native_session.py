@@ -85,10 +85,10 @@ def test_the_session_component_prints_what_it_would_show(native, tmp_path):
                             capture_output=True, text=True, encoding="utf-8", timeout=30, check=False)
     assert result.returncode == 0, result.stderr
     shown = json.loads(result.stdout)
-    assert shown == {"tooltip": "RSM Endpoint: proteção ativa, sem contato com o servidor", "notices": []}
+    assert shown == {"tooltip": "OpenEMS: proteção ativa, sem contato com o servidor", "notices": []}
     missing = subprocess.run([str(session_binary(native)), "--print", "--board", str(tmp_path / "absent.json")],
                              capture_output=True, text=True, encoding="utf-8", timeout=30, check=False)
-    assert json.loads(missing.stdout) == {"tooltip": "RSM Endpoint: aguardando a política da empresa", "notices": []}
+    assert json.loads(missing.stdout) == {"tooltip": "OpenEMS: aguardando a política da empresa", "notices": []}
 
 
 ROOT = Path(__file__).resolve().parent.parent

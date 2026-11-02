@@ -189,6 +189,10 @@ pub fn host_tags(cfg: &AgentConfig, assignment: &Assignment, enforcement: &Enfor
         tags.push("web-filter:monitor".into());
         tags.push("web-filter:domain-rules:v1".into());
     }
+    // Warnings need the local HTTP and HTTPS pages, where the person can continue.
+    if cfg.dns_filter && cfg.block_page && cfg.block_page_https {
+        tags.push("web-filter:warn".into());
+    }
     if cfg.anti_bypass {
         tags.push("web-filter:anti-bypass".into());
     }
@@ -540,6 +544,9 @@ impl Runtime {
                         "web-filter:monitor".into(),
                         "web-filter:domain-rules:v1".into(),
                     ]);
+                }
+                if self.cfg.dns_filter && self.cfg.block_page && self.cfg.block_page_https {
+                    tags.push("web-filter:warn".into());
                 }
                 if self.cfg.anti_bypass {
                     tags.push("web-filter:anti-bypass".into());

@@ -71,7 +71,7 @@ export function UninstallSection({ devid }: { devid: string }) {
               <Copy aria-hidden="true" className="size-4" />
               Copiar código
             </Button>
-            {copy === "copied" ? <span className="text-xs text-rsm-green">Código copiado</span> : null}
+            {copy === "copied" ? <span className="text-xs text-success">Código copiado</span> : null}
             {copy === "failed" ? <span className="text-xs text-danger">Copie o código manualmente</span> : null}
           </div>
         </div>
@@ -88,7 +88,7 @@ export function UninstallSection({ devid }: { devid: string }) {
           </div>
         </div>
       ) : null}
-      {reopen.isSuccess ? <p className="mt-3 text-sm text-rsm-green">Entrega reaberta: o agente buscará o segredo no próximo contato.</p> : null}
+      {reopen.isSuccess ? <p className="mt-3 text-sm text-success">Entrega reaberta: o agente buscará o segredo no próximo contato.</p> : null}
       {reopen.isError ? (
         <p role="alert" className="mt-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
           {failure(reopen.error, "Não foi possível reabrir a entrega.")}

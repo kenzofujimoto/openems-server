@@ -5,6 +5,7 @@ pub mod app;
 pub mod applications;
 pub mod authority;
 pub mod blockpage;
+pub mod brand;
 pub mod browser_policy;
 pub mod canonical;
 pub mod categories;

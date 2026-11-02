@@ -35,6 +35,7 @@ def required_tags(body: Any) -> list[str]:
     uses_actions = ordered_domains or any(isinstance(mapping, dict) and mapping for mapping in action_maps) or web_filter.get("monitor_all") is True
     monitoring = ("monitor" in actions or web_filter.get("monitor_all") is True
                   or any(rule.get("action") == "monitor" for rule in domain_rules if isinstance(rule, dict)))
+    warning = "warn" in actions or any(rule.get("action") == "warn" for rule in domain_rules if isinstance(rule, dict))
     # Allow categories also need membership data to suppress global observation.
     categories = categories or bool(actions)
     safe_search = bool(web_filter.get("safe_search"))
@@ -48,6 +49,8 @@ def required_tags(body: Any) -> list[str]:
         tags.append("web-filter:domain-rules:v1")
     if monitoring:
         tags.append("web-filter:monitor")
+    if warning:
+        tags.append("web-filter:warn")
     # Wildcards, SafeSearch and categories are enforced by the local resolver; hosts mode cannot.
     if ordered_domains or categories or monitoring or safe_search or any(isinstance(rule, str) and rule.startswith("*.") for rule in rules):
         tags.append("web-filter:dns")

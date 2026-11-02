@@ -70,7 +70,7 @@ if (-not $SystemPhase) {
                 $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'
                 Start-Process -FilePath $edge -ArgumentList @('--inprivate', 'https://steamcommunity.com/')
                 Write-Host 'Edge opened https://steamcommunity.com/ (category games). Wait until the page finishes loading.'
-                $reply = Read-Host 'Does Edge show the RSM block page with "Categoria: Jogos" and no certificate warning? Type YES or NO, then Enter'
+                $reply = Read-Host 'Does Edge show the block page with "Categoria: Jogos" and no certificate warning? Type YES or NO, then Enter'
                 Set-Content -LiteralPath $answer -Value $reply.Trim().ToUpperInvariant()
             }
             Start-Sleep -Milliseconds 500

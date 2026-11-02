@@ -121,14 +121,16 @@ pub fn notices_to_show(state: &SessionState, last_shown: Option<u64>, now: jiff:
 
 pub fn tooltip(state: &SessionState, now: jiff::Timestamp) -> String {
     if !state.protected {
-        return "RSM Endpoint: aguardando a política da empresa".into();
+        return format!("{}: aguardando a política da empresa", crate::brand::PRODUCT);
     }
     match state.last_contact.as_deref().and_then(parse) {
-        Some(at) if now.as_second() - at.as_second() <= CONTACT_GRACE_SECONDS => "RSM Endpoint: proteção ativa".into(),
+        Some(at) if now.as_second() - at.as_second() <= CONTACT_GRACE_SECONDS => {
+            format!("{}: proteção ativa", crate::brand::PRODUCT)
+        }
         Some(at) => {
             let local = at.to_zoned(jiff::tz::TimeZone::system()).strftime("%d/%m %H:%M").to_string();
-            format!("RSM Endpoint: proteção ativa, sem contato com o servidor desde {local}")
+            format!("{}: proteção ativa, sem contato com o servidor desde {local}", crate::brand::PRODUCT)
         }
-        None => "RSM Endpoint: proteção ativa, sem contato com o servidor".into(),
+        None => format!("{}: proteção ativa, sem contato com o servidor", crate::brand::PRODUCT),
     }
 }

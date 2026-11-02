@@ -151,15 +151,16 @@ def test_blockpage_render_is_branded() -> None:
     page = blockpage.render("example.com").decode("utf-8")
     assert "Acesso bloqueado" in page
     assert "example.com" in page
-    assert "RSM" in page
+    assert "OpenEMS" in page and "RSM" not in page and "#4f46e5" in page
 
 
-def test_blockpage_uses_rsm_identity_offline() -> None:
+def test_blockpage_uses_rsm_identity_offline(monkeypatch) -> None:
     import base64
     import re
 
     import blockpage
 
+    monkeypatch.setenv("OPENEMS_BRAND", "rsm")
     page = blockpage.render("example.com").decode("utf-8")
     # The official logo is embedded so the page works with no network access.
     match = re.search(r'<img[^>]+src="data:image/png;base64,([A-Za-z0-9+/=]+)"[^>]*alt="RSM"', page)

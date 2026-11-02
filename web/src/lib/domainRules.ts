@@ -3,13 +3,13 @@ import { z } from "zod";
 export interface DomainRow {
   domain: string;
   type: "simple" | "wildcard";
-  action: "allow" | "block" | "monitor";
+  action: "allow" | "block" | "monitor" | "warn";
 }
 export const MAX_DOMAIN_ROWS = 10_000;
 export const MAX_CSV_BYTES = 2 * 1024 * 1024;
 
 export function normalizeDomainRow(value: unknown): DomainRow {
-  const row = z.object({domain:z.string(), type:z.enum(["simple", "wildcard"]), action:z.enum(["allow", "block", "monitor"])}).strict().safeParse(value);
+  const row = z.object({domain:z.string(), type:z.enum(["simple", "wildcard"]), action:z.enum(["allow", "block", "monitor", "warn"])}).strict().safeParse(value);
   if (!row.success) throw new Error("Informe domínio, tipo Simples/Wildcard e ação Permitir/Bloquear/Monitorar.");
   const host = row.data.domain.trim();
   let domain = "";

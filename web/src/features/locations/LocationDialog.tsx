@@ -7,13 +7,13 @@ import { ApiError } from "@/lib/api";
 import { useDeleteNetworkLocation, useSaveNetworkLocation } from "@/lib/queries";
 import type { NetworkLocation } from "@/lib/schemas";
 
-export const FIELD_CLASS = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-rsm-blue disabled:bg-canvas";
+export const FIELD_CLASS = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-brand disabled:bg-canvas";
 
 function Modal({ title, description, children, onClose }: { title: string; description: string; children: ReactNode; onClose: () => void }) {
   return (
     <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-rsm-navy/30" />
+        <Dialog.Overlay className="fixed inset-0 bg-night/30" />
         <Dialog.Content className="fixed top-1/2 left-1/2 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-surface p-6 shadow-xl outline-none">
           <div className="flex items-start justify-between gap-4">
             <div>

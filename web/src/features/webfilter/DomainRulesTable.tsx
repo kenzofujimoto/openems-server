@@ -6,16 +6,16 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { FIELD_CLASS } from "@/features/policies/PolicyWorkspace";
 import { decodeDomainCsv, encodeDomainCsv, MAX_CSV_BYTES, normalizeDomainRow, normalizeDomainRows, type DomainRow } from "@/lib/domainRules";
 
-const ACTIONS = {allow:"Permitir", block:"Bloquear", monitor:"Monitorar (log)"};
-const TONES = {allow:"bg-rsm-green-soft text-rsm-green", block:"bg-danger-soft text-danger", monitor:"bg-rsm-blue-soft text-rsm-blue-dark"};
+const ACTIONS = {allow:"Permitir", block:"Bloquear", monitor:"Monitorar (log)", warn:"Avisar"};
+const TONES = {allow:"bg-allow-soft text-allow", block:"bg-block-soft text-block", monitor:"bg-monitor-soft text-monitor", warn:"bg-warning-soft text-warning"};
 const PAGE_SIZE = 50;
 
 function Modal({title, description, onClose, children}: {title:string; description:string; onClose:()=>void; children:ReactNode}) {
   const [returnFocus] = useState(() => document.activeElement instanceof HTMLElement ? document.activeElement : null);
   return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}><Dialog.Portal>
-    <Dialog.Overlay className="fixed inset-0 z-40 bg-rsm-navy/30" />
+    <Dialog.Overlay className="fixed inset-0 z-40 bg-night/30" />
     <Dialog.Content onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus?.focus(); }} className="fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-surface p-6 text-ink shadow-xl">
-      <div className="flex items-start justify-between gap-3"><div><Dialog.Title className="text-lg font-medium">{title}</Dialog.Title><Dialog.Description className="mt-1 text-sm text-ink-muted">{description}</Dialog.Description></div><Dialog.Close aria-label="Fechar" className="rounded p-1 focus-visible:outline-2 focus-visible:outline-rsm-blue"><X className="size-5" aria-hidden="true" /></Dialog.Close></div>
+      <div className="flex items-start justify-between gap-3"><div><Dialog.Title className="text-lg font-medium">{title}</Dialog.Title><Dialog.Description className="mt-1 text-sm text-ink-muted">{description}</Dialog.Description></div><Dialog.Close aria-label="Fechar" className="rounded p-1 focus-visible:outline-2 focus-visible:outline-brand"><X className="size-5" aria-hidden="true" /></Dialog.Close></div>
       {children}
     </Dialog.Content>
   </Dialog.Portal></Dialog.Root>;
@@ -50,7 +50,7 @@ export function DomainRulesTable({rows, onChange, readonly}: {rows:DomainRow[]; 
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center gap-2">
         {!readonly ? <><Button onClick={() => startEdit(null)}><Plus className="size-4" aria-hidden="true" />Adicionar domínio</Button>
-          <label htmlFor={uploadId} className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm has-focus-visible:outline-2 has-focus-visible:outline-rsm-blue"><Upload className="size-4" aria-hidden="true" />Importar CSV<input id={uploadId} aria-label="Importar CSV" type="file" accept=".csv,text/csv" disabled={reading} className="sr-only" onChange={async (event) => {
+          <label htmlFor={uploadId} className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm has-focus-visible:outline-2 has-focus-visible:outline-brand"><Upload className="size-4" aria-hidden="true" />Importar CSV<input id={uploadId} aria-label="Importar CSV" type="file" accept=".csv,text/csv" disabled={reading} className="sr-only" onChange={async (event) => {
             const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
             setError(""); setReading(true);
             try {
@@ -66,7 +66,7 @@ export function DomainRulesTable({rows, onChange, readonly}: {rows:DomainRow[]; 
         }}><Download className="size-4" aria-hidden="true" />Exportar CSV</Button>
         <span className="text-sm text-ink-muted">{rows.length} {rows.length === 1 ? "regra" : "regras"}</span>
       </div>
-      <p className="text-xs text-ink-muted">Simples inclui o domínio e www. Wildcard inclui o domínio e todos os subdomínios. Permitir não registra navegação; Bloquear registra a tentativa; Monitorar permite e registra a consulta DNS. CSV: domain,type,action — simple/wildcard e allow/block/monitor.</p>
+      <p className="text-xs text-ink-muted">Simples inclui o domínio e www. Wildcard inclui o domínio e todos os subdomínios. Permitir não registra navegação; Bloquear registra a tentativa; Monitorar permite e registra a consulta DNS; Avisar mostra um aviso com opção de continuar. CSV: domain,type,action — simple/wildcard e allow/block/monitor/warn.</p>
       {reading ? <p role="status" className="text-sm text-ink-muted">Lendo CSV…</p> : null}
       {error ? <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{error}</p> : null}
       <label className="block max-w-sm text-sm text-ink-soft">Buscar domínio<input className={`mt-1 ${FIELD_CLASS}`} value={search} onChange={(event) => {setSearch(event.target.value); setPage(0);}} /></label>

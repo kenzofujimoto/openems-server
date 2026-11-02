@@ -66,7 +66,7 @@ function PolicyTab({ endpoint, profile, profiles }: { endpoint: Endpoint; profil
         {others.map((vdom) => <option key={vdom} value={vdom}>{vdom}</option>)}
       </select></label>
       <Button type="submit" disabled={!target || save.isPending}>Mover máquina</Button>
-      {save.isSuccess ? <p role="status" className="text-sm text-rsm-green">Regra de atribuição criada: {hostname} → {target}.</p> : null}
+      {save.isSuccess ? <p role="status" className="text-sm text-success">Regra de atribuição criada: {hostname} → {target}.</p> : null}
       {save.isError ? <p role="alert" className="text-sm text-danger">Não foi possível criar a regra de atribuição.</p> : null}
     </form> : null}
   </div>;
@@ -104,13 +104,13 @@ export function EndpointDetailPage() {
   const [tab, setTab] = useState<Tab>("Resumo");
   const endpoint = endpoints.data?.find((item) => item.devid === devid);
   if (endpoints.isPending) return <p role="status">Carregando máquina…</p>;
-  if (!endpoint) return <div className="space-y-4"><PageHeader title="Máquina não encontrada" /><Link to="/endpoints" className="text-rsm-blue">Voltar aos endpoints</Link></div>;
+  if (!endpoint) return <div className="space-y-4"><PageHeader title="Máquina não encontrada" /><Link to="/endpoints" className="text-brand">Voltar aos endpoints</Link></div>;
   const profile = profiles.data?.find((item) => item.vdom === endpoint.effective_vdom);
   return <div className="space-y-6">
-    <PageHeader title={endpoint.hostname || endpoint.devid} description={`${endpoint.devid} · grupo ${endpoint.effective_vdom}`} actions={<Link to="/endpoints" className="text-sm text-rsm-blue">Voltar aos endpoints</Link>} />
+    <PageHeader title={endpoint.hostname || endpoint.devid} description={`${endpoint.devid} · grupo ${endpoint.effective_vdom}`} actions={<Link to="/endpoints" className="text-sm text-brand">Voltar aos endpoints</Link>} />
     <div role="tablist" aria-label="Ficha da máquina" className="flex flex-wrap gap-2 border-b border-line">
       {TABS.map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} onClick={() => setTab(name)}
-        className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === name ? "border-rsm-blue text-rsm-blue" : "border-transparent text-ink-soft"}`}>{name}</button>)}
+        className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === name ? "border-brand text-brand" : "border-transparent text-ink-soft"}`}>{name}</button>)}
     </div>
     <Card role="tabpanel" aria-label={tab} className="p-5">
       {tab === "Resumo" ? <EndpointSummary endpoint={endpoint} /> : null}

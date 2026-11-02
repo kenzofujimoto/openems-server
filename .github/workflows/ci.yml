@@ -153,7 +153,9 @@ jobs:
           cargo clippy --locked --all-targets -- -D warnings
       - name: Unit and shared-vector tests
         working-directory: agent-rs
-        run: cargo test --locked
+        run: |
+          cargo test --locked
+          cargo test --locked --features rsm-brand --lib --test session --test https_blockpage --test warning_page
       - name: Release build (static CRT, no runtime dependencies)
         working-directory: agent-rs
         run: cargo build --release --locked

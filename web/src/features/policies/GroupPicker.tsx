@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { FIELD_CLASS } from "@/features/locations/LocationDialog";
 
@@ -38,10 +39,17 @@ export function GroupPicker({ published, value, onChange, readonly }: { publishe
     select(candidate);
   };
   const selected = groups.find((group) => group.vdom === value);
-  return <div className="space-y-3">
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="block w-full max-w-xs text-sm text-ink-soft">Buscar grupo<input className={`mt-1 ${FIELD_CLASS}`} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-      {!readonly && !creating ? <Button onClick={() => setCreating(true)}>Novo grupo</Button> : null}
+  return <div className="space-y-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <div role="radiogroup" aria-label="Grupo da política" className="flex flex-1 flex-wrap gap-1.5">
+        {visible.map((group) => <label key={group.vdom} className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1 text-sm has-focus-visible:outline-2 has-focus-visible:outline-brand ${group.vdom === value ? "border-brand bg-brand-soft font-medium text-brand-ink" : "border-line text-ink hover:bg-canvas"}`}>
+          <input type="radio" name="policy-group" className="sr-only" aria-label={group.vdom} checked={group.vdom === value} onChange={() => select(group.vdom)} />
+          <span>{group.vdom}</span><span className="text-xs text-ink-soft">{group.version === null ? "novo" : `v${group.version}`}</span>
+        </label>)}
+        {!visible.length ? <p className="text-sm text-ink-soft">Nenhum grupo encontrado.</p> : null}
+      </div>
+      <label className="flex h-8 w-48 items-center gap-2 rounded-md border border-line-strong bg-surface px-2.5 text-sm text-ink-muted"><Search aria-hidden="true" className="size-4" /><span className="sr-only">Buscar grupo</span><input className="w-full bg-transparent text-ink outline-none" placeholder="Buscar grupo" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+      {!readonly && !creating ? <Button size="sm" onClick={() => setCreating(true)}><Plus aria-hidden="true" className="size-4" />Novo grupo</Button> : null}
     </div>
     {creating ? <div className="flex flex-wrap items-end gap-3">
       <label className="block w-full max-w-xs text-sm text-ink-soft">Nome do novo grupo<input className={`mt-1 ${FIELD_CLASS}`} value={name} maxLength={MAX_NAME + 1} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); create(); } }} /></label>
@@ -49,13 +57,6 @@ export function GroupPicker({ published, value, onChange, readonly }: { publishe
       <Button onClick={() => { setCreating(false); setName(""); setError(""); }}>Cancelar</Button>
     </div> : null}
     {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-    <div role="radiogroup" aria-label="Grupo da política" className="flex flex-wrap gap-2">
-      {visible.map((group) => <label key={group.vdom} className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${group.vdom === value ? "border-rsm-blue bg-rsm-blue-soft text-rsm-blue" : "border-line text-ink"}`}>
-        <input type="radio" name="policy-group" className="sr-only" aria-label={group.vdom} checked={group.vdom === value} onChange={() => select(group.vdom)} />
-        <span>{group.vdom}</span><span className="text-xs text-ink-soft">{group.version === null ? "novo" : `v${group.version}`}</span>
-      </label>)}
-      {!visible.length ? <p className="text-sm text-ink-soft">Nenhum grupo encontrado.</p> : null}
-    </div>
     {selected?.version === null ? <p className="text-sm text-ink-soft">Grupo {selected.vdom} ainda não publicado: publique uma política para criar o primeiro perfil.</p> : null}
   </div>;
 }

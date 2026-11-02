@@ -24,7 +24,7 @@ pub const SERVICE_NAME: &str = "openems-agent";
 /// SYSTEM task that starts the service again if it was disabled or stopped (tamper-protection.md, decision 3).
 pub const WATCHDOG_TASK: &str = "openems-agent watchdog";
 const DISPLAY_NAME: &str = "openems endpoint agent";
-const DESCRIPTION: &str = "Applies RSM endpoint policies and reports their status to the management server.";
+const DESCRIPTION: &str = crate::brand::SERVICE_DESCRIPTION;
 
 static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 

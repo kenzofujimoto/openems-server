@@ -164,6 +164,9 @@ class AppCatalog:
         self.manifest()
         return self._index[0].get(identifier) if self._loaded else None
 
+    def vendors(self) -> set[str]:
+        return {app["vendor"] for app in self.manifest()["apps"] if app["vendor"]}
+
     def match(self, application: dict[str, Any]) -> str | None:
         if self.manifest()["version"] is None:
             return None
@@ -221,9 +224,24 @@ ACTIONS = ("block", "block_network", "allow")
 def _validate_actions(actions: dict[str, Any], catalog: AppCatalog) -> None:
     for key, action in actions.items():
         kind, _, target = str(key).partition(":")
-        valid_target = (kind == "category" and target in _CATEGORY_IDS) or (kind == "app" and catalog.app(target) is not None)
+        # A vendor filter names a normalized catalog vendor; Microsoft components are never blocked by vendor.
+        vendor = kind == "vendor" and target in catalog.vendors() and (action == "allow" or "microsoft" not in target)
+        valid_target = (kind == "category" and target in _CATEGORY_IDS) or (kind == "app" and catalog.app(target) is not None) or vendor
         if action not in ACTIONS or not valid_target:
             raise ValueError(f"invalid catalog action for {key}")
+
+
+MAX_NOTE = 200
+
+
+def validate_notes(notes: Any, actions: dict[str, Any]) -> dict[str, str]:
+    """Administrator comments on catalog decisions: short plain text, only for decisions that exist."""
+    if not isinstance(notes, dict):
+        raise ValueError("app_catalog.notes must be an object")
+    for key, note in notes.items():
+        if key not in actions or not isinstance(note, str) or len(note) > MAX_NOTE or any(ord(char) < 32 or ord(char) == 127 for char in note):
+            raise ValueError(f"invalid catalog note for {key}")
+    return dict(notes)
 
 
 def _executable(application: dict[str, Any]) -> str | None:
@@ -269,7 +287,9 @@ def expand(actions: dict[str, Any], applications: Iterable[dict[str, Any]], cata
         entry = catalog.app(identifier) if identifier else None
         if entry is None:
             continue
-        decision = actions.get(f"app:{identifier}") or actions.get(f"category:{entry['category']}")
+        # Precedence: the application override, then a vendor filter, then the category.
+        decision = (actions.get(f"app:{identifier}") or actions.get(f"vendor:{entry['vendor']}")
+                    or actions.get(f"category:{entry['category']}"))
         if decision not in ("block", "block_network"):
             continue
         if not entry["blockable"] or "microsoft" in str(application.get("publisher", "")).lower():

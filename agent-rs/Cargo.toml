@@ -5,6 +5,10 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+[features]
+# RSM Brasil edition: tray, block page and service text (cargo build --features rsm-brand).
+rsm-brand = []
+
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 fastrand = "2.5.0"
@@ -12,6 +16,7 @@ gethostname = "1.1.0"
 hex = "0.4.3"
 idna = "1.1.0"
 rcgen = { version = "0.14", features = ["x509-parser"] }
+ring = "0.17.14"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
