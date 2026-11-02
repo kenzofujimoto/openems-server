@@ -7,15 +7,15 @@ import { FIELD_CLASS } from "@/features/policies/PolicyWorkspace";
 import { decodeDomainCsv, encodeDomainCsv, MAX_CSV_BYTES, normalizeDomainRow, normalizeDomainRows, type DomainRow } from "@/lib/domainRules";
 
 const ACTIONS = {allow:"Permitir", block:"Bloquear", monitor:"Monitorar (log)"};
-const TONES = {allow:"bg-rsm-green-soft text-rsm-green", block:"bg-danger-soft text-danger", monitor:"bg-rsm-blue-soft text-rsm-blue-dark"};
+const TONES = {allow:"bg-success-soft text-success", block:"bg-danger-soft text-danger", monitor:"bg-brand-soft text-brand-ink"};
 const PAGE_SIZE = 50;
 
 function Modal({title, description, onClose, children}: {title:string; description:string; onClose:()=>void; children:ReactNode}) {
   const [returnFocus] = useState(() => document.activeElement instanceof HTMLElement ? document.activeElement : null);
   return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}><Dialog.Portal>
-    <Dialog.Overlay className="fixed inset-0 z-40 bg-rsm-navy/30" />
+    <Dialog.Overlay className="fixed inset-0 z-40 bg-night/30" />
     <Dialog.Content onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus?.focus(); }} className="fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-surface p-6 text-ink shadow-xl">
-      <div className="flex items-start justify-between gap-3"><div><Dialog.Title className="text-lg font-medium">{title}</Dialog.Title><Dialog.Description className="mt-1 text-sm text-ink-muted">{description}</Dialog.Description></div><Dialog.Close aria-label="Fechar" className="rounded p-1 focus-visible:outline-2 focus-visible:outline-rsm-blue"><X className="size-5" aria-hidden="true" /></Dialog.Close></div>
+      <div className="flex items-start justify-between gap-3"><div><Dialog.Title className="text-lg font-medium">{title}</Dialog.Title><Dialog.Description className="mt-1 text-sm text-ink-muted">{description}</Dialog.Description></div><Dialog.Close aria-label="Fechar" className="rounded p-1 focus-visible:outline-2 focus-visible:outline-brand"><X className="size-5" aria-hidden="true" /></Dialog.Close></div>
       {children}
     </Dialog.Content>
   </Dialog.Portal></Dialog.Root>;
@@ -50,7 +50,7 @@ export function DomainRulesTable({rows, onChange, readonly}: {rows:DomainRow[]; 
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-center gap-2">
         {!readonly ? <><Button onClick={() => startEdit(null)}><Plus className="size-4" aria-hidden="true" />Adicionar domínio</Button>
-          <label htmlFor={uploadId} className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm has-focus-visible:outline-2 has-focus-visible:outline-rsm-blue"><Upload className="size-4" aria-hidden="true" />Importar CSV<input id={uploadId} aria-label="Importar CSV" type="file" accept=".csv,text/csv" disabled={reading} className="sr-only" onChange={async (event) => {
+          <label htmlFor={uploadId} className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm has-focus-visible:outline-2 has-focus-visible:outline-brand"><Upload className="size-4" aria-hidden="true" />Importar CSV<input id={uploadId} aria-label="Importar CSV" type="file" accept=".csv,text/csv" disabled={reading} className="sr-only" onChange={async (event) => {
             const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
             setError(""); setReading(true);
             try {

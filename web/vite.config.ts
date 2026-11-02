@@ -16,10 +16,27 @@ function stripMockWorker(): Plugin {
   };
 }
 
+// VITE_BRAND=rsm (modes "rsm" and "mock-rsm") builds the RSM Brasil edition: title, favicon and logo follow the brand.
+function brandHtml(brand: string | undefined): Plugin {
+  return {
+    name: "brand-html",
+    transformIndexHtml(html) {
+      if (brand !== "rsm") return html;
+      return html
+        .replace("<title>OpenEMS</title>", "<title>RSM Endpoint Management</title>")
+        .replace('type="image/svg+xml" href="/panel/brand/openems-mark.svg"', 'type="image/png" href="/panel/brand/rsm-logo.png"')
+        .replace('<html lang="pt-BR">', '<html lang="pt-BR" data-brand="rsm">');
+    },
+  };
+}
+
 // Served by FastAPI under /panel/ while the legacy console remains at /console/.
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const brand = process.env.VITE_BRAND ?? (mode === "rsm" || mode === "mock-rsm" ? "rsm" : "openems");
+  return {
   base: "/panel/",
-  plugins: [react(), tailwindcss(), stripMockWorker()],
+  define: { "import.meta.env.VITE_BRAND": JSON.stringify(brand) },
+  plugins: [react(), tailwindcss(), stripMockWorker(), brandHtml(brand)],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   build: { outDir: "../app/panel_dist", emptyOutDir: true },
   server: { proxy: { "/api": "http://127.0.0.1:8013" } },
@@ -37,4 +54,5 @@ export default defineConfig({
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },
   },
+  };
 });

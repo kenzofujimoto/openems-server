@@ -5,7 +5,7 @@ export function ConfirmDialog({ title, message, confirm, pending, error, onClose
   title: string; message: string; confirm: string; pending: boolean; error: boolean; onClose: () => void; onConfirm: () => void;
 }) {
   return <Dialog.Root open onOpenChange={(open) => { if (!open && !pending) onClose(); }}><Dialog.Portal>
-    <Dialog.Overlay className="fixed inset-0 z-40 bg-rsm-navy/40" />
+    <Dialog.Overlay className="fixed inset-0 z-40 bg-night/40" />
     <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-line bg-surface p-6 shadow-xl">
       <Dialog.Title className="text-lg font-medium">{title}</Dialog.Title>
       <Dialog.Description className="mt-2 text-sm text-ink-soft">{message}</Dialog.Description>

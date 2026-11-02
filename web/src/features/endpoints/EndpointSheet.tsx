@@ -13,7 +13,7 @@ export function EndpointSheet({ endpoint, onClose }: { endpoint: Endpoint | null
   return (
     <Dialog.Root open={endpoint !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-rsm-navy/30" />
+        <Dialog.Overlay className="fixed inset-0 bg-night/30" />
         <Dialog.Content className="fixed inset-y-0 right-0 flex w-full max-w-lg flex-col border-l border-line bg-surface shadow-xl outline-none">
           {endpoint ? (
             <>
@@ -21,7 +21,7 @@ export function EndpointSheet({ endpoint, onClose }: { endpoint: Endpoint | null
                 <div className="min-w-0">
                   <Dialog.Title className="truncate text-lg font-medium text-ink">{endpoint.hostname || endpoint.devid}</Dialog.Title>
                   <Dialog.Description className="mt-0.5 truncate text-sm text-ink-muted">{endpoint.devid}</Dialog.Description>
-                  <Link to="/endpoints/$devid" params={{ devid: endpoint.devid }} className="mt-1 inline-block text-sm font-medium text-rsm-blue hover:underline">Abrir ficha completa</Link>
+                  <Link to="/endpoints/$devid" params={{ devid: endpoint.devid }} className="mt-1 inline-block text-sm font-medium text-brand hover:underline">Abrir ficha completa</Link>
                 </div>
                 <Dialog.Close aria-label="Fechar" className="rounded-lg p-1.5 text-ink-muted hover:bg-canvas hover:text-ink">
                   <X aria-hidden="true" className="size-5" />

@@ -2,7 +2,7 @@ import { cn } from "@/lib/cn";
 import { CONNECTION_LABEL, POLICY_LABEL, type ConnectionStatus, type PolicyStatus } from "@/lib/status";
 
 const POLICY_STYLE: Record<PolicyStatus, string> = {
-  applied: "bg-rsm-green-soft text-rsm-green",
+  applied: "bg-success-soft text-success",
   pending: "bg-warning-soft text-warning",
   error: "bg-danger-soft text-danger",
 };
@@ -16,8 +16,8 @@ export function PolicyBadge({ status }: { status: PolicyStatus }) {
 }
 
 const DOT_STYLE: Record<ConnectionStatus, string> = {
-  online: "bg-rsm-green",
-  offline: "bg-rsm-gray-mid",
+  online: "bg-success",
+  offline: "bg-neutral",
   revoked: "bg-danger",
 };
 

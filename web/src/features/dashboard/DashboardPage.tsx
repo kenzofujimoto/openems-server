@@ -23,7 +23,7 @@ export function DashboardPage() {
         title="Visão geral"
         description={
           endpoints.dataUpdatedAt ? (
-            <span className="inline-flex items-center gap-1.5 text-rsm-green">
+            <span className="inline-flex items-center gap-1.5 text-success">
               <CircleCheck aria-hidden="true" className="size-4" />
               Atualizado {relativeTime(new Date(endpoints.dataUpdatedAt).toISOString())}
             </span>

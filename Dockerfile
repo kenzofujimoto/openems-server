@@ -5,7 +5,9 @@ WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY web ./
-RUN npm run build
+# PANEL_BRAND=rsm builds the RSM Brasil edition of the panel (docker build --build-arg PANEL_BRAND=rsm).
+ARG PANEL_BRAND=openems
+RUN if [ "$PANEL_BRAND" = "rsm" ]; then npm run build:rsm; else npm run build; fi
 
 # Runtime dependencies come only from the hashed lock, installed into a venv copied below.
 FROM python:3.14-slim@sha256:82abc9f53600280b0757126f83c5a7d47088592d2acb6b4c0b9e97f76865508c AS builder

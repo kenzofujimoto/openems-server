@@ -50,7 +50,7 @@ export function GroupPicker({ published, value, onChange, readonly }: { publishe
     </div> : null}
     {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
     <div role="radiogroup" aria-label="Grupo da política" className="flex flex-wrap gap-2">
-      {visible.map((group) => <label key={group.vdom} className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${group.vdom === value ? "border-rsm-blue bg-rsm-blue-soft text-rsm-blue" : "border-line text-ink"}`}>
+      {visible.map((group) => <label key={group.vdom} className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${group.vdom === value ? "border-brand bg-brand-soft text-brand" : "border-line text-ink"}`}>
         <input type="radio" name="policy-group" className="sr-only" aria-label={group.vdom} checked={group.vdom === value} onChange={() => select(group.vdom)} />
         <span>{group.vdom}</span><span className="text-xs text-ink-soft">{group.version === null ? "novo" : `v${group.version}`}</span>
       </label>)}

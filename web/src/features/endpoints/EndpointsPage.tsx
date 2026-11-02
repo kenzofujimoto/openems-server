@@ -67,14 +67,14 @@ export function EndpointsPage() {
       />
       {endpoints.isError ? <ErrorNotice message="Não foi possível carregar os endpoints." onRetry={() => void endpoints.refetch()} /> : null}
       <Card>
-        {isAdmin && picked.length ? <div className="flex flex-wrap items-center gap-3 border-b border-line bg-rsm-blue-soft px-5 py-3 text-sm">
+        {isAdmin && picked.length ? <div className="flex flex-wrap items-center gap-3 border-b border-line bg-brand-soft px-5 py-3 text-sm">
           <span className="font-medium">{picked.length} selecionados</span>
           <select aria-label="Mover selecionados para o grupo" className="h-9 rounded-lg border border-line bg-surface px-2" value={bulkTarget} onChange={(event) => setBulkTarget(event.target.value)}>
             <option value="" disabled>Escolha um grupo</option>{published.map((vdom) => <option key={vdom} value={vdom}>{vdom}</option>)}
           </select>
-          <button type="button" disabled={!bulkTarget || save.isPending} onClick={() => void moveSelected()} className="rounded-lg bg-rsm-blue px-3 py-1.5 font-medium text-white disabled:opacity-50">Mover selecionados</button>
+          <button type="button" disabled={!bulkTarget || save.isPending} onClick={() => void moveSelected()} className="rounded-lg bg-brand px-3 py-1.5 font-medium text-white disabled:opacity-50">Mover selecionados</button>
         </div> : null}
-        {moved ? <p role="status" className="border-b border-line px-5 py-2 text-sm text-rsm-green">{moved}</p> : null}
+        {moved ? <p role="status" className="border-b border-line px-5 py-2 text-sm text-success">{moved}</p> : null}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
           <div className="flex flex-wrap gap-1 rounded-lg bg-canvas p-1">
             {FILTERS.map((item) => (
@@ -100,7 +100,7 @@ export function EndpointsPage() {
               placeholder="Buscar por nome, ID ou grupo"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="h-9 w-full rounded-lg border border-line pr-3 pl-9 text-sm outline-none focus:border-rsm-blue"
+              className="h-9 w-full rounded-lg border border-line pr-3 pl-9 text-sm outline-none focus:border-brand"
             />
           </label>
         </div>
@@ -128,7 +128,7 @@ export function EndpointsPage() {
                       onClick={() => setSelected(endpoint.devid)}
                       className="text-left"
                     >
-                      <span className="block font-medium text-ink hover:text-rsm-blue-dark">{endpoint.hostname || endpoint.devid}</span>
+                      <span className="block font-medium text-ink hover:text-brand-ink">{endpoint.hostname || endpoint.devid}</span>
                       <span className="block text-xs text-ink-muted">{endpoint.devid}</span>
                     </button>
                   </td>

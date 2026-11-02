@@ -31,7 +31,7 @@ export function ReleaseDialog({ groups }: { groups: string[] }) {
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-rsm-navy/30" />
+        <Dialog.Overlay className="fixed inset-0 bg-night/30" />
         <Dialog.Content className="fixed top-1/2 left-1/2 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-line bg-surface p-6 shadow-xl outline-none">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -55,7 +55,7 @@ export function ReleaseDialog({ groups }: { groups: string[] }) {
                   setScope(event.target.value);
                   setConfirming(false);
                 }}
-                className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm outline-none focus:border-rsm-blue"
+                className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm outline-none focus:border-brand"
               >
                 <option value={FLEET_SCOPE}>Toda a frota</option>
                 {groups.map((group) => <option key={group} value={group}>{group}</option>)}

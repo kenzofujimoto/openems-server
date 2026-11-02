@@ -14,7 +14,7 @@ const machines = (count: number) => `${formatNumber(count)} ${count === 1 ? "má
 function Decision({ name, label, value, onChange, disabled, readonly }: { name: string; label: string; value: CatalogAction | undefined; onChange: (value: CatalogAction | undefined) => void; disabled?: boolean; readonly: boolean }) {
   const options: Array<[CatalogAction | undefined, string]> = [[undefined, "Sem regra"], ["allow", "Permitir"], ["block", "Bloquear"], ["block_network", "Bloquear rede"]];
   return <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Decisão para ${label}`}>
-    {options.map(([option, text]) => <label key={text} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${value === option ? "border-rsm-blue bg-rsm-blue-soft text-rsm-blue" : "border-line text-ink-soft"}`}>
+    {options.map(([option, text]) => <label key={text} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${value === option ? "border-brand bg-brand-soft text-brand" : "border-line text-ink-soft"}`}>
       <input type="radio" name={name} aria-label={`${text} ${label}`} checked={value === option} disabled={readonly || ((option === "block" || option === "block_network") && disabled)} onChange={() => onChange(option)} />{text}
     </label>)}
   </div>;

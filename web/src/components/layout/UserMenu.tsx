@@ -13,15 +13,15 @@ export function UserMenu({ session }: { session: Session }) {
   const logout = useLogout();
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="flex items-center gap-2.5 rounded-lg border border-line bg-surface py-1.5 pr-2.5 pl-1.5 text-left hover:bg-canvas">
-        <span aria-hidden="true" className="grid size-7 place-items-center rounded-md bg-rsm-navy text-xs font-medium text-white uppercase">
+      <DropdownMenu.Trigger className="flex items-center gap-2.5 rounded-lg py-1 pr-2 pl-1 text-left text-white hover:bg-night-800">
+        <span aria-hidden="true" className="grid size-7 place-items-center rounded-md bg-brand text-xs font-semibold text-white uppercase">
           {session.username.slice(0, 2)}
         </span>
         <span className="hidden text-sm leading-tight sm:block">
-          <span className="block font-medium text-ink">{session.username}</span>
-          <span className="block text-xs text-ink-muted">{ROLE_LABEL[session.role]}</span>
+          <span className="block font-medium text-white">{session.username}</span>
+          <span className="block text-xs text-night-300">{ROLE_LABEL[session.role]}</span>
         </span>
-        <ChevronDown aria-hidden="true" className="size-4 text-ink-muted" />
+        <ChevronDown aria-hidden="true" className="size-4 text-night-300" />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="end" sideOffset={6} className="min-w-44 rounded-xl border border-line bg-surface p-1 shadow-lg">

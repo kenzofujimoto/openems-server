@@ -1,63 +1,128 @@
 @import "tailwindcss";
-@import "@fontsource/noto-sans/latin-300.css";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+/* RSM edition only: the browser downloads a font face only when it is used. */
 @import "@fontsource/noto-sans/latin-400.css";
 @import "@fontsource/noto-sans/latin-500.css";
 @import "@fontsource/noto-sans/latin-600.css";
 
-/* RSM Brasil identity (rsm.global/brazil): Prelo is licensed; Noto Sans is the
-   same open fallback the RSM site declares. */
+/* OpenEMS identity: Noite (shell), Índigo (primary action and selection), Sinal (accent).
+   Policy actions have their own semantic colors; the brand color never stands for an action.
+   See docs/design/redesign-perfis-de-seguranca.md. */
 @theme {
-  --font-sans: "Prelo", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-rsm-blue: #009cde;
-  --color-rsm-blue-dark: #006e9d;
-  --color-rsm-blue-soft: #e5f5fc;
-  --color-rsm-green: #3f9c35;
-  --color-rsm-green-soft: #ebf5ea;
-  --color-rsm-navy: #27455c;
-  --color-rsm-gray: #515356;
-  --color-rsm-gray-mid: #888b8d;
+  --color-night: #0b1220;
+  --color-night-800: #131c2e;
+  --color-night-700: #1d2840;
+  --color-night-600: #2c3a57;
+  --color-night-400: #7f8db0;
+  --color-night-300: #aab5cf;
+  --color-signal: #22d3ee;
 
-  --color-canvas: #f6f7f9;
+  --color-brand: #4f46e5;
+  --color-brand-hover: #4338ca;
+  --color-brand-ink: #3730a3;
+  --color-brand-soft: #eef0ff;
+
+  --color-canvas: #f4f6fa;
   --color-surface: #ffffff;
-  --color-line: #e7e9ec;
-  --color-ink: #1f2428;
-  --color-ink-soft: #515356;
-  --color-ink-muted: #888b8d;
-  --color-danger: #d14343;
-  --color-danger-soft: #fdeeee;
-  --color-warning: #c27c0e;
-  --color-warning-soft: #fdf4e3;
+  --color-surface-2: #f8f9fc;
+  --color-line: #e3e7ef;
+  --color-line-strong: #cdd4e1;
+  --color-ink: #111827;
+  --color-ink-soft: #46506a;
+  --color-ink-muted: #6b7590;
+  --color-neutral: #8a93a6;
 
-  --radius-card: 14px;
+  --color-success: #15803d;
+  --color-success-soft: #e8f6ed;
+  --color-danger: #c81e1e;
+  --color-danger-soft: #fdecec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fdf3e2;
+
+  /* Policy actions */
+  --color-allow: #15803d;
+  --color-allow-soft: #e8f6ed;
+  --color-monitor: #0369a1;
+  --color-monitor-soft: #e6f3fb;
+  --color-block: #c81e1e;
+  --color-block-soft: #fdecec;
+  --color-netblock: #c2410c;
+  --color-netblock-soft: #fff0e8;
+  --color-none: #6b7280;
+  --color-none-soft: #f1f3f6;
+
+  --radius-card: 10px;
 }
 
 @layer base {
+  /* RSM Brasil edition (VITE_BRAND=rsm), rsm.global/brazil: Prelo is licensed; Noto Sans is the open
+     fallback the RSM site declares. Only brand tokens change; layout and action colors are shared. */
+  html[data-brand="rsm"] {
+    --font-sans: "Prelo", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --color-night: #27455c;
+    --color-night-800: #2f5069;
+    --color-night-700: #3a5d78;
+    --color-night-600: #4d6f89;
+    --color-night-400: #a9bccb;
+    --color-night-300: #d3dee7;
+    --color-signal: #3f9c35;
+    --color-brand: #009cde;
+    --color-brand-hover: #006e9d;
+    --color-brand-ink: #006e9d;
+    --color-brand-soft: #e5f5fc;
+    --color-success: #3f9c35;
+    --color-success-soft: #ebf5ea;
+  }
+  html[data-brand="rsm"][data-theme="dark"] {
+    --color-brand-ink: #6fcefa;
+    --color-brand-soft: #14374a;
+    --color-success: #90d385;
+    --color-success-soft: #1b3926;
+  }
   html[data-theme="dark"] {
     color-scheme: dark;
-    --color-canvas: #10171f;
-    --color-surface: #18222d;
-    --color-line: #334251;
-    --color-ink: #eef3f7;
-    --color-ink-soft: #c0ccd7;
-    --color-ink-muted: #9cabb9;
-    --color-rsm-blue-dark: #6fcefa;
-    --color-rsm-blue-soft: #14374a;
-    --color-rsm-green: #90d385;
-    --color-rsm-green-soft: #1b3926;
-    --color-danger: #ffaaaa;
-    --color-danger-soft: #472627;
+    --color-canvas: #0d1424;
+    --color-surface: #141d30;
+    --color-surface-2: #182238;
+    --color-line: #2a3650;
+    --color-line-strong: #3a4865;
+    --color-ink: #eef2f8;
+    --color-ink-soft: #c3cde0;
+    --color-ink-muted: #98a5c0;
+    --color-brand-ink: #b4b8ff;
+    --color-brand-soft: #262a5c;
+    --color-success: #86d9a0;
+    --color-success-soft: #173826;
+    --color-danger: #ffa3a3;
+    --color-danger-soft: #45222a;
     --color-warning: #f3c773;
-    --color-warning-soft: #40351f;
+    --color-warning-soft: #3d3220;
+    --color-allow: #86d9a0;
+    --color-allow-soft: #173826;
+    --color-monitor: #7cc7f2;
+    --color-monitor-soft: #15324a;
+    --color-block: #ffa3a3;
+    --color-block-soft: #45222a;
+    --color-netblock: #ffb68a;
+    --color-netblock-soft: #43281b;
+    --color-none: #a6b0c4;
+    --color-none-soft: #222c42;
   }
   html {
     font-family: var(--font-sans);
+    font-size: 14px;
     color: var(--color-ink);
     background: var(--color-canvas);
     -webkit-font-smoothing: antialiased;
   }
   :focus-visible {
-    outline: 2px solid var(--color-rsm-blue);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
   }
 }

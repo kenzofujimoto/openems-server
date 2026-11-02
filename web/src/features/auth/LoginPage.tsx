@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { BrandLogo } from "@/components/brand/BrandMark";
+import { BRAND } from "@/lib/brand";
 import { Button } from "@/components/ui/Button";
 import { ApiError } from "@/lib/api";
 import { useLogin } from "@/lib/queries";
@@ -22,12 +24,18 @@ export function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-canvas px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <img src={`${import.meta.env.BASE_URL}brand/rsm-logo.png`} alt="RSM" className="h-12 w-auto" />
-          <p className="text-sm text-ink-muted">Endpoint Management</p>
+    <main className="grid min-h-screen bg-canvas lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <section className="relative hidden flex-col justify-between overflow-hidden bg-night p-10 text-white lg:flex">
+        <BrandLogo inverted />
+        <div className="relative z-10 max-w-md">
+          <p className="text-2xl leading-snug font-semibold">{BRAND.tagline}</p>
+          <p className="mt-3 text-sm text-night-300">Filtro web · Aplicativos · USB · Locais de rede</p>
         </div>
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -bottom-24 size-96 rounded-full bg-[radial-gradient(circle,rgba(79,70,229,.55),transparent_65%)]" />
+      </section>
+      <div className="flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex justify-center lg:hidden"><BrandLogo /></div>
         <form onSubmit={submit} className="rounded-[var(--radius-card)] border border-line bg-surface p-6" noValidate>
           <h1 className="text-xl font-medium text-ink">Entrar</h1>
           <p className="mt-1 text-sm text-ink-muted">Use sua conta de administrador.</p>
@@ -38,7 +46,7 @@ export function LoginPage() {
             required
             value={username}
             onChange={(event) => setUsername(event.target.value)}
-            className="mt-1.5 h-10 w-full rounded-lg border border-line px-3 text-sm outline-none focus:border-rsm-blue"
+            className="mt-1.5 h-10 w-full rounded-lg border border-line px-3 text-sm outline-none focus:border-brand bg-surface"
           />
           <label className="mt-4 block text-sm font-medium text-ink-soft" htmlFor="password">Senha</label>
           <input
@@ -48,7 +56,7 @@ export function LoginPage() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1.5 h-10 w-full rounded-lg border border-line px-3 text-sm outline-none focus:border-rsm-blue"
+            className="mt-1.5 h-10 w-full rounded-lg border border-line px-3 text-sm outline-none focus:border-brand bg-surface"
           />
           {login.isError ? (
             <p role="alert" className="mt-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{loginMessage(login.error)}</p>
@@ -57,6 +65,7 @@ export function LoginPage() {
             Entrar
           </Button>
         </form>
+      </div>
       </div>
     </main>
   );

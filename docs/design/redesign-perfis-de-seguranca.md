@@ -100,6 +100,15 @@ O que **não** copiar: cores, ícones, nomes de produto e o layout pixel a pixel
 - **Tokens:** renomear `--color-rsm-*` para tokens semânticos (`--color-brand`, `--color-action-allow`…), com o tema escuro redefinido nos mesmos nomes.
 - **Nome:** "OpenEMS" é também o nome de um projeto open source conhecido de gestão de energia (openems.io). Recomendo checar marca e domínio antes de fixar o logotipo. A identidade funciona com outro nome sem mudar o símbolo.
 
+### Edição RSM mantida em paralelo
+
+A identidade RSM continua disponível no mesmo código, escolhida no build. Layout, telas e cores de ação são os mesmos nas duas edições; só mudam logo, título, favicon, fonte e cores da marca (`html[data-brand="rsm"]` em `web/src/styles.css`).
+
+| Edição | Desenvolvimento (mock) | Build | Docker |
+|---|---|---|---|
+| OpenEMS (padrão) | `npm run dev:mock` | `npm run build` | `docker build .` |
+| RSM Brasil | `npm run dev:mock:rsm` | `npm run build:rsm` | `docker build --build-arg PANEL_BRAND=rsm .` |
+
 ## 5. Plano de implementação
 
 1. **Identidade (1 PR):** tokens semânticos em `styles.css`, troca de `rsm-*` nos componentes, logo SVG, favicon, título, fontes Plex. Os testes não dependem de cor; só os mocks `RSM-*` podem ser renomeados.
