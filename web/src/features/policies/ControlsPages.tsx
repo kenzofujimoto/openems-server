@@ -55,7 +55,7 @@ function ApplicationEditor({ profile, vdom, readonly }: Props) {
     </> },
   ] };
   const aside = <>
-    <Card><CardHeader title="Ordem de avaliação" /><ol className="list-decimal space-y-1 p-5 pl-9 text-sm text-ink-soft"><li>Regras de execução manuais</li><li>Overrides de aplicativos</li><li>Categoria do aplicativo</li><li>Sem regra: o aplicativo é permitido</li></ol></Card>
+    <Card><CardHeader title="Ordem de avaliação" /><div className="space-y-2 p-5 text-sm text-ink-soft"><ol className="list-decimal space-y-1 pl-4"><li>Override do aplicativo, se houver</li><li>Senão, a decisão da categoria</li><li>Sem regra: o aplicativo é permitido</li></ol><p className="text-xs text-ink-muted">Regras de execução e listas manuais de rede e encerramento valem sempre, somadas a essas decisões.</p></div></Card>
     <Card><CardHeader title="Resumo" /><dl className="space-y-1.5 p-5 text-sm">
       <div className="flex"><dt className="text-ink-soft">Categorias bloqueadas</dt><dd className="ml-auto font-semibold">{categoryDecisions.filter(([, value]) => value === "block").length}</dd></div>
       <div className="flex"><dt className="text-ink-soft">Categorias sem rede</dt><dd className="ml-auto font-semibold">{categoryDecisions.filter(([, value]) => value === "block_network").length}</dd></div>
