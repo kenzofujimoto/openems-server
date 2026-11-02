@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/node";
-import { renderApp } from "@/test/render";
+import { openTab, renderApp } from "@/test/render";
 
 const body = { web_filter: { blocked: ["old.example"], allowed: ["safe.example"] }, app_control: { blocked: ["old.exe"] }, usb_control: { default_action: "allow", rules: [] } };
 const profile = { vdom: "Default", version: 4, digest: "a".repeat(64), body };
@@ -24,7 +24,6 @@ describe("policy editors", () => {
     backend();
     server.use(http.get("*/api/v1/categories", () => HttpResponse.json({ version: "2026-10-20T00:00:00Z", attribution: "UT1", categories: [], health: { status: "stale" } })));
     renderApp("/policies/web");
-    await screen.findByRole("table", { name: "Regras de domínio" });
     expect(await screen.findByRole("note")).toHaveTextContent(/listas de categorias estão desatualizadas/i);
   });
 
@@ -32,13 +31,16 @@ describe("policy editors", () => {
     const writes = backend();
     const user = userEvent.setup();
     renderApp("/policies/web");
+    await openTab(user, "Filtro de URL estático");
     await user.click(await screen.findByRole("button", { name: "Editar old.example" }));
     const dialog = screen.getByRole("dialog", { name: "Editar domínio" });
     const domain = within(dialog).getByLabelText("Domínio");
     await user.clear(domain); await user.type(domain, "games.example");
     await user.selectOptions(within(dialog).getByLabelText("Tipo"), "wildcard");
     await user.click(within(dialog).getByRole("button", { name: "Salvar domínio" }));
+    await openTab(user, "Categorias");
     await user.click(screen.getByRole("radio", { name: "Bloquear Jogos" }));
+    await openTab(user, "SafeSearch");
     await user.click(screen.getByRole("checkbox", { name: "Google" }));
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
     expect(await screen.findByRole("status")).toHaveTextContent("v5");
@@ -69,6 +71,7 @@ describe("policy editors", () => {
     await user.click(global);
     expect(screen.getByRole("radio", { name: "Monitorar Jogos" })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: "Permitir Jogos" }));
+    await openTab(user, "Horários");
     await user.click(screen.getByRole("button", { name: "Adicionar horário" }));
     expect(screen.getByRole("radio", { name: "Monitorar Conteúdo adulto no horário 1" })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: "Monitorar Jogos no horário 1" }));
@@ -93,6 +96,7 @@ describe("policy editors", () => {
     const writes = backend();
     const user = userEvent.setup();
     renderApp("/policies/web");
+    await openTab(user, "Horários");
     await user.click(await screen.findByRole("button", { name: "Adicionar horário" }));
     await user.click(screen.getByLabelText("Domínios no horário 1")); await user.paste("scheduled.example");
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
@@ -104,6 +108,7 @@ describe("policy editors", () => {
     const writes = backend();
     const user = userEvent.setup();
     renderApp("/policies/web");
+    await openTab(user, "Filtro de URL estático");
     await user.click(await screen.findByRole("button", { name: "Editar old.example" }));
     const dialog = screen.getByRole("dialog", { name: "Editar domínio" });
     const domain = within(dialog).getByLabelText("Domínio");
@@ -146,6 +151,7 @@ describe("policy editors", () => {
     backend();
     server.use(http.get("*/api/v1/auth/session", () => HttpResponse.json({ username: "reader", role: "viewer", csrf_token: "reader" })));
     renderApp("/policies/web");
+    await openTab(userEvent.setup(), "Filtro de URL estático");
     expect(await screen.findByRole("table", { name: "Regras de domínio" })).toHaveTextContent("old.example");
     expect(screen.queryByRole("button", { name: "Adicionar domínio" })).toBeNull();
     expect(screen.queryByLabelText("Importar CSV")).toBeNull();

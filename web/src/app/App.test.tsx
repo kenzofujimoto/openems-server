@@ -181,11 +181,11 @@ describe("block log", () => {
   it("lists published categories by group with their attribution", async () => {
     renderApp("/policies/web");
     expect(await screen.findByRole("heading", { name: "Filtro web" })).toBeInTheDocument();
-    const games = await screen.findByRole("listitem", { name: "Jogos" });
-    expect(within(games).getByText("2.104 domínios")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Consumo de banda e lazer" })).toBeInTheDocument();
+    const games = await screen.findByRole("row", { name: "Jogos" });
+    expect(within(games).getByText("2.104")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Consumo de banda e lazer/ })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(/CC BY-SA 4.0/)).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "Regras de domínio" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Regras de domínio", hidden: true })).toBeInTheDocument();
   });
 
   it("explains when the server publishes no categories", async () => {

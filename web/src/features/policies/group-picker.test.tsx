@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/node";
-import { renderApp } from "@/test/render";
+import { openTab, renderApp } from "@/test/render";
 
 const usb = { default_action: "allow", rules: [] };
 const profiles = [
@@ -35,6 +35,7 @@ describe("policy group picker", () => {
     expect(within(groups).getByRole("radio", { name: "Default" })).toBeChecked();
     expect(within(groups).getByText("v3")).toBeInTheDocument();
     await user.click(within(groups).getByRole("radio", { name: "BPO" }));
+    await openTab(user, "Filtro de URL estático");
     expect(await screen.findByRole("button", { name: "Editar bpo.example" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Editar default.example" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Publicar política" }));
