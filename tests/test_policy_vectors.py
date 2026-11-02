@@ -37,7 +37,7 @@ def test_vectors_cover_rule_matching_both_ways():
 
 def test_vectors_cover_web_actions_and_explicit_nonlogging_permissions():
     decisions = _generator().build()["web_actions"]
-    assert {case["decision"]["action"] for case in decisions} == {"allow", "block", "monitor"}
+    assert {case["decision"]["action"] for case in decisions} == {"allow", "block", "monitor", "warn"}
     assert any(case["web_filter"].get("allowed") and not case["decision"]["log"] for case in decisions)
     assert any(case["web_filter"].get("monitor_all") and case["decision"]["reason"] == "observation"
                for case in decisions)

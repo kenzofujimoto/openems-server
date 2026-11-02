@@ -659,12 +659,13 @@ fn validate_category_actions(settings: &Map<String, Value>) -> Result<()> {
     let actions = value
         .as_object()
         .filter(|actions| actions.len() <= CATEGORY_IDS.len())
-        .ok_or_else(|| invalid("category_actions must map known categories to allow, block or monitor"))?;
+        .ok_or_else(|| invalid("category_actions must map known categories to allow, block, monitor or warn"))?;
     let legacy = text_list(settings.get("blocked_categories"));
     for (category, action) in actions {
-        if !CATEGORY_IDS.contains(&category.as_str()) || !matches!(action.as_str(), Some("allow" | "block" | "monitor"))
+        if !CATEGORY_IDS.contains(&category.as_str())
+            || !matches!(action.as_str(), Some("allow" | "block" | "monitor" | "warn"))
         {
-            return Err(invalid("category_actions must map known categories to allow, block or monitor"));
+            return Err(invalid("category_actions must map known categories to allow, block, monitor or warn"));
         }
         if legacy.contains(category) && action.as_str() != Some("block") {
             return Err(invalid("category action conflicts with blocked_categories"));
@@ -696,7 +697,7 @@ fn validate_web_extensions(settings: &mut Map<String, Value>) -> Result<()> {
                 .ok_or_else(|| invalid("unsupported domain rule type"))?;
             let action = row["action"]
                 .as_str()
-                .filter(|action| matches!(*action, "allow" | "block" | "monitor"))
+                .filter(|action| matches!(*action, "allow" | "block" | "monitor" | "warn"))
                 .ok_or_else(|| invalid("unsupported domain rule action"))?;
             let domain = normalize_domain(row["domain"].as_str().ok_or_else(|| invalid("invalid domain"))?)?;
             if !seen.insert((domain.clone(), kind)) {
@@ -795,6 +796,8 @@ pub enum BlockReason {
 pub enum WebAction {
     Allow,
     Monitor,
+    /// Warning page; the person may proceed for a while (see `BlockedDomains::proceed`).
+    Warn,
     Block,
 }
 
@@ -803,6 +806,7 @@ impl WebAction {
         match self {
             Self::Allow => "allow",
             Self::Monitor => "monitor",
+            Self::Warn => "warn",
             Self::Block => "block",
         }
     }
@@ -875,6 +879,7 @@ fn category_actions(settings: &Value) -> BTreeMap<String, WebAction> {
             let action = match action.as_str()? {
                 "allow" => WebAction::Allow,
                 "monitor" => WebAction::Monitor,
+                "warn" => WebAction::Warn,
                 "block" => WebAction::Block,
                 _ => return None,
             };
@@ -920,6 +925,7 @@ impl WebFilter {
                     let action = match row["action"].as_str() {
                         Some("allow") => WebAction::Allow,
                         Some("monitor") => WebAction::Monitor,
+                        Some("warn") => WebAction::Warn,
                         _ => WebAction::Block,
                     };
                     (format!("{prefix}{}", row["domain"].as_str().unwrap_or_default()), action)

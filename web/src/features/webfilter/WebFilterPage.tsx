@@ -18,7 +18,7 @@ const ENGINES = [["google", "Google"], ["bing", "Bing"], ["youtube", "YouTube"],
 interface Window { days: string[]; from: string; to: string; blocked: string[]; category_actions?: CategoryActions }
 function categoryActions(settings: Record<string, unknown>): CategoryActions {
   const actions: CategoryActions = Object.fromEntries(strings(settings.blocked_categories).map((id) => [id, "block"]));
-  for (const [id, action] of Object.entries(record(settings.category_actions))) if (action === "allow" || action === "block" || action === "monitor") actions[id] = action;
+  for (const [id, action] of Object.entries(record(settings.category_actions))) if (action === "allow" || action === "block" || action === "monitor" || action === "warn") actions[id] = action;
   return actions;
 }
 function validDomains(rules: string[]) {
@@ -44,7 +44,7 @@ function WebEditor({ profile, vdom, readonly }: { profile: Profile | undefined; 
   const [timezone, setTimezone] = useState(typeof settings.timezone === "string" ? settings.timezone : "America/Sao_Paulo");
   const [windows, setWindows] = useState<Window[]>(() => Array.isArray(settings.scheduled) ? settings.scheduled.map((value) => { const window = record(value); const actions = categoryActions(window); return { days: strings(window.days), from: String(window.from ?? "08:00"), to: String(window.to ?? "18:00"), blocked: strings(window.blocked), ...(Object.keys(actions).length ? { category_actions: actions } : {}) }; }) : []);
   const valueOf = (id: string): WebAction => actions[id] ?? (monitorAll ? "monitor" : "allow");
-  const totals = { allow: 0, block: 0, monitor: 0 } as Record<WebAction, number>;
+  const totals: Record<WebAction, number> = { allow: 0, block: 0, monitor: 0, warn: 0 };
   for (const category of published) totals[valueOf(category.id)] += 1;
   const toggle = (values: string[], value: string) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
   const updateWindow = (index: number, patch: Partial<Window>) => setWindows((values) => values.map((window, at) => at === index ? { ...window, ...patch } : window));
@@ -56,7 +56,7 @@ function WebEditor({ profile, vdom, readonly }: { profile: Profile | undefined; 
             {categories.isSuccess && published.length === 0 ? <p className="rounded-lg border border-line bg-surface py-6 text-center text-sm text-ink-muted">Nenhuma categoria publicada no servidor.</p> : null}
             {published.length ? <CategoryTable title="Categorias de sites" categories={published} valueOf={valueOf} onChange={(ids, action) => setActions((current) => ({ ...current, ...Object.fromEntries(ids.map((id) => [id, action])) }))} readonly={readonly} /> : null}
             <div className="space-y-2 rounded-[var(--radius-card)] border border-line bg-surface p-4">
-              <p className="text-sm text-ink-soft">Ordem de avaliação: <strong className="font-semibold text-ink">Filtro de URL estático</strong> (primeira regra que corresponder) → <strong className="font-semibold text-ink">Categoria</strong> (Bloquear prevalece sobre Monitorar e Permitir) → sites sem categoria são permitidos. Permitir não registra navegação; Bloquear registra a tentativa; Monitorar permite e registra o domínio observado.</p>
+              <p className="text-sm text-ink-soft">Ordem de avaliação: <strong className="font-semibold text-ink">Filtro de URL estático</strong> (primeira regra que corresponder) → <strong className="font-semibold text-ink">Categoria</strong> (Bloquear prevalece sobre Avisar, Monitorar e Permitir) → sites sem categoria são permitidos. Permitir não registra navegação; Bloquear registra a tentativa; Monitorar permite e registra o domínio observado; Avisar mostra um aviso e deixa a pessoa continuar por 1 hora (registrado), em agentes com página de bloqueio HTTPS.</p>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-brand" checked={monitorAll} onChange={(event) => setMonitorAll(event.target.checked)} />Monitorar todos os domínios observados pelo DNS</label>
               <p className="text-xs text-ink-muted">O registro DNS não representa todas as páginas visitadas: inclui consultas de aplicativos e pré-carregamento, e não contém URLs completas nem identifica a pessoa. A coleta depende da capacidade do agente; cache e conexões existentes reduzem a visibilidade.</p>
               {Object.keys(actions).some((id) => !published.some((category) => category.id === id)) && categories.isSuccess ? <p className="text-sm text-warning">Há ações para categorias não publicadas. As regras foram preservadas; confira a disponibilidade das listas antes de publicar.</p> : null}
@@ -70,8 +70,8 @@ function WebEditor({ profile, vdom, readonly }: { profile: Profile | undefined; 
   const aside = <>
 
         <Card><CardHeader title="Resumo do perfil" /><div className="space-y-3 p-5 text-sm">
-          <div className="flex h-2 overflow-hidden rounded-full bg-idle-soft" aria-hidden="true">{WEB_ACTIONS.map(({ value }) => <span key={value} className={{ allow: "bg-allow", block: "bg-block", monitor: "bg-monitor" }[value]} style={{ width: `${published.length ? (totals[value] / published.length) * 100 : 0}%` }} />)}</div>
-          <dl className="space-y-1.5">{WEB_ACTIONS.map(({ value, label }) => <div key={value} className="flex items-center gap-2"><span aria-hidden="true" className={`size-2.5 rounded-sm ${{ allow: "bg-allow", block: "bg-block", monitor: "bg-monitor" }[value]}`} /><dt className="text-ink-soft">{label}</dt><dd className="ml-auto font-semibold">{totals[value]}</dd></div>)}</dl>
+          <div className="flex h-2 overflow-hidden rounded-full bg-idle-soft" aria-hidden="true">{WEB_ACTIONS.map(({ value, swatch }) => <span key={value} className={swatch} style={{ width: `${published.length ? (totals[value] / published.length) * 100 : 0}%` }} />)}</div>
+          <dl className="space-y-1.5">{WEB_ACTIONS.map(({ value, label, swatch }) => <div key={value} className="flex items-center gap-2"><span aria-hidden="true" className={`size-2.5 rounded-sm ${swatch}`} /><dt className="text-ink-soft">{label}</dt><dd className="ml-auto font-semibold">{totals[value]}</dd></div>)}</dl>
           <dl className="space-y-1.5 border-t border-line pt-3">
             <div className="flex"><dt className="text-ink-soft">Regras de URL</dt><dd className="ml-auto font-semibold">{domainRows.length}</dd></div>
             <div className="flex"><dt className="text-ink-soft">SafeSearch</dt><dd className="ml-auto">{engines.length ? `${engines.length} mecanismo${engines.length === 1 ? "" : "s"}` : "Desligado"}</dd></div>

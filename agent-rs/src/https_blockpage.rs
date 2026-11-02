@@ -5,6 +5,7 @@ use crate::policy::{WebFilter, normalize_domain};
 use crate::runtime::StopSignal;
 use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign::CertifiedKey;
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -23,6 +24,35 @@ pub struct BlockedDomains {
     block_doh: AtomicBool,
     /// Blocked DNS answers since the last upload.
     log: crate::events::BlockLog,
+    /// Warnings the person chose to continue past: category or domain key until its expiry.
+    proceeded: Mutex<HashMap<String, Instant>>,
+    /// Single-use tokens of warning pages: token → (host, expiry).
+    tokens: Mutex<HashMap<String, (String, Instant)>>,
+}
+
+/// How long a "continue" on a warning page lasts, and how long its form stays valid.
+pub const WARN_GRACE: Duration = Duration::from_secs(60 * 60);
+const TOKEN_LIFETIME: Duration = Duration::from_secs(10 * 60);
+/// Bounds per-machine memory: warnings are human clicks, so these are generous.
+const MAX_PROCEEDED: usize = 512;
+const MAX_TOKENS: usize = 256;
+
+/// A warning is acknowledged per category, or per domain when a domain rule warns.
+fn warning_key(name: &str, decision: &crate::policy::WebDecision) -> Option<String> {
+    match &decision.reason {
+        Some(crate::policy::BlockReason::Category(id)) => Some(format!("category:{id}")),
+        Some(crate::policy::BlockReason::Rule) => normalize_domain(name).ok().map(|domain| format!("domain:{domain}")),
+        None => None,
+    }
+}
+
+fn prune<T>(map: &mut HashMap<String, T>, expiry: impl Fn(&T) -> Instant, limit: usize) {
+    let now = Instant::now();
+    map.retain(|_, value| expiry(value) > now);
+    while map.len() >= limit {
+        let Some(oldest) = map.iter().min_by_key(|(_, value)| expiry(value)).map(|(key, _)| key.clone()) else { break };
+        map.remove(&oldest);
+    }
 }
 
 impl BlockedDomains {
@@ -35,8 +65,56 @@ impl BlockedDomains {
         self.contains_at(name, jiff::Timestamp::now())
     }
 
+    /// Names the agent answers locally: blocked ones and warnings not yet continued past.
     pub fn contains_at(&self, name: &str, when: jiff::Timestamp) -> bool {
-        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).blocks_at_with(name, when, &self.categories)
+        let filter = self.filter.read().unwrap_or_else(|poison| poison.into_inner());
+        filter.blocks_at_with(name, when, &self.categories) || {
+            let decision = filter.decision_at(name, when, &self.categories);
+            decision.action == crate::policy::WebAction::Warn && !self.continued(name, &decision)
+        }
+    }
+
+    fn continued(&self, name: &str, decision: &crate::policy::WebDecision) -> bool {
+        let Some(key) = warning_key(name, decision) else { return false };
+        let proceeded = self.proceeded.lock().unwrap_or_else(|poison| poison.into_inner());
+        proceeded.get(&key).is_some_and(|expiry| *expiry > Instant::now())
+    }
+
+    /// The name currently shows a warning page (not blocked, not continued past).
+    pub fn warns(&self, name: &str) -> bool {
+        self.decision(name).action == crate::policy::WebAction::Warn
+    }
+
+    /// A fresh single-use token for the warning page of `name`.
+    pub fn issue_token(&self, name: &str) -> String {
+        let mut bytes = [0u8; 32];
+        // The token only binds a form to the page that showed it; a failed RNG yields an unusable token.
+        if ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut bytes).is_err() {
+            return String::new();
+        }
+        let token = hex::encode(bytes);
+        let mut tokens = self.tokens.lock().unwrap_or_else(|poison| poison.into_inner());
+        prune(&mut tokens, |(_, expiry)| *expiry, MAX_TOKENS);
+        tokens.insert(token.clone(), (name.to_ascii_lowercase(), Instant::now() + TOKEN_LIFETIME));
+        token
+    }
+
+    /// Continue past the warning of `name`; only a live token issued for that name and a current warning count.
+    pub fn proceed(&self, name: &str, token: &str) -> bool {
+        let issued = self.tokens.lock().unwrap_or_else(|poison| poison.into_inner()).remove(token);
+        let Some((host, expiry)) = issued else { return false };
+        if host != name.to_ascii_lowercase() || expiry <= Instant::now() {
+            return false;
+        }
+        let decision = self.decision(name);
+        let Some(key) = warning_key(name, &decision).filter(|_| decision.action == crate::policy::WebAction::Warn)
+        else {
+            return false;
+        };
+        let mut proceeded = self.proceeded.lock().unwrap_or_else(|poison| poison.into_inner());
+        prune(&mut proceeded, |expiry| *expiry, MAX_PROCEEDED);
+        proceeded.insert(key, Instant::now() + WARN_GRACE);
+        true
     }
 
     pub fn reason(&self, name: &str) -> Option<crate::policy::BlockReason> {
@@ -47,17 +125,23 @@ impl BlockedDomains {
         )
     }
 
+    /// The policy decision, where a warning already continued past is monitored instead.
     pub fn decision(&self, name: &str) -> crate::policy::WebDecision {
-        self.filter.read().unwrap_or_else(|poison| poison.into_inner()).decision_at(
+        let decision = self.filter.read().unwrap_or_else(|poison| poison.into_inner()).decision_at(
             name,
             jiff::Timestamp::now(),
             &self.categories,
-        )
+        );
+        if decision.action == crate::policy::WebAction::Warn && self.continued(name, &decision) {
+            return crate::policy::WebDecision { action: crate::policy::WebAction::Monitor, ..decision };
+        }
+        decision
     }
 
-    /// Display name of the category blocking `name`; None for rules and unblocked names.
+    /// Display name of the category blocking or warning about `name`; None for rules and other names.
     pub fn category_label(&self, name: &str) -> Option<&'static str> {
-        match self.reason(name)? {
+        let reason = self.reason(name).or_else(|| self.decision(name).reason)?;
+        match reason {
             crate::policy::BlockReason::Category(id) => crate::policy::category_label(&id),
             crate::policy::BlockReason::Rule => None,
         }
@@ -114,7 +198,12 @@ impl ResolvesServerCert for Resolver {
 fn request_host(request: &str) -> Option<String> {
     let mut lines = request.split("\r\n");
     let first: Vec<_> = lines.next()?.split(' ').collect();
-    if first.len() != 3 || first[0] != "GET" || !first[1].starts_with('/') || first[2] != "HTTP/1.1" {
+    let method = first.first().copied();
+    if first.len() != 3
+        || !matches!(method, Some("GET" | "POST"))
+        || !first[1].starts_with('/')
+        || first[2] != "HTTP/1.1"
+    {
         return None;
     }
     let mut host = None;
@@ -189,7 +278,7 @@ fn serve(socket: TcpStream, config: Arc<rustls::ServerConfig>, allowed: &Blocked
         && std::str::from_utf8(&request).ok().and_then(request_host).as_deref() == Some(name)
         && allowed.contains(name);
     let (status, body) = if valid {
-        ("200 OK", crate::blockpage::render(name, allowed.category_label(name)))
+        ("200 OK", crate::blockpage::respond(&String::from_utf8_lossy(&request), name, allowed))
     } else {
         ("421 Misdirected Request", String::new())
     };

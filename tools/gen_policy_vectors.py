@@ -122,6 +122,8 @@ VALIDATE: list[Any] = [
     {"web_filter": {"category_actions": {"games": "allow", "streaming": "monitor", "adult": "block"}, "monitor_all": True}},
     {"web_filter": {"blocked_categories": ["games"], "category_actions": {"games": "block"}}},
     {"web_filter": {"blocked_categories": ["games"], "category_actions": {"games": "monitor"}}},
+    {"web_filter": {"category_actions": {"games": "warn"}, "domain_rules": [{"domain": "example.net", "type": "simple", "action": "warn"}]}},
+    {"web_filter": {"blocked_categories": ["games"], "category_actions": {"games": "warn"}}},
     {"web_filter": {"blocked_categories": ["games"], "category_actions": {"games": "allow"}}},
     {"web_filter": {"category_actions": {"unknown": "block"}}},
     {"web_filter": {"category_actions": {"games": "deny"}}},
@@ -243,11 +245,18 @@ def _web_actions() -> list[dict[str, Any]]:
         ({"blocked_categories": ["games"], "category_actions": {"streaming": "monitor"}},
          "watch.example", "2026-10-26T12:00:00"),
         ({"category_actions": {"streaming": "monitor"}}, "other.example", "2026-10-26T12:00:00"),
+        # warn sits between block and monitor.
+        ({"category_actions": {"streaming": "warn"}}, "watch.example", "2026-10-26T12:00:00"),
+        ({"category_actions": {"streaming": "warn", "games": "monitor"}}, "watch.example", "2026-10-26T12:00:00"),
+        ({"category_actions": {"streaming": "warn", "adult": "block"}}, "watch.example", "2026-10-26T12:00:00"),
+        ({"category_actions": {"streaming": "warn"}, "timezone": "UTC", "scheduled": [
+            {"days": ["mon"], "from": "08:00", "to": "18:00", "category_actions": {"streaming": "monitor"}}]},
+         "watch.example", "2026-10-26T12:00:00"),
     ])
     scheduled = {"category_actions": {"streaming": "monitor"}, "timezone": "UTC", "scheduled": [
         {"days": ["mon"], "from": "08:00", "to": "18:00", "category_actions": {"streaming": "block"}}]}
     cases.extend((scheduled, "watch.example", when) for when in ("2026-10-26T12:00:00", "2026-10-26T20:00:00"))
-    for action in ("allow", "block", "monitor"):
+    for action in ("allow", "block", "monitor", "warn"):
         for kind in ("simple", "wildcard"):
             cases.extend(({"domain_rules": [
                     {"domain": "watch.example", "type": kind, "action": action},

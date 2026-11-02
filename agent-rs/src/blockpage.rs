@@ -1,4 +1,4 @@
-//! Local RSM-branded block page for domains redirected to 127.0.0.1.
+//! Local RSM-branded block and warning page for domains redirected to 127.0.0.1.
 //! Same markup as agent/blockpage.py; everything is inline so it works offline.
 
 use crate::error::Result;
@@ -46,11 +46,70 @@ fn escape_html(text: &str) -> String {
     })
 }
 
+const BLOCKED: &str = "Este site foi bloqueado pela pol&iacute;tica de seguran&ccedil;a da sua organiza&ccedil;&atilde;o.\n      Se voc&ecirc; acredita que isto &eacute; um engano, fale com o time de TI.";
+const WARNED: &str = "A pol&iacute;tica da sua organiza&ccedil;&atilde;o pede aten&ccedil;&atilde;o a sites desta categoria.\n      Se ele for necess&aacute;rio, voc&ecirc; pode continuar; o acesso fica registrado.";
+const PROCEEDED: &str = "Voc&ecirc; pode acessar sites desta categoria nos pr&oacute;ximos minutos. A p&aacute;gina ser&aacute; recarregada.";
+/// Path of the warning page's form; never a real site path that matters, the page is only served locally.
+pub const PROCEED_PATH: &str = "/__openems/proceed";
+
+/// What the local page shows for a name redirected to the agent.
+pub enum Page<'a> {
+    Blocked,
+    /// Warning with a single-use token for the "continue" form.
+    Warning(&'a str),
+    Proceeded,
+}
+
 pub fn render(host: &str, category: Option<&str>) -> String {
+    render_page(host, category, &Page::Blocked)
+}
+
+pub fn render_page(host: &str, category: Option<&str>, page: &Page<'_>) -> String {
     let host = if host.is_empty() { "este site".to_owned() } else { escape_html(host) };
     let category = category
         .map_or_else(String::new, |label| format!("<div class=\"category\">Categoria: {}</div>", escape_html(label)));
-    PAGE.replace("{logo}", &base64(LOGO)).replace("{host}", &host).replace("{category}", &category)
+    let (title, message, action, head) = match page {
+        Page::Blocked => ("Acesso bloqueado", BLOCKED, String::new(), ""),
+        Page::Warning(token) => (
+            "Aten&ccedil;&atilde;o",
+            WARNED,
+            format!(
+                "<form method=\"post\" action=\"{PROCEED_PATH}?token={}\"><button type=\"submit\">Continuar mesmo assim</button></form>",
+                escape_html(token)
+            ),
+            "",
+        ),
+        Page::Proceeded => {
+            ("Acesso liberado", PROCEEDED, String::new(), "<meta http-equiv=\"refresh\" content=\"6;url=/\">")
+        }
+    };
+    PAGE.replace("{logo}", &base64(LOGO))
+        .replace("{head}", head)
+        .replace("{title}", title)
+        .replace("{message}", message)
+        .replace("{action}", &action)
+        .replace("{host}", &host)
+        .replace("{category}", &category)
+}
+
+/// `POST /__openems/proceed?token=…` from the warning form; None for every other request.
+pub fn proceed_token(request: &str) -> Option<&str> {
+    let target = request.strip_prefix("POST ")?.split(' ').next()?;
+    let token = target.strip_prefix(PROCEED_PATH)?.strip_prefix("?token=")?;
+    (token.len() == 64 && token.bytes().all(|byte| byte.is_ascii_hexdigit())).then_some(token)
+}
+
+/// The page for `host`, acting on the warning form when the request carries a valid token.
+pub fn respond(request: &str, host: &str, blocked: &BlockedDomains) -> String {
+    let label = blocked.category_label(host);
+    if let Some(token) = proceed_token(request) {
+        let page = if blocked.proceed(host, token) { Page::Proceeded } else { Page::Blocked };
+        return render_page(host, label, &page);
+    }
+    if blocked.warns(host) {
+        return render_page(host, label, &Page::Warning(&blocked.issue_token(host)));
+    }
+    render_page(host, label, &Page::Blocked)
 }
 
 fn host_header(request: &str) -> String {
@@ -80,7 +139,7 @@ fn serve(mut stream: TcpStream, blocked: &BlockedDomains) {
     let length = stream.read(&mut buffer).unwrap_or(0);
     let request = String::from_utf8_lossy(&buffer[..length]);
     let host = host_header(&request);
-    let body = render(&host, blocked.category_label(&host));
+    let body = respond(&request, &host, blocked);
     let response = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n{body}",
         body.len()

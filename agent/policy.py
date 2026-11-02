@@ -209,14 +209,18 @@ def _validate_categories(value: object) -> list[str]:
     return value
 
 
+# warn: the agent shows a warning page and the person may proceed for a while (capability web-filter:warn).
+WEB_ACTIONS = ("allow", "block", "monitor", "warn")
+
+
 def _validate_category_actions(settings: dict[str, Any]) -> None:
     if "category_actions" not in settings:
         return
     actions = settings["category_actions"]
     if (not isinstance(actions, dict) or len(actions) > len(CATEGORIES)
-            or any(category not in CATEGORIES or action not in ("allow", "block", "monitor")
+            or any(category not in CATEGORIES or action not in WEB_ACTIONS
                    for category, action in actions.items())):
-        raise ValueError("category_actions must map known categories to allow, block or monitor")
+        raise ValueError("category_actions must map known categories to allow, block, monitor or warn")
     if any(category in actions and actions[category] != "block"
            for category in settings.get("blocked_categories", [])):
         raise ValueError("category action conflicts with legacy blocked_categories")
@@ -266,7 +270,7 @@ def _validate_web_extensions(settings: dict[str, Any]) -> None:
         for rule in rules:
             if not isinstance(rule, dict) or set(rule) != {"domain", "type", "action"}:
                 raise ValueError("domain rule needs only domain, type and action")
-            if rule["type"] not in ("simple", "wildcard") or rule["action"] not in ("allow", "block", "monitor"):
+            if rule["type"] not in ("simple", "wildcard") or rule["action"] not in WEB_ACTIONS:
                 raise ValueError("domain rule type or action is unsupported")
             domain = normalize_domain(rule["domain"])
             key = (domain, rule["type"])
@@ -318,7 +322,7 @@ def active_categories(web_filter: dict[str, Any], when: datetime) -> list[str]:
 
 def active_category_actions(web_filter: dict[str, Any], when: datetime) -> dict[str, str]:
     """Permanent and active-window actions combine without weakening stronger actions."""
-    priority = {"allow": 0, "monitor": 1, "block": 2}
+    priority = {"allow": 0, "monitor": 1, "warn": 2, "block": 3}
     actions: dict[str, str] = {}
     sources = [web_filter, *_open_windows(web_filter, when)]
     for settings in sources:
@@ -401,7 +405,7 @@ def web_decision(name: object, web_filter: dict[str, Any], when: datetime,
     data = categories or {}
     matched = [(category, action) for category, action in active_category_actions(web_filter, when).items()
                if category in data and in_category(domain, data[category])]
-    for action in ("block", "monitor", "allow"):
+    for action in ("block", "warn", "monitor", "allow"):
         category = next((category for category, selected in matched if selected == action), None)
         if category is not None:
             return {"action": action, "reason": "category", "category": category, "log": action != "allow"}

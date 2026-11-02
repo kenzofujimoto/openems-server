@@ -1,15 +1,17 @@
 import { useId } from "react";
-import { Ban, CircleCheck, Eye, type LucideIcon } from "lucide-react";
+import { Ban, CircleCheck, Eye, TriangleAlert, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export type WebAction = "allow" | "block" | "monitor";
+/** warn shows a warning page where the person may continue for an hour (agent capability web-filter:warn). */
+export type WebAction = "allow" | "block" | "monitor" | "warn";
 export type CategoryActions = Record<string, WebAction>;
 
 /** Shared meaning and colors of the web actions; the brand color never stands for an action. */
-export const WEB_ACTIONS: ReadonlyArray<{ value: WebAction; label: string; icon: LucideIcon; text: string; pill: string; tone: string }> = [
-  { value: "allow", label: "Permitir", icon: CircleCheck, text: "text-allow", pill: "bg-allow-soft text-allow", tone: "peer-checked:border-allow peer-checked:bg-allow-soft peer-checked:text-allow" },
-  { value: "block", label: "Bloquear", icon: Ban, text: "text-block", pill: "bg-block-soft text-block", tone: "peer-checked:border-block peer-checked:bg-block-soft peer-checked:text-block" },
-  { value: "monitor", label: "Monitorar", icon: Eye, text: "text-monitor", pill: "bg-monitor-soft text-monitor", tone: "peer-checked:border-monitor peer-checked:bg-monitor-soft peer-checked:text-monitor" },
+export const WEB_ACTIONS: ReadonlyArray<{ value: WebAction; label: string; icon: LucideIcon; text: string; pill: string; tone: string; swatch: string }> = [
+  { value: "allow", label: "Permitir", icon: CircleCheck, text: "text-allow", pill: "bg-allow-soft text-allow", swatch: "bg-allow", tone: "peer-checked:border-allow peer-checked:bg-allow-soft peer-checked:text-allow" },
+  { value: "block", label: "Bloquear", icon: Ban, text: "text-block", pill: "bg-block-soft text-block", swatch: "bg-block", tone: "peer-checked:border-block peer-checked:bg-block-soft peer-checked:text-block" },
+  { value: "monitor", label: "Monitorar", icon: Eye, text: "text-monitor", pill: "bg-monitor-soft text-monitor", swatch: "bg-monitor", tone: "peer-checked:border-monitor peer-checked:bg-monitor-soft peer-checked:text-monitor" },
+  { value: "warn", label: "Avisar", icon: TriangleAlert, text: "text-warning", pill: "bg-warning-soft text-warning", swatch: "bg-warning", tone: "peer-checked:border-warning peer-checked:bg-warning-soft peer-checked:text-warning" },
 ];
 
 /** Segmented radio group; arrow keys move between the actions of one category. */

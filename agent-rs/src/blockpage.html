@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-br"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Acesso bloqueado</title>
+<title>{title}</title>{head}
 <style>
   :root { --blue:#009cde; --blue-dark:#006e9d; --green:#3f9c35; --gray:#888b8d;
     --ink:#1f2428; --text:#515356; --line:#e7e9ec; --canvas:#f6f7f9; }
@@ -24,6 +24,11 @@
     border:1px solid var(--line); color:var(--blue-dark); font:15px/1.4 Consolas,"Courier New",monospace; word-break:break-all; }
   .category { margin:-8px 0 20px; color:var(--ink); font-weight:500; }
   p { margin:0 auto; max-width:440px; }
+  form { margin:24px 0 0; }
+  button { font:inherit; font-weight:500; color:#fff; background:var(--blue-dark); border:0; border-radius:10px;
+    padding:10px 20px; cursor:pointer; }
+  button:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+  .note { margin-top:12px; font-size:13px; color:var(--gray); }
   footer { padding:24px; text-align:center; font-size:13px; color:var(--gray); }
   footer strong { color:var(--blue-dark); font-weight:500; }
 </style></head>
@@ -39,11 +44,11 @@
           <circle cx="12" cy="15.5" r="1.4" fill="#009cde"/>
         </svg>
       </div>
-      <h1>Acesso bloqueado</h1>
+      <h1>{title}</h1>
       <div class="host">{host}</div>
       {category}
-      <p>Este site foi bloqueado pela pol&iacute;tica de seguran&ccedil;a da sua organiza&ccedil;&atilde;o.
-      Se voc&ecirc; acredita que isto &eacute; um engano, fale com o time de TI.</p>
+      <p>{message}</p>
+      {action}
     </div>
   </main>
   <footer>RSM Brasil &middot; <strong>O poder de ser compreendido</strong></footer>

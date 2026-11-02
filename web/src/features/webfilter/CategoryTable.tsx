@@ -66,7 +66,7 @@ export function CategoryTable({ title, categories, valueOf, onChange, suffix = "
           const ids = items.map((item) => item.id);
           const chosen = ids.filter((id) => selected.includes(id)).length;
           const open = !collapsed.includes(group) || Boolean(filter);
-          const counts = { allow: 0, block: 0, monitor: 0 } as Record<WebAction, number>;
+          const counts: Record<WebAction, number> = { allow: 0, block: 0, monitor: 0, warn: 0 };
           for (const id of ids) counts[valueOf(id)] += 1;
           return <tbody key={group} className="border-b border-line last:border-b-0">
             <tr className="bg-surface-2">

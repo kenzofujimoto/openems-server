@@ -14,6 +14,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 const BLOCKED_TTL: u32 = 30;
+const WARN_TTL: u32 = 2;
 const SAFE_SEARCH_TTL: u32 = 300;
 const MAX_MESSAGE: usize = 4096;
 const SERVER_TIMEOUT: Duration = Duration::from_secs(2);
@@ -213,7 +214,9 @@ pub fn decide(bytes: &[u8], blocked: &BlockedDomains, redirect: bool) -> Decisio
         let reason = decision.reason.clone().map(Into::into).unwrap_or(crate::events::EventReason::Policy);
         blocked.block_log().monitor(&name, &reason);
     }
-    let reason = if decision.action == crate::policy::WebAction::Block { decision.reason } else { None };
+    // A warning is answered like a block until the person continues past it on the local page.
+    let warning = decision.action == crate::policy::WebAction::Warn;
+    let reason = if decision.action == crate::policy::WebAction::Block || warning { decision.reason } else { None };
     let Some(reason) = reason else {
         // Allowed engines keep SafeSearch: "allowed" means not blocked, not unfiltered.
         return match blocked.safe_search_target(&name) {
@@ -233,7 +236,12 @@ pub fn decide(bytes: &[u8], blocked: &BlockedDomains, redirect: bool) -> Decisio
         _ => None,
     };
     if let Some(data) = data {
-        message.add_answer(Record::from_rdata(question.name().clone(), BLOCKED_TTL, data));
+        // Warnings expire quickly from caches so a continue takes effect within seconds.
+        message.add_answer(Record::from_rdata(
+            question.name().clone(),
+            if warning { WARN_TTL } else { BLOCKED_TTL },
+            data,
+        ));
     }
     encode(message)
 }

@@ -1,6 +1,6 @@
 # Redesign dos perfis de segurança e nova identidade visual
 
-Aprovada e implementada em 02/11/2026 (etapas 1 a 4). As imagens "novo-*" são os mockups da proposta; as "impl-*", na seção 6, são o painel implementado. A fase 2 continua pendente.
+Aprovada e implementada em 02/11/2026 (etapas 1 a 4 e fase 2). As imagens "novo-*" são os mockups da proposta; as "impl-*", na seção 6, são o painel implementado. O aceite em Windows real da ação Avisar continua pendente.
 
 Objetivo: deixar as telas de **Filtro web** e **Controle de aplicativos** com os padrões de operação do FortiGate e do FortiClient EMS (categorias agrupadas, ação em lote, overrides priorizados, aplicar/cancelar) e trocar a identidade RSM por uma identidade própria do OpenEMS.
 
@@ -85,10 +85,10 @@ O que **não** copiar: cores, ícones, nomes de produto e o layout pixel a pixel
 | Categoria de app / "Todas" | `app_catalog.actions["category:<id>"]` | Não |
 | Override por app (um ou vários) | `app_catalog.actions["app:<id>"]`, que já vence a categoria em `app/app_catalog.py` | Não |
 | Override por hash/editor/caminho | `app_control.execution_rules` | Não |
-| Ordem ↑↓ dos overrides | hoje não há conflito entre `app:*`; só faz sentido com filtros | Fase 2 |
-| Override por **filtro** (editor, categoria + popularidade…) | — | Fase 2: novo campo no `app_catalog` |
-| Comentário do override | — | Fase 2: metadado opcional |
-| Avisar / Autenticar no filtro web | — | Exige agente e página de bloqueio |
+| Ordem ↑↓ dos overrides | precedência fixa aplicativo > editor > categoria | Substituída por regra fixa |
+| Override por **filtro** de editor | `app_catalog.actions["vendor:<nome>"]` | Implementado (fase 2) |
+| Comentário do override | `app_catalog.notes` | Implementado (fase 2) |
+| Avisar no filtro web | `warn` + capacidade `web-filter:warn` | Implementado (fase 2); Autenticar não |
 
 ## 4. Nova identidade visual
 
@@ -112,10 +112,14 @@ A identidade RSM continua disponível no mesmo código, escolhida no build. Layo
 ## 5. Plano de implementação e estado
 
 1. ✅ **Identidade:** tokens semânticos em `styles.css`, troca de `rsm-*` nos componentes, logo SVG, favicon, título, fontes Plex. Os testes não dependem de cor; só os mocks `RSM-*` podem ser renomeados.
-2. ✅ **Shell:** barra superior e navegação escuras; barra do grupo compacta no topo de cada perfil (o grupo escolhido continua valendo entre as páginas, via `storedGroup`); abas que preservam as edições; barra fixa com "Alterações não publicadas", Descartar e Publicar. Diferença em relação ao mockup: o seletor de grupo fica no cabeçalho do perfil, não na barra superior, e a barra não lista cada alteração (fica para a fase 2 junto com "Ver diferenças").
+2. ✅ **Shell:** barra superior e navegação escuras; barra do grupo compacta no topo de cada perfil (o grupo escolhido continua valendo entre as páginas, via `storedGroup`); abas que preservam as edições; barra fixa com "Alterações não publicadas", Descartar e Publicar. Diferença em relação ao mockup: o seletor de grupo fica no cabeçalho do perfil, não na barra superior, e as alterações aparecem em "Ver diferenças" (fase 2).
 3. ✅ **Filtro web:** `CategoryTable` com grupos recolhíveis, seleção (inclusive de grupo, com estado misto), ações em lote, busca e resumo lateral; os horários usam a mesma tabela. A coluna "Bloqueios (7 dias)" do mockup ficou fora: exige agregação no servidor e passa por dados pessoais de navegação.
 4. ✅ **Aplicativos:** `AppCategoryGrid` (com "Todas as categorias"), `AppOverrides` (lista das decisões `app:*`) e diálogo "Novo override" com busca e seleção múltipla. Regras de execução, rede/encerramento e inventário ficam em abas próprias; o inventário continua utilizável por leitores. As regras de execução manuais ficam na aba delas, não na tabela de overrides, porque sempre se somam às decisões do catálogo.
-5. **Fase 2 (backend):** overrides por filtro e comentários, agregação de bloqueios por categoria e ação Avisar.
+5. ✅ **Fase 2:**
+   - "Ver diferenças" na barra de publicação (comparação com a versão publicada, inclusive mudança só de ordem).
+   - Override por **editor** (`vendor:<nome>`) e **comentários** (`app_catalog.notes`) no servidor e no painel. Precedência fixa: aplicativo > editor > categoria; por isso a tabela não tem ↑↓ (não há empate a ordenar). Editores Microsoft só aceitam Permitir.
+   - Ação **Avisar** (`warn`) em categorias, horários e regras de domínio, com página de aviso e "Continuar mesmo assim" no agente nativo (ver o [contrato](../web-filter-actions-contract.md#warning-warn)). Exige a capacidade `web-filter:warn`; aceite em Windows real ainda pendente.
+   - Fica de fora, por decisão: a coluna "Bloqueios (7 dias)" por categoria, que exigiria expor no editor de política dados pessoais de navegação.
 
 Cada etapa mantém o contrato de política, e os testes atuais de `web/src/features/**` continuam valendo. As interações novas (seleção em lote, estado misto, diálogo de override) ganham testes próprios.
 

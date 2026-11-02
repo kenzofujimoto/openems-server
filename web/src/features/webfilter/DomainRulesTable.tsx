@@ -6,8 +6,8 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { FIELD_CLASS } from "@/features/policies/PolicyWorkspace";
 import { decodeDomainCsv, encodeDomainCsv, MAX_CSV_BYTES, normalizeDomainRow, normalizeDomainRows, type DomainRow } from "@/lib/domainRules";
 
-const ACTIONS = {allow:"Permitir", block:"Bloquear", monitor:"Monitorar (log)"};
-const TONES = {allow:"bg-success-soft text-success", block:"bg-danger-soft text-danger", monitor:"bg-brand-soft text-brand-ink"};
+const ACTIONS = {allow:"Permitir", block:"Bloquear", monitor:"Monitorar (log)", warn:"Avisar"};
+const TONES = {allow:"bg-allow-soft text-allow", block:"bg-block-soft text-block", monitor:"bg-monitor-soft text-monitor", warn:"bg-warning-soft text-warning"};
 const PAGE_SIZE = 50;
 
 function Modal({title, description, onClose, children}: {title:string; description:string; onClose:()=>void; children:ReactNode}) {
@@ -66,7 +66,7 @@ export function DomainRulesTable({rows, onChange, readonly}: {rows:DomainRow[]; 
         }}><Download className="size-4" aria-hidden="true" />Exportar CSV</Button>
         <span className="text-sm text-ink-muted">{rows.length} {rows.length === 1 ? "regra" : "regras"}</span>
       </div>
-      <p className="text-xs text-ink-muted">Simples inclui o domínio e www. Wildcard inclui o domínio e todos os subdomínios. Permitir não registra navegação; Bloquear registra a tentativa; Monitorar permite e registra a consulta DNS. CSV: domain,type,action — simple/wildcard e allow/block/monitor.</p>
+      <p className="text-xs text-ink-muted">Simples inclui o domínio e www. Wildcard inclui o domínio e todos os subdomínios. Permitir não registra navegação; Bloquear registra a tentativa; Monitorar permite e registra a consulta DNS; Avisar mostra um aviso com opção de continuar. CSV: domain,type,action — simple/wildcard e allow/block/monitor/warn.</p>
       {reading ? <p role="status" className="text-sm text-ink-muted">Lendo CSV…</p> : null}
       {error ? <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{error}</p> : null}
       <label className="block max-w-sm text-sm text-ink-soft">Buscar domínio<input className={`mt-1 ${FIELD_CLASS}`} value={search} onChange={(event) => {setSearch(event.target.value); setPage(0);}} /></label>

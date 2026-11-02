@@ -115,6 +115,15 @@ def test_policy_capabilities_cover_scheduled_actions_and_global_monitoring():
     assert "web-filter:actions" in required_tags({"web_filter": {"category_actions": {"games": "allow"}}})
 
 
+def test_warning_actions_require_the_warning_capability():
+    assert "web-filter:warn" in required_tags({"web_filter": {"category_actions": {"games": "warn"}}})
+    assert "web-filter:warn" in required_tags({"web_filter": {"domain_rules": [
+        {"domain": "example.net", "type": "simple", "action": "warn"}]}})
+    assert "web-filter:warn" in required_tags({"web_filter": {"timezone": "UTC", "scheduled": [
+        {"days": ["mon"], "from": "08:00", "to": "09:00", "category_actions": {"games": "warn"}}]}})
+    assert "web-filter:warn" not in required_tags({"web_filter": {"category_actions": {"games": "monitor"}}})
+
+
 def test_allow_category_exclusions_require_category_data_during_global_monitoring():
     tags = required_tags({"web_filter": {
         "monitor_all": True, "category_actions": {"games": "allow"},

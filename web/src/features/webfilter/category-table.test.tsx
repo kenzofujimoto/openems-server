@@ -107,3 +107,27 @@ describe("policy review", () => {
     expect(within(screen.getByRole("dialog", { name: "Diferenças da política" })).getByRole("alert")).toHaveTextContent("valores inválidos");
   });
 });
+
+describe("warning action", () => {
+  it("publishes warn for categories in bulk and for a domain rule", async () => {
+    const writes = backend();
+    const user = userEvent.setup();
+    renderApp("/policies/web");
+    await user.click(await screen.findByRole("checkbox", { name: "Selecionar grupo Adulto" }));
+    await user.click(screen.getByRole("button", { name: "Avisar selecionadas" }));
+    expect(screen.getByRole("radio", { name: "Avisar Conteúdo adulto" })).toBeChecked();
+    await openTab(user, "Filtro de URL estático");
+    await user.click(screen.getByRole("button", { name: "Adicionar domínio" }));
+    const dialog = screen.getByRole("dialog", { name: "Adicionar domínio" });
+    await user.type(within(dialog).getByLabelText("Domínio"), "careful.example");
+    await user.selectOptions(within(dialog).getByLabelText("Ação"), "warn");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar domínio" }));
+    expect(within(screen.getByRole("table", { name: "Regras de domínio" })).getByText("Avisar")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Publicar política" }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.web_filter).toMatchObject({
+      category_actions: { adult: "warn", gambling: "warn", games: "monitor" },
+      domain_rules: [{ domain: "careful.example", type: "simple", action: "warn" }],
+    });
+  });
+});
