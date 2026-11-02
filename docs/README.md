@@ -18,6 +18,7 @@ Referência atualizada em 27/10/2026. Os documentos de planejamento na raiz pres
 | Objetivos e limites por fase | [Roadmap desktop](../roadmap-v2.md) |
 | Suporte Linux e geração de pacotes | [Linux](../deploy/linux/SUPPORT.md) |
 | Limites e pré-requisitos macOS | [macOS](../deploy/macos/SUPPORT.md) |
+| Redesign do painel e nova identidade (proposta) | [Perfis de segurança](design/redesign-perfis-de-seguranca.md) |
 | Contrato de interoperabilidade | [SPEC-INTEROP](../SPEC-INTEROP.md) |
 | Agente Python de referência | [Agente de referência](../agent/README.md) |
 
