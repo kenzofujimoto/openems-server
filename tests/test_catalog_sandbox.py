@@ -299,8 +299,20 @@ REPORT_MUTATIONS = (
     ("nrpt_left", ("checks", 7, "evidence", "nrpt_count"), 1),
     ("firewall_left", ("checks", 7, "evidence", "owned_firewall_rules"), 1),
     ("registry_left", ("checks", 7, "evidence", "fixture_registry_present"), True),
+    ("msi_exit_boolean", ("checks", 7, "evidence", "msi_exit"), False),
+    ("network_exit_boolean", ("checks", 1, "evidence", "before", "target_exit"), False),
+    ("release_exit_boolean", ("checks", 6, "evidence", "original_exit"), False),
+    ("firewall_count_boolean", ("checks", 6, "evidence", "firewall_rule_count"), False),
+    ("service_nonboolean", ("checks", 7, "evidence", "service_present"), 0),
+    ("policy_enforced_nonboolean", ("checks", 3, "evidence", "policy_enforced"), "true"),
+    ("process_created_nonboolean", ("checks", 3, "evidence", "original", "process_created"), 0),
+    ("sentinel_nonboolean", ("checks", 3, "evidence", "original", "started"), 0),
+    ("control_alive_nonboolean", ("checks", 2, "evidence", "control_still_running"), 1),
+    ("future_checked_at", ("checks", 5, "evidence", "after", "optional_checked_at"), 1793638880),
 )
 SEMANTIC_CHANGES = ("none", *(name for name, _, _ in REPORT_MUTATIONS), "missing_check")
+SCALAR_CHANGES = ("none", *(name for name, _, _ in REPORT_MUTATIONS
+                           if name.endswith(("boolean", "nonboolean")) or name == "future_checked_at"))
 
 
 def mutated_report(report, change):
@@ -348,6 +360,22 @@ def test_report_summary_never_accepts_stale_partial_or_unclean_runs(builder, pac
 def test_host_summary_independently_rejects_contradictory_evidence_despite_passed_flags(builder, package, change):
     output, _ = package()
     manifest = builder.verify_package(output, expected_revision=REVISION)
+    report = mutated_report(report_for(manifest), change)
+    summary = builder.summarize_report(report, manifest)
+    assert summary["passed"] is (change == "none"), summary
+    assert bool(summary["errors"]) is (change != "none"), summary
+
+
+@pytest.mark.parametrize("change", SCALAR_CHANGES)
+def test_host_verifier_refuses_boolean_exit_codes_coerced_flags_and_future_checked_at(builder, change):
+    # Exercise the evaluator directly: a missing guest harness cannot mask a
+    # validator regression behind an unrelated package-construction failure.
+    manifest = {
+        "run_id": RUN_ID, "source_revision": REVISION, "_manifest_sha256": "d" * 64,
+        "guest_work_directory": "C:\\openems-catalog-" + RUN_ID, "fixtures": {"a": {"file": "a.exe"}},
+        "packages": {"openems-agent.msi": {"sha256": "e" * 64, "bytes": 1}},
+        "policies": {name: {"version": index + 1, "digest": "c" * 64} for index, name in enumerate(CASES)},
+    }
     report = mutated_report(report_for(manifest), change)
     summary = builder.summarize_report(report, manifest)
     assert summary["passed"] is (change == "none"), summary
@@ -436,6 +464,7 @@ def test_guest_gate_refuses_physical_or_unattested_targets_without_writes(tmp_pa
     (577, False, False, True), (1260, False, False, True), (4551, False, False, True),
     (4551, True, False, False), (4551, False, True, False), (0, True, False, False),
     (0, False, False, False), (5, False, False, False), (193, False, False, False), (4550, False, False, False),
+    (4551, 0, False, False), (4551, False, 0, False),
 ])
 def test_wdac_requires_kernel_refusal_before_process_creation_and_sentinel(tmp_path, code, created, sentinel, accepted):
     observation = {"native_error": code, "process_created": created, "started": sentinel, "exit": -1}
@@ -474,7 +503,8 @@ def test_hourly_recheck_requires_real_time_stable_assignment_and_new_native_deni
 
 @WINDOWS[0]
 @WINDOWS[1]
-@pytest.mark.parametrize("change", ["none", "negative", "different_version", "different_digest", "unrelated_success"])
+@pytest.mark.parametrize("change", ["none", "negative", "different_version", "different_digest", "unrelated_success",
+                                   "numeric_success", "string_success", "string_version"])
 def test_ack_deadline_stays_ninety_seconds_and_only_matching_success_satisfies_it(tmp_path, change):
     assignment = {"version": 6, "digest": "a" * 64}
     ack = {**assignment, "success": True}
@@ -486,6 +516,12 @@ def test_ack_deadline_stays_ninety_seconds_and_only_matching_success_satisfies_i
         ack["digest"] = "b" * 64
     elif change == "unrelated_success":
         ack = {"version": 8, "digest": "b" * 64, "success": True}
+    elif change == "numeric_success":
+        ack["success"] = 1
+    elif change == "string_success":
+        ack["success"] = "True"
+    elif change == "string_version":
+        ack["version"] = "6"
     observed = pure(tmp_path, ["Wait-Ack"], "Wait-Ack $fixtureData.assignment",
                     {"assignment": assignment, "rows": [ack]})
     assert observed["deadline"] == 90 and observed["accepted"] is (change == "none"), observed
@@ -501,6 +537,32 @@ def test_catalog_acceptance_requires_each_observed_effect_and_normal_clean_remov
     observed = pure(tmp_path, ["Assert-DeniedExecution", "Assert-HourlyEvidence", "Assert-CatalogEvidence"],
                     "Assert-CatalogEvidence $fixtureData.report $fixtureData.manifest", {"report": report, "manifest": manifest})
     assert observed["accepted"] is (change == "none"), observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("journal_exists,owned_policy_exists", [(False, True), (False, False), (True, True)])
+def test_cached_wdac_identity_is_checked_even_after_removal_deletes_its_journal(tmp_path, journal_exists, owned_policy_exists):
+    owned = "{11111111-1111-1111-1111-111111111111}"
+    foreign = "{22222222-2222-2222-2222-222222222222}"
+    policies = [{"PolicyID": foreign, "IsEnforced": True}]
+    if owned_policy_exists:
+        policies.append({"PolicyID": owned, "IsEnforced": True})
+    data = {"journal_exists": journal_exists, "journal": {"policy_id": owned},
+            "cached_id": owned, "policies": policies, "expected_id": owned if owned_policy_exists else ""}
+    expression = r"""
+$global:policyProbeData=$fixtureData
+$script:journalPath='C:\not-a-real-test-journal.json'
+$script:ownPolicyId=$fixtureData.cached_id
+function global:Test-Path([string]$LiteralPath) { return [bool]$global:policyProbeData.journal_exists }
+function global:Read-Journal { return $global:policyProbeData.journal }
+function global:Code-Policies { return @($global:policyProbeData.policies) }
+$observed=Own-Policy
+$actual=if($null -eq $observed){''}else{[string]$observed.PolicyID}
+if($actual -cne $fixtureData.expected_id){throw 'An owned WDAC policy was hidden by a missing journal.'}
+"""
+    observed = pure(tmp_path, ["Own-Policy"], expression, data)
+    assert observed["accepted"] is True, observed
 
 
 @WINDOWS[0]
