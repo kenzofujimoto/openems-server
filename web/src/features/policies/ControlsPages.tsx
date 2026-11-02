@@ -16,6 +16,12 @@ const hasControl = (text: string) => [...text].some((character) => character.cha
 const absolute = (path: string) => /^(?:[a-z]:[\\/]|\/)/i.test(path) && !hasControl(path);
 function nextId(prefix: string, rules: { id: string }[]) { let index = 1; while (rules.some((rule) => rule.id === `${prefix}-${index}`)) index++; return `${prefix}-${index}`; }
 
+/** Notes survive only for decisions that still exist, and empty notes are dropped. */
+function catalogSection(actions: CatalogActions, generated: Record<string, unknown>, notes: Record<string, string>) {
+  const kept = Object.fromEntries(Object.entries(notes).map(([key, note]) => [key, note.trim()] as const).filter(([key, note]) => note && key in actions));
+  return { actions, generated, ...(Object.keys(kept).length ? { notes: kept } : {}) };
+}
+
 function useDeviceInventory() {
   const endpoints = useEndpoints();
   const [selected, select] = useState("");
@@ -34,6 +40,7 @@ function ApplicationEditor({ profile, vdom, readonly }: Props) {
   const { devid, select, inventory } = useDeviceInventory();
   const catalog = useAppCatalog();
   const hadCatalog = profile?.body.app_catalog !== undefined;
+  const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(record(record(profile?.body.app_catalog).notes)).filter((entry): entry is [string, string] => typeof entry[1] === "string")));
   const [actions, setActions] = useState<CatalogActions>(() => Object.fromEntries(Object.entries(record(record(profile?.body.app_catalog).actions)).filter((entry): entry is [string, CatalogAction] => CATALOG_ACTIONS.includes(entry[1] as CatalogAction))));
   function addApplication(application: Application, kind: ExecutionRule["kind"]) {
     const value = kind === "hash" ? application.sha256 : kind === "publisher" ? application.publisher : kind === "path" ? application.path : application.path.split(/[\\/]/).at(-1) ?? application.name;
@@ -42,7 +49,7 @@ function ApplicationEditor({ profile, vdom, readonly }: Props) {
   function update(index: number, patch: Partial<ExecutionRule>) { setRules((current) => current.map((rule, at) => at === index ? { ...rule, ...patch } : rule)); }
   const categoryDecisions = Object.entries(actions).filter(([key]) => key.startsWith("category:"));
   const sections = { label: "Seções do controle de aplicativos", items: [
-    { id: "catalog", label: "Categorias e overrides", icon: Shapes, content: <><AppCategoryGrid actions={actions} onChange={setActions} readonly={readonly} /><AppOverrides actions={actions} onChange={setActions} readonly={readonly} /></> },
+    { id: "catalog", label: "Categorias e overrides", icon: Shapes, content: <><AppCategoryGrid actions={actions} onChange={setActions} readonly={readonly} /><AppOverrides actions={actions} onChange={setActions} notes={notes} onNotesChange={setNotes} readonly={readonly} /></> },
     { id: "execution", label: "Regras de execução", icon: FileLock2, count: rules.length, content: <>
     <InfoNotice>O bloqueio antes da execução exige suporte ao App Control no Windows. O caminho da amostra deve existir na máquina protegida; use o inventário dela para escolher o arquivo. As capacidades e falhas de aplicação aparecem na ficha do endpoint.</InfoNotice>
     <Card><CardHeader title="Regras de execução" description="Negação por hash, editor verificado, caminho ou nome original. O agente confirma somente depois de aplicar." /><div className="space-y-4 p-5">{rules.map((rule, index) => <div key={rule.id} className="grid gap-3 rounded-xl border border-line p-4 sm:grid-cols-2"><label className="text-sm">Tipo da regra {index + 1}<select className={`mt-1 ${FIELD_CLASS}`} value={rule.kind} onChange={(event) => update(index, { kind: event.target.value as ExecutionRule["kind"] })}><option value="hash">SHA-256</option><option value="publisher">Editor</option><option value="path">Caminho</option><option value="name">Nome original</option></select></label><Field label={`Valor da regra ${index + 1}`} value={rule.value} onChange={(value) => update(index, { value })} /><Field label={`Amostra local da regra ${index + 1}`} value={rule.sample_path ?? ""} onChange={(sample_path) => update(index, { sample_path })} /><Button onClick={() => setRules((current) => current.filter((_, at) => at !== index))}>Remover regra {index + 1}</Button></div>)}<Button onClick={() => setRules((current) => [...current, { id: nextId("app", current), kind: "hash", value: "", sample_path: "" }])}>Adicionar regra de execução</Button></div></Card>
@@ -55,16 +62,16 @@ function ApplicationEditor({ profile, vdom, readonly }: Props) {
     </> },
   ] };
   const aside = <>
-    <Card><CardHeader title="Ordem de avaliação" /><div className="space-y-2 p-5 text-sm text-ink-soft"><ol className="list-decimal space-y-1 pl-4"><li>Override do aplicativo, se houver</li><li>Senão, a decisão da categoria</li><li>Sem regra: o aplicativo é permitido</li></ol><p className="text-xs text-ink-muted">Regras de execução e listas manuais de rede e encerramento valem sempre, somadas a essas decisões.</p></div></Card>
+    <Card><CardHeader title="Ordem de avaliação" /><div className="space-y-2 p-5 text-sm text-ink-soft"><ol className="list-decimal space-y-1 pl-4"><li>Override do aplicativo, se houver</li><li>Senão, o override por editor</li><li>Senão, a decisão da categoria</li><li>Sem regra: o aplicativo é permitido</li></ol><p className="text-xs text-ink-muted">Regras de execução e listas manuais de rede e encerramento valem sempre, somadas a essas decisões.</p></div></Card>
     <Card><CardHeader title="Resumo" /><dl className="space-y-1.5 p-5 text-sm">
       <div className="flex"><dt className="text-ink-soft">Categorias bloqueadas</dt><dd className="ml-auto font-semibold">{categoryDecisions.filter(([, value]) => value === "block").length}</dd></div>
       <div className="flex"><dt className="text-ink-soft">Categorias sem rede</dt><dd className="ml-auto font-semibold">{categoryDecisions.filter(([, value]) => value === "block_network").length}</dd></div>
-      <div className="flex"><dt className="text-ink-soft">Overrides</dt><dd className="ml-auto font-semibold">{Object.keys(actions).filter((key) => key.startsWith("app:")).length}</dd></div>
+      <div className="flex"><dt className="text-ink-soft">Overrides</dt><dd className="ml-auto font-semibold">{Object.keys(actions).filter((key) => key.startsWith("app:") || key.startsWith("vendor:")).length}</dd></div>
       <div className="flex"><dt className="text-ink-soft">Regras de execução</dt><dd className="ml-auto font-semibold">{rules.length}</dd></div>
       <div className="flex"><dt className="text-ink-soft">Sem rede / encerrar</dt><dd className="ml-auto font-semibold">{lines(network).length} / {lines(blocked).length}</dd></div>
     </dl></Card>
   </>;
-  return <PolicyForm {...{ profile, vdom, readonly }} section="app_control" sections={sections} aside={aside} ready={!catalog.isPending} extend={(body) => catalog.data?.available || hadCatalog ? { ...body, app_catalog: { actions, generated } } : Object.fromEntries(Object.entries(body).filter(([section]) => section !== "app_catalog"))} build={() => {
+  return <PolicyForm {...{ profile, vdom, readonly }} section="app_control" sections={sections} aside={aside} ready={!catalog.isPending} extend={(body) => catalog.data?.available || hadCatalog ? { ...body, app_catalog: catalogSection(actions, generated, notes) } : Object.fromEntries(Object.entries(body).filter(([section]) => section !== "app_catalog"))} build={() => {
     const processes = lines(blocked);
     if (processes.some((name) => /[\\/:*?"<>|]/.test(name) || hasControl(name))) throw new Error("Informe apenas nomes de processos, sem caminho, na lista de encerramento.");
     const paths = lines(network);

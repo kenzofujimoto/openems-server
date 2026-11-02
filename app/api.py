@@ -21,6 +21,7 @@ from agent.uninstall import master_key_from_text
 
 from .app_catalog import AppCatalog
 from .app_catalog import expand as expand_catalog
+from .app_catalog import validate_notes as validate_catalog_notes
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
 from .auth import AdminService, LoginRateLimited
 from .capabilities import missing_tags, required_tags
@@ -346,8 +347,8 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
             return body, []
         if app_catalog is None or app_catalog.manifest()['version'] is None:
             raise ValueError('application catalog unavailable')
-        if not isinstance(section, dict) or set(section) - {'actions', 'generated'}:
-            raise ValueError('app_catalog must contain only actions and generated entries')
+        if not isinstance(section, dict) or set(section) - {'actions', 'generated', 'notes'}:
+            raise ValueError('app_catalog must contain only actions, generated entries and notes')
         controls = body.get('app_control', {})
         if not isinstance(controls, dict) or not all(isinstance(controls.get(key, []), list)
                                                      for key in ('execution_rules', 'blocked', 'network_blocked')):
@@ -355,6 +356,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
         previous = section.get('generated', {})
         if not isinstance(previous, dict):
             raise ValueError('app_catalog.generated must be an object')
+        notes = validate_catalog_notes(section.get('notes', {}), section.get('actions', {}))
         expansion = expand_catalog(section.get('actions', {}),
                                    [application for _, applications in fleet_applications() for application in applications], app_catalog)
         manual_rules = [rule for rule in controls.get('execution_rules', [])
@@ -367,7 +369,8 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
                 'app_control': {**controls, 'execution_rules': manual_rules + expansion['rules'],
                                 'blocked': manual_processes + new_processes, 'network_blocked': manual_network + new_network},
                 'app_catalog': {'actions': section.get('actions', {}),
-                                'generated': {'processes': new_processes, 'network': new_network}}}, expansion['skipped']
+                                'generated': {'processes': new_processes, 'network': new_network},
+                                **({'notes': notes} if notes else {})}}, expansion['skipped']
     def refresh_catalog_profiles() -> None:
         """A newly observed identity of a decided application republishes the affected groups."""
         if app_catalog is None:

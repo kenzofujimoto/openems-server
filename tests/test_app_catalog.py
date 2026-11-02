@@ -144,7 +144,23 @@ def test_unknown_actions_are_rejected(catalog):
     with pytest.raises(ValueError, match="catalog action"):
         expand({"category:games": "maybe"}, [], apps)
     with pytest.raises(ValueError, match="catalog action"):
-        expand({"vendor:valve": "block"}, [], apps)
+        expand({"vendor:nobodyknows": "block"}, [], apps)
+    with pytest.raises(ValueError, match="catalog action"):
+        expand({"vendor:microsoft": "block"}, [], apps)
+
+
+def test_vendor_filters_sit_between_app_overrides_and_categories(catalog):
+    _, apps = catalog
+    epic = steam(name="Epic Games Launcher", path=r"C:\Epic\EpicGamesLauncher.exe", sha256="b" * 64,
+                 publisher="CN=Epic Games Inc., O=Epic Games Inc., C=US", original_name="EpicGamesLauncher.exe")
+    # The vendor filter blocks Valve although games are allowed; an app override still wins over the filter.
+    result = expand({"category:games": "allow", "vendor:valve": "block_network"}, [steam(), epic], apps)
+    assert result["network"] == [r"C:\Program Files (x86)\Steam\steam.exe"] and result["rules"] == []
+    allowed = expand({"vendor:valve": "block", "app:Valve.Steam": "allow"}, [steam()], apps)
+    assert allowed["rules"] == [] and allowed["processes"] == []
+    blocked = expand({"category:games": "allow", "vendor:epicgames": "block"}, [steam(), epic], apps)
+    assert blocked["processes"] == ["epicgameslauncher.exe"]
+    assert expand({"vendor:microsoft": "allow"}, [], apps)["rules"] == []
 
 
 def test_search_and_summary_report_observed_machines(catalog):

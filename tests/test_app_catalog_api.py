@@ -117,3 +117,19 @@ def test_catalog_process_and_network_decisions_replace_only_their_generated_entr
     controls = service.get_profile("BPO").body["app_control"]
     assert controls["blocked"] == ["manual.exe"]
     assert controls["network_blocked"] == [r"C:\Manual\tool.exe", TORRENT["path"]]
+
+
+def test_vendor_filters_and_override_notes_are_published_and_validated(harness):
+    service, client, management, _, first, _ = harness
+    upload(client, first, [STEAM, EPIC])
+    body = {"app_catalog": {"actions": {"vendor:valve": "block", "app:Valve.Steam": "allow", "vendor:epicgames": "block_network"},
+                            "notes": {"app:Valve.Steam": "Time de QA", "vendor:epicgames": "Sem internet"}}}
+    response = client.post("/api/v1/profiles/BPO", json=body, headers=management)
+    assert response.status_code == 200, response.text
+    stored = service.get_profile("BPO").body
+    assert stored["app_catalog"]["notes"] == body["app_catalog"]["notes"]
+    assert stored["app_control"]["network_blocked"] == [EPIC["path"]]
+    assert stored["app_control"]["execution_rules"] == []
+    for notes in ({"app:Other": "orphan"}, {"app:Valve.Steam": "x" * 201}, {"app:Valve.Steam": "bad\u0007"}, ["list"], {"app:Valve.Steam": 3}):
+        bad = {"app_catalog": {"actions": {"app:Valve.Steam": "allow"}, "notes": notes}}
+        assert client.post("/api/v1/profiles/BPO", json=bad, headers=management).status_code == 422, notes

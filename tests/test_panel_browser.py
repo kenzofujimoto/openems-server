@@ -70,6 +70,7 @@ def test_real_cookie_login_error_and_csrf_logout(page, server):
 def test_real_policy_publication_preserves_other_sections_and_uses_csrf(page, server):
     _, origin, client, _ = server
     login(page, origin, path="/panel/policies/web")
+    page.get_by_role("tab", name="Filtro de URL estático", exact=True).click()
     expect(page.get_by_role("table", name="Regras de domínio")).to_contain_text("old.example")
     page.get_by_role("button", name="Editar old.example", exact=True).click()
     dialog = page.get_by_role("dialog", name="Editar domínio")
@@ -160,6 +161,7 @@ def test_endpoint_strings_are_text_and_failed_ack_is_visible(page, server):
 def test_viewer_has_no_policy_writes_and_mobile_navigation_retains_theme(page, server):
     _, origin, _, _ = server
     login(page, origin, "reader", "reader-test-password", "/panel/policies/web")
+    page.get_by_role("tab", name="Filtro de URL estático", exact=True).click()
     expect(page.get_by_role("table", name="Regras de domínio")).to_contain_text("old.example")
     expect(page.get_by_role("textbox", name="Buscar domínio", exact=True)).to_be_disabled()
     assert page.get_by_role("button", name="Adicionar domínio", exact=True).count() == 0

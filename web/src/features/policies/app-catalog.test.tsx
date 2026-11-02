@@ -169,3 +169,45 @@ describe("application overrides and bulk category decisions", () => {
     expect(screen.queryByRole("button", { name: "Aplicar a todas" })).toBeNull();
   });
 });
+
+describe("vendor filters and override comments", () => {
+  afterEach(() => { window.sessionStorage.clear(); });
+
+  it("creates a vendor filter with a comment and edits comments in the table", async () => {
+    const writes = backend({ app_catalog: { actions: { "app:Valve.Steam": "allow" }, notes: { "app:Valve.Steam": "QA" } } });
+    const user = userEvent.setup();
+    renderApp("/policies/apps");
+    const overrides = await screen.findByRole("table", { name: "Overrides de aplicativos" });
+    expect(within(overrides).getByLabelText("Comentário de Valve.Steam")).toHaveValue("QA");
+    await user.click(screen.getByRole("button", { name: "Criar override" }));
+    const dialog = screen.getByRole("dialog", { name: "Novo override" });
+    await user.click(within(dialog).getByRole("radio", { name: "Editor (filtro)" }));
+    await user.click(within(dialog).getByRole("radio", { name: "Bloquear rede" }));
+    await user.type(within(dialog).getByLabelText("Buscar aplicativo"), "steam");
+    await user.click(await within(dialog).findByRole("checkbox", { name: "Selecionar valve" }));
+    await user.type(within(dialog).getByLabelText("Comentário (opcional)"), "Sem internet");
+    await user.click(within(dialog).getByRole("button", { name: "Adicionar override" }));
+    expect(within(overrides).getByText("Filtro: editor")).toBeInTheDocument();
+    expect(within(overrides).getByRole("radio", { name: "Bloquear rede Editor valve" })).toBeChecked();
+    await user.clear(within(overrides).getByLabelText("Comentário de Valve.Steam"));
+    await user.click(screen.getByRole("button", { name: "Publicar política" }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.app_catalog).toEqual({ actions: { "app:Valve.Steam": "allow", "vendor:valve": "block_network" }, generated: {}, notes: { "vendor:valve": "Sem internet" } });
+  });
+
+  it("keeps Microsoft out of blocking vendor filters and drops a removed override's comment", async () => {
+    const writes = backend({ app_catalog: { actions: { "app:Valve.Steam": "allow" }, notes: { "app:Valve.Steam": "QA" } } });
+    const user = userEvent.setup();
+    renderApp("/policies/apps");
+    await user.click(await screen.findByRole("button", { name: "Criar override" }));
+    const dialog = screen.getByRole("dialog", { name: "Novo override" });
+    await user.click(within(dialog).getByRole("radio", { name: "Editor (filtro)" }));
+    await user.type(within(dialog).getByLabelText("Buscar aplicativo"), "teams");
+    expect(await within(dialog).findByRole("checkbox", { name: "Selecionar microsoft" })).toBeDisabled();
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("button", { name: "Remover override de Valve.Steam" }));
+    await user.click(screen.getByRole("button", { name: "Publicar política" }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.app_catalog).toEqual({ actions: {}, generated: {} });
+  });
+});
