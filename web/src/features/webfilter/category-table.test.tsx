@@ -70,6 +70,10 @@ describe("category table", () => {
     expect(screen.getByRole("radio", { name: "Bloquear Jogos" })).toBeChecked();
     const summary = screen.getByRole("complementary", { name: "Resumo do perfil" });
     expect(within(summary).getByText("Bloquear").nextElementSibling).toHaveTextContent("1");
+    await user.click(screen.getByRole("button", { name: "Ver diferenças" }));
+    const review = screen.getByRole("dialog", { name: "Diferenças da política" });
+    expect(within(review).getByRole("list", { name: "Alterações" })).toHaveTextContent("web_filter.category_actions.gamesmonitor → block");
+    await user.click(within(review).getByRole("button", { name: "Fechar" }));
     await user.click(screen.getByRole("button", { name: "Descartar alterações" }));
     expect(await screen.findByRole("radio", { name: "Monitorar Jogos" })).toBeChecked();
     expect(screen.getByText("Sem alterações desde a versão publicada.")).toBeInTheDocument();
@@ -87,5 +91,19 @@ describe("category table", () => {
     expect(screen.getByRole("tab", { name: "Horários" })).toHaveFocus();
     await user.keyboard("{Home}{ArrowLeft}");
     expect(screen.getByRole("tab", { name: "Horários" })).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("policy review", () => {
+  it("explains invalid edits instead of a diff", async () => {
+    backend();
+    const user = userEvent.setup();
+    renderApp("/policies/web");
+    await openTab(user, "Horários");
+    await user.click(await screen.findByRole("button", { name: "Adicionar horário" }));
+    const zone = screen.getByLabelText("Fuso horário");
+    await user.clear(zone); await user.type(zone, "Not/AZone");
+    await user.click(screen.getByRole("button", { name: "Ver diferenças" }));
+    expect(within(screen.getByRole("dialog", { name: "Diferenças da política" })).getByRole("alert")).toHaveTextContent("valores inválidos");
   });
 });

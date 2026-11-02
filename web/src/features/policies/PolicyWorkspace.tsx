@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { CircleCheck, GitCommitHorizontal, Layers, Monitor, Upload } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { CircleCheck, GitCommitHorizontal, GitCompare, Layers, Monitor, Upload, X } from "lucide-react";
+import { diffPolicies } from "@/lib/policyDiff";
 import { ErrorNotice, InfoNotice, PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -67,6 +69,7 @@ export function PolicyForm({ profile, vdom, section, readonly, build, extend, ch
   const [baseline, setBaseline] = useState<string | null>(ready ? current : null);
   if (baseline === null && ready) setBaseline(current);
   const dirty = !profile || (baseline !== null && current !== baseline);
+  const [reviewing, setReviewing] = useState(false);
   const conflict = publish.error instanceof ApiError && [409, 412].includes(publish.error.status);
   const unsupported = endpoints.data?.filter((endpoint) => endpoint.effective_vdom === vdom && endpoint.missing_capabilities.length) ?? [];
   return <form className="space-y-4" onSubmit={(event) => {
@@ -91,11 +94,39 @@ export function PolicyForm({ profile, vdom, section, readonly, build, extend, ch
           : <><CircleCheck aria-hidden="true" className="size-4 text-success" />Sem alterações desde a versão publicada.</>}
       </p>
       <div className="ml-auto flex gap-2">
+        {dirty && baseline !== null ? <Button onClick={() => setReviewing(true)}><GitCompare aria-hidden="true" className="size-4" />Ver diferenças</Button> : null}
         {dirty && profile ? <Button onClick={() => { setValidation(""); reload(); }} disabled={publish.isPending}>Descartar alterações</Button> : null}
         <Button type="submit" variant="primary" disabled={publish.isPending || !vdom.trim()}><Upload aria-hidden="true" className="size-4" />{publish.isPending ? "Publicando…" : "Publicar política"}</Button>
       </div>
     </div> : null}
+    {reviewing && baseline !== null ? <DiffDialog before={baseline} after={current} onClose={() => setReviewing(false)} /> : null}
   </form>;
+}
+
+const CHANGE_STYLE = { added: "bg-allow-soft text-allow", removed: "bg-block-soft text-block", changed: "bg-monitor-soft text-monitor", reordered: "bg-idle-soft text-ink-soft" } as const;
+const CHANGE_LABEL = { added: "Adicionado", removed: "Removido", changed: "Alterado", reordered: "Ordem alterada" } as const;
+
+function DiffDialog({ before, after, onClose }: { before: string; after: string; onClose: () => void }) {
+  const parse = (value: string): unknown => { try { return JSON.parse(value); } catch { return undefined; } };
+  const changes = after === "invalid" ? null : diffPolicies(parse(before), parse(after));
+  return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}><Dialog.Portal>
+    <Dialog.Overlay className="fixed inset-0 z-40 bg-night/50" />
+    <Dialog.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-line bg-surface text-ink shadow-2xl">
+      <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+        <div><Dialog.Title className="text-base font-semibold">Diferenças da política</Dialog.Title><Dialog.Description className="mt-0.5 text-sm text-ink-muted">O que muda em relação à versão publicada quando você publicar.</Dialog.Description></div>
+        <Dialog.Close aria-label="Fechar" className="ml-auto rounded p-1 text-ink-muted hover:text-ink"><X aria-hidden="true" className="size-5" /></Dialog.Close>
+      </div>
+      <div className="overflow-y-auto px-5 py-4">
+        {changes === null ? <p role="alert" className="rounded-lg bg-warning-soft p-3 text-sm text-warning">Há valores inválidos na edição atual. Corrija-os para ver as diferenças; a publicação mostra o erro exato.</p> : null}
+        {changes && !changes.length ? <p className="text-sm text-ink-muted">Nenhuma diferença.</p> : null}
+        {changes?.length ? <ul aria-label="Alterações" className="divide-y divide-line text-sm">{changes.map((change, index) => <li key={`${change.path}:${index}`} className="flex flex-wrap items-start gap-2 py-2">
+          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${CHANGE_STYLE[change.kind]}`}>{CHANGE_LABEL[change.kind]}</span>
+          <code className="font-mono text-xs text-ink-soft">{change.path}</code>
+          <span className="w-full font-mono text-xs break-all text-ink">{change.kind === "changed" ? <>{change.before} → {change.after}</> : change.kind === "reordered" ? "mesmos itens, em outra ordem" : change.value}</span>
+        </li>)}</ul> : null}
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal></Dialog.Root>;
 }
 
 export function InventorySelector({ devid, onChange }: { devid: string; onChange: (devid: string) => void }) {
