@@ -120,15 +120,21 @@ pub fn notices_to_show(state: &SessionState, last_shown: Option<u64>, now: jiff:
 }
 
 pub fn tooltip(state: &SessionState, now: jiff::Timestamp) -> String {
+    tooltip_for(crate::brand::BRAND, state, now)
+}
+
+/// The tooltip of a given edition (crate::brand), so both can be tested from one build.
+pub fn tooltip_for(brand: &crate::brand::Brand, state: &SessionState, now: jiff::Timestamp) -> String {
+    let product = brand.product;
     if !state.protected {
-        return "RSM Endpoint: aguardando a política da empresa".into();
+        return format!("{product}: aguardando a política da empresa");
     }
     match state.last_contact.as_deref().and_then(parse) {
-        Some(at) if now.as_second() - at.as_second() <= CONTACT_GRACE_SECONDS => "RSM Endpoint: proteção ativa".into(),
+        Some(at) if now.as_second() - at.as_second() <= CONTACT_GRACE_SECONDS => format!("{product}: proteção ativa"),
         Some(at) => {
             let local = at.to_zoned(jiff::tz::TimeZone::system()).strftime("%d/%m %H:%M").to_string();
-            format!("RSM Endpoint: proteção ativa, sem contato com o servidor desde {local}")
+            format!("{product}: proteção ativa, sem contato com o servidor desde {local}")
         }
-        None => "RSM Endpoint: proteção ativa, sem contato com o servidor".into(),
+        None => format!("{product}: proteção ativa, sem contato com o servidor"),
     }
 }

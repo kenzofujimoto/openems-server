@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 #[derive(Parser)]
-#[command(name = "openems-session", version, about = "openems session component")]
+#[command(name = "openems-session", version = openems_agent::brand::VERSION, about = "openems session component")]
 struct Cli {
     /// session.json to read (defaults to the service location).
     #[arg(long)]
@@ -68,7 +68,7 @@ mod tray {
     };
 
     const POLL_MS: u32 = 5000;
-    const TITLE: &str = "RSM Endpoint";
+    const TITLE: &str = openems_agent::brand::BRAND.product;
 
     struct Tray {
         board: PathBuf,

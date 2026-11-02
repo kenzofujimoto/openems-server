@@ -2,12 +2,15 @@
 
 When web filtering is in "block page" mode the agent points blocked domains at
 127.0.0.1 instead of 0.0.0.0, so the browser lands on this tiny local server,
-which serves the RSM-branded "access blocked" page for any host/path. Binding
+which serves the branded "access blocked" page for any host/path. Binding
 port 80 needs admin/root (same privilege the agent already needs to edit hosts).
 
-Identity follows rsm.global/brazil: RSM blue and green, the Prelo typeface
-with the same Noto Sans fallback, and the official logo. Everything is inline
-so the page renders with no network access.
+The page follows the agent edition (brand.py): OpenEMS by default, with the
+panel's indigo mark and IBM Plex; the RSM Brasil edition follows rsm.global/brazil
+(RSM blue and green, Prelo with the Noto Sans fallback, the official logo).
+Each template matches agent-rs/src/blockpage-<edition>.html without the category
+line, which only the native agent fills. Everything is inline so the page
+renders with no network access.
 """
 
 from __future__ import annotations
@@ -16,6 +19,11 @@ import html
 import socket
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+try:
+    from . import brand
+except ImportError:
+    import brand
 
 # Official RSM logo (rsm.global theme asset), embedded so the page never fetches it.
 _LOGO = (
@@ -78,7 +86,7 @@ _LOGO = (
     "F4inDgV/plI1ocFCYowxJfoH+p0CkV0zJn8AAAAASUVORK5CYII="
 )
 
-_PAGE = """<!doctype html>
+_RSM_PAGE = """<!doctype html>
 <html lang="pt-br"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Acesso bloqueado</title>
@@ -129,9 +137,68 @@ _PAGE = """<!doctype html>
 """
 
 
-def render(host: str) -> bytes:
+_OPENEMS_PAGE = """<!doctype html>
+<html lang="pt-br"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acesso bloqueado</title>
+<style>
+  :root {{ --brand:#4f46e5; --brand-dark:#3730a3; --accent:#22d3ee; --gray:#6b7280;
+    --ink:#111827; --text:#4b5563; --line:#e5e7eb; --canvas:#f5f6fa; --top:#0f172a; }}
+  * {{ box-sizing:border-box; }}
+  body {{ margin:0; min-height:100vh; display:flex; flex-direction:column; background:var(--canvas);
+    color:var(--text); font:16px/1.6 "IBM Plex Sans","Segoe UI","Helvetica Neue",Arial,sans-serif; }}
+  header {{ display:flex; align-items:center; gap:10px; padding:16px 32px; background:var(--top); color:#fff;
+    font-size:18px; font-weight:600; letter-spacing:-0.01em; }}
+  header svg {{ display:block; }}
+  main {{ flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }}
+  .card {{ width:100%; max-width:600px; background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:44px 40px; text-align:center; }}
+  .badge {{ width:64px; height:64px; margin:0 auto 20px; border-radius:16px; background:#eef2ff;
+    display:flex; align-items:center; justify-content:center; }}
+  h1 {{ margin:0; color:var(--ink); font-size:28px; font-weight:500; letter-spacing:-0.01em; }}
+  .host {{ display:inline-block; margin:16px 0 20px; padding:8px 14px; border-radius:10px; background:var(--canvas);
+    border:1px solid var(--line); color:var(--brand-dark); font:15px/1.4 "IBM Plex Mono",Consolas,"Courier New",monospace; word-break:break-all; }}
+  p {{ margin:0 auto; max-width:440px; }}
+  footer {{ padding:24px; text-align:center; font-size:13px; color:var(--gray); }}
+  footer strong {{ color:var(--brand-dark); font-weight:500; }}
+</style></head>
+<body>
+  <header>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M16 2.5 27.5 9v14L16 29.5 4.5 23V9L16 2.5Z" fill="#4f46e5"/>
+      <path d="M16 2.5 27.5 9v14L16 29.5V2.5Z" fill="#3730a3"/>
+      <path d="M16 11 10.5 20h11L16 11Z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round" opacity=".85"/>
+      <circle cx="16" cy="11" r="2.6" fill="#fff"/><circle cx="10.5" cy="20" r="2.6" fill="#fff"/>
+      <circle cx="21.5" cy="20" r="2.6" fill="#22d3ee"/>
+    </svg>
+    <span>OpenEMS</span>
+  </header>
+  <main>
+    <div class="card">
+      <div class="badge" aria-hidden="true">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <rect x="4" y="10.5" width="16" height="10" rx="2.5" stroke="#3730a3" stroke-width="1.8"/>
+          <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="#3730a3" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="12" cy="15.5" r="1.4" fill="#4f46e5"/>
+        </svg>
+      </div>
+      <h1>Acesso bloqueado</h1>
+      <div class="host">{host}</div>
+      <p>Este site foi bloqueado pela pol&iacute;tica de seguran&ccedil;a da sua organiza&ccedil;&atilde;o.
+      Se voc&ecirc; acredita que isto &eacute; um engano, fale com o time de TI.</p>
+    </div>
+  </main>
+  <footer>OpenEMS &middot; <strong>Prote&ccedil;&atilde;o de endpoint</strong></footer>
+</body></html>
+"""
+
+_PAGES = {"openems": _OPENEMS_PAGE, "rsm": _RSM_PAGE}
+
+
+def render(host: str, edition: str | None = None) -> bytes:
+    """The block page of `edition` (default: the configured edition, brand.EDITION)."""
     safe = html.escape(host) if host else "este site"
-    return _PAGE.format(host=safe, logo=_LOGO).encode("utf-8")
+    return _PAGES[brand.resolve(edition) if edition else brand.EDITION].format(host=safe, logo=_LOGO).encode("utf-8")
 
 
 class _Handler(BaseHTTPRequestHandler):

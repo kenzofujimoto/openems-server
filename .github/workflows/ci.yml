@@ -89,6 +89,7 @@ jobs:
         env:
           COVERAGE_FILE: .coverage.linux
           OPENEMS_REQUIRE_NATIVE_AGENT: "1"
+          OPENEMS_EXPECT_EDITION: openems
         run: python -m pytest -q -m "not windows_only" --junitxml=integration.junit.xml --cov=app --cov=agent --cov-report=term-missing --cov-report=json:coverage.json --cov-report=xml:coverage.xml
       - name: Reject skipped Linux tests
         run: python tools/check_quality.py integration.junit.xml
@@ -151,9 +152,12 @@ jobs:
         run: |
           cargo fmt --check
           cargo clippy --locked --all-targets -- -D warnings
-      - name: Unit and shared-vector tests
+          cargo clippy --locked --all-targets --features rsm -- -D warnings
+      - name: Unit and shared-vector tests (both editions)
         working-directory: agent-rs
-        run: cargo test --locked
+        run: |
+          cargo test --locked
+          cargo test --locked --features rsm
       - name: Release build (static CRT, no runtime dependencies)
         working-directory: agent-rs
         run: cargo build --release --locked
@@ -164,6 +168,7 @@ jobs:
       - name: Contract, service and MSI installation tests
         env:
           OPENEMS_REQUIRE_NATIVE_AGENT: "1"
+          OPENEMS_EXPECT_EDITION: openems
           OPENEMS_SERVICE_TESTS: "1"
           OPENEMS_MSI: openems-agent.msi
         # Cross-platform native contract plus every test marked windows_only (deselected on Linux).
@@ -180,6 +185,26 @@ jobs:
           retention-days: 14
           path: |
             openems-agent.msi
+            agent-rs/target/release/openems-agent.exe
+            agent-rs/target/release/openems-session.exe
+      # RSM Brasil edition (docs/agent-editions.md); built after the OpenEMS artifacts are uploaded.
+      - name: RSM edition release build and MSI
+        run: |
+          cargo build --release --locked --features rsm --manifest-path agent-rs/Cargo.toml
+          wix build agent-rs/installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d Edition=rsm -d AgentExe=agent-rs/target/release/openems-agent.exe -d SessionExe=agent-rs/target/release/openems-session.exe -o openems-agent-rsm.msi
+      - name: RSM edition session and version contract
+        env:
+          OPENEMS_REQUIRE_NATIVE_AGENT: "1"
+          OPENEMS_EXPECT_EDITION: rsm
+        run: python -m pytest tests/test_native_session.py -q -m "not windows_only" --junitxml=native-rsm.junit.xml
+      - name: Reject skipped RSM edition tests
+        run: python tools/check_quality.py native-rsm.junit.xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openems-agent-windows-rsm
+          retention-days: 14
+          path: |
+            openems-agent-rsm.msi
             agent-rs/target/release/openems-agent.exe
             agent-rs/target/release/openems-session.exe
 

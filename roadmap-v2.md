@@ -25,7 +25,7 @@ O servidor continua em Python/FastAPI. Python só deixa de ser exigido nas máqu
 Extraída de rsm.global/brazil/pt-br:
 
 - Cores: azul RSM `#009CDE` (principal), verde RSM `#3F9C35`, cinza texto `#515356`, cinza médio `#888B8D`, azul escuro `#006E9D` e `#27455C`.
-- Fonte: Prelo, comercial. O painel e a página de bloqueio declaram `Prelo` primeiro e usam Noto Sans (licença OFL, a mesma alternativa do site da RSM) quando a Prelo não está instalada. Para usar a Prelo de verdade, a RSM precisa fornecer os arquivos licenciados.
+- Fonte: Prelo, comercial. Na edição RSM (`npm run build:rsm`, `cargo build --features rsm`; ver docs/agent-editions.md), o painel e a página de bloqueio declaram `Prelo` primeiro e usam Noto Sans (licença OFL, a mesma alternativa do site da RSM) quando a Prelo não está instalada. Para usar a Prelo de verdade, a RSM precisa fornecer os arquivos licenciados.
 - Logo: o PNG oficial do site (332×140). Não há versão SVG pública; uma versão vetorial deve vir do marketing da RSM.
 
 ## Como o FortiClient faz, e como faremos

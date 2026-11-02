@@ -76,6 +76,24 @@ def test_a_closed_application_reaches_the_session_board(native, tmp_path):
                 stop(agent)
 
 
+PRODUCT = {"openems": "OpenEMS Endpoint", "rsm": "RSM Endpoint"}
+
+
+def built_edition(binary: Path) -> str:
+    """`--version` ends with "(openems)" or "(rsm)" (agent-rs/src/brand.rs)."""
+    result = subprocess.run([str(binary), "--version"], capture_output=True, text=True, timeout=30, check=False)
+    assert result.returncode == 0, result.stderr
+    edition = result.stdout.strip().rsplit("(", 1)[-1].rstrip(")")
+    assert edition in PRODUCT, result.stdout
+    expected = os.environ.get("OPENEMS_EXPECT_EDITION")
+    assert expected in (None, edition), f"built {edition}, expected {expected}"
+    return edition
+
+
+def test_both_binaries_report_the_same_edition(native):
+    assert built_edition(native) == built_edition(session_binary(native))
+
+
 def test_the_session_component_prints_what_it_would_show(native, tmp_path):
     path = tmp_path / "session.json"
     path.write_text(json.dumps({"protected": True, "last_contact": None, "notices": [
@@ -84,11 +102,12 @@ def test_the_session_component_prints_what_it_would_show(native, tmp_path):
     result = subprocess.run([str(session_binary(native)), "--print", "--board", str(path)],
                             capture_output=True, text=True, encoding="utf-8", timeout=30, check=False)
     assert result.returncode == 0, result.stderr
+    product = PRODUCT[built_edition(session_binary(native))]
     shown = json.loads(result.stdout)
-    assert shown == {"tooltip": "RSM Endpoint: proteção ativa, sem contato com o servidor", "notices": []}
+    assert shown == {"tooltip": f"{product}: proteção ativa, sem contato com o servidor", "notices": []}
     missing = subprocess.run([str(session_binary(native)), "--print", "--board", str(tmp_path / "absent.json")],
                              capture_output=True, text=True, encoding="utf-8", timeout=30, check=False)
-    assert json.loads(missing.stdout) == {"tooltip": "RSM Endpoint: aguardando a política da empresa", "notices": []}
+    assert json.loads(missing.stdout) == {"tooltip": f"{product}: aguardando a política da empresa", "notices": []}
 
 
 ROOT = Path(__file__).resolve().parent.parent

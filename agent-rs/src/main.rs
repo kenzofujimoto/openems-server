@@ -10,7 +10,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 #[derive(Parser)]
-#[command(name = "openems-agent", version, about = "openems endpoint agent")]
+#[command(name = "openems-agent", version = openems_agent::brand::VERSION, about = "openems endpoint agent")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

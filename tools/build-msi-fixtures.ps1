@@ -1,7 +1,9 @@
-param([string]$OutputDirectory, [string]$Wix = 'wix', [string]$AgentExe, [switch]$Production, [switch]$Next, [switch]$Plan)
+param([string]$OutputDirectory, [string]$Wix = 'wix', [string]$AgentExe, [switch]$Production, [switch]$Next, [switch]$Plan,
+      [ValidateSet('openems', 'rsm')][string]$Edition = 'openems')
 # Builds the MSIs consumed by the Sandbox harnesses. Fault-injection fixtures must never ship;
 # -Production builds the package without any test-only define. -Production -Next builds the same
 # agent as a later version, so harnesses can upgrade from the current production package.
+# -Edition rsm packages the RSM Brasil edition; the executables must be built with `cargo build --release --features rsm`.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ($Production -and $Next) {
@@ -20,7 +22,7 @@ if ($Production -and $Next) {
     $defines = @('FaultInjection=1')
 }
 if ($Plan) {
-    @{ fixtures=$fixtures; defines=$defines; versions=$versions } | ConvertTo-Json -Depth 3
+    @{ fixtures=$fixtures; defines=$defines; versions=$versions; edition=$Edition } | ConvertTo-Json -Depth 3
     exit 0
 }
 if (-not $OutputDirectory) { throw 'Pass -OutputDirectory for the Sandbox input folder.' }
@@ -31,10 +33,15 @@ if (-not (Test-Path -LiteralPath $AgentExe -PathType Leaf)) { throw "Agent execu
 # The session component is built next to the agent (cargo builds both binaries).
 $SessionExe = Join-Path (Split-Path -Parent $AgentExe) 'openems-session.exe'
 if (-not (Test-Path -LiteralPath $SessionExe -PathType Leaf)) { throw "Session component not found: $SessionExe" }
+# Refuse to package binaries of the other edition (`--version` ends with "(openems)" or "(rsm)").
+foreach ($binary in @($AgentExe, $SessionExe)) {
+    $built = [string](& $binary --version)
+    if (-not $built.EndsWith("($Edition)")) { throw "$binary is not the $Edition edition: $built" }
+}
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 for ($index = 0; $index -lt $versions.Count; $index++) {
     $target = Join-Path $OutputDirectory $fixtures[$index]
-    $arguments = @('build', $source, '-arch', 'x64', '-d', ('Version=' + $versions[$index]), '-d', ('AgentExe=' + $AgentExe), '-d', ('SessionExe=' + $SessionExe)) +
+    $arguments = @('build', $source, '-arch', 'x64', '-d', ('Version=' + $versions[$index]), '-d', ('AgentExe=' + $AgentExe), '-d', ('SessionExe=' + $SessionExe), '-d', ('Edition=' + $Edition)) +
         @($defines | ForEach-Object { @('-d', $_) }) + @('-o', $target)
     & $Wix @arguments
     if ($LASTEXITCODE -ne 0) { throw ('wix build failed for ' + $fixtures[$index] + ' with exit code ' + $LASTEXITCODE) }

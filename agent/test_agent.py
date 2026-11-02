@@ -148,10 +148,11 @@ def test_enforce_block_page_uses_loopback(tmp_path, monkeypatch) -> None:
 def test_blockpage_render_is_branded() -> None:
     import blockpage
 
-    page = blockpage.render("example.com").decode("utf-8")
-    assert "Acesso bloqueado" in page
-    assert "example.com" in page
-    assert "RSM" in page
+    for edition in ("openems", "rsm"):
+        page = blockpage.render("<b>example.com</b>", edition).decode("utf-8")
+        assert "Acesso bloqueado" in page
+        assert "&lt;b&gt;example.com&lt;/b&gt;" in page and "<b>" not in page
+        assert "http://" not in page and "https://" not in page
 
 
 def test_blockpage_uses_rsm_identity_offline() -> None:
@@ -160,11 +161,46 @@ def test_blockpage_uses_rsm_identity_offline() -> None:
 
     import blockpage
 
-    page = blockpage.render("example.com").decode("utf-8")
+    page = blockpage.render("example.com", "rsm").decode("utf-8")
     # The official logo is embedded so the page works with no network access.
     match = re.search(r'<img[^>]+src="data:image/png;base64,([A-Za-z0-9+/=]+)"[^>]*alt="RSM"', page)
     assert match is not None
     assert base64.b64decode(match.group(1)).startswith(b"\x89PNG\r\n\x1a\n")
     assert "#009cde" in page.lower() and "#3f9c35" in page.lower()
     assert "Prelo" in page and "Noto Sans" in page
+    assert "RSM Brasil &middot; <strong>O poder de ser compreendido</strong>" in page
     assert "http://" not in page and "https://" not in page
+
+
+def test_blockpage_openems_edition_carries_no_rsm_identity() -> None:
+    import blockpage
+
+    page = blockpage.render("example.com", "openems").decode("utf-8")
+    assert "<span>OpenEMS</span>" in page and "#4f46e5" in page and "IBM Plex Sans" in page
+    assert "RSM" not in page and "Prelo" not in page and "data:image/png" not in page
+
+
+def test_blockpage_defaults_to_the_configured_edition(monkeypatch) -> None:
+    import blockpage
+    import brand
+
+    assert brand.resolve(None) == "openems" and brand.resolve("") == "openems"
+    assert brand.resolve("rsm") == "rsm" and brand.resolve("unknown") == "openems"
+    for edition in brand.EDITIONS:
+        monkeypatch.setattr(brand, "EDITION", edition)
+        assert blockpage.render("example.com") == blockpage.render("example.com", edition)
+
+
+def test_edition_is_read_from_the_environment(monkeypatch) -> None:
+    import importlib
+
+    import brand
+
+    try:
+        monkeypatch.setenv("OPENEMS_AGENT_EDITION", "rsm")
+        assert importlib.reload(brand).EDITION == "rsm"
+        monkeypatch.delenv("OPENEMS_AGENT_EDITION")
+        assert importlib.reload(brand).EDITION == "openems"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(brand)

@@ -176,6 +176,7 @@ def test_install_start_failure_rolls_back_service_and_keeps_protected_data(tmp_p
     $bytes = [IO.File]::ReadAllBytes($cfg)
     if ($bytes[0] -eq 239) { throw 'Configuration has a UTF8 BOM' }
     if (-not ($script:calls | Where-Object {$_ -match 'cleanup-hosts$'})) { throw 'Managed hosts rollback missing' }
+    if (-not ($script:calls | Where-Object {$_ -match 'Environment /t REG_MULTI_SZ /d OPENEMS_AGENT_EDITION=openems /f$'})) { throw 'Default edition was not recorded' }
     if ($script:calls[0] -ne '-I -c import sys; assert sys.version_info >= (3, 11); assert sys.prefix == sys.base_prefix, "A global Python installation is required"') { throw 'Runtime validation did not precede installation' }
     '''
     result = run_pwsh(tmp_path, script, str(path), str(tmp_path), "unused-runtime")

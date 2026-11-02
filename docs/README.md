@@ -20,6 +20,7 @@ Referência atualizada em 27/10/2026. Os documentos de planejamento na raiz pres
 | Limites e pré-requisitos macOS | [macOS](../deploy/macos/SUPPORT.md) |
 | Contrato de interoperabilidade | [SPEC-INTEROP](../SPEC-INTEROP.md) |
 | Agente Python de referência | [Agente de referência](../agent/README.md) |
+| Edições OpenEMS e RSM Brasil do agente | [Edições do agente](agent-editions.md) |
 
 ## Estado atual
 

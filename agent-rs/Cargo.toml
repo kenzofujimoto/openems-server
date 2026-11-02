@@ -5,6 +5,11 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+[features]
+# RSM Brasil edition (tray text, block page, service description); the default build is OpenEMS.
+# See docs/agent-editions.md.
+rsm = []
+
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 fastrand = "2.5.0"

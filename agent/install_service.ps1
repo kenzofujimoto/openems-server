@@ -2,6 +2,8 @@
 <# Installs from this trusted checkout into protected ProgramData storage.
    Requires a machine-wide Python 3.11+ installation accessible to LocalSystem.
    Example: .\install_service.ps1 -PythonPath C:\Python314\python.exe -Server https://ems.example -Invitation ...
+   -Edition rsm installs the RSM Brasil edition (block page identity); the default is OpenEMS.
+   It is stored as OPENEMS_AGENT_EDITION in the service environment (agent/brand.py).
 #>
 param(
     [Parameter(Mandatory = $true)][string]$PythonPath,
@@ -10,7 +12,8 @@ param(
     [string]$Vdom = "Default",
     [ValidateRange(1, 86400)][int]$Interval = 15,
     [string]$Invitation,
-    [switch]$AllowInsecureHttp
+    [switch]$AllowInsecureHttp,
+    [ValidateSet('openems', 'rsm')][string]$Edition = 'openems'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -91,7 +94,7 @@ try {
     }
     Set-Acl -LiteralPath $cfgDir -AclObject $security
     New-Item -ItemType Directory -Path $installedDir | Out-Null
-    foreach ($name in @('service.py', 'openems_agent.py', 'policy.py', 'blockpage.py', 'requirements.txt', 'uninstall_service.ps1')) {
+    foreach ($name in @('service.py', 'openems_agent.py', 'policy.py', 'blockpage.py', 'brand.py', 'requirements.txt', 'uninstall_service.ps1')) {
         $sourcePath = Join-Path $sourceDir $name
         if (((Get-Item -LiteralPath $sourcePath).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
             throw "Agent source files must not be reparse points"
@@ -117,6 +120,8 @@ try {
     Invoke-CheckedNative $PythonPath @('-I', '-c', 'import win32serviceutil; win32serviceutil.LocatePythonServiceExe()')
     $createdService = $true
     Invoke-CheckedNative $PythonPath @('-I', $servicePath, '--startup', 'auto', 'install')
+    # The Service Control Manager passes this multi-string to the service process (agent/brand.py).
+    Invoke-CheckedNative 'reg.exe' @('add', 'HKLM\SYSTEM\CurrentControlSet\Services\openems-agent', '/v', 'Environment', '/t', 'REG_MULTI_SZ', '/d', "OPENEMS_AGENT_EDITION=$Edition", '/f')
     Invoke-CheckedNative 'sc.exe' @('failure', 'openems-agent', 'reset=', '86400', 'actions=', 'restart/5000/restart/15000/restart/60000')
     Invoke-CheckedNative 'sc.exe' @('failureflag', 'openems-agent', '1')
     Invoke-CheckedNative $PythonPath @('-I', $servicePath, 'start')

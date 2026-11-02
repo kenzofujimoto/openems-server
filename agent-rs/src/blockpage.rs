@@ -1,5 +1,5 @@
-//! Local RSM-branded block page for domains redirected to 127.0.0.1.
-//! Same markup as agent/blockpage.py; everything is inline so it works offline.
+//! Local branded block page for domains redirected to 127.0.0.1.
+//! Same markup as agent/blockpage.py for each edition (crate::brand); everything is inline so it works offline.
 
 use crate::error::Result;
 use std::io::{Read, Write};
@@ -11,9 +11,7 @@ use std::time::Duration;
 use crate::https_blockpage::BlockedDomains;
 use crate::runtime::StopSignal;
 
-const LOGO: &[u8] = include_bytes!("../assets/rsm-logo.png");
-
-const PAGE: &str = include_str!("blockpage.html");
+use crate::brand::{BRAND, Brand};
 
 fn base64(data: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -46,11 +44,17 @@ fn escape_html(text: &str) -> String {
     })
 }
 
+/// The block page of the edition this binary was built as.
 pub fn render(host: &str, category: Option<&str>) -> String {
+    render_for(BRAND, host, category)
+}
+
+/// The block page of a given edition, so both can be tested from one build.
+pub fn render_for(brand: &Brand, host: &str, category: Option<&str>) -> String {
     let host = if host.is_empty() { "este site".to_owned() } else { escape_html(host) };
     let category = category
         .map_or_else(String::new, |label| format!("<div class=\"category\">Categoria: {}</div>", escape_html(label)));
-    PAGE.replace("{logo}", &base64(LOGO)).replace("{host}", &host).replace("{category}", &category)
+    brand.block_page.replace("{logo}", &base64(brand.logo)).replace("{host}", &host).replace("{category}", &category)
 }
 
 fn host_header(request: &str) -> String {
@@ -123,11 +127,35 @@ mod tests {
 
     #[test]
     fn page_is_branded_offline_and_escapes_hosts() {
-        let page = render("<script>alert(1)</script>", None);
-        assert!(page.contains("Acesso bloqueado") && page.contains("#009cde") && page.contains("Prelo"));
+        for brand in [&crate::brand::OPENEMS, &crate::brand::RSM] {
+            let page = render_for(brand, "<script>alert(1)</script>", None);
+            assert!(page.contains("Acesso bloqueado"), "{}", brand.id);
+            assert!(page.contains("&lt;script&gt;") && !page.contains("<script>"), "{}", brand.id);
+            assert!(!page.contains("http://") && !page.contains("https://"), "{}", brand.id);
+            assert!(!page.contains("{logo}") && !page.contains("{category}"), "{}", brand.id);
+        }
+    }
+
+    #[test]
+    fn the_rsm_edition_keeps_the_rsm_identity() {
+        let page = render_for(&crate::brand::RSM, "example.com", None);
+        assert!(page.contains("#009cde") && page.contains("Prelo") && page.contains("alt=\"RSM\""));
         assert!(page.contains("data:image/png;base64,iVBORw0KGgo"));
-        assert!(page.contains("&lt;script&gt;") && !page.contains("<script>"));
-        assert!(!page.contains("http://") && !page.contains("https://"));
+        assert!(page.contains("RSM Brasil &middot; <strong>O poder de ser compreendido</strong>"));
+    }
+
+    #[test]
+    fn the_openems_edition_carries_no_rsm_identity() {
+        let page = render_for(&crate::brand::OPENEMS, "example.com", None);
+        assert!(page.contains("<span>OpenEMS</span>") && page.contains("#4f46e5") && page.contains("IBM Plex Sans"));
+        assert!(!page.contains("RSM") && !page.contains("Prelo") && !page.contains("#009cde"));
+        assert!(!page.contains("data:image/png"));
+    }
+
+    #[test]
+    fn render_uses_the_built_edition() {
+        assert_eq!(render("example.com", Some("Jogos")), render_for(BRAND, "example.com", Some("Jogos")));
+        assert_eq!(BRAND.id, if cfg!(feature = "rsm") { "rsm" } else { "openems" });
     }
 
     #[test]

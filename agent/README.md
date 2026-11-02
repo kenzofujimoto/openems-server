@@ -35,6 +35,11 @@ python openems_agent.py --server http://localhost:8013 --devid MY-PC-01
 
 Flags: `--vdom`, `--interval <seconds>`, `--hosts-file <path>`, `--dry-run`.
 
+The block page uses the OpenEMS identity by default. Set `OPENEMS_AGENT_EDITION=rsm`
+(or install the service with `install_service.ps1 -Edition rsm`) for the RSM Brasil
+edition, the counterpart of `cargo build --features rsm` in the native agent; see
+[agent editions](../docs/agent-editions.md).
+
 ## Run as a Windows service (boot-time, continuous)
 
 From an **elevated / Administrator** PowerShell:

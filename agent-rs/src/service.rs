@@ -24,7 +24,6 @@ pub const SERVICE_NAME: &str = "openems-agent";
 /// SYSTEM task that starts the service again if it was disabled or stopped (tamper-protection.md, decision 3).
 pub const WATCHDOG_TASK: &str = "openems-agent watchdog";
 const DISPLAY_NAME: &str = "openems endpoint agent";
-const DESCRIPTION: &str = "Applies RSM endpoint policies and reports their status to the management server.";
 
 static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 
@@ -182,7 +181,7 @@ pub fn install(config: Option<PathBuf>, start: bool) -> Result<()> {
                 | ServiceAccess::WRITE_DAC,
         )
         .map_err(service_error)?;
-    service.set_description(DESCRIPTION).map_err(service_error)?;
+    service.set_description(crate::brand::BRAND.service_description).map_err(service_error)?;
     apply_recovery(&service)?;
     // From here on only SYSTEM can stop or remove it (the MSI runs as SYSTEM).
     apply_security(&service)?;
