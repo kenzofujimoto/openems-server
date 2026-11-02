@@ -1,6 +1,7 @@
 //! Session component (session-component.md): the notice board the service writes and what the
 //! component in each user session shows from it.
 
+use openems_agent::brand::PRODUCT;
 use openems_agent::session::{
     MAX_NOTICES, Notice, STARTUP_WINDOW_SECONDS, SessionBoard, SessionState, load, notices_to_show, path_for, tooltip,
 };
@@ -104,15 +105,15 @@ fn a_fresh_component_shows_only_recent_notices_then_only_new_ones() {
 fn the_tooltip_tells_whether_protection_is_on_and_when_the_server_was_last_seen() {
     let now = at("2026-10-25T12:10:00Z");
     let mut state = SessionState { protected: false, last_contact: None, notices: vec![] };
-    assert_eq!(tooltip(&state, now), "RSM Endpoint: aguardando a política da empresa");
+    assert_eq!(tooltip(&state, now), format!("{PRODUCT}: aguardando a política da empresa"));
     state.protected = true;
     state.last_contact = Some("2026-10-25T12:09:30Z".into());
-    assert_eq!(tooltip(&state, now), "RSM Endpoint: proteção ativa");
+    assert_eq!(tooltip(&state, now), format!("{PRODUCT}: proteção ativa"));
     state.last_contact = Some("2026-10-25T11:00:00Z".into());
     let offline = tooltip(&state, now);
-    assert!(offline.starts_with("RSM Endpoint: proteção ativa, sem contato com o servidor desde "), "{offline}");
+    assert!(offline.starts_with(&format!("{PRODUCT}: proteção ativa, sem contato com o servidor desde ")), "{offline}");
     state.last_contact = None;
-    assert_eq!(tooltip(&state, now), "RSM Endpoint: proteção ativa, sem contato com o servidor");
+    assert_eq!(tooltip(&state, now), format!("{PRODUCT}: proteção ativa, sem contato com o servidor"));
 }
 
 #[test]

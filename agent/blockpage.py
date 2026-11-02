@@ -2,17 +2,19 @@
 
 When web filtering is in "block page" mode the agent points blocked domains at
 127.0.0.1 instead of 0.0.0.0, so the browser lands on this tiny local server,
-which serves the RSM-branded "access blocked" page for any host/path. Binding
+which serves the "access blocked" page for any host/path. Binding
 port 80 needs admin/root (same privilege the agent already needs to edit hosts).
 
-Identity follows rsm.global/brazil: RSM blue and green, the Prelo typeface
-with the same Noto Sans fallback, and the official logo. Everything is inline
-so the page renders with no network access.
+The identity is OpenEMS by default; OPENEMS_BRAND=rsm selects the RSM Brasil
+edition (rsm.global/brazil: RSM blue and green, Prelo with the Noto Sans
+fallback, official logo). Everything is inline so the page renders offline.
 """
 
 from __future__ import annotations
 
+import base64
 import html
+import os
 import socket
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -83,11 +85,10 @@ _PAGE = """<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Acesso bloqueado</title>
 <style>
-  :root {{ --blue:#009cde; --blue-dark:#006e9d; --green:#3f9c35; --gray:#888b8d;
-    --ink:#1f2428; --text:#515356; --line:#e7e9ec; --canvas:#f6f7f9; }}
+  {theme}
   * {{ box-sizing:border-box; }}
   body {{ margin:0; min-height:100vh; display:flex; flex-direction:column; background:var(--canvas);
-    color:var(--text); font:16px/1.6 "Prelo","Noto Sans","Segoe UI","Helvetica Neue",Arial,sans-serif; }}
+    color:var(--text); font:16px/1.6 var(--font); }}
   .brandbar {{ display:flex; height:6px; }}
   .brandbar span:nth-child(1) {{ flex:1; background:var(--gray); }}
   .brandbar span:nth-child(2) {{ flex:2; background:var(--green); }}
@@ -97,7 +98,7 @@ _PAGE = """<!doctype html>
   main {{ flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }}
   .card {{ width:100%; max-width:600px; background:#fff; border:1px solid var(--line); border-radius:16px;
     padding:44px 40px; text-align:center; }}
-  .badge {{ width:64px; height:64px; margin:0 auto 20px; border-radius:16px; background:#e5f5fc;
+  .badge {{ width:64px; height:64px; margin:0 auto 20px; border-radius:16px; background:var(--badge);
     display:flex; align-items:center; justify-content:center; }}
   h1 {{ margin:0; color:var(--ink); font-size:28px; font-weight:500; letter-spacing:-0.01em; }}
   .host {{ display:inline-block; margin:16px 0 20px; padding:8px 14px; border-radius:10px; background:var(--canvas);
@@ -108,7 +109,7 @@ _PAGE = """<!doctype html>
 </style></head>
 <body>
   <div class="brandbar" aria-hidden="true"><span></span><span></span><span></span></div>
-  <header><img src="data:image/png;base64,{logo}" alt="RSM"></header>
+  <header><img src="data:{logo_mime};base64,{logo}" alt="{logo_alt}"></header>
   <main>
     <div class="card">
       <div class="badge" aria-hidden="true">
@@ -124,14 +125,49 @@ _PAGE = """<!doctype html>
       Se voc&ecirc; acredita que isto &eacute; um engano, fale com o time de TI.</p>
     </div>
   </main>
-  <footer>RSM Brasil &middot; <strong>O poder de ser compreendido</strong></footer>
+  <footer>{footer}</footer>
 </body></html>
 """
 
 
+# Same editions as the native agent (agent-rs/src/brand.rs); OPENEMS_BRAND=rsm selects RSM Brasil.
+_OPENEMS_LOGO = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 156 32" width="156" height="32">'
+    '<path d="M16 2.5 27.5 9v14L16 29.5 4.5 23V9L16 2.5Z" fill="#4f46e5"/><path d="M16 2.5 27.5 9v14L16 29.5V2.5Z" fill="#3730a3"/>'
+    '<circle cx="16" cy="11" r="2.6" fill="#fff"/><circle cx="10.5" cy="20" r="2.6" fill="#fff"/>'
+    '<circle cx="21.5" cy="20" r="2.6" fill="#22d3ee"/><text x="38" y="22.5" font-family="IBM Plex Sans,Segoe UI,Arial,sans-serif" '
+    'font-size="19" font-weight="600" fill="#111827">Open<tspan fill="#4f46e5" font-weight="500">EMS</tspan></text></svg>'
+)
+_EDITIONS = {
+    "openems": {
+        "theme": ":root { --blue:#4f46e5; --blue-dark:#3730a3; --green:#22d3ee; --gray:#7a849c; --ink:#111827;"
+                 " --text:#46506a; --line:#e3e7ef; --canvas:#f4f6fa; --badge:#eef0ff;"
+                 " --font:\"IBM Plex Sans\",\"Segoe UI\",\"Helvetica Neue\",Arial,sans-serif; }",
+        "logo_mime": "image/svg+xml", "logo": base64.b64encode(_OPENEMS_LOGO.encode("utf-8")).decode("ascii"),
+        "logo_alt": "OpenEMS",
+        "footer": "OpenEMS &middot; <strong>Pol&iacute;tica de seguran&ccedil;a da sua organiza&ccedil;&atilde;o</strong>",
+    },
+    "rsm": {
+        "theme": ":root { --blue:#009cde; --blue-dark:#006e9d; --green:#3f9c35; --gray:#888b8d; --ink:#1f2428;"
+                 " --text:#515356; --line:#e7e9ec; --canvas:#f6f7f9; --badge:#e5f5fc;"
+                 " --font:\"Prelo\",\"Noto Sans\",\"Segoe UI\",\"Helvetica Neue\",Arial,sans-serif; }",
+        "logo_mime": "image/png", "logo": _LOGO, "logo_alt": "RSM",
+        "footer": "RSM Brasil &middot; <strong>O poder de ser compreendido</strong>",
+    },
+}
+
+
+def edition() -> dict[str, str]:
+    return _EDITIONS["rsm" if os.environ.get("OPENEMS_BRAND") == "rsm" else "openems"]
+
+
 def render(host: str) -> bytes:
     safe = html.escape(host) if host else "este site"
-    return _PAGE.format(host=safe, logo=_LOGO).encode("utf-8")
+    brand = edition()
+    # The theme is CSS, so its braces are escaped before str.format fills the page.
+    page = _PAGE.replace("{theme}", brand["theme"].replace("{", "{{").replace("}", "}}"))
+    return page.format(host=safe, logo=brand["logo"], logo_mime=brand["logo_mime"], logo_alt=brand["logo_alt"],
+                       footer=brand["footer"]).encode("utf-8")
 
 
 class _Handler(BaseHTTPRequestHandler):

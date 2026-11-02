@@ -5,6 +5,10 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+[features]
+# RSM Brasil edition: tray, block page and service text (cargo build --features rsm-brand).
+rsm-brand = []
+
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 fastrand = "2.5.0"

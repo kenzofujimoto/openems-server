@@ -73,7 +73,7 @@ if (-not $SystemPhase) {
                 $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'
                 Start-Process -FilePath $edge -ArgumentList @('--inprivate', 'https://a.b.iana.org/')
                 Write-Host 'Edge opened https://a.b.iana.org/. Wait until the page finishes loading.'
-                $reply = Read-Host 'Does Edge show the RSM block page without a certificate warning? Type YES or NO, then Enter'
+                $reply = Read-Host 'Does Edge show the block page without a certificate warning? Type YES or NO, then Enter'
                 Set-Content -LiteralPath $answer -Value $reply.Trim().ToUpperInvariant()
             }
             Start-Sleep -Milliseconds 500

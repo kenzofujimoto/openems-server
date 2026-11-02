@@ -1,4 +1,4 @@
-//! Local RSM-branded block and warning page for domains redirected to 127.0.0.1.
+//! Local block and warning page for domains redirected to 127.0.0.1, in the build's edition (see `brand`).
 //! Same markup as agent/blockpage.py; everything is inline so it works offline.
 
 use crate::error::Result;
@@ -10,8 +10,6 @@ use std::time::Duration;
 
 use crate::https_blockpage::BlockedDomains;
 use crate::runtime::StopSignal;
-
-const LOGO: &[u8] = include_bytes!("../assets/rsm-logo.png");
 
 const PAGE: &str = include_str!("blockpage.html");
 
@@ -83,7 +81,11 @@ pub fn render_page(host: &str, category: Option<&str>, page: &Page<'_>) -> Strin
             ("Acesso liberado", PROCEEDED, String::new(), "<meta http-equiv=\"refresh\" content=\"6;url=/\">")
         }
     };
-    PAGE.replace("{logo}", &base64(LOGO))
+    PAGE.replace("{theme}", crate::brand::THEME)
+        .replace("{logo_mime}", crate::brand::LOGO_MIME)
+        .replace("{logo_alt}", crate::brand::LOGO_ALT)
+        .replace("{footer}", crate::brand::FOOTER)
+        .replace("{logo}", &base64(crate::brand::LOGO))
         .replace("{head}", head)
         .replace("{title}", title)
         .replace("{message}", message)
@@ -183,8 +185,14 @@ mod tests {
     #[test]
     fn page_is_branded_offline_and_escapes_hosts() {
         let page = render("<script>alert(1)</script>", None);
-        assert!(page.contains("Acesso bloqueado") && page.contains("#009cde") && page.contains("Prelo"));
-        assert!(page.contains("data:image/png;base64,iVBORw0KGgo"));
+        assert!(page.contains("Acesso bloqueado") && page.contains(crate::brand::FOOTER));
+        if cfg!(feature = "rsm-brand") {
+            assert!(page.contains("#009cde") && page.contains("Prelo"));
+            assert!(page.contains("data:image/png;base64,iVBORw0KGgo") && page.contains("alt=\"RSM\""));
+        } else {
+            assert!(page.contains("#4f46e5") && page.contains("IBM Plex Sans") && !page.contains("RSM"));
+            assert!(page.contains("data:image/svg+xml;base64,PHN2Zy"));
+        }
         assert!(page.contains("&lt;script&gt;") && !page.contains("<script>"));
         assert!(!page.contains("http://") && !page.contains("https://"));
     }

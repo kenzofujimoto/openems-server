@@ -109,6 +109,15 @@ A identidade RSM continua disponível no mesmo código, escolhida no build. Layo
 | OpenEMS (padrão) | `npm run dev:mock` | `npm run build` | `docker build .` |
 | RSM Brasil | `npm run dev:mock:rsm` | `npm run build:rsm` | `docker build --build-arg PANEL_BRAND=rsm .` |
 
+O agente segue a mesma escolha (texto da bandeja, página de bloqueio e aviso, descrição do serviço e fabricante do MSI):
+
+| Edição | Agente nativo | MSI | Agente Python de referência |
+|---|---|---|---|
+| OpenEMS (padrão) | `cargo build --release` | `wix build … ` | padrão |
+| RSM Brasil | `cargo build --release --features rsm-brand` | `wix build … -d Edition=rsm` | `OPENEMS_BRAND=rsm` |
+
+Na edição RSM os textos são os mesmos de antes ("RSM Endpoint: proteção ativa", rodapé "RSM Brasil · O poder de ser compreendido").
+
 ## 5. Plano de implementação e estado
 
 1. ✅ **Identidade:** tokens semânticos em `styles.css`, troca de `rsm-*` nos componentes, logo SVG, favicon, título, fontes Plex. Os testes não dependem de cor; só os mocks `RSM-*` podem ser renomeados.
