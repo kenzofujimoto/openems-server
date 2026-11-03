@@ -9,7 +9,7 @@ httptools==0.9.0          # uvicorn HTTP parser
 uvloop==0.23.0; sys_platform != "win32"
 python-multipart==0.0.32   # SAML ACS form POST
 psycopg[binary]==3.3.6     # PostgresStore
-redis==7.2.1               # RedisQueue
+redis==8.1.0               # RedisQueue
 signxml==5.2.0             # SAML XML-DSig verification (pulls lxml + cryptography)
 defusedxml==0.7.1          # Hardened parsing of untrusted SAML XML
 tzdata==2026.5             # IANA zones for policy schedules (Windows has no system database)
