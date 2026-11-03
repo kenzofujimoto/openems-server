@@ -1,5 +1,15 @@
 # Handoff — roadmap v2
 
+## Estado atual — 02/11/2026: catálogo pronto para rodar na VM
+
+- Código atualizado do GitHub até `e70d5ad`; preparação e correções do roteiro na branch `feature/catalog-vm-acceptance`, fonte final `f15761c6671f95e0696fe8f0fd73a0a7558eacc5`.
+- **Aceite do catálogo ainda pendente.** VM `OpenEMS-Win11-Lab` pronta, Windows 11 Enterprise Evaluation 26300.9711/Tools 13344, preflight aprovado e snapshot limpo `clean-preflight-before-controls` UID 1. Nenhuma rodada nova de controles foi iniciada no guest.
+- [Recibo de preparação e limites](validation/catalog-vm-preparation-f15761c-2026-11-02.json). MSI atual SHA-256 `7b514947aa4fd942d5a424d8f6e3b61e8d847f8ce9f37a1b5973b0eab5161c23`; ISO `OpenEMS-Catalog-f15761c-e667c411.iso`, SHA-256 `da21085c211f3b7f94ce0e65ebc98e889d83674d4e6da6f416d45fdef75709aa`. Dez arquivos ópticos conferidos sem montar a ISO no host; MSIs de produção 0.4.0/0.4.1 inspecionados sem instalação.
+- TDD preservado nos commits; regressões corrigem coerção de evidências, GUID próprio retido após remoção do diário e GUIDs com/sem chaves no CiTool. Python completo permitido: **1420 passaram, 57 skips, quatro casos integrais de controles desmarcados**, sem falhas. Rust 237 e painel 154 passaram; Ruff/fmt/Clippy/lint/typecheck/build passaram. App/agente têm cobertura agregada 88,88%; builder 80,94% em statements. Gates completos de cobertura por módulo e integração PostgreSQL/Redis continuam pendentes.
+- Entrada real: `.venv/catalog-acceptance-f15761c-2026-11-02/catalog-input`. ISO está em `Documents/OpenEMS-Lab`; atalho numerado `01 - Catalog acceptance as administrator.lnk` e comando legível estão em `Documents/OpenEMS-Lab/Results`. O atalho exige hardware VMware e manifesto exato antes de criar a atestação. Argumentos conferidos integralmente após corrigir truncagem; nenhuma execução do atalho no host.
+- **Próximos passos:** operador restaura o snapshot, monta a ISO e executa o atalho elevado dentro da VM. Aguardar uma hora real e avaliar `catalog-result.json` contra o manifesto; exigir liberação com ACK e remoção normal do MSI/controles antes de descartar o guest. Depois, regressão USB/WDAC legada em snapshots separados e integração com servidor real/inventário de frota.
+- Escopo desta rodada: expansão pela API real em processo no host, catálogo/inventário sintéticos de fixtures próprias e enforcement pelo serviço real no guest. Não cobre painel, transporte até servidor Docker, PostgreSQL/Redis nem republicação de uma frota. Nenhum controle, instalação ou mudança do serviço preexistente foi feito no host. Sem push/PR.
+
 ## Estado atual — 30/10/2026
 
 - **Para retomar aceite USB/WDAC:** a VM descartável foi apagada em 30/10. Recriar e testar seguindo o [guia da VM](docs/vm-acceptance-guide.md), que inclui versões, critérios e instruções para o agente de código.

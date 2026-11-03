@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Catálogo `if_present` — preparação de 02/11/2026, aceite pendente
+
+[Pacote e validação local](validation/catalog-vm-preparation-f15761c-2026-11-02.json), fonte `f15761c`. MSIs 0.4.0/0.4.1 de produção preparados; dez arquivos da ISO conferidos por hash e atalho elevado validado. Python: 1420 passaram, 57 skips e quatro casos integrais de controles excluídos do host; Rust 237 e painel 154 passaram. Cobertura agregada app/agente 88,88%; gates completos por módulo e PostgreSQL/Redis permanecem pendentes.
+
+**Nenhum aceite novo na VM foi iniciado.** Restaurar `clean-preflight-before-controls` UID 1, montar `OpenEMS-Catalog-f15761c-e667c411.iso` e executar o atalho `01 - Catalog acceptance as administrator.lnk` no guest. Exigir app ausente/presente, encerramento de processo, firewall por executável, recusa WDAC nativa do original/renomeado, remoção quando todas as regras faltam, rechecagem após 3600 segundos reais com atribuição estável, liberação e remoção normal do MSI sem sobras. O relatório ainda não existe; preparação e testes locais não aprovam o enforcement Windows.
+
+A API real expande políticas em processo no host a partir de catálogo/inventário sintéticos de fixtures próprias. O serviço instalado na VM recebe essas políticas por backend local de homologação. Integração de rede com servidor real, painel, PostgreSQL/Redis e republicação por inventário de frota são rodadas separadas. Os resultados antigos abaixo continuam vinculados aos seus próprios bytes.
+
 ## Pendência imediata — 29/10/2026
 
 **Rodada 40 avançou ao bloqueio, mas o roteiro falhou no código Windows:** [registro](validation/windows-controls-vm-959e9de-2026-10-29.json). V4 recebeu ACK; tentativa original native_error 4551/started=false/exit=-1. O SDK define 4551 como violação de política de integridade; Assert-ExecutionDenied só reconhece 577/1260. A falha do classificador é independente do agente. Não reclassificar aceite: rename/editor não chegaram a ser testados e a associação CI específica ainda não foi exportada. Release v5 e remoção normais passaram, serviço/watchdog/processos/NRPT/diários ausentes. [Plano TDD do roteiro](docs/windows-wdac-refusal-code-plan.md) apresentado e pendente de aprovação; nenhum código alterado ainda. Mesmos MSIs 959e9de serão reutilizados, com revisão do roteiro separada e coleta CI automática na próxima rodada completa.
