@@ -1,6 +1,6 @@
 # Plano: normalização estrita dos hashes WDAC por cenário
 
-Estado: proposta aguardando aprovação explícita. Nenhum código de produto ou teste foi alterado para esta correção.
+Estado: aprovado explicitamente pelo usuário em 03/11/2026 ("Aprovo o plano com TDD"). Execução iniciada pelos testes; implementação depende do estado vermelho commitado.
 
 ## Problema comprovado
 
@@ -44,4 +44,4 @@ Os registros de evidência também serão atualizados em `validation/`, `HANDOFF
 
 ## Aprovação
 
-O plano anterior autorizava três arquivos de aceite e mantinha o produto sem alterações. Esta correção altera o adaptador embutido no agente e seus testes. O `AGENTS.md` fornecido pelo usuário exige plano e aprovação explícita para tarefas que tocam dois ou mais arquivos. A implementação e os novos testes só começam após aprovação deste plano.
+O plano anterior autorizava três arquivos de aceite e mantinha o produto sem alterações. Esta correção altera o adaptador embutido no agente e seus testes. A aprovação explícita exigida pelo `AGENTS.md` foi recebida em 03/11/2026; a implementação segue a sequência TDD acima.
