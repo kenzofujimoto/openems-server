@@ -542,14 +542,17 @@ def test_catalog_acceptance_requires_each_observed_effect_and_normal_clean_remov
 @WINDOWS[0]
 @WINDOWS[1]
 @pytest.mark.parametrize("journal_exists,owned_policy_exists", [(False, True), (False, False), (True, True)])
-def test_cached_wdac_identity_is_checked_even_after_removal_deletes_its_journal(tmp_path, journal_exists, owned_policy_exists):
+@pytest.mark.parametrize("listed_braces", [False, True])
+def test_cached_wdac_identity_is_checked_even_after_removal_deletes_its_journal(
+        tmp_path, journal_exists, owned_policy_exists, listed_braces):
     owned = "{11111111-1111-1111-1111-111111111111}"
     foreign = "{22222222-2222-2222-2222-222222222222}"
+    listed_owned = owned if listed_braces else owned.strip("{}")
     policies = [{"PolicyID": foreign, "IsEnforced": True}]
     if owned_policy_exists:
-        policies.append({"PolicyID": owned, "IsEnforced": True})
+        policies.append({"PolicyID": listed_owned, "IsEnforced": True})
     data = {"journal_exists": journal_exists, "journal": {"policy_id": owned},
-            "cached_id": owned, "policies": policies, "expected_id": owned if owned_policy_exists else ""}
+            "cached_id": owned, "policies": policies, "expected_id": listed_owned if owned_policy_exists else ""}
     expression = r"""
 $global:policyProbeData=$fixtureData
 $script:journalPath='C:\not-a-real-test-journal.json'
@@ -562,6 +565,27 @@ $actual=if($null -eq $observed){''}else{[string]$observed.PolicyID}
 if($actual -cne $fixtureData.expected_id){throw 'An owned WDAC policy was hidden by a missing journal.'}
 """
     observed = pure(tmp_path, ["Own-Policy"], expression, data)
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("listed_braces", [False, True])
+def test_foreign_wdac_snapshot_excludes_cached_owned_identity_in_either_citool_format(tmp_path, listed_braces):
+    owned = "{11111111-1111-1111-1111-111111111111}"
+    foreign = "22222222-2222-2222-2222-222222222222"
+    data = {"cached_id": owned, "policies": [{"PolicyID": foreign},
+            {"PolicyID": owned if listed_braces else owned.strip("{}")}], "expected_foreign": [foreign]}
+    expression = r"""
+$global:policyProbeData=$fixtureData
+$script:ownPolicyId=$fixtureData.cached_id
+function global:Code-Policies { return @($global:policyProbeData.policies) }
+$observed=@(Foreign-PolicyIds)
+if($observed.Count -ne 1 -or $observed[0] -cne $fixtureData.expected_foreign[0]) {
+    throw 'The owned WDAC policy was incorrectly classified as foreign.'
+}
+"""
+    observed = pure(tmp_path, ["Foreign-PolicyIds"], expression, data)
     assert observed["accepted"] is True, observed
 
 
