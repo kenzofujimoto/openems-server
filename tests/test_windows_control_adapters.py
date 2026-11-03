@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 import hashlib
 import json
 import os
 import subprocess
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 MOCKS = ROOT / "tests" / "fixtures" / "windows_controls_mocks.ps1"
+DUAL_SCENARIO_XML = ROOT / "tests/fixtures/wdac-dual-scenario-hash.xml"
+CI_NAMESPACE = "urn:schemas-microsoft-com:sipolicy"
+CI = {"ci": CI_NAMESPACE}
 POWERSHELL = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32/WindowsPowerShell/v1.0/powershell.exe"
 REGISTRY = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions"
 INSTANCE = r"USBSTOR\DISK\fixture"
@@ -19,8 +25,11 @@ IDENTITY = "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"
 pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell 5.1")]
 
 
-def fixture_environment(tmp_path, *, scenario="normal", registry=None, boot=False, wmi_serial="SERIAL"):
-    configuration = {"scenario": scenario, "registry": registry or {}, "boot": boot, "wmi_serial": wmi_serial}
+def fixture_environment(tmp_path, *, scenario="normal", registry=None, boot=False, wmi_serial="SERIAL", generated_policy=None):
+    configuration = {"scenario": scenario, "registry": registry or {}, "boot": boot, "wmi_serial": wmi_serial,
+                     "generated_policy": generated_policy is not None}
+    if generated_policy is not None:
+        (tmp_path / "generated-policy.xml").write_bytes(generated_policy)
     (tmp_path / "fixture.json").write_text(json.dumps(configuration), encoding="utf-8")
     system = tmp_path / "systemroot"
     templates = system / "schemas/CodeIntegrity/ExamplePolicies"
@@ -298,6 +307,188 @@ def test_wdac_direct_hash_preserves_enforced_options_and_real_deny_references(tm
     assert "Required:Enforce Store Applications" not in conversion["options"]
     options = [call["detail"] for call in calls(directory) if call["name"] == "Set-RuleOption"]
     assert any(option["option"] == 12 and option["delete"] for option in options)
+
+
+def scenario_nodes(root):
+    scenarios = root.find("ci:SigningScenarios", CI)
+    user = next(row for row in scenarios if row.attrib["Value"] == "12")
+    kernel = next(row for row in scenarios if row.attrib["Value"] == "131")
+    user_refs = user.find("ci:ProductSigners/ci:FileRulesRef", CI)
+    kernel_refs = kernel.find("ci:ProductSigners/ci:FileRulesRef", CI)
+    return scenarios, user, kernel, user_refs, kernel_refs
+
+
+def mutate_valid_policy(root, change):
+    rules = root.find("ci:FileRules", CI)
+    scenarios, _, _, user_refs, kernel_refs = scenario_nodes(root)
+    if change == "renamed_ids":
+        ids = {row.attrib["ID"]: "arbitrary-rule-" + str(index) for index, row in enumerate(rules)}
+        for row in rules:
+            row.set("ID", ids[row.attrib["ID"]])
+        for row in root.findall(".//ci:FileRuleRef", CI):
+            row.set("RuleID", ids[row.attrib["RuleID"]])
+    elif change == "reordered":
+        rules[:] = list(reversed(rules))
+        scenarios[:] = list(reversed(scenarios))
+        user_refs[:] = list(reversed(user_refs))
+        kernel_refs[:] = list(reversed(kernel_refs))
+    else:
+        return False
+    return True
+
+
+def mutate_scenario_references(root, change):
+    rules = root.find("ci:FileRules", CI)
+    scenarios, user, kernel, user_refs, kernel_refs = scenario_nodes(root)
+    if change == "kernel_only":
+        scenarios.remove(user)
+        user_ids = {row.attrib["RuleID"] for row in user_refs}
+        rules[:] = [row for row in rules if row.attrib["ID"] not in user_ids]
+    elif change == "duplicate_user_scenario":
+        scenarios.append(deepcopy(user))
+    elif change == "duplicate_kernel_scenario":
+        scenarios.append(deepcopy(kernel))
+    elif change == "unknown_scenario":
+        kernel.set("Value", "999")
+    elif change == "extra_scenario":
+        extra = ET.SubElement(scenarios, "{" + CI_NAMESPACE + "}SigningScenario", {"Value": "999"})
+        ET.SubElement(extra, "{" + CI_NAMESPACE + "}ProductSigners")
+    elif change == "shared_reference":
+        kernel_refs[0].set("RuleID", user_refs[0].attrib["RuleID"])
+    elif change == "orphan_reference":
+        kernel_refs[0].set("RuleID", "unknown-rule")
+    elif change == "duplicate_reference":
+        kernel_refs[1].set("RuleID", kernel_refs[0].attrib["RuleID"])
+    elif change == "out_of_path_reference":
+        row = kernel_refs[0]
+        kernel_refs.remove(row)
+        root.append(row)
+    elif change == "three_references_per_scenario":
+        for container in (user_refs, kernel_refs):
+            reference = container[-1]
+            container.remove(reference)
+            rules.remove(next(row for row in rules if row.attrib["ID"] == reference.attrib["RuleID"]))
+    else:
+        return False
+    return True
+
+
+def mutate_hash_rules(root, change):
+    rules = root.find("ci:FileRules", CI)
+    if change == "duplicate_rule_id":
+        rules[1].set("ID", rules[0].attrib["ID"])
+    elif change == "allow_rule":
+        ET.SubElement(rules, "{" + CI_NAMESPACE + "}Allow", {"ID": "EXTRA", "FileName": "*"})
+    elif change == "signer":
+        ET.SubElement(root.find("ci:Signers", CI), "{" + CI_NAMESPACE + "}Signer", {"ID": "EXTRA", "Name": "Other publisher"})
+    elif change == "file_attribute":
+        ET.SubElement(rules, "{" + CI_NAMESPACE + "}FileAttrib", {"ID": "EXTRA", "FileName": "*"})
+    elif change == "invalid_hash":
+        rules[0].set("Hash", "not-a-hash")
+    elif change == "non_equivalent_hash":
+        rules[0].set("Hash", "F" * 40)
+    elif change == "same_hash_set_different_multiplicity":
+        values = [rules[0].attrib["Hash"], rules[1].attrib["Hash"], rules[2].attrib["Hash"]]
+        for row, value in zip(list(rules)[:4], [values[0], values[1], values[1], values[2]], strict=True):
+            row.set("Hash", value)
+            row.set("FriendlyName", "fixture.exe Hash")
+        for row, value in zip(list(rules)[4:], [values[0], values[0], values[1], values[2]], strict=True):
+            row.set("Hash", value)
+            row.set("FriendlyName", "fixture.exe Hash")
+    elif change == "non_equivalent_friendly_name":
+        rules[0].set("FriendlyName", "other.exe Hash Sha1")
+    else:
+        return False
+    return True
+
+
+def mutate_policy_schema(root, change):
+    rules = root.find("ci:FileRules", CI)
+    _, _, _, _, kernel_refs = scenario_nodes(root)
+    if change == "foreign_namespace_element":
+        ET.SubElement(root, "{urn:unexpected}Extra")
+    elif change == "foreign_namespace_attribute":
+        rules[0].set("{urn:unexpected}Extra", "not allowed")
+    elif change == "unexpected_element":
+        ET.SubElement(root, "{" + CI_NAMESPACE + "}Unexpected")
+    elif change == "unexpected_attribute":
+        kernel_refs[0].set("Extra", "not allowed")
+    elif change == "unexpected_root_attribute":
+        root.set("Unexpected", "not allowed")
+    elif change == "missing_umci":
+        options = root.find("ci:Rules", CI)
+        options.remove(next(row for row in options if row.find("ci:Option", CI).text == "Enabled:UMCI"))
+    elif change == "unknown_option":
+        row = ET.SubElement(root.find("ci:Rules", CI), "{" + CI_NAMESPACE + "}Rule")
+        ET.SubElement(row, "{" + CI_NAMESPACE + "}Option").text = "Enabled:Unexpected"
+    else:
+        return False
+    return True
+
+
+def dual_scenario_policy(change="original"):
+    """Mutate inert, byte-verified VM XML; no fixture executable is ever loaded."""
+    # Restore ConfigCI's original BOM/CRLF format after Git's checkout newline conversion.
+    fixture_text = DUAL_SCENARIO_XML.read_bytes().decode("utf-8-sig").replace("\r\n", "\n")
+    original = b"\xef\xbb\xbf" + fixture_text.replace("\n", "\r\n").encode("utf-8")
+    assert hashlib.sha256(original).hexdigest() == "24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b"
+    if change == "original":
+        return original
+    if change == "dtd_entity":
+        value = original.decode("utf-8-sig").replace("?>", '?>\n<!DOCTYPE SiPolicy [<!ENTITY marker "fixture">]>', 1)
+        return value.replace('FriendlyName="', 'FriendlyName="&marker;').encode("utf-8")
+    ET.register_namespace("", CI_NAMESPACE)
+    root = ET.fromstring(original)  # noqa: S314 - exact digest-pinned inert XML, never external data
+    mutators = (mutate_valid_policy, mutate_scenario_references, mutate_hash_rules, mutate_policy_schema)
+    if not any(mutate(root, change) for mutate in mutators):
+        raise AssertionError("unknown XML mutation: " + change)
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def user_mode_denies(policy):
+    root = ET.fromstring(policy)  # noqa: S314 - generated only by the digest-pinned test fixture mutators
+    rules = {row.attrib["ID"]: row for row in root.find("ci:FileRules", CI)}
+    references = root.findall('ci:SigningScenarios/ci:SigningScenario[@Value="12"]/ci:ProductSigners/ci:FileRulesRef/ci:FileRuleRef', CI)
+    return sorted((row.attrib["RuleID"], rules[row.attrib["RuleID"]].attrib["Hash"],
+                   rules[row.attrib["RuleID"]].attrib.get("FriendlyName", "")) for row in references)
+
+
+@pytest.mark.parametrize("change", ["original", "renamed_ids", "reordered"])
+def test_wdac_dual_scenario_hash_policy_preserves_only_the_exact_user_mode_denies(tmp_path, change):
+    generated = dual_scenario_policy(change)
+    directory = fixture_environment(tmp_path, generated_policy=generated)
+    result = assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "hash")))
+    conversion = next(call["detail"] for call in calls(directory) if call["name"] == "ConvertFrom-CIPolicy")
+    assert conversion["deny_count"] == conversion["user_deny_refs"] == 4
+    assert conversion["kernel_deny_refs"] == 0
+    observed = sorted((row["id"], row["hash"], row["friendly_name"]) for row in conversion["user_deny_rules"])
+    assert observed == user_mode_denies(generated)
+    assert "app-control:wdac" in result["capabilities"]
+    assert "Enabled:UMCI" in conversion["options"]
+    assert "Enabled:Update Policy No Reboot" in conversion["options"]
+    assert "Enabled:Audit Mode" not in conversion["options"]
+    assert "Required:Enforce Store Applications" not in conversion["options"]
+    assert (directory / "generated-policy.xml").read_bytes() == generated
+
+
+@pytest.mark.parametrize("change", [
+    "kernel_only", "duplicate_user_scenario", "duplicate_kernel_scenario", "unknown_scenario", "extra_scenario",
+    "shared_reference", "orphan_reference", "duplicate_reference", "out_of_path_reference", "duplicate_rule_id",
+    "foreign_namespace_element", "foreign_namespace_attribute", "unexpected_element", "unexpected_attribute",
+    "unexpected_root_attribute", "allow_rule", "signer", "file_attribute", "invalid_hash", "non_equivalent_hash",
+    "same_hash_set_different_multiplicity", "non_equivalent_friendly_name", "missing_umci", "unknown_option",
+    "three_references_per_scenario", "dtd_entity",
+])
+def test_wdac_dual_scenario_rejects_invalid_or_non_equivalent_input_without_rewriting_it(tmp_path, change):
+    generated = dual_scenario_policy(change)
+    directory = fixture_environment(tmp_path, generated_policy=generated)
+    result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
+    assert result.returncode == 1
+    assert json.loads(result.stdout) == {"error": "control_failed"}
+    generated_call = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicy")
+    assert Path(generated_call["output"]).read_bytes() == generated
+    assert not any(call["name"] in {"Merge-CIPolicy", "ConvertFrom-CIPolicy"} for call in calls(directory))
+    assert not (directory / "active-policy.json").exists()
 
 
 @pytest.mark.parametrize("scenario", [

@@ -246,7 +246,11 @@ function New-CIPolicy {
         'policy_bad_namespace' {$xml=$xml.Replace('urn:schemas-microsoft-com:sipolicy','urn:unexpected')}
         'policy_malformed' {$xml='<SiPolicy>'}
     }
-    [IO.File]::WriteAllText($FilePath,$xml)
+    if ($fixture.generated_policy) {
+        $generated=Join-Path $script:fixtureRoot 'generated-policy.xml'
+        Assert-FixturePath $generated
+        [IO.File]::WriteAllBytes($FilePath,[IO.File]::ReadAllBytes($generated))
+    } else { [IO.File]::WriteAllText($FilePath,$xml) }
 }
 function Merge-CIPolicy {
     [CmdletBinding()] param([string[]]$PolicyPaths,[string]$OutputFilePath,$Rules=@())
@@ -296,6 +300,11 @@ function ConvertFrom-CIPolicy {
     Assert-FixturePath $BinaryFilePath
     [xml]$xml=Get-Content -LiteralPath $XmlFilePath -Raw
     $manager=New-Object Xml.XmlNamespaceManager($xml.NameTable);$manager.AddNamespace('ci','urn:schemas-microsoft-com:sipolicy')
-    Trace-Mock 'ConvertFrom-CIPolicy' @{deny_count=$xml.SelectNodes('//ci:Deny',$manager).Count;user_deny_refs=$xml.SelectNodes('//ci:SigningScenario[@Value="12"]//ci:FileRuleRef[starts-with(@RuleID,"D")]',$manager).Count;kernel_deny_refs=$xml.SelectNodes('//ci:SigningScenario[@Value="131"]//ci:FileRuleRef[starts-with(@RuleID,"D")]',$manager).Count;options=@($xml.SelectNodes('//ci:Option',$manager) | ForEach-Object InnerText)}
+    $denies=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($deny in @($xml.SelectNodes('/ci:SiPolicy/ci:FileRules/ci:Deny',$manager))) { $denies[$deny.GetAttribute('ID')]=$deny }
+    $user=@($xml.SelectNodes('//ci:SigningScenario[@Value="12"]//ci:FileRuleRef',$manager) | Where-Object { $denies.ContainsKey($_.GetAttribute('RuleID')) })
+    $kernel=@($xml.SelectNodes('//ci:SigningScenario[@Value="131"]//ci:FileRuleRef',$manager) | Where-Object { $denies.ContainsKey($_.GetAttribute('RuleID')) })
+    $userRules=@($user | ForEach-Object { $id=$_.GetAttribute('RuleID'); $deny=$denies[$id]; @{id=$id;hash=$deny.GetAttribute('Hash');friendly_name=$deny.GetAttribute('FriendlyName')} })
+    Trace-Mock 'ConvertFrom-CIPolicy' @{deny_count=$denies.Count;user_deny_refs=$user.Count;kernel_deny_refs=$kernel.Count;user_deny_rules=$userRules;options=@($xml.SelectNodes('//ci:Option',$manager) | ForEach-Object InnerText)}
     [IO.File]::WriteAllText($BinaryFilePath, 'fixture-policy-binary')
 }
