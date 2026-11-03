@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 03/11/2026: 948608e validado localmente; VM pendente
+
+[Validação e pacote](validation/catalog-vm-preparation-948608e-2026-11-03.json): **1452 Python, 251 Rust e 154 painel passaram**, além dos gates estáticos/build/release. Python teve 57 skips e quatro casos integrais de controles desmarcados no host. A tentativa Rust inicial teve uma falha no marcador do filho inerte antes do timeout de cinco segundos; a suíte completa serial passou sem alterar limites/asserts. Cobertura app/agente 88,88%; gates completos por módulo e PostgreSQL/Redis continuam pendentes.
+
+Correção de três linhas omite somente o contêiner kernel vazio que violava o XSD Microsoft; preserva cenário 131, `ProductSigners`, hashes de usuário e validador original. TDD vermelho `5c6e966` com quatro falhas esperadas; implementação `948608e`. MSIs sem fault injection e ISO `OpenEMS-Catalog-948608e-0e93a06a.iso` conferidos. Run novo `0e93a06a306e493b9d1fe4975ce2aaf8`, atalho 07: **não iniciado e sem aceite de enforcement**.
+
+Rodada d87d059/385b1eb0 permanece reprovada e preservada. Coletor 05 deu timeout; coletor 06 com checkpoints solicitado ao operador, ainda sem resultado recebido. Não restaurar o snapshot nem iniciar o 07 antes de conferir liberação/limpeza atuais e diagnósticos. Após revisão, repetir em snapshot limpo todos os oito critérios, ACK 90 s e hora real 3600 s. Escopo continua API real em processo com fixtures sintéticas e serviço Windows por backend local; servidor em rede/painel/PostgreSQL/Redis/frota/USB físico são validações separadas. Nenhum controle ou MSI executado no host.
+
 ## Resultado vigente — 03/11/2026: catálogo d87d059 reprovado
 
 [Rodada original](validation/vm-catalog-d87d059-result-2026-11-03.json), run `385b1eb0f9304a6ebb308e0620215c6f`: app ausente e bloqueio/liberação de rede passaram; app presente não obteve ACK de sucesso em 90 s. **Sem aceite de processo, WDAC ou hora real.** [Análise e recibos](validation/catalog-vm-d87d059-failure-analysis-2026-11-03.json) preservam a falha; o validador independente recusou o relatório.

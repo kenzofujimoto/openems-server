@@ -1,0 +1,221 @@
+{
+  "date": "2026-11-03",
+  "status": "prepared_preserved_guest_diagnostics_and_new_acceptance_pending",
+  "passed": false,
+  "source_revision": "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+  "branch": "feature/catalog-vm-acceptance",
+  "run_id": "0e93a06a306e493b9d1fe4975ce2aaf8",
+  "package_manifest_sha256": "136999640a0ccf71b9e96c6f5723f582ae8e8520e0490eb2948ca6c3fdb03969",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "57164306ca419e6bf2bcaed253d5bd3a11b0fce11ee5c18d3bf5059c7d65ec30",
+      "bytes": 8642560
+    },
+    "openems-agent-next.msi": {
+      "sha256": "0713929a49a9b24cb3da40209449ccdf9d743d8ff9197829e0fcb146aa83de95",
+      "bytes": 8642560
+    }
+  },
+  "release_agent": {
+    "sha256": "f33dfd058170598fb59eb2f918fb572377d03dd3bb680e019e896f523207d42f",
+    "bytes": 6061568
+  },
+  "msi_inspection": [
+    {
+      "file": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_present": false,
+      "sha256": "57164306ca419e6bf2bcaed253d5bd3a11b0fce11ee5c18d3bf5059c7d65ec30",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    },
+    {
+      "file": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_present": false,
+      "sha256": "0713929a49a9b24cb3da40209449ccdf9d743d8ff9197829e0fcb146aa83de95",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    }
+  ],
+  "iso": {
+    "path": "C:\\Users\\kenzo.fujimoto\\Documents\\OpenEMS-Lab\\OpenEMS-Catalog-948608e-0e93a06a.iso",
+    "sha256": "8f7f9280f98cb4186a002572bc45b9dbcd4ee4d6b6604d444f2b7743ef6e5962",
+    "bytes": 17416192,
+    "verification": {
+      "verified": true,
+      "source_revision": "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+      "run_id": "0e93a06a306e493b9d1fe4975ce2aaf8",
+      "files_verified": 10,
+      "iso_sha256": "8f7f9280f98cb4186a002572bc45b9dbcd4ee4d6b6604d444f2b7743ef6e5962",
+      "iso_bytes": 17416192,
+      "mounted_on_host": false,
+      "executables_executed": false
+    }
+  },
+  "shortcut": {
+    "file": "07 - Catalog acceptance as administrator.lnk",
+    "shortcut_verified": true,
+    "requires_elevation": true,
+    "argument_length": 1008,
+    "command_matches_review_text": true,
+    "parser_passed": true,
+    "guest_execution_started": false,
+    "sha256": "745ab0b97186c21b524359365e71a1cd5fd77a768fdcc7ffc798a7f4cdef18c4"
+  },
+  "scope": {
+    "synthetic_catalog": true,
+    "real_server_api": true,
+    "guest_transport": "powershell_fixture",
+    "real_server_network_e2e": false,
+    "inventory_source": "host-compiled owned fixture bytes; synthetic uploaded inventory",
+    "scope": "Real server API expansion and Windows service enforcement; no panel, live server network, PostgreSQL/Redis or fleet inventory acceptance."
+  },
+  "legacy_phase_files_verified": 20,
+  "fix": {
+    "red_commit": "5c6e9668dce4a47b9ae9e63a273bc5d50b577bd4",
+    "implementation_commit": "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+    "product_lines_added": 3,
+    "description": "Omit only the validated empty kernel FileRulesRef container after pruning four duplicated kernel references/rules; preserve scenario131, ProductSigners, exact user hashes and original strict validator.",
+    "test_only_maintenance": "Merge mock selects ProductSigners by namespace XPath so its empty XML element is not adapted to System.String.",
+    "schema_reproduction": "validation/wdac-kernel-container-xsd-reproduction-2026-11-03.json",
+    "real_vm_failure_stage_confirmed": false
+  },
+  "tdd": {
+    "module_cases": 98,
+    "full_red_failed_expected": 4,
+    "full_red_passed": 1448,
+    "full_red_skipped": 57,
+    "full_red_deselected": 4,
+    "full_red_seconds": 972.39,
+    "targeted_green_passed": 5
+  },
+  "local_validation": {
+    "python_passed": 1452,
+    "python_skipped": 57,
+    "integral_control_cases_deselected": 4,
+    "python_seconds": 1019.03,
+    "rust_passed": 251,
+    "rust_failed": 0,
+    "rust_ignored": 0,
+    "rust_full_command_mode": "--no-fail-fast -- --test-threads=1",
+    "rust_first_attempt": {
+      "passed": 250,
+      "failed": 1,
+      "failure": "Inert timeout child did not publish its path before the existing five-second limit during concurrent validation.",
+      "code_or_timeouts_changed_to_obtain_pass": false,
+      "full_suite_repeated": true
+    },
+    "panel_passed": 154,
+    "panel_files_passed": 21,
+    "panel_lines_percent": 95.21,
+    "panel_statements_percent": 91.94,
+    "app_agent_statement_coverage_percent": 88.88,
+    "catalog_builder_statement_coverage_percent": 80.94,
+    "coverage_gates_fully_satisfied": false,
+    "postgres_redis_live_tests_run": false,
+    "checks_passed": [
+      "cargo fmt --check",
+      "cargo clippy --all-targets -- -D warnings",
+      "full allowed Python suite",
+      "full serial cargo test",
+      "release build",
+      "panel lint",
+      "panel typecheck",
+      "panel coverage tests",
+      "panel build",
+      "ruff app agent tools tests",
+      "pip check",
+      "PowerShell parser",
+      "git diff --check"
+    ],
+    "original_strict_guard_unchanged": true,
+    "host_controls_executed": false,
+    "host_service_changes": false,
+    "host_msi_installs": false,
+    "guest_acceptance_started": false
+  },
+  "previous_run": {
+    "source_revision": "d87d0591f55c77e7c222db82e4b2b812e9866681",
+    "run_id": "385b1eb0f9304a6ebb308e0620215c6f",
+    "status": "failed",
+    "report": "validation/vm-catalog-d87d059-result-2026-11-03.json",
+    "reported_msi_exit": 0,
+    "reported_cleanup_errors": [],
+    "reported_foreign_ci_ids_preserved": 14,
+    "independent_cleanup_verified": false,
+    "raw_release_ack_verified": false,
+    "collector05": "timed out after240s",
+    "collector06": "prepared; operator action requested; no result received yet"
+  },
+  "guest_requirements": {
+    "preserve_existing_guest_until_diagnostics_reviewed": true,
+    "diagnostics_shortcut": "06 - Collect catalog diagnostics with progress as administrator.lnk",
+    "new_acceptance_shortcut": "07 - Catalog acceptance as administrator.lnk",
+    "do_not_start_07_before_diagnostics_review_and_clean_restore": true,
+    "snapshot": "clean-preflight-before-controls",
+    "snapshot_uid": 1,
+    "snapshot_restored_for_this_run": false,
+    "new_iso_connected": false,
+    "new_run_started": false,
+    "ack_seconds": 90,
+    "hourly_recheck_real_seconds": 3600,
+    "overall_timeout_seconds": 5400
+  },
+  "log_receipts": {
+    "kernel-container-full-red.log": {
+      "sha256": "b9ba9998bd5c3a5187ae5fc25bc49ff17a10f7e03a18eb329cc9e6be24b801a6",
+      "bytes": 17929
+    },
+    "kernel-container-full-red.junit.xml": {
+      "sha256": "cfe5de4f2111465612a828445cb333b8186c5a697703c4d93b44ad081dd6d501",
+      "bytes": 241467
+    },
+    "kernel-container-full-green.log": {
+      "sha256": "c223d9e2f08d74f69847306a10c6443df6b1d56f2c5bd71a955a0bd32ec5bdcc",
+      "bytes": 8208
+    },
+    "kernel-container-full-green.junit.xml": {
+      "sha256": "be71c41c4f0dc1a4f888720b54ec9cc1b4591efac693fca14433ba93fb54edcf",
+      "bytes": 231789
+    },
+    "kernel-container-native-green.log": {
+      "sha256": "c8853d605da881fbb004f2cae64aee35bd243265821a0ad6f62cd939f0855819",
+      "bytes": 26541
+    },
+    "kernel-container-native-serial-green.log": {
+      "sha256": "df32492063a72917ce35baf1228222db610e84a81a5a61e425a2731589fc07c2",
+      "bytes": 25703
+    },
+    "kernel-container-clippy.log": {
+      "sha256": "14b3270b324d395dbd0c5cf72ae54e3d3d662697b082c87911677ca9032af9e4",
+      "bytes": 183
+    },
+    "kernel-container-release.log": {
+      "sha256": "de840481f315b0171b194180cd7f18adbed4475545f3049223316970e53dd21d",
+      "bytes": 173
+    },
+    "kernel-container-panel-tests.log": {
+      "sha256": "cf2fffde8ef78d5716302da344187dceae9ec0637914967617d3c8a5a43c4e5c",
+      "bytes": 9176
+    },
+    "kernel-container-panel-build.log": {
+      "sha256": "74b9b2dbe4982239dc7811bdb355896c6238545408766de2c7ede773c48f1142",
+      "bytes": 1547
+    },
+    "coverage-kernel-container-green.json": {
+      "sha256": "12ca8d9a3a5e35097630b651ecc9b129c5550a22b46dbda1889c1c5f982d47b0",
+      "bytes": 415699
+    }
+  },
+  "limitations": [
+    "Local schema fix and package preparation do not prove real Windows enforcement.",
+    "Preserved guest diagnostics, current cleanup and raw release ACK remain pending.",
+    "New clean VM acceptance including3600real seconds not started.",
+    "Live server network, panel, PostgreSQL/Redis, fleet republication and physical USB acceptance remain separate.",
+    "Per-module global coverage gates remain pending.",
+    "No push, PR, merge or deployment."
+  ]
+}
