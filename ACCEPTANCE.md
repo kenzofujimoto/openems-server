@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## Resultado vigente — 03/11/2026: catálogo d87d059 reprovado
+
+[Rodada original](validation/vm-catalog-d87d059-result-2026-11-03.json), run `385b1eb0f9304a6ebb308e0620215c6f`: app ausente e bloqueio/liberação de rede passaram; app presente não obteve ACK de sucesso em 90 s. **Sem aceite de processo, WDAC ou hora real.** [Análise e recibos](validation/catalog-vm-d87d059-failure-analysis-2026-11-03.json) preservam a falha; o validador independente recusou o relatório.
+
+Limpeza reportou MSI 0, nenhum erro ou controle próprio restante e preservação dos 14 IDs CI externos. Coleta 05 pendente para conferir o ACK bruto de liberação, estado atual e causa da rejeição. Não restaurar o snapshot antes de revisar os diagnósticos. Nenhuma alteração de produto, prazo ou critério realizada nesta investigação. As seções seguintes registram estados anteriores.
+
 ## Estado vigente — 03/11/2026: correção local verde; aceite Windows pendente
 
 [Pacote novo e evidências](validation/catalog-vm-preparation-d87d059-2026-11-03.json), fonte `d87d059`, run `385b1eb0f9304a6ebb308e0620215c6f`: **1451 Python, 251 Rust e 154 painel passaram**, além de fmt/Clippy/Ruff/lint/tipos/build/release. Python teve 57 skips e quatro casos integrais de controles desmarcados no host. Cobertura app/agente 88,88%; gates completos por módulo e integrações PostgreSQL/Redis continuam pendentes.

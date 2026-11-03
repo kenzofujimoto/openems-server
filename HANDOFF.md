@@ -1,5 +1,11 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 03/11/2026: nova rodada falhou; coleta 05 pendente
+
+[Resultado original](validation/vm-catalog-d87d059-result-2026-11-03.json) e [análise](validation/catalog-vm-d87d059-failure-analysis-2026-11-03.json), fonte `d87d059`, run `385b1eb0f9304a6ebb308e0620215c6f`: **failed**. Recibo de pacote e manifesto conferidos. App ausente e bloqueio/liberação de rede passaram; a atribuição app presente não obteve ACK de sucesso em 90 s. Processo, WDAC e hora real não foram concluídos. A nova causa ainda não foi estabelecida.
+
+Limpeza do roteiro reportou MSI 0, ausência de serviço/watchdog/NRPT/firewall próprio/política própria/registro de fixtures, sem erros; os 14 IDs CI externos permaneceram iguais. ACK bruto de liberação e estado atual ainda precisam da coleta independente. **Preservar guest; não restaurar snapshot.** Atalho `05 - Collect catalog diagnostics as administrator.lnk` preparado e solicitado ao operador em `OpenEMSResults`; exporta `catalog-diagnostics-385b1eb0.json`. Coleta somente leitura dos controles/logs protegidos e XMLs próprios limitados, com tarefa temporária SYSTEM; não reinstala agente, aplica política ou altera permissões. Código e prazos permanecem intactos. As seções abaixo são históricas.
+
 ## Estado vigente — 03/11/2026: correção concluída, novo aceite pendente
 
 Plano e adendo aprovados; TDD vermelho preservado em `15d5fe0`, `85f953c` e `e6867a2`. Correções em `a5c8c41` (transporte privado) e `4d35f7d` (normalização estrita dos hashes kernel duplicados). Validador original intacto. O launcher de `agent-rs/tests/application_control.rs` recebeu manutenção somente de teste para usar `-File`/BOM, preservando as verificações de caminhos.
