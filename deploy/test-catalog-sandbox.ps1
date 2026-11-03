@@ -303,10 +303,10 @@ function Own-Policy {
     # Normal MSI removal deletes the journal. Its previously observed GUID still identifies leftovers.
     if (-not $script:ownPolicyId) { return $null }
     if ($script:ownPolicyId -notmatch '^\{[0-9a-fA-F-]{36}\}$') { throw 'The application journal has an invalid owned policy identity.' }
-    return @(Code-Policies | Where-Object { $_.PolicyID -ieq $script:ownPolicyId }) | Select-Object -First 1
+    return @(Code-Policies | Where-Object { ([string]$_.PolicyID).Trim('{}') -ieq ([string]$script:ownPolicyId).Trim('{}') }) | Select-Object -First 1
 }
 function Foreign-PolicyIds {
-    return @(Code-Policies | Where-Object { $_.PolicyID -ine $script:ownPolicyId } | ForEach-Object PolicyID | Sort-Object)
+    return @(Code-Policies | Where-Object { ([string]$_.PolicyID).Trim('{}') -ine ([string]$script:ownPolicyId).Trim('{}') } | ForEach-Object PolicyID | Sort-Object)
 }
 function Firewall-Snapshot {
     return @(Get-NetFirewallRule -PolicyStore PersistentStore -ErrorAction Stop | Where-Object { $_.Group -ne $applicationGroup } |
