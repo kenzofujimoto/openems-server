@@ -1,0 +1,34 @@
+{
+  "source_revision": "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+  "original_xml_bytes": 4148,
+  "original_xml_sha256": "24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b",
+  "deny_rules": 8,
+  "user_mode_reference_ids": [
+    "ID_DENY_D_5",
+    "ID_DENY_D_6",
+    "ID_DENY_D_7",
+    "ID_DENY_D_8"
+  ],
+  "kernel_mode_reference_ids": [
+    "ID_DENY_D_1",
+    "ID_DENY_D_2",
+    "ID_DENY_D_3",
+    "ID_DENY_D_4"
+  ],
+  "scenario_ids_disjoint": true,
+  "all_denies_referenced_once": true,
+  "same_hash_multiset_in_both_scenarios": true,
+  "unexpected_deny_attributes": false,
+  "observed_guard_result": {
+    "accepted": false,
+    "engine": 5,
+    "failure": "OPENEMS_INVALID_HASH_POLICY",
+    "deadline": null,
+    "writes": 0
+  },
+  "scope": "Read-only XML and AST-extracted validator only; no application adapter top-level, ConfigCI, fixture executable, MSI or system policy ran on host.",
+  "evidence_xml": "validation/vm-catalog-f15761c-owned-hash-policy-2026-11-03.xml",
+  "plan": "docs/wdac-dual-scenario-hash-plan.md",
+  "implementation_authorized": false,
+  "reference": "https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/design/select-types-of-rules-to-create#why-does-scan-create-eight-hash-rules-for-certain-files"
+}

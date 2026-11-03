@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## Causa reproduzida — 03/11/2026: aprovação da correção pendente
+
+[XML original](validation/vm-catalog-f15761c-owned-hash-policy-2026-11-03.xml), 4148 bytes/SHA-256 `24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b`, e [reprodução isolada](validation/catalog-xml-rejection-reproduction-2026-11-03.json). O XML contém quatro hashes de usuário e quatro hashes kernel equivalentes, com IDs separados e todas as referências válidas. O validador original rejeita esse formato com `OPENEMS_INVALID_HASH_POLICY`; a reprodução usou somente a função extraída por AST, com zero mutações no host.
+
+[Plano concreto aguardando aprovação](docs/wdac-dual-scenario-hash-plan.md): TDD primeiro; normalização somente do formato duplicado conhecido, preservando o escopo de usuário e a validação estrita; casos negativos; suítes completas permitidas; novo MSI/ISO e rodada limpa de uma hora. Altera quatro arquivos de produto/teste, fora do escopo anterior de três arquivos de aceite, e depende de aprovação explícita conforme o AGENTS.md. Nenhum código de produto nem teste novo foi alterado nesta investigação. Liberação v7 e limpeza atual já confirmadas; a rodada original permanece reprovada.
+
 ## Diagnóstico confirmado — 03/11/2026, coleta 02
 
 [Coleta original](validation/vm-catalog-f15761c-diagnostics-2026-11-03.json) e [análise](validation/catalog-vm-diagnostic-analysis-2026-11-03.json): seis ACKs negativos da v5, sem erros do backend; liberação v7 com ACK positivo conferido. Estado atual confirma ausência de serviço/watchdog/NRPT/firewall próprio/diário/política própria e preservação dos 14 IDs CI externos. A rodada permanece reprovada.
