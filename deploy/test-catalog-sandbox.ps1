@@ -9,15 +9,24 @@ $markerPath = 'C:\openems-disposable-vm.txt'
 $origin = 'http://127.0.0.1:18019'
 $applicationGroup = 'openems application control'
 
-function Field($Object, [string]$Name, $Default) {
-    if ($null -eq $Object) { return $Default }
-    if ($Object -is [Collections.IDictionary]) {
-        if ($Object.Contains($Name)) { return $Object[$Name] }
-        return $Default
+function Field($Object, [string]$Name, $Default, [string]$Type = '') {
+    $value = $Default
+    if ($null -ne $Object) {
+        if ($Object -is [Collections.IDictionary]) {
+            if ($Object.Contains($Name)) { $value = $Object[$Name] }
+        } else {
+            $property = $Object.PSObject.Properties[$Name]
+            if ($null -ne $property) { $value = $property.Value }
+        }
     }
-    $property = $Object.PSObject.Properties[$Name]
-    if ($null -eq $property) { return $Default }
-    return $property.Value
+    # PowerShell equality coerces 0/1 and strings to booleans and numbers. Evidence must retain its JSON type.
+    $integer = $value -is [byte] -or $value -is [sbyte] -or $value -is [int16] -or $value -is [uint16] -or
+        $value -is [int32] -or $value -is [uint32] -or $value -is [int64] -or $value -is [uint64]
+    if (($Type -eq 'boolean' -and $value -isnot [bool]) -or
+        ($Type -eq 'integer' -and -not $integer) -or
+        ($Type -eq 'number' -and -not ($integer -or $value -is [double] -or $value -is [single] -or $value -is [decimal])) -or
+        ($Type -eq 'string' -and $value -isnot [string])) { throw ('Invalid evidence type: ' + $Name) }
+    return $value
 }
 function Assert-DisposableGuest($Machine, [string]$MarkerText, [bool]$OptIn) {
     $hypervisor = Field $Machine 'HypervisorPresent' $false
@@ -28,62 +37,62 @@ function Assert-DisposableGuest($Machine, [string]$MarkerText, [bool]$OptIn) {
     }
 }
 function Assert-DeniedExecution($Observation) {
-    if ((Field $Observation 'process_created' $null) -cne $false -or
-        (Field $Observation 'started' $null) -cne $false -or
-        (Field $Observation 'native_error' 0) -notin @(577,1260,4551) -or
-        (Field $Observation 'exit' 0) -ne -1) {
+    if ((Field $Observation 'process_created' $null 'boolean') -ne $false -or
+        (Field $Observation 'started' $null 'boolean') -ne $false -or
+        (Field $Observation 'native_error' 0 'integer') -notin @(577,1260,4551) -or
+        (Field $Observation 'exit' 0 'integer') -ne -1) {
         throw 'WDAC evidence must prove a native refusal before process creation and the first sentinel write.'
     }
 }
 function Assert-HourlyEvidence($Evidence) {
-    $elapsed = Field $Evidence 'elapsed_seconds' $null
+    $elapsed = Field $Evidence 'elapsed_seconds' $null 'number'
     if ($null -eq $elapsed -or $elapsed -isnot [ValueType] -or [double]::IsNaN([double]$elapsed) -or
         [double]::IsInfinity([double]$elapsed) -or [double]$elapsed -lt 3600) { throw 'The real monotonic hour is incomplete.' }
-    $started = [DateTimeOffset]::Parse([string](Field $Evidence 'started_utc' ''))
-    $finished = [DateTimeOffset]::Parse([string](Field $Evidence 'finished_utc' ''))
+    $started = [DateTimeOffset]::Parse((Field $Evidence 'started_utc' '' 'string'))
+    $finished = [DateTimeOffset]::Parse((Field $Evidence 'finished_utc' '' 'string'))
     if (($finished-$started).TotalSeconds -lt 3600) { throw 'The real UTC hour is incomplete.' }
     $before = Field $Evidence 'before' $null
     $after = Field $Evidence 'after' $null
-    $version = Field $before 'version' 0
-    $digest = [string](Field $before 'digest' '')
+    $version = Field $before 'version' 0 'integer'
+    $digest = Field $before 'digest' '' 'string'
     if ($version -lt 1 -or $digest -cnotmatch '^[0-9a-f]{64}$' -or
-        (Field $after 'version' 0) -ne $version -or (Field $after 'digest' '') -cne $digest) {
+        (Field $after 'version' 0 'integer') -ne $version -or (Field $after 'digest' '' 'string') -cne $digest) {
         throw 'The assignment changed during the hourly observation.'
     }
-    $checkedBefore = [long](Field $before 'optional_checked_at' 0)
-    $checkedAfter = [long](Field $after 'optional_checked_at' 0)
+    $checkedBefore = [long](Field $before 'optional_checked_at' 0 'integer')
+    $checkedAfter = [long](Field $after 'optional_checked_at' 0 'integer')
     if ($checkedBefore -le 0 -or $checkedBefore -lt ($started.ToUnixTimeSeconds()-120) -or
         $checkedBefore -gt $started.ToUnixTimeSeconds() -or $checkedAfter -lt ($checkedBefore+3600) -or
         $checkedAfter -gt $finished.ToUnixTimeSeconds()) { throw 'The natural optional-rule timestamps are inconsistent.' }
     $observations = @(Field $Evidence 'assignment_observations' @())
     if ($observations.Count -lt 2) { throw 'The assignment observation history is incomplete.' }
     foreach ($observation in $observations) {
-        if ((Field $observation 'version' 0) -ne $version -or (Field $observation 'digest' '') -cne $digest) {
+        if ((Field $observation 'version' 0 'integer') -ne $version -or (Field $observation 'digest' '' 'string') -cne $digest) {
             throw 'An intervening policy push cannot prove local hourly revalidation.'
         }
     }
     $admission = Field $Evidence 'before_admission' $null
-    if ((Field $admission 'process_created' $null) -cne $true -or
-        (Field $admission 'native_error' -1) -ne 0) { throw 'The later fixture was not admitted before the hour.' }
+    if ((Field $admission 'process_created' $null 'boolean') -ne $true -or
+        (Field $admission 'native_error' -1 'integer') -ne 0) { throw 'The later fixture was not admitted before the hour.' }
     Assert-DeniedExecution (Field $Evidence 'after_denial' $null)
 }
 function Assert-CatalogEvidence($Report, $Manifest) {
-    if ((Field $Report 'passed' $null) -cne $true -or (Field $Report 'status' '') -cne 'passed' -or
+    if ((Field $Report 'passed' $null 'boolean') -ne $true -or (Field $Report 'status' '' 'string') -cne 'passed' -or
         (Field $Report 'error' $null) -or @(Field $Report 'cleanup_errors' @()).Count -ne 0 -or
-        (Field $Report 'run_id' '') -cne (Field $Manifest 'run_id' 'missing') -or
-        (Field $Report 'source_revision' '') -cne (Field $Manifest 'source_revision' 'missing')) {
+        (Field $Report 'run_id' '' 'string') -cne (Field $Manifest 'run_id' 'missing') -or
+        (Field $Report 'source_revision' '' 'string') -cne (Field $Manifest 'source_revision' 'missing')) {
         throw 'The catalog report is incomplete, failed or belongs to another run.'
     }
     $receipt = Field $Report 'package_receipt' $null
-    if ((Field $receipt 'source_revision' '') -cne $Manifest.source_revision -or
-        (Field $receipt 'manifest_sha256' '') -cne (Field $Manifest '_manifest_sha256' 'missing')) {
+    if ((Field $receipt 'source_revision' '' 'string') -cne $Manifest.source_revision -or
+        (Field $receipt 'manifest_sha256' '' 'string') -cne (Field $Manifest '_manifest_sha256' 'missing')) {
         throw 'The catalog receipt does not identify this input manifest.'
     }
     $packages = Field $receipt 'packages' $null
     foreach ($package in $Manifest.packages.PSObject.Properties) {
         $received = Field $packages $package.Name $null
-        if ((Field $received 'sha256' '') -cne $package.Value.sha256 -or
-            (Field $received 'bytes' -1) -ne $package.Value.bytes) { throw 'The MSI receipt changed.' }
+        if ((Field $received 'sha256' '' 'string') -cne $package.Value.sha256 -or
+            (Field $received 'bytes' -1 'integer') -ne $package.Value.bytes) { throw 'The MSI receipt changed.' }
     }
     $required = @('absent','network','process','wdac','all_absent','hourly','release','cleanup')
     $checks = @(Field $Report 'checks' @())
@@ -100,29 +109,29 @@ function Assert-CatalogEvidence($Report, $Manifest) {
         $expected = Field $Manifest.policies $pair.policy $null
         $assignment = Field $observed 'assignment' $null
         $ack = Field $observed 'ack' $null
-        if ((Field $assignment 'version' 0) -ne $expected.version -or (Field $assignment 'digest' '') -cne $expected.digest -or
-            (Field $ack 'version' 0) -ne $expected.version -or (Field $ack 'digest' '') -cne $expected.digest -or
-            (Field $ack 'success' $null) -cne $true -or (Field $observed 'own_policy_present' $null) -cne $false) {
+        if ((Field $assignment 'version' 0 'integer') -ne $expected.version -or (Field $assignment 'digest' '' 'string') -cne $expected.digest -or
+            (Field $ack 'version' 0 'integer') -ne $expected.version -or (Field $ack 'digest' '' 'string') -cne $expected.digest -or
+            (Field $ack 'success' $null 'boolean') -ne $true -or (Field $observed 'own_policy_present' $null 'boolean') -ne $false) {
             throw 'Catalog policy delivery, ACK or owned-policy removal was not proved.'
         }
     }
     $network = $evidence.network
     foreach ($phase in @('before','released')) {
         $observation = Field $network $phase $null
-        if ((Field $observation 'target_exit' -1) -ne 0 -or (Field $observation 'control_exit' -1) -ne 0) { throw 'Network baseline or release failed.' }
+        if ((Field $observation 'target_exit' -1 'integer') -ne 0 -or (Field $observation 'control_exit' -1 'integer') -ne 0) { throw 'Network baseline or release failed.' }
     }
     $blocked = Field $network 'blocked' $null
     $target = $Manifest.guest_work_directory + '\' + $Manifest.fixtures.a.file
     $paths = @(Field $network 'firewall_paths' @())
-    if ((Field $blocked 'target_process_created' $null) -cne $true -or
-        (Field $blocked 'target_exit' -1) -ne 42 -or (Field $blocked 'control_exit' -1) -ne 0 -or
-        (Field $network 'control_has_rule' $null) -cne $false -or $paths.Count -ne 2 -or
+    if ((Field $blocked 'target_process_created' $null 'boolean') -ne $true -or
+        (Field $blocked 'target_exit' -1 'integer') -ne 42 -or (Field $blocked 'control_exit' -1 'integer') -ne 0 -or
+        (Field $network 'control_has_rule' $null 'boolean') -ne $false -or $paths.Count -ne 2 -or
         @($paths | Where-Object { $_ -ine $target }).Count -ne 0) { throw 'Firewall isolation was not independently proved.' }
     $process = $evidence.process
-    if ((Field $process 'target_was_running' $null) -cne $true -or (Field $process 'target_exited' $null) -cne $true -or
-        (Field $process 'control_still_running' $null) -cne $true -or (Field $process 'target_pid' 0) -le 0 -or
-        (Field $process 'control_pid' 0) -le 0 -or $process.target_pid -eq $process.control_pid) { throw 'Process termination or its independent control failed.' }
-    if ((Field $evidence.wdac 'policy_enforced' $null) -cne $true) { throw 'The owned WDAC policy is not enforced.' }
+    if ((Field $process 'target_was_running' $null 'boolean') -ne $true -or (Field $process 'target_exited' $null 'boolean') -ne $true -or
+        (Field $process 'control_still_running' $null 'boolean') -ne $true -or (Field $process 'target_pid' 0 'integer') -le 0 -or
+        (Field $process 'control_pid' 0 'integer') -le 0 -or $process.target_pid -eq $process.control_pid) { throw 'Process termination or its independent control failed.' }
+    if ((Field $evidence.wdac 'policy_enforced' $null 'boolean') -ne $true) { throw 'The owned WDAC policy is not enforced.' }
     Assert-DeniedExecution (Field $evidence.wdac 'original' $null)
     Assert-DeniedExecution (Field $evidence.wdac 'renamed' $null)
     foreach ($name in @('all_absent','cleanup')) {
@@ -133,13 +142,13 @@ function Assert-CatalogEvidence($Report, $Manifest) {
     Assert-HourlyEvidence $evidence.hourly
     if ($evidence.hourly.before.version -ne $Manifest.policies.later.version -or
         $evidence.hourly.before.digest -cne $Manifest.policies.later.digest) { throw 'Hourly evidence belongs to another policy.' }
-    if ((Field $evidence.release 'original_exit' -1) -ne 0 -or (Field $evidence.release 'renamed_exit' -1) -ne 0 -or
-        (Field $evidence.release 'firewall_rule_count' -1) -ne 0) { throw 'Policy release did not restore both executables.' }
+    if ((Field $evidence.release 'original_exit' -1 'integer') -ne 0 -or (Field $evidence.release 'renamed_exit' -1 'integer') -ne 0 -or
+        (Field $evidence.release 'firewall_rule_count' -1 'integer') -ne 0) { throw 'Policy release did not restore both executables.' }
     $cleanup = $evidence.cleanup
-    if ((Field $cleanup 'msi_exit' -1) -ne 0 -or (Field $cleanup 'service_present' $null) -cne $false -or
-        (Field $cleanup 'watchdog_present' $null) -cne $false -or (Field $cleanup 'nrpt_count' -1) -ne 0 -or
-        (Field $cleanup 'owned_firewall_rules' -1) -ne 0 -or (Field $cleanup 'own_policy_present' $null) -cne $false -or
-        (Field $cleanup 'fixture_registry_present' $null) -cne $false) { throw 'Normal MSI removal or cleanup is incomplete.' }
+    if ((Field $cleanup 'msi_exit' -1 'integer') -ne 0 -or (Field $cleanup 'service_present' $null 'boolean') -ne $false -or
+        (Field $cleanup 'watchdog_present' $null 'boolean') -ne $false -or (Field $cleanup 'nrpt_count' -1 'integer') -ne 0 -or
+        (Field $cleanup 'owned_firewall_rules' -1 'integer') -ne 0 -or (Field $cleanup 'own_policy_present' $null 'boolean') -ne $false -or
+        (Field $cleanup 'fixture_registry_present' $null 'boolean') -ne $false) { throw 'Normal MSI removal or cleanup is incomplete.' }
 }
 function Get-Sha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
@@ -173,7 +182,9 @@ function Read-Rows([string]$Name) {
 }
 function Wait-Ack($Assignment) {
     Wait-Until { @(Read-Rows 'ack.log' | Where-Object {
-        $_.version -eq $Assignment.version -and $_.digest -ceq $Assignment.digest -and $_.success -ceq $true
+        (Field $_ 'version' 0 'integer') -eq (Field $Assignment 'version' 0 'integer') -and
+        (Field $_ 'digest' '' 'string') -ceq (Field $Assignment 'digest' '' 'string') -and
+        (Field $_ 'success' $null 'boolean') -eq $true
     }).Count -gt 0 } 90 'The service did not successfully apply and ACK this exact catalog assignment within 90 seconds.'
 }
 
@@ -285,9 +296,12 @@ function Code-Policies {
     return @(($raw | ConvertFrom-Json).Policies)
 }
 function Own-Policy {
-    if (-not (Test-Path -LiteralPath $journalPath)) { return $null }
-    $journal = Read-Journal
-    $script:ownPolicyId = [string]$journal.policy_id
+    if (Test-Path -LiteralPath $journalPath) {
+        $journal = Read-Journal
+        $script:ownPolicyId = [string]$journal.policy_id
+    }
+    # Normal MSI removal deletes the journal. Its previously observed GUID still identifies leftovers.
+    if (-not $script:ownPolicyId) { return $null }
     if ($script:ownPolicyId -notmatch '^\{[0-9a-fA-F-]{36}\}$') { throw 'The application journal has an invalid owned policy identity.' }
     return @(Code-Policies | Where-Object { $_.PolicyID -ieq $script:ownPolicyId }) | Select-Object -First 1
 }
@@ -316,7 +330,11 @@ function Publish-Assignment([string]$Name) {
     return $assignment
 }
 function Delivery-Evidence($Assignment) {
-    $ack = @(Read-Rows 'ack.log' | Where-Object { $_.version -eq $Assignment.version -and $_.digest -ceq $Assignment.digest -and $_.success -ceq $true }) | Select-Object -Last 1
+    $ack = @(Read-Rows 'ack.log' | Where-Object {
+        (Field $_ 'version' 0 'integer') -eq (Field $Assignment 'version' 0 'integer') -and
+        (Field $_ 'digest' '' 'string') -ceq (Field $Assignment 'digest' '' 'string') -and
+        (Field $_ 'success' $null 'boolean') -eq $true
+    }) | Select-Object -Last 1
     if ($null -eq $ack) { throw 'The exact successful ACK is missing.' }
     return @{assignment=@{version=$Assignment.version;digest=$Assignment.digest};ack=@{version=$ack.version;digest=$ack.digest;success=$ack.success};own_policy_present=($null -ne (Own-Policy))}
 }

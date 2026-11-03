@@ -321,13 +321,18 @@ def _require(condition: bool, message: str) -> None:
         raise ValueError(message)
 
 
+def _integer_is(value: Any, expected: int) -> bool:
+    """JSON booleans and floating-point values are not observed integer codes."""
+    return type(value) is int and value == expected
+
+
 def _denied(observation: Any) -> None:
     row = _object(observation, "execution observation")
     _require(row.get("process_created") is False and row.get("started") is False,
              "WDAC must refuse before process creation or sentinel")
     _require(type(row.get("native_error")) is int and row["native_error"] in DENIAL_CODES,
              "a supported native Windows policy refusal is required")
-    _require(row.get("exit") == -1, "a refused process cannot have a normal exit")
+    _require(_integer_is(row.get("exit"), -1), "a refused process cannot have a normal exit")
 
 
 def _identity(value: Any) -> tuple[int, str]:
@@ -382,11 +387,12 @@ def _hourly(evidence: dict[str, Any], assignment: dict[str, Any]) -> None:
     _require(abs(wall_elapsed - elapsed) <= 30, "monotonic and UTC durations disagree")
     checked_before = _number(before.get("optional_checked_at"))
     checked_after = _number(after.get("optional_checked_at"))
-    _require(abs(checked_before - start.timestamp()) <= 90 and abs(checked_after - finish.timestamp()) <= 90,
+    _require(start.timestamp() - 90 <= checked_before <= start.timestamp()
+             and finish.timestamp() - 90 <= checked_after <= finish.timestamp(),
              "optional_checked_at is inconsistent with observed real time")
     _require(checked_after - checked_before >= 3600, "the optional journal did not advance naturally by an hour")
     admitted = _object(evidence.get("before_admission"), "before-hour admission")
-    _require(admitted.get("process_created") is True and admitted.get("native_error") == 0,
+    _require(admitted.get("process_created") is True and _integer_is(admitted.get("native_error"), 0),
              "the later renamed fixture must start before the recheck")
     _denied(evidence.get("after_denial"))
 
@@ -395,10 +401,13 @@ def _network(evidence: dict[str, Any], manifest: dict[str, Any]) -> None:
     before = _object(evidence.get("before"), "network baseline")
     blocked = _object(evidence.get("blocked"), "blocked network")
     released = _object(evidence.get("released"), "released network")
-    _require(before.get("target_exit") == before.get("control_exit") == 0, "network baseline failed")
-    _require(blocked.get("target_process_created") is True and blocked.get("target_exit") == 42
-             and blocked.get("control_exit") == 0, "network denial was masked by process termination or control failure")
-    _require(released.get("target_exit") == released.get("control_exit") == 0, "network release failed")
+    _require(all(_integer_is(before.get(field), 0) for field in ("target_exit", "control_exit")),
+             "network baseline failed")
+    _require(blocked.get("target_process_created") is True and _integer_is(blocked.get("target_exit"), 42)
+             and _integer_is(blocked.get("control_exit"), 0),
+             "network denial was masked by process termination or control failure")
+    _require(all(_integer_is(released.get(field), 0) for field in ("target_exit", "control_exit")),
+             "network release failed")
     target = manifest["guest_work_directory"] + "\\" + manifest["fixtures"]["a"]["file"]
     paths = evidence.get("firewall_paths")
     _require(isinstance(paths, list) and len(paths) >= 2
@@ -408,7 +417,7 @@ def _network(evidence: dict[str, Any], manifest: dict[str, Any]) -> None:
 
 
 def _cleanup(evidence: dict[str, Any]) -> None:
-    _require(evidence.get("msi_exit") == 0, "normal MSI removal failed")
+    _require(_integer_is(evidence.get("msi_exit"), 0), "normal MSI removal failed")
     for field in ("service_present", "watchdog_present", "own_policy_present", "fixture_registry_present"):
         _require(evidence.get(field) is False, f"cleanup did not clear {field}")
     for field in ("nrpt_count", "owned_firewall_rules"):
@@ -440,8 +449,8 @@ def _evidence(name: str, value: Any, manifest: dict[str, Any]) -> None:
         _hourly(evidence, manifest["policies"]["later"])
     elif name == "release":
         _ack(evidence, manifest["policies"]["release"])
-        _require(evidence.get("original_exit") == evidence.get("renamed_exit") == 0
-                 and evidence.get("own_policy_present") is False and evidence.get("firewall_rule_count") == 0,
+        _require(all(_integer_is(evidence.get(field), 0) for field in ("original_exit", "renamed_exit", "firewall_rule_count"))
+                 and evidence.get("own_policy_present") is False,
                  "final release did not restore execution and remove owned policies")
     elif name == "cleanup":
         _cleanup(evidence)
