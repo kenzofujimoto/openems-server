@@ -185,6 +185,123 @@ function Assert-PrivateHashPolicy([string]$Path) {
             'Enabled:Advanced Boot Options Menu','Disabled:Script Enforcement','Required:Enforce Store Applications')) { throw 'OPENEMS_INVALID_HASH_POLICY' }
     }
 }
+function Normalize-PrivateHashPolicy([string]$Path) {
+    $settings = New-Object Xml.XmlReaderSettings
+    $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit; $settings.XmlResolver = $null
+    $reader = [Xml.XmlReader]::Create($Path, $settings)
+    $xml = New-Object Xml.XmlDocument
+    $xml.XmlResolver = $null
+    try { $xml.Load($reader) } finally { $reader.Dispose() }
+    $namespace = 'urn:schemas-microsoft-com:sipolicy'
+    $ns = New-Object Xml.XmlNamespaceManager($xml.NameTable)
+    $ns.AddNamespace('ci', $namespace)
+    # Existing user-only policies keep their original validation and bytes.
+    if ($xml.SelectNodes('//ci:SigningScenario[@Value="131"]//ci:FileRuleRef', $ns).Count -eq 0) { return }
+
+    # Only the observed, duplicated hash format may be projected to user mode.
+    $attributes = @{
+        'SiPolicy' = @('PolicyType')
+        'SiPolicy/VersionEx' = @()
+        'SiPolicy/PlatformID' = @()
+        'SiPolicy/Rules' = @()
+        'SiPolicy/Rules/Rule' = @()
+        'SiPolicy/Rules/Rule/Option' = @()
+        'SiPolicy/EKUs' = @()
+        'SiPolicy/FileRules' = @()
+        'SiPolicy/FileRules/Deny' = @('ID','FriendlyName','Hash')
+        'SiPolicy/Signers' = @()
+        'SiPolicy/SigningScenarios' = @()
+        'SiPolicy/SigningScenarios/SigningScenario' = @('Value','ID','FriendlyName')
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners' = @()
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners/FileRulesRef' = @()
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners/FileRulesRef/FileRuleRef' = @('RuleID')
+        'SiPolicy/UpdatePolicySigners' = @()
+        'SiPolicy/CiSigners' = @()
+        'SiPolicy/HvciOptions' = @()
+        'SiPolicy/BasePolicyID' = @()
+        'SiPolicy/PolicyID' = @()
+    }
+    $textPaths = @('SiPolicy/VersionEx','SiPolicy/PlatformID','SiPolicy/Rules/Rule/Option',
+        'SiPolicy/HvciOptions','SiPolicy/BasePolicyID','SiPolicy/PolicyID')
+    $oneChildPaths = @('SiPolicy/Rules/Rule','SiPolicy/SigningScenarios/SigningScenario',
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners')
+    if ($xml.SelectNodes('//processing-instruction()').Count) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    foreach ($node in @($xml.SelectNodes('//*'))) {
+        $nodePath = $node.LocalName
+        for ($parent = $node.ParentNode; $parent.NodeType -eq [Xml.XmlNodeType]::Element; $parent = $parent.ParentNode) {
+            $nodePath = $parent.LocalName + '/' + $nodePath
+        }
+        if ($node.NamespaceURI -cne $namespace -or $nodePath -cnotin @($attributes.Keys)) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        foreach ($attribute in $node.Attributes) {
+            if ($attribute.NamespaceURI -ceq 'http://www.w3.org/2000/xmlns/' -and $attribute.Value -ceq $namespace) { continue }
+            if ($attribute.NamespaceURI -or $attribute.Name -cnotin $attributes[$nodePath]) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        }
+        $children = @($node.ChildNodes | Where-Object NodeType -EQ ([Xml.XmlNodeType]::Element))
+        if ($nodePath -cin $oneChildPaths -and $children.Count -ne 1) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        if ($nodePath -ceq 'SiPolicy') {
+            $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($child in $children) { if (-not $names.Add($child.LocalName)) { throw 'OPENEMS_INVALID_HASH_POLICY' } }
+            if ($node.HasAttribute('PolicyType') -and $node.GetAttribute('PolicyType') -cne 'Base Policy') { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        }
+        foreach ($child in $node.ChildNodes) {
+            if ($child.NodeType -in @([Xml.XmlNodeType]::Element,[Xml.XmlNodeType]::Comment,
+                [Xml.XmlNodeType]::Whitespace,[Xml.XmlNodeType]::SignificantWhitespace)) { continue }
+            if ($child.NodeType -ne [Xml.XmlNodeType]::Text -or
+                ($nodePath -cnotin $textPaths -and -not [string]::IsNullOrWhiteSpace($child.Value))) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        }
+    }
+    $rules = @($xml.SelectNodes('/ci:SiPolicy/ci:FileRules/ci:Deny', $ns))
+    $scenarios = @($xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario', $ns))
+    $hvci = @($xml.SelectNodes('/ci:SiPolicy/ci:HvciOptions', $ns))
+    if ($rules.Count -ne 8 -or $scenarios.Count -ne 2 -or $hvci.Count -ne 1 -or
+        $hvci[0].InnerText -cne '0') { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    $byId = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($rule in $rules) {
+        $id = $rule.GetAttribute('ID')
+        if (-not $id -or $byId.ContainsKey($id) -or
+            $rule.GetAttribute('Hash') -cnotmatch '^(?:[0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$') { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        $byId.Add($id, $rule)
+    }
+    $options = @($xml.SelectNodes('/ci:SiPolicy/ci:Rules/ci:Rule/ci:Option', $ns) | ForEach-Object InnerText)
+    if ('Enabled:UMCI' -cnotin $options) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    foreach ($option in $options) {
+        if ($option -cnotin @('Enabled:UMCI','Enabled:Audit Mode','Enabled:Unsigned System Integrity Policy',
+            'Enabled:Advanced Boot Options Menu','Disabled:Script Enforcement','Required:Enforce Store Applications')) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    }
+    $references = @{}
+    $profiles = @{}
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($scenario in $scenarios) {
+        $value = $scenario.GetAttribute('Value')
+        if ($value -cnotin @('12','131') -or $references.ContainsKey($value)) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        $refs = @($scenario.SelectNodes('ci:ProductSigners/ci:FileRulesRef/ci:FileRuleRef', $ns))
+        if ($refs.Count -ne 4) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        $references[$value] = $refs
+        $profile = [Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
+        foreach ($reference in $refs) {
+            $id = $reference.GetAttribute('RuleID')
+            if (-not $byId.ContainsKey($id) -or -not $seen.Add($id)) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+            $rule = $byId[$id]
+            # Hashes are case-insensitive; display metadata must match exactly, including its presence.
+            $key = $rule.GetAttribute('Hash').ToUpperInvariant() + ':' +
+                [string]$rule.HasAttribute('FriendlyName') + ':' + $rule.GetAttribute('FriendlyName')
+            if ($profile.ContainsKey($key)) { $profile[$key]++ } else { $profile.Add($key, 1) }
+        }
+        $profiles[$value] = $profile
+    }
+    if ($seen.Count -ne $byId.Count -or $xml.SelectNodes('//ci:FileRuleRef', $ns).Count -ne $seen.Count -or
+        $profiles['12'].Count -ne $profiles['131'].Count) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    foreach ($key in $profiles['12'].Keys) {
+        if (-not $profiles['131'].ContainsKey($key) -or $profiles['12'][$key] -ne $profiles['131'][$key]) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    }
+    # All input nodes, attributes and references are checked before the private document changes.
+    foreach ($reference in $references['131']) {
+        $rule = $byId[$reference.GetAttribute('RuleID')]
+        [void]$reference.ParentNode.RemoveChild($reference)
+        [void]$rule.ParentNode.RemoveChild($rule)
+    }
+    $xml.Save($Path)
+}
 function Policies {
     $citool = Join-Path $env:SystemRoot 'System32\CiTool.exe'
     if (-not (Test-Path -LiteralPath $citool)) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
@@ -346,6 +463,7 @@ try {
                     Set-Acl -LiteralPath $catalog -AclObject $acl
                     New-CIPolicy -ScanPath (Split-Path -Parent $samples[0].sample_path) -FilePath $directPolicy -UserPEs -Level Hash -Deny -NoScript -NoShadowCopy -MultiplePolicyFormat -PathToCatroot $catalog -ErrorAction Stop | Out-Null
                     Protect-File $directPolicy
+                    Normalize-PrivateHashPolicy $directPolicy
                     Assert-PrivateHashPolicy $directPolicy
                     # Preserve the existing adapter's scope; New-CIPolicy adds this option by default.
                     Set-RuleOption -FilePath $directPolicy -Option 12 -Delete -ErrorAction Stop
