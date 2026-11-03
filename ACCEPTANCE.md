@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## Catálogo `if_present` — falha real de 03/11/2026
+
+[Relatório original](validation/vm-catalog-f15761c-result-2026-11-03.json), fonte `f15761c`, MSI `7b514947…`: app ausente e bloqueio/liberação de rede passaram; a atribuição app presente v5 não obteve ACK de sucesso em 90 segundos. **Aceite completo reprovado nesta rodada:** processo, WDAC original/renomeado e hora real não foram concluídos. A causa ainda depende dos logs protegidos; não atribuir a timeout interno, ConfigCI ou produto sem evidência.
+
+O relatório de limpeza registra MSI 0 e ausência de serviço/watchdog/NRPT/firewall/política própria/registro das fixtures, sem erros, preservando os 14 IDs CI externos. Coleta complementar preparada para conferir ACK bruto de liberação e estado atual. Preservar o guest até concluir o diagnóstico; nenhum código, prazo de ACK ou política foi alterado para converter o resultado em sucesso.
+
 ## Catálogo `if_present` — preparação de 02/11/2026, aceite pendente
 
 [Pacote e validação local](validation/catalog-vm-preparation-f15761c-2026-11-02.json), fonte `f15761c`. MSIs 0.4.0/0.4.1 de produção preparados; dez arquivos da ISO conferidos por hash e atalho elevado validado. Python: 1420 passaram, 57 skips e quatro casos integrais de controles excluídos do host; Rust 237 e painel 154 passaram. Cobertura agregada app/agente 88,88%; gates completos por módulo e PostgreSQL/Redis permanecem pendentes.

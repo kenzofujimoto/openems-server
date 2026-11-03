@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado atual — 03/11/2026: rodada do catálogo falhou, guest preservado
+
+- [JSON original da rodada](validation/vm-catalog-f15761c-result-2026-11-03.json), fonte `f15761c`, run `e667c411feb14967bcb4b5fa85d0354a`: **failed**, sem aceite WDAC/catálogo completo. O recibo corresponde ao MSI `7b514947aa4fd942d5a424d8f6e3b61e8d847f8ce9f37a1b5973b0eab5161c23` e ao manifesto preparados.
+- App ausente (ACK v2) e bloqueio/liberação de rede por executável passaram. A atribuição seguinte, app presente v5, não recebeu ACK de sucesso em 90 s. Processo, recusa WDAC e rechecagem de uma hora não foram concluídos. Causa ainda não determinada; não aumentar o prazo nem reclassificar a falha.
+- Limpeza do roteiro reportou MSI 0, ausência de serviço/watchdog/NRPT/firewall próprio/política própria/registro das fixtures e preservação dos 14 IDs CI externos, sem `cleanup_errors`. O ACK bruto da liberação e o estado atual serão conferidos pela coleta adicional.
+- **Preservar a VM; não restaurar o snapshot ainda.** Atalho `02 - Collect catalog diagnostics as administrator.lnk` preparado em `OpenEMSResults`: coleta protegida como SYSTEM, sem reinstalar agente, executar fixtures, aplicar controles ou mudar ACLs. Exporta só campos permitidos de ACKs/logs, metadados/hash/XML de artefatos próprios, eventos CI e verificação atual de limpeza. Aguardar execução manual/UAC do operador.
+- Investigação usa `systematic-debugging`. Código de produto e roteiro permanecem intactos. Qualquer correção fora dos três arquivos de aceite originalmente aprovados exige plano concreto e aprovação antes de implementação/TDD. Os registros anteriores abaixo são históricos.
+
 ## Estado atual — 02/11/2026: catálogo pronto para rodar na VM
 
 - Código atualizado do GitHub até `e70d5ad`; preparação e correções do roteiro na branch `feature/catalog-vm-acceptance`, fonte final `f15761c6671f95e0696fe8f0fd73a0a7558eacc5`.
