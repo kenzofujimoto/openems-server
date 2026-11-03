@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-03",
+  "test_revision": "15d5fe0ca3db04c471613092ce104b9f9008a007",
+  "approved_original_plan": "docs/wdac-dual-scenario-hash-plan.md",
+  "module_cases": 95,
+  "new_cases": 29,
+  "module_expected_failures": 3,
+  "module_passed": 92,
+  "full_expected_failures": 3,
+  "full_passed": 1446,
+  "skipped": 57,
+  "whole_control_cases_deselected": 4,
+  "full_seconds": 651.65,
+  "unexpected_failures": 0,
+  "production_changed": false,
+  "next_step": "Await approval of native transport addendum; no product changes before expanded approval."
+}

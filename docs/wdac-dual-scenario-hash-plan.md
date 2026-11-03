@@ -1,6 +1,6 @@
 # Plano: normalização estrita dos hashes WDAC por cenário
 
-Estado: aprovado explicitamente pelo usuário em 03/11/2026 ("Aprovo o plano com TDD"). Execução iniciada pelos testes; implementação depende do estado vermelho commitado.
+Estado: plano original aprovado explicitamente pelo usuário em 03/11/2026 ("Aprovo o plano com TDD"). Testes vermelhos concluídos e commitados em `15d5fe0`. O adendo de transporte nativo abaixo aguarda aprovação antes de qualquer implementação no produto.
 
 ## Problema comprovado
 
@@ -42,6 +42,24 @@ Os registros de evidência também serão atualizados em `validation/`, `HANDOFF
 - A correção do XML não garante o aceite completo. Qualquer falha posterior permanece reprovada e precisa de diagnóstico e nova rodada limpa.
 - Sem push, PR, merge ou publicação nesta etapa.
 
+## Adendo necessário: limite do transporte nativo
+
+A revisão de implementação identificou uma dependência que faltou no plano original: `windows_control.rs` entrega o script inteiro por `powershell.exe -Command`. O script atual ocupa 31523 unidades UTF-16 no checkout; a linha serializada medida ocupa 31658 unidades incluindo o terminador, restando 1109 até o [limite de 32767 do CreateProcessW](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw). A normalização estrita não cabe nessa margem. Uma sonda inerte com comentário de 40000 caracteres reproduziu `WinError 206` antes de iniciar o PowerShell; nenhum adaptador ou controle foi executado.
+
+Os testes mockados invocam uma cópia por `-File` e, sozinhos, não cobririam essa falha do transporte real. A aprovação adicional solicitada acrescenta **somente `agent-rs/src/windows_control.rs`**, incluindo os testes nativos internos, aos quatro arquivos originais. Nenhuma dependência nova ou mudança de Cargo é proposta.
+
+1. Depois da aprovação do adendo, escrever regressões nativas inertes primeiro, usando o limite real de criação do processo: script acima de 32767 caracteres, Unicode e preservação do JSON por stdin. Executar e commitar o estado vermelho antes de mudar o transporte.
+2. Transportar somente o script confiável compilado num `control.ps1` temporário e executar o PowerShell com argumentos curtos por `-File`. O arquivo conterá BOM UTF-8 para o PowerShell 5.1; requisição, política, token e configurações continuarão apenas em memória/stdin.
+3. Criar o diretório privado atomicamente com proprietário e DACL protegida para a identidade atual/SYSTEM. Recusar colisões, caminhos remotos/reparse e verificar as permissões reais. Essa criação deve funcionar tanto para o serviço SYSTEM quanto para inventário de leitura executado pela conta do usuário. Não alterar permissões de diretórios preexistentes ou configurações globais do Windows.
+4. Usar `create_new` para o arquivo e manter handles que impeçam troca/escrita enquanto o filho lê. Preservar os limites de entrada/saída, prioridades, timeout de controle/inventário e protocolo JSON atuais. Não usar IEX ou avaliação de política como código.
+5. Encerrar o filho e juntar leitores antes de fechar os handles e remover apenas o arquivo próprio e o diretório vazio, sem remoção recursiva. Falhas de limpeza devem aparecer como erros; proteção RAII cobre também saídas antecipadas.
+6. Cobrir com testes inertes o proprietário/DACL, ausência do JSON no arquivo, concorrência, colisões/reparse, limites e limpeza após sucesso, falha, timeout e erro de criação do processo. Esses testes só podem operar em seus próprios arquivos temporários; nenhum adaptador real, instalador ou controle no host.
+7. Só então concluir a normalização XML já aprovada e os gates completos, recompilar o agente, gerar o MSI/ISO separado e repetir o aceite no snapshot limpo. Como o transporte é compartilhado, os testes também devem preservar o comportamento dos demais adaptadores; USB físico continua uma rodada de regressão separada.
+
+Risco adicional: a integridade do arquivo temporário é crítica quando executado como SYSTEM. Criação privada desde o início, verificação de permissões, handles e limpeza explícita fazem parte do contrato, não otimizações opcionais.
+
+Evidência do ciclo já concluído: módulo com 95 casos (29 novos); suíte Python permitida com **3 falhas esperadas, 1446 sucessos, 57 skips e quatro casos integrais desmarcados**. O produto permanece sem alterações. A fixture reconstrói os bytes BOM/CRLF originais para funcionar em diferentes checkouts Git.
+
 ## Aprovação
 
-O plano anterior autorizava três arquivos de aceite e mantinha o produto sem alterações. Esta correção altera o adaptador embutido no agente e seus testes. A aprovação explícita exigida pelo `AGENTS.md` foi recebida em 03/11/2026; a implementação segue a sequência TDD acima.
+O plano anterior autorizava três arquivos de aceite e mantinha o produto sem alterações. A normalização e seus três arquivos de teste receberam aprovação em 03/11/2026. O adendo acrescenta o transporte nativo e seus testes num quinto arquivo; a implementação desse escopo ampliado aguarda aprovação explícita conforme o `AGENTS.md`.

@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## TDD iniciado — 03/11/2026: adendo de transporte aguarda aprovação
+
+O plano de normalização foi aprovado. Testes vermelhos commitados em `15d5fe0`: 95 casos no módulo, 29 novos; suíte Python permitida com **3 falhas esperadas, 1446 sucessos, 57 skips e quatro casos integrais de controles desmarcados**, sem falhas adicionais ([registro](validation/wdac-dual-scenario-red-2026-11-03.json)). Nenhum código de produto foi alterado.
+
+A revisão detectou o limite do transporte nativo: o script atual vai por `-Command`, com apenas 1109 unidades UTF-16 livres na linha serializada. Uma sonda inerte acima do limite reproduziu `WinError 206` ([medição](validation/windows-control-transport-boundary-2026-11-03.json)). O teste mockado por `-File` não cobriria esse problema. O [plano recebeu adendo](docs/wdac-dual-scenario-hash-plan.md) para incluir somente `agent-rs/src/windows_control.rs` e seus testes internos: arquivo compilado temporário privado, JSON apenas por stdin, argumentos curtos, criação/handles/limpeza protegidos. Escopo ampliado aguarda aprovação antes de implementar. A falha original e a limpeza confirmada permanecem preservadas.
+
 ## Causa reproduzida — 03/11/2026: aprovação da correção pendente
 
 [XML original](validation/vm-catalog-f15761c-owned-hash-policy-2026-11-03.xml), 4148 bytes/SHA-256 `24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b`, e [reprodução isolada](validation/catalog-xml-rejection-reproduction-2026-11-03.json). O XML contém quatro hashes de usuário e quatro hashes kernel equivalentes, com IDs separados e todas as referências válidas. O validador original rejeita esse formato com `OPENEMS_INVALID_HASH_POLICY`; a reprodução usou somente a função extraída por AST, com zero mutações no host.
