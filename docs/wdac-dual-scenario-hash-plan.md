@@ -1,6 +1,6 @@
 # Plano: normalização estrita dos hashes WDAC por cenário
 
-Estado: plano original aprovado explicitamente pelo usuário em 03/11/2026 ("Aprovo o plano com TDD"). Testes vermelhos concluídos e commitados em `15d5fe0`. O adendo de transporte nativo abaixo aguarda aprovação antes de qualquer implementação no produto.
+Estado: plano original e adendo aprovados explicitamente pelo usuário em 03/11/2026 ("Aprovo o plano com TDD" e "Aprovo o adendo com TDD"). Testes vermelhos XML commitados em `15d5fe0`; testes vermelhos nativos commitados em `85f953c`. Implementação e gates locais concluídos: Python 1451, Rust 251 e painel 154 passaram. Novo pacote e aceite completo na VM permanecem etapas separadas.
 
 ## Problema comprovado
 
@@ -56,10 +56,12 @@ Os testes mockados invocam uma cópia por `-File` e, sozinhos, não cobririam es
 6. Cobrir com testes inertes o proprietário/DACL, ausência do JSON no arquivo, concorrência, colisões/reparse, limites e limpeza após sucesso, falha, timeout e erro de criação do processo. Esses testes só podem operar em seus próprios arquivos temporários; nenhum adaptador real, instalador ou controle no host.
 7. Só então concluir a normalização XML já aprovada e os gates completos, recompilar o agente, gerar o MSI/ISO separado e repetir o aceite no snapshot limpo. Como o transporte é compartilhado, os testes também devem preservar o comportamento dos demais adaptadores; USB físico continua uma rodada de regressão separada.
 
+Na validação completa, o teste existente `agent-rs/tests/application_control.rs` também precisou de manutenção mecânica: seu launcher manual por `-Command` reproduziu o mesmo WinError 206 ao carregar a fixture maior. Ele agora grava a mesma fixture confiável com BOM e usa `-File`, preservando todas as verificações de caminhos permitidos/proibidos. Essa mudança é somente de teste; não acrescenta API nem comportamento ao produto.
+
 Risco adicional: a integridade do arquivo temporário é crítica quando executado como SYSTEM. Criação privada desde o início, verificação de permissões, handles e limpeza explícita fazem parte do contrato, não otimizações opcionais.
 
-Evidência do ciclo já concluído: módulo com 95 casos (29 novos); suíte Python permitida com **3 falhas esperadas, 1446 sucessos, 57 skips e quatro casos integrais desmarcados**. O produto permanece sem alterações. A fixture reconstrói os bytes BOM/CRLF originais para funcionar em diferentes checkouts Git.
+Evidência do ciclo vermelho: módulo com 95 casos (29 novos); suíte Python permitida com **3 falhas esperadas, 1446 sucessos, 57 skips e quatro casos integrais desmarcados**, antes das alterações de produto. Duas regressões adicionais de metadados HVCI também foram commitadas vermelhas antes da restrição. A fixture reconstrói os bytes BOM/CRLF originais para funcionar em diferentes checkouts Git.
 
 ## Aprovação
 
-O plano anterior autorizava três arquivos de aceite e mantinha o produto sem alterações. A normalização e seus três arquivos de teste receberam aprovação em 03/11/2026. O adendo acrescenta o transporte nativo e seus testes num quinto arquivo; a implementação desse escopo ampliado aguarda aprovação explícita conforme o `AGENTS.md`.
+O plano anterior autorizava três arquivos de aceite e mantinha o produto sem alterações. A normalização e seus três arquivos de teste receberam aprovação em 03/11/2026. O adendo acrescenta o transporte nativo e seus testes num quinto arquivo; esse escopo ampliado também foi aprovado explicitamente pelo usuário, antes da implementação, conforme o `AGENTS.md`.
