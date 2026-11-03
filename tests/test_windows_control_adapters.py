@@ -415,6 +415,10 @@ def mutate_policy_schema(root, change):
         kernel_refs[0].set("Extra", "not allowed")
     elif change == "unexpected_root_attribute":
         root.set("Unexpected", "not allowed")
+    elif change == "hvci_nonzero":
+        root.find("ci:HvciOptions", CI).text = "1"
+    elif change == "hvci_non_numeric":
+        root.find("ci:HvciOptions", CI).text = "unexpected"
     elif change == "missing_umci":
         options = root.find("ci:Rules", CI)
         options.remove(next(row for row in options if row.find("ci:Option", CI).text == "Enabled:UMCI"))
@@ -477,7 +481,7 @@ def test_wdac_dual_scenario_hash_policy_preserves_only_the_exact_user_mode_denie
     "foreign_namespace_element", "foreign_namespace_attribute", "unexpected_element", "unexpected_attribute",
     "unexpected_root_attribute", "allow_rule", "signer", "file_attribute", "invalid_hash", "non_equivalent_hash",
     "same_hash_set_different_multiplicity", "non_equivalent_friendly_name", "missing_umci", "unknown_option",
-    "three_references_per_scenario", "dtd_entity",
+    "three_references_per_scenario", "dtd_entity", "hvci_nonzero", "hvci_non_numeric",
 ])
 def test_wdac_dual_scenario_rejects_invalid_or_non_equivalent_input_without_rewriting_it(tmp_path, change):
     generated = dual_scenario_policy(change)
