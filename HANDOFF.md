@@ -1,5 +1,15 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 03/11/2026: correção concluída, novo aceite pendente
+
+Plano e adendo aprovados; TDD vermelho preservado em `15d5fe0`, `85f953c` e `e6867a2`. Correções em `a5c8c41` (transporte privado) e `4d35f7d` (normalização estrita dos hashes kernel duplicados). Validador original intacto. O launcher de `agent-rs/tests/application_control.rs` recebeu manutenção somente de teste para usar `-File`/BOM, preservando as verificações de caminhos.
+
+Gates finais: **1451 Python passaram, 57 skips, quatro casos integrais de controles desmarcados; 251 Rust e 154 painel passaram**. Fmt/Clippy/Ruff/lint/tipos/build/release passaram. Cobertura app/agente 88,88%; gates completos por módulo, PostgreSQL/Redis, servidor/painel de ponta a ponta e regressão USB física continuam pendentes. Nenhum controle, MSI ou fixture foi executado no host físico.
+
+[Recibo novo](validation/catalog-vm-preparation-d87d059-2026-11-03.json): fonte `d87d0591f55c77e7c222db82e4b2b812e9866681`, run `385b1eb0f9304a6ebb308e0620215c6f`. MSIs 0.4.0/0.4.1 inspecionados somente para leitura, sem fault injection. Vinte arquivos legados e dez arquivos da ISO conferidos por hash. ISO `C:\Users\kenzo.fujimoto\Documents\OpenEMS-Lab\OpenEMS-Catalog-d87d059-385b1eb0.iso`, SHA-256 `50891195124ab885c95e07ff1f20ea5b1146a3d211efbb757ae5cf2ef5476c87`. Atalho elevado `04 - Catalog acceptance as administrator.lnk` em `OpenEMSResults`, comando conferido e parser aprovado.
+
+Nova rodada ainda não iniciada. Snapshot `clean-preflight-before-controls` restaurado no VMware; guest retomado no desktop. Conectar somente a ISO nova, executar atalho 04 no guest e confirmar UAC manualmente. Exigir ACK 90 s, 3600 segundos reais, todos os cenários, liberação normal, MSI 0 e limpeza. Falha `f15761c` e seus relatórios/XML preservados; liberação e limpeza independentes confirmadas. Os títulos e pendências abaixo são históricos, superados por este estado.
+
 ## TDD iniciado — 03/11/2026: adendo de transporte aguarda aprovação
 
 O plano de normalização foi aprovado. Testes vermelhos commitados em `15d5fe0`: 95 casos no módulo, 29 novos; suíte Python permitida com **3 falhas esperadas, 1446 sucessos, 57 skips e quatro casos integrais de controles desmarcados**, sem falhas adicionais ([registro](validation/wdac-dual-scenario-red-2026-11-03.json)). Nenhum código de produto foi alterado.

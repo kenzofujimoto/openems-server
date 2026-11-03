@@ -1,6 +1,6 @@
 # Plano: normalização estrita dos hashes WDAC por cenário
 
-Estado: plano original e adendo aprovados explicitamente pelo usuário em 03/11/2026 ("Aprovo o plano com TDD" e "Aprovo o adendo com TDD"). Testes vermelhos XML commitados em `15d5fe0`; testes vermelhos nativos commitados em `85f953c`. Implementação e gates locais concluídos: Python 1451, Rust 251 e painel 154 passaram. Novo pacote e aceite completo na VM permanecem etapas separadas.
+Estado: plano original e adendo aprovados explicitamente pelo usuário em 03/11/2026 ("Aprovo o plano com TDD" e "Aprovo o adendo com TDD"). Testes vermelhos XML commitados em `15d5fe0`; testes vermelhos nativos commitados em `85f953c`; metadados HVCI em `e6867a2`. Implementação e gates locais concluídos: Python 1451, Rust 251 e painel 154 passaram. Pacote novo preparado e conferido, fonte `d87d059`, run `385b1eb0f9304a6ebb308e0620215c6f` ([recibo](../validation/catalog-vm-preparation-d87d059-2026-11-03.json)). Aceite completo na VM ainda não iniciado; snapshot limpo restaurado.
 
 ## Problema comprovado
 

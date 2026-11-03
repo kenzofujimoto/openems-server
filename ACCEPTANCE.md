@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 03/11/2026: correção local verde; aceite Windows pendente
+
+[Pacote novo e evidências](validation/catalog-vm-preparation-d87d059-2026-11-03.json), fonte `d87d059`, run `385b1eb0f9304a6ebb308e0620215c6f`: **1451 Python, 251 Rust e 154 painel passaram**, além de fmt/Clippy/Ruff/lint/tipos/build/release. Python teve 57 skips e quatro casos integrais de controles desmarcados no host. Cobertura app/agente 88,88%; gates completos por módulo e integrações PostgreSQL/Redis continuam pendentes.
+
+Normalização estrita dos dois cenários e transporte privado implementados após testes vermelhos commitados. Validador original preservado. MSIs 0.4.0/0.4.1 sem fault injection; dez arquivos da ISO e vinte arquivos legados conferidos por hash. ISO `OpenEMS-Catalog-d87d059-385b1eb0.iso`; atalho 04 preparado para guest descartável. Nenhum controle ou instalador executado no host.
+
+**Nova rodada não iniciada e sem aceite de enforcement.** Snapshot limpo restaurado e guest no desktop; conectar a ISO nova e executar o atalho 04 manualmente. Manter ACK de 90 s, hora real de 3600 s, processo/rede/WDAC original e renomeado, remoção quando ausente, liberação e remoção normal do MSI com limpeza. Escopo: expansão pela API real em processo com fixtures sintéticas e serviço Windows na VM por backend local. Servidor em rede, painel, PostgreSQL/Redis, republicação por inventário de frota e USB físico são validações separadas. Falha `f15761c` preservada e reprovada; sua liberação e limpeza foram conferidas independentemente. As seções seguintes são históricas.
+
 ## TDD iniciado — 03/11/2026: adendo de transporte aguarda aprovação
 
 O plano de normalização foi aprovado. Testes vermelhos commitados em `15d5fe0`: 95 casos no módulo, 29 novos; suíte Python permitida com **3 falhas esperadas, 1446 sucessos, 57 skips e quatro casos integrais de controles desmarcados**, sem falhas adicionais ([registro](validation/wdac-dual-scenario-red-2026-11-03.json)). Nenhum código de produto foi alterado.
