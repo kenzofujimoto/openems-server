@@ -295,11 +295,14 @@ function Normalize-PrivateHashPolicy([string]$Path) {
         if (-not $profiles['131'].ContainsKey($key) -or $profiles['12'][$key] -ne $profiles['131'][$key]) { throw 'OPENEMS_INVALID_HASH_POLICY' }
     }
     # All input nodes, attributes and references are checked before the private document changes.
+    $kernelReferences = $references['131'][0].ParentNode
     foreach ($reference in $references['131']) {
         $rule = $byId[$reference.GetAttribute('RuleID')]
         [void]$reference.ParentNode.RemoveChild($reference)
         [void]$rule.ParentNode.RemoveChild($rule)
     }
+    # The schema permits omitting FileRulesRef, but forbids an empty container.
+    [void]$kernelReferences.ParentNode.RemoveChild($kernelReferences)
     $xml.Save($Path)
 }
 function Policies {

@@ -268,10 +268,11 @@ function Merge-CIPolicy {
         $xml.SiPolicy.FileRules.AppendChild($allow) | Out-Null
         foreach($scenario in $xml.SiPolicy.SigningScenarios.SigningScenario) {
             $reference=$xml.CreateElement('FileRuleRef',$ns);$reference.SetAttribute('RuleID','ALLOW_ALL')
-            $references=$scenario.ProductSigners.SelectSingleNode('*[local-name()="FileRulesRef"]')
+            $productSigners=$scenario.SelectSingleNode('ci:ProductSigners',$manager)
+            $references=$productSigners.SelectSingleNode('ci:FileRulesRef',$manager)
             if ($null -eq $references) {
                 $references=$xml.CreateElement('FileRulesRef',$ns)
-                $scenario.ProductSigners.AppendChild($references) | Out-Null
+                $productSigners.AppendChild($references) | Out-Null
             }
             $references.AppendChild($reference) | Out-Null
         }
