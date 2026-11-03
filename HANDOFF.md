@@ -1,5 +1,11 @@
 # Handoff — roadmap v2
 
+## Continuação vigente — 03/11/2026: regressão XSD e recuperação de coleta
+
+Coletor 05 terminou por timeout de 240 s informado pelo operador; nenhum arquivo recebido. [Coletor 06 preparado](validation/catalog-diagnostics-385b1eb0-collector-timeout-2026-11-03.json) para recuperar eventual saída 05 e salvar progresso antes/depois de cada seção, status da tarefa e resultado parcial mesmo no timeout. Atalho `06 - Collect catalog diagnostics with progress as administrator.lnk` solicitado ao operador; não restaurar guest.
+
+[Reprodução XSD isolada](validation/wdac-kernel-container-xsd-reproduction-2026-11-03.json) confirmou defeito independente: XML normalizado deixa `FileRulesRef` kernel vazio, rejeitado pelo schema Microsoft embora o validador original aceite. Regressões commitadas em `5c6e966`: suíte completa permitida com **quatro falhas esperadas, 1448 sucessos, 57 skips e quatro casos integrais desmarcados**, sem falhas adicionais. Ajuste de três linhas no normalizador omite somente esse contêiner vazio. O mock usa XPath para preservar `ProductSigners` como elemento XML, com trace antes do merge. Cinco regressões direcionadas passaram; release recompilado e gates completos em andamento. Nenhum aceite real novo; causa/etapa exata do ACK da VM ainda depende do coletor.
+
 ## Estado vigente — 03/11/2026: nova rodada falhou; coleta 05 pendente
 
 [Resultado original](validation/vm-catalog-d87d059-result-2026-11-03.json) e [análise](validation/catalog-vm-d87d059-failure-analysis-2026-11-03.json), fonte `d87d059`, run `385b1eb0f9304a6ebb308e0620215c6f`: **failed**. Recibo de pacote e manifesto conferidos. App ausente e bloqueio/liberação de rede passaram; a atribuição app presente não obteve ACK de sucesso em 90 s. Processo, WDAC e hora real não foram concluídos. A nova causa ainda não foi estabelecida.
