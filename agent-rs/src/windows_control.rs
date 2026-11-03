@@ -140,6 +140,186 @@ mod tests {
     const USB: &str = include_str!("../../deploy/agent-usb.ps1");
     const APPLICATIONS: &str = include_str!("../../deploy/agent-applications.ps1");
 
+    fn inert_transport_script(body: &str) -> &'static str {
+        let script = format!(
+            "$ErrorActionPreference='Stop'; [Console]::InputEncoding=New-Object Text.UTF8Encoding($false); [Console]::OutputEncoding=New-Object Text.UTF8Encoding($false); $request=[Console]::In.ReadToEnd()|ConvertFrom-Json;\n{body}"
+        );
+        Box::leak(script.into_boxed_str())
+    }
+
+    fn assert_transport_artifacts_removed(path: &str) {
+        assert!(!path.is_empty(), "the trusted script must have a private file path");
+        let file = std::path::Path::new(path);
+        assert!(!file.exists(), "the temporary script must be removed after the child stops");
+        assert!(!file.parent().unwrap().exists(), "the per-call private directory must be removed");
+    }
+
+    #[test]
+    fn native_transport_runs_a_trusted_script_beyond_the_windows_command_line_limit() {
+        let script = inert_transport_script(&format!(
+            "#{}\n$request|ConvertTo-Json -Depth 8 -Compress",
+            "inert-comment-".repeat(3200)
+        ));
+        assert!(script.encode_utf16().count() > 32767);
+        let request = json!({"marker":"synthetic-large-script", "quoted":"a\"b\nc"});
+
+        let response = run_with_limits(script, &request, CREATE_NO_WINDOW, std::time::Duration::from_secs(10));
+
+        assert_eq!(response.unwrap(), request);
+    }
+
+    #[test]
+    fn native_transport_keeps_json_off_disk_and_stages_unicode_with_private_permissions() {
+        let script = inert_transport_script(
+            r#"$result=@{staged=$false;literal='ação — 日本語';request=$request}
+if($PSCommandPath) {
+    $path=[IO.Path]::GetFullPath($PSCommandPath)
+    $directory=[IO.Path]::GetDirectoryName($path)
+    $bytes=[IO.File]::ReadAllBytes($path)
+    $fileAcl=Get-Acl -LiteralPath $path
+    $directoryAcl=Get-Acl -LiteralPath $directory
+    $result.staged=$true
+    $result.path=$path
+    $result.current_sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $result.file_owner=$fileAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    $result.directory_owner=$directoryAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    $result.directory_protected=$directoryAcl.AreAccessRulesProtected
+    $result.file_rules=@($fileAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])|ForEach-Object {@{sid=$_.IdentityReference.Value;access=[string]$_.AccessControlType}})
+    $result.directory_rules=@($directoryAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])|ForEach-Object {@{sid=$_.IdentityReference.Value;access=[string]$_.AccessControlType}})
+    $result.utf8_bom=($bytes.Length-ge3-and$bytes[0]-eq239-and$bytes[1]-eq187-and$bytes[2]-eq191)
+    $result.request_marker_on_disk=[Text.Encoding]::UTF8.GetString($bytes).Contains([string]$request.marker)
+}
+$result|ConvertTo-Json -Depth 8 -Compress"#,
+        );
+        let marker = format!("stdin-only-{:016x}", fastrand::u64(..));
+        let request = json!({"marker":marker, "nested":{"quoted":"a\"b\nc", "unicode":"日本語"}});
+
+        let response = run(script, &request).unwrap();
+
+        assert_eq!(response["staged"], true, "{response}");
+        assert_eq!(response["literal"], "ação — 日本語");
+        assert_eq!(response["request"], request);
+        assert_eq!(response["utf8_bom"], true);
+        assert_eq!(response["request_marker_on_disk"], false);
+        assert_eq!(response["directory_protected"], true);
+        assert_eq!(response["file_owner"], response["current_sid"]);
+        assert_eq!(response["directory_owner"], response["current_sid"]);
+        let current_sid = response["current_sid"].as_str().unwrap();
+        for name in ["file_rules", "directory_rules"] {
+            let rules = response[name].as_array().unwrap();
+            assert!(!rules.is_empty());
+            for rule in rules {
+                assert_eq!(rule["access"], "Allow");
+                assert!(matches!(rule["sid"].as_str(), Some(sid) if sid == current_sid || sid == "S-1-5-18"));
+            }
+            assert!(rules.iter().any(|rule| rule["sid"] == current_sid));
+            assert!(rules.iter().any(|rule| rule["sid"] == "S-1-5-18"));
+        }
+        assert_transport_artifacts_removed(response["path"].as_str().unwrap());
+    }
+
+    #[test]
+    fn native_transport_prevents_script_writes_and_replacement_while_it_runs() {
+        let script = inert_transport_script(
+            r#"$result=@{staged=$false;write_blocked=$false;rename_blocked=$false}
+if($PSCommandPath) {
+    $path=[IO.Path]::GetFullPath($PSCommandPath)
+    $directory=[IO.Path]::GetDirectoryName($path)
+    $temp=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')+'\'
+    $acl=Get-Acl -LiteralPath $directory
+    $current=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    if(-not $path.StartsWith($temp,[StringComparison]::OrdinalIgnoreCase) -or
+       $directory.TrimEnd('\') -ieq $temp.TrimEnd('\') -or
+       [IO.Path]::GetFileName($path) -cne 'control.ps1' -or
+       -not $acl.AreAccessRulesProtected -or
+       $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $current) {
+        throw 'Write probes require an owned private per-call script under the local temporary root.'
+    }
+    $result.staged=$true; $result.path=$path
+    try { $writer=[IO.File]::Open($PSCommandPath,'Open','Write','ReadWrite'); $writer.Dispose() }
+    catch [IO.IOException] { $result.write_blocked=$true }
+    $renamed=$PSCommandPath+'.renamed'
+    try { [IO.File]::Move($PSCommandPath,$renamed); [IO.File]::Move($renamed,$PSCommandPath) }
+    catch [IO.IOException] { $result.rename_blocked=$true }
+}
+$result|ConvertTo-Json -Compress"#,
+        );
+
+        let response = run(script, &json!({})).unwrap();
+
+        assert_eq!(response["staged"], true);
+        assert_eq!(response["write_blocked"], true, "the parent must pin the script against concurrent writes");
+        assert_eq!(response["rename_blocked"], true, "the parent must pin the script against replacement");
+        assert_transport_artifacts_removed(response["path"].as_str().unwrap());
+    }
+
+    #[test]
+    fn native_transport_uses_unique_private_paths_for_parallel_calls() {
+        let script =
+            inert_transport_script("Start-Sleep -Milliseconds 200; @{path=$PSCommandPath}|ConvertTo-Json -Compress");
+
+        let workers: Vec<_> = (0..3).map(|_| std::thread::spawn(move || run(script, &json!({})).unwrap())).collect();
+        let responses: Vec<_> = workers.into_iter().map(|worker| worker.join().unwrap()).collect();
+        let paths: std::collections::BTreeSet<_> = responses.iter().map(|row| row["path"].as_str().unwrap()).collect();
+
+        assert_eq!(paths.len(), 3, "parallel calls must not reuse a staged script");
+        let parents: std::collections::BTreeSet<_> =
+            paths.iter().map(|path| std::path::Path::new(path).parent().unwrap()).collect();
+        assert_eq!(parents.len(), 3, "each invocation must own its private directory");
+        for path in paths {
+            assert_transport_artifacts_removed(path);
+        }
+    }
+
+    fn assert_inert_transport_failure_cleanup(ending: &str, timeout: std::time::Duration, expect_timeout: bool) {
+        let directory = tempfile::tempdir().unwrap();
+        let marker = directory.path().join("owned-script-path.txt");
+        let script = inert_transport_script(&format!(
+            "[IO.File]::WriteAllText([string]$request.marker_path,[string]$PSCommandPath); {ending}"
+        ));
+
+        let failure = run_with_limits(script, &json!({"marker_path":marker}), CREATE_NO_WINDOW, timeout).unwrap_err();
+
+        if expect_timeout {
+            assert!(failure.to_string().contains("timed out"), "{failure}");
+        }
+        let staged = std::fs::read_to_string(marker).expect("the inert child must publish its path before failing");
+        assert_transport_artifacts_removed(&staged);
+    }
+
+    #[test]
+    fn native_transport_cleans_private_artifacts_after_child_failure() {
+        assert_inert_transport_failure_cleanup("exit 17", std::time::Duration::from_secs(10), false);
+    }
+
+    #[test]
+    fn native_transport_cleans_private_artifacts_after_invalid_json_output() {
+        assert_inert_transport_failure_cleanup("'not-json'", std::time::Duration::from_secs(10), false);
+    }
+
+    #[test]
+    fn native_transport_stops_the_child_before_cleaning_artifacts_after_timeout() {
+        assert_inert_transport_failure_cleanup(
+            "Start-Sleep -Seconds 15; '{}'",
+            std::time::Duration::from_secs(5),
+            true,
+        );
+    }
+
+    #[test]
+    fn native_transport_rejects_oversized_json_before_starting_the_script() {
+        let directory = tempfile::tempdir().unwrap();
+        let marker = directory.path().join("must-not-exist.txt");
+        let script =
+            inert_transport_script("[IO.File]::WriteAllText([string]$request.marker_path,'unexpected'); '{}' ");
+        let request = json!({"marker_path":marker,"payload":"x".repeat(4 * 1024 * 1024)});
+
+        let failure = run(script, &request).unwrap_err();
+
+        assert!(failure.to_string().contains("size limit"), "{failure}");
+        assert!(!marker.exists());
+    }
+
     #[test]
     fn background_inventory_gets_a_longer_limit_than_enforcement() {
         // A real notebook's application inventory exceeded the 120 s enforcement limit.
