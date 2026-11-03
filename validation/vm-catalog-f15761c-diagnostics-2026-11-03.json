@@ -1,0 +1,398 @@
+﻿{
+    "run_id":  "e667c411feb14967bcb4b5fa85d0354a",
+    "source_revision":  "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+    "collected_utc":  "2026-11-03T13:36:07.1570140Z",
+    "collection_errors":  [
+
+                          ],
+    "scope":  "Read-only endpoint diagnostics; only collector staging, temporary task and report files are written.",
+    "acks":  [
+                 {
+                     "at_utc":  "2026-11-03T12:44:43.3390723Z",
+                     "version":  1,
+                     "success":  true,
+                     "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:45:29.4484506Z",
+                     "version":  2,
+                     "success":  true,
+                     "digest":  "cbb9098066f621a210273b7fb6e20861febf910c2c57965ee28f23680014ebe8"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:46:43.2107100Z",
+                     "version":  3,
+                     "success":  true,
+                     "digest":  "70add6d9da8feb36178e4f7eaf64ba064f48555280bcc4c04810311ee12811a1"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:51:19.2246260Z",
+                     "version":  4,
+                     "success":  true,
+                     "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:52:07.0423138Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "cbb9098066f621a210273b7fb6e20861febf910c2c57965ee28f23680014ebe8"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:52:24.9974347Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "cbb9098066f621a210273b7fb6e20861febf910c2c57965ee28f23680014ebe8"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:52:40.5644416Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "cbb9098066f621a210273b7fb6e20861febf910c2c57965ee28f23680014ebe8"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:52:54.8992239Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "cbb9098066f621a210273b7fb6e20861febf910c2c57965ee28f23680014ebe8"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:53:09.6099850Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "cbb9098066f621a210273b7fb6e20861febf910c2c57965ee28f23680014ebe8"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:53:23.0681894Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "cbb9098066f621a210273b7fb6e20861febf910c2c57965ee28f23680014ebe8"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T12:53:38.3641363Z",
+                     "version":  7,
+                     "success":  true,
+                     "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                 }
+             ],
+    "backend_errors":  [
+
+                       ],
+    "agent_log_observations":  [
+                                   {
+                                       "file":  {
+                                                    "modified_utc":  "2026-11-03T12:53:40.3042011Z",
+                                                    "sha256":  "e79abcedcf5abe115a1d570c65b5dcbdd32415fd1a3cfd8149c44e749b51de1f",
+                                                    "name":  "agent.log",
+                                                    "bytes":  877
+                                                },
+                                       "observations":  [
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T12:51:52Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T12:52:08Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T12:52:24Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T12:52:40Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T12:52:55Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T12:53:11Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T12:53:25Z"
+                                                            }
+                                                        ]
+                                   }
+                               ],
+    "fixture_files":  [
+                          {
+                              "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                              "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b",
+                              "name":  "openems-catalog-a.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          },
+                          {
+                              "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                              "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b",
+                              "name":  "openems-catalog-a-renamed.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          },
+                          {
+                              "modified_utc":  "2026-11-03T01:44:56.0000000Z",
+                              "sha256":  "cf1b37b08a90caabc51d192be7a248d9753e55c00b2f10c98aa6c81f7eaa2ba8",
+                              "name":  "openems-catalog-b.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          },
+                          {
+                              "modified_utc":  "2026-11-03T01:44:56.0000000Z",
+                              "sha256":  "cf1b37b08a90caabc51d192be7a248d9753e55c00b2f10c98aa6c81f7eaa2ba8",
+                              "name":  "openems-catalog-b-renamed.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          }
+                      ],
+    "control_artifacts":  [
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  8,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  4148,
+                                  "name":  "hash-024c15c29c5c4f1694a9a6394cc8ebe9.xml",
+                                  "modified_utc":  "2026-11-03T12:52:08.4486765Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\hash-024c15c29c5c4f1694a9a6394cc8ebe9.xml",
+                                  "sha256":  "24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  8,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  4148,
+                                  "name":  "hash-084d4267af1b4776ba593157808c6f32.xml",
+                                  "modified_utc":  "2026-11-03T12:53:11.2267024Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\hash-084d4267af1b4776ba593157808c6f32.xml",
+                                  "sha256":  "8481d150095ab00e9d73674403747f43d30edec8de171c2355b148c70cb9d5c6"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  8,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  4148,
+                                  "name":  "hash-252b568b3ce04920871b2056073d70fa.xml",
+                                  "modified_utc":  "2026-11-03T12:53:24.8169639Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\hash-252b568b3ce04920871b2056073d70fa.xml",
+                                  "sha256":  "6233a8d40d997eca8a355fa50fa9eafc46cbcfd75e7c028d6be567d623bea4ca"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  8,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  4148,
+                                  "name":  "hash-3d64796bb9794e23b724b72ef62313cd.xml",
+                                  "modified_utc":  "2026-11-03T12:52:40.2547271Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\hash-3d64796bb9794e23b724b72ef62313cd.xml",
+                                  "sha256":  "d8ff5cac258678a0e178660ab0eb784b7931f098692e69ba88870ff8b2728591"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  8,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  4148,
+                                  "name":  "hash-56deb1cd93204a5381319b3afd77b096.xml",
+                                  "modified_utc":  "2026-11-03T12:52:24.6503536Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\hash-56deb1cd93204a5381319b3afd77b096.xml",
+                                  "sha256":  "77ee435ffbc6e82100689261650d5123e43d96461ada73e056b45192f5e285bb"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  8,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  4148,
+                                  "name":  "hash-6eb7c717d3954bcda5cf08ef263c2c6e.xml",
+                                  "modified_utc":  "2026-11-03T12:51:52.5343995Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\hash-6eb7c717d3954bcda5cf08ef263c2c6e.xml",
+                                  "sha256":  "721b5c86dc678aae6ff7ee345cc52f77537d0cd9fb7261dd4ad69fa01d7e280e"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  8,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  4148,
+                                  "name":  "hash-df11b15e89bd471fb95366cbdf644bfc.xml",
+                                  "modified_utc":  "2026-11-03T12:52:55.4411882Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\hash-df11b15e89bd471fb95366cbdf644bfc.xml",
+                                  "sha256":  "d9d112eda76fe54533f7b942a13c8119a1cea4e8a93b21da6b11882edb882aab"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "cd515051d5364c5f90f5e884d3bd007a.exe",
+                                  "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\samples-18ebde8f0b27476f8a23278b7efb004f\\cd515051d5364c5f90f5e884d3bd007a.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "14e210ffc0424b0fb5f0fac1201ff7ab.exe",
+                                  "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\samples-5765dce46b754ae597de68fce72dbdc5\\14e210ffc0424b0fb5f0fac1201ff7ab.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "b6fc169d1b7646f0b49c486bcb354836.exe",
+                                  "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\samples-68eb34ca6c5747a09e97bc5a974eebe8\\b6fc169d1b7646f0b49c486bcb354836.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "a3417bdd0bf04fda825f168a0bfa3aea.exe",
+                                  "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\samples-8264ac3657f4447d9349ab795471817d\\a3417bdd0bf04fda825f168a0bfa3aea.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "8203d2fcd9cf42d19eea44ccdd688a1d.exe",
+                                  "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\samples-ad81d33a04b24b7a977406930093fecc\\8203d2fcd9cf42d19eea44ccdd688a1d.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "4607e5ed5aeb4daba8071dfefd130c53.exe",
+                                  "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\samples-b83e6fb55a444f78bf503bf8e243d664\\4607e5ed5aeb4daba8071dfefd130c53.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "fbe6f86e0dee421bb75e7bf3d2457c42.exe",
+                                  "modified_utc":  "2026-11-03T01:44:55.0000000Z",
+                                  "relative_path":  "app-control-5ca4eaa6-5f6c-4160-9a94-589755b16294\\samples-c7a75320a99a46c594de87b2685cd25e\\fbe6f86e0dee421bb75e7bf3d2457c42.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "ca2a51a9c6b79c80808308e341a2db12ed1417ad46e78e7224903254f6854c3b"
+                              }
+                          ],
+    "cleanup_now":  [
+                        {
+                            "code_integrity_policy_ids":  [
+                                                              "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                              "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                              "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                              "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                              "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                              "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                              "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                              "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                          ],
+                            "own_code_integrity_count":  0,
+                            "nrpt_count":  0,
+                            "watchdog_present":  false,
+                            "application_journal_present":  false,
+                            "owned_firewall_count":  0,
+                            "service_present":  false
+                        }
+                    ],
+    "code_integrity_events":  [
+
+                              ]
+}

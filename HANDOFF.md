@@ -1,5 +1,11 @@
 # Handoff — roadmap v2
 
+## Diagnóstico confirmado — 03/11/2026, coleta 02
+
+[Coleta original](validation/vm-catalog-f15761c-diagnostics-2026-11-03.json) e [análise](validation/catalog-vm-diagnostic-analysis-2026-11-03.json): seis ACKs negativos da v5, sem erros do backend; liberação v7 com ACK positivo conferido. Estado atual confirma ausência de serviço/watchdog/NRPT/firewall próprio/diário/política própria e preservação dos 14 IDs CI externos. A rodada permanece reprovada.
+
+Sete cópias privadas correspondem à fixture A. Os sete XMLs intermediários têm oito regras Deny e quatro referências UMCI; essa contagem viola a validação atual de hash. Ainda falta o XML exato para identificar a primeira rejeição e planejar a normalização sem aceitar regras ou referências extras. A documentação Microsoft admite oito hashes por cenários distintos, mas isso não comprova a estrutura deste XML local. Atalho `03 - Export owned hash XML as administrator.lnk` preparado: exporta só um arquivo de 4148 bytes com SHA-256 fixado. Preservar o guest até essa coleta. Código de produto e critérios intactos; correção aguarda diagnóstico completo e plano aprovado.
+
 ## Estado atual — 03/11/2026: rodada do catálogo falhou, guest preservado
 
 - [JSON original da rodada](validation/vm-catalog-f15761c-result-2026-11-03.json), fonte `f15761c`, run `e667c411feb14967bcb4b5fa85d0354a`: **failed**, sem aceite WDAC/catálogo completo. O recibo corresponde ao MSI `7b514947aa4fd942d5a424d8f6e3b61e8d847f8ce9f37a1b5973b0eab5161c23` e ao manifesto preparados.
