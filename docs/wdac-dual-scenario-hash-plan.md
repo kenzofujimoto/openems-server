@@ -64,4 +64,6 @@ Evidência do ciclo vermelho: módulo com 95 casos (29 novos); suíte Python per
 
 ## Aprovação
 
+Continuação dentro do escopo aprovado, após a nova falha: a reprodução isolada com o XSD Microsoft mostrou que a normalização deixa `FileRulesRef` vazio no cenário kernel. O XSD exige pelo menos um `FileRuleRef` quando esse contêiner existe; `ProductSigners` admite omiti-lo. Acrescentar regressão vermelha nos mesmos arquivos de teste, validar o XML real contra o schema e remover somente o contêiner kernel que ficou vazio, preservando cenário `131`, `ProductSigners`, quatro regras/referências de usuário e o validador original. Rodar suíte completa permitida e commitar o vermelho antes da implementação; repetir gates e gerar nova mídia após verde. Isso corrige a integridade do XML intermediário já exigida pelo plano, sem ampliar rotas ou afrouxar validação. Atribuir a falha real à etapa exata somente após conferir os novos diagnósticos da VM. Nenhum arquivo adicional de produto ou teste é necessário.
+
 O plano anterior autorizava três arquivos de aceite e mantinha o produto sem alterações. A normalização e seus três arquivos de teste receberam aprovação em 03/11/2026. O adendo acrescenta o transporte nativo e seus testes num quinto arquivo; esse escopo ampliado também foi aprovado explicitamente pelo usuário, antes da implementação, conforme o `AGENTS.md`.
