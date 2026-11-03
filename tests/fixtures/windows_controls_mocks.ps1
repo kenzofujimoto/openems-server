@@ -262,11 +262,18 @@ function Merge-CIPolicy {
     if($PolicyPaths.Count -eq 2) {
         [xml]$xml=Get-Content -LiteralPath $PolicyPaths[1] -Raw
         $ns=$xml.DocumentElement.NamespaceURI
+        $manager=New-Object Xml.XmlNamespaceManager($xml.NameTable);$manager.AddNamespace('ci',$ns)
+        Trace-Mock 'PreMerge-HashPolicy' @{kernel_scenarios=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]',$manager).Count;kernel_product_signers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners',$manager).Count;kernel_reference_containers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners/ci:FileRulesRef',$manager).Count}
         $allow=$xml.CreateElement('Allow',$ns);$allow.SetAttribute('ID','ALLOW_ALL');$allow.SetAttribute('FileName','*')
         $xml.SiPolicy.FileRules.AppendChild($allow) | Out-Null
         foreach($scenario in $xml.SiPolicy.SigningScenarios.SigningScenario) {
             $reference=$xml.CreateElement('FileRuleRef',$ns);$reference.SetAttribute('RuleID','ALLOW_ALL')
-            $scenario.ProductSigners.SelectSingleNode('*[local-name()="FileRulesRef"]').AppendChild($reference) | Out-Null
+            $references=$scenario.ProductSigners.SelectSingleNode('*[local-name()="FileRulesRef"]')
+            if ($null -eq $references) {
+                $references=$xml.CreateElement('FileRulesRef',$ns)
+                $scenario.ProductSigners.AppendChild($references) | Out-Null
+            }
+            $references.AppendChild($reference) | Out-Null
         }
         $xml.Save($OutputFilePath)
     } else {

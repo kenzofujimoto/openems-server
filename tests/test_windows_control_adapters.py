@@ -462,6 +462,9 @@ def test_wdac_dual_scenario_hash_policy_preserves_only_the_exact_user_mode_denie
     generated = dual_scenario_policy(change)
     directory = fixture_environment(tmp_path, generated_policy=generated)
     result = assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "hash")))
+    before_merge = next(call["detail"] for call in calls(directory) if call["name"] == "PreMerge-HashPolicy")
+    assert before_merge["kernel_scenarios"] == before_merge["kernel_product_signers"] == 1
+    assert before_merge["kernel_reference_containers"] == 0, "Microsoft's schema forbids an empty FileRulesRef container"
     conversion = next(call["detail"] for call in calls(directory) if call["name"] == "ConvertFrom-CIPolicy")
     assert conversion["deny_count"] == conversion["user_deny_refs"] == 4
     assert conversion["kernel_deny_refs"] == 0
@@ -473,6 +476,72 @@ def test_wdac_dual_scenario_hash_policy_preserves_only_the_exact_user_mode_denie
     assert "Enabled:Audit Mode" not in conversion["options"]
     assert "Required:Enforce Store Applications" not in conversion["options"]
     assert (directory / "generated-policy.xml").read_bytes() == generated
+
+
+def test_normalized_real_hash_policy_matches_microsoft_schema_before_any_merge(tmp_path):
+    schema = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "schemas/CodeIntegrity/cipolicy.xsd"
+    assert schema.is_file(), "Windows must provide its Code Integrity XML schema for this contract"
+    generated = dual_scenario_policy()
+    policy = tmp_path / "private-hash.xml"
+    policy.write_bytes(generated)
+    driver = tmp_path / "xml-schema-contract.ps1"
+    driver.write_text(r'''param([string]$Source,[string]$Policy,[string]$Schema)
+$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
+$tokens=$null;$errors=$null
+$tree=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$errors)
+if ($errors.Count) { throw 'The source must parse before selecting XML helpers.' }
+foreach ($name in @('Assert-PrivateHashPolicy','Normalize-PrivateHashPolicy')) {
+    $functions=@($tree.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -ceq $name},$true))
+    if ($functions.Count -ne 1) { throw 'Expected one selected XML helper.' }
+    # Only XML helper definitions are loaded. The adapter top-level and ConfigCI never execute.
+    $commands=@($functions[0].FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))
+    foreach ($command in $commands) {
+        if ($command.GetCommandName() -notin @('New-Object','Where-Object','ForEach-Object','Assert-PrivateHashPolicy')) { throw 'A selected XML helper gained an unexpected command.' }
+    }
+    . ([scriptblock]::Create($functions[0].Extent.Text))
+}
+$settings=New-Object Xml.XmlReaderSettings
+$settings.DtdProcessing=[Xml.DtdProcessing]::Prohibit;$settings.XmlResolver=$null
+$schemas=New-Object Xml.Schema.XmlSchemaSet;$schemas.XmlResolver=$null
+$schemaReader=[Xml.XmlReader]::Create($Schema,$settings)
+try { [void]$schemas.Add('urn:schemas-microsoft-com:sipolicy',$schemaReader) } finally { $schemaReader.Dispose() }
+$schemas.Compile()
+function Schema-Errors([string]$Path) {
+    $reader=[Xml.XmlReader]::Create($Path,$settings)
+    $xml=New-Object Xml.XmlDocument;$xml.XmlResolver=$null
+    try { $xml.Load($reader) } finally { $reader.Dispose() }
+    $xml.Schemas=$schemas
+    $script:messages=New-Object 'Collections.Generic.List[string]'
+    $handler=[Xml.Schema.ValidationEventHandler]{ param($sender,$event) [void]$script:messages.Add($event.Message) }
+    $xml.Validate($handler)
+    return @($script:messages.ToArray())
+}
+$originalErrors=@(Schema-Errors $Policy)
+Normalize-PrivateHashPolicy $Policy
+Assert-PrivateHashPolicy $Policy
+$normalizedErrors=@(Schema-Errors $Policy)
+$reader=[Xml.XmlReader]::Create($Policy,$settings)
+$xml=New-Object Xml.XmlDocument;$xml.XmlResolver=$null
+try { $xml.Load($reader) } finally { $reader.Dispose() }
+$ns=New-Object Xml.XmlNamespaceManager($xml.NameTable);$ns.AddNamespace('ci','urn:schemas-microsoft-com:sipolicy')
+@{original_schema_errors=$originalErrors;normalized_schema_errors=$normalizedErrors
+  kernel_scenarios=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]',$ns).Count
+  kernel_product_signers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners',$ns).Count
+  kernel_reference_containers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners/ci:FileRulesRef',$ns).Count
+  deny_count=$xml.SelectNodes('/ci:SiPolicy/ci:FileRules/ci:Deny',$ns).Count}|ConvertTo-Json -Depth 6 -Compress
+''', encoding="utf-8-sig")
+    result = subprocess.run([str(POWERSHELL), "-NoProfile", "-NonInteractive", "-File", str(driver),
+                             "-Source", str(ROOT / "deploy/agent-applications.ps1"), "-Policy", str(policy),
+                             "-Schema", str(schema)], capture_output=True, text=True, encoding="utf-8", timeout=30, check=False)
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    observed = json.loads(result.stdout.lstrip("\ufeff"))
+    assert observed["original_schema_errors"] == [], observed
+    assert observed["normalized_schema_errors"] == [], observed
+    assert observed["kernel_scenarios"] == observed["kernel_product_signers"] == 1
+    assert observed["kernel_reference_containers"] == 0
+    assert observed["deny_count"] == 4
+    assert user_mode_denies(policy.read_bytes()) == user_mode_denies(generated)
 
 
 @pytest.mark.parametrize("change", [
