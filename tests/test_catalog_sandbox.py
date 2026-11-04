@@ -1,7 +1,8 @@
 """Catalog acceptance contracts; never execute endpoint controls on this host.
 
 Builder tests use inert PE/MSI bytes and the real in-process server API. Windows
-tests extract only pure validators, or request the harness's read-only plan.
+tests extract pure validators or isolated orchestration with mocked boundaries,
+or request the harness's read-only plan. The harness top-level never runs here.
 """
 
 from __future__ import annotations
@@ -439,6 +440,82 @@ def pure(tmp_path, functions, expression, data):
     observed = json.loads(result.stdout.lstrip("\ufeff"))
     assert observed["engine"] == 5 and observed["writes"] == 0, observed
     return observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("corrupt_initial_allow", [False, True])
+def test_network_reference_probes_are_isolated_from_catalog_process_termination(package, tmp_path, corrupt_initial_allow):
+    _, manifest = package()
+    # Execute only the actual orchestration statements between allow and network.
+    # All external boundaries are mocks; even the fixture bytes are inert.
+    expression = r"""
+$main=@($tree.FindAll({param($node)
+    $node -is [Management.Automation.Language.TryStatementAst] -and
+    $node.Body.Statements.Count -gt 0 -and
+    $node.Body.Statements[0].Extent.Text.TrimStart().StartsWith('Assert-ProductionPackage ')
+},$true))
+if($main.Count -ne 1){throw 'Expected exactly one acceptance body.'}
+$statements=@($main[0].Body.Statements)
+$starts=@(for($index=0;$index -lt $statements.Count;$index++){
+    if($statements[$index].Extent.Text.Contains("Publish-Assignment 'allow'")){$index}
+})
+$ends=@(for($index=0;$index -lt $statements.Count;$index++){
+    if($statements[$index].Extent.Text.Contains("Publish-Assignment 'network'")){$index}
+})
+if($starts.Count -ne 1 -or $ends.Count -ne 1 -or $ends[0] -le $starts[0]){throw 'Invalid isolated stage boundaries.'}
+$selected=@($statements[$starts[0]..($ends[0]-1)])
+$allowed=@('Publish-Assignment','Start-Backend','Invoke-Msi','Wait-Ack','Delivery-Evidence','Record-Check','Invoke-Fixture')
+foreach($statement in $selected){
+    foreach($command in @($statement.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))){
+        if($command.GetCommandName() -notin $allowed){throw 'Unexpected command in isolated stage.'}
+    }
+    if(@($statement.FindAll({param($node)
+        $node -is [Management.Automation.Language.InvokeMemberExpressionAst] -or
+        $node -is [Management.Automation.Language.FunctionDefinitionAst]
+    },$true)).Count){throw 'Unexpected method or function definition in isolated stage.'}
+}
+$manifest=$fixtureData.manifest
+$a='C:\inert\'+$manifest.fixtures.a.file
+$aControl='C:\inert\'+$manifest.fixtures.a.renamed_file
+$script:active=$null
+$script:referenceCalls=@()
+function Publish-Assignment([string]$Name){
+    $chosen=$manifest.policies.$Name
+    if($Name -ceq 'allow' -and $fixtureData.corrupt_initial_allow){$chosen=$manifest.policies.absent}
+    $script:active=$chosen
+    return $chosen
+}
+function Start-Backend { return [pscustomobject]@{State='Running'} }
+function Invoke-Msi([bool]$Remove){if($Remove){throw 'Unexpected removal in reference stage.'};return 0}
+function Wait-Ack($Assignment){
+    if($Assignment.version -ne $script:active.version -or $Assignment.digest -cne $script:active.digest){throw 'Mock assignment ACK mismatch.'}
+}
+function Delivery-Evidence($Assignment){return @{own_policy_present=$false}}
+function Record-Check([string]$Name,$Evidence){if($Name -cne 'absent'){throw 'Unexpected recorded check.'}}
+function Invoke-Fixture([string]$Path,[string]$Url){
+    if($Url -cne 'https://example.org/'){throw 'Unexpected reference endpoint.'}
+    $controls=$script:active.body.app_control
+    $blocked=@($controls.blocked) -contains [IO.Path]::GetFileName($Path)
+    $script:referenceCalls+=@(@{path=$Path;version=$script:active.version;digest=$script:active.digest
+        process_rules=@($controls.blocked).Count;execution_rules=@($controls.execution_rules).Count
+        network_rules=@($controls.network_blocked).Count})
+    # Model an enforcement tick while the target is alive; no host process starts.
+    return @{exit=$(if($blocked){1}else{0});process_created=$true;alive_after_sentinel=(-not $blocked)}
+}
+. ([scriptblock]::Create(($selected | ForEach-Object {$_.Extent.Text}) -join "`n"))
+if($script:referenceCalls.Count -ne 2){throw 'Both reference paths must be observed.'}
+if($script:referenceCalls[0].path -cne $a -or $script:referenceCalls[1].path -cne $aControl){throw 'Wrong reference paths.'}
+foreach($call in $script:referenceCalls){
+    if($call.version -ne $manifest.policies.allow.version -or $call.digest -cne $manifest.policies.allow.digest -or
+       $call.process_rules -ne 0 -or $call.execution_rules -ne 0 -or $call.network_rules -ne 0){
+        throw 'A reference probe ran while a catalog restriction was active.'
+    }
+}
+"""
+    observed = pure(tmp_path, ["Wait-Ack"], expression,
+                    {"manifest": manifest, "corrupt_initial_allow": corrupt_initial_allow})
+    assert observed["accepted"] is (not corrupt_initial_allow), observed
 
 
 @WINDOWS[0]
