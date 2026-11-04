@@ -1,5 +1,11 @@
 # Handoff — roadmap v2
 
+## Atualização vigente — 04/11/2026: tentativa09 recusada antes da instalação por trava existente
+
+[Registro de pré-início](validation/catalog-vm-5e71292-prestart-lock-2026-11-04.json): `C:\openems-catalog-acceptance.lock` já existe, erro na linha225. A chamada foi recusada antes de criar a pasta eb8486c4, registrar worker ou instalar MSI; o relatório compartilhado segue sendo a falha948608e/0e93a06a. Não classificar como resultado de enforcement da nova fonte. A trava CreateNew permanece por design após uma tentativa, exigindo snapshot limpo. Não apagar nem afrouxar a guarda.
+
+VMware registrou restauração de checkpoint de suspensão `.vmss` às17:33:26Z; Snapshot Manager tem somente UID1/`clean-preflight-before-controls`. Solicitei leitura de nomes/datas de `C:\openems-catalog*` para confirmar estado do guest; ainda sem resposta. Próxima orientação: VM → Snapshot → Snapshot Manager, selecionar o snapshot e usar **Go To**; retomar, reconectar ISO5e71292/eb8486c4 com Connected e executar09 uma vez. Se a trava persistir depois de uma reversão confirmada, inspecionar metadados/conteúdo do baseline antes de qualquer alteração. Produto/roteiro/ISO/gates permanecem congelados; não repetir suítes nem gerar nova mídia para esse erro de preparação.
+
 ## Estado vigente — 04/11/2026: roteiro 5e71292 verde; nova rodada 09 pronta
 
 [Recibo completo](validation/catalog-vm-preparation-5e71292-2026-11-04.json), fonte `5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff`, run `eb8486c4e5d940238c9ff17c3336f6d8`. TDD vermelho `baee7c0`:1falha esperada/1453sucessos,57skips/quatro casos integrais de controles desmarcados. Após mover as referências HTTPS para depois do ACK allow e antes de absent, **1454 Python,251 Rust(serial) e154 painel passaram**; fmt/Clippy/Ruff/lint/tipos/build/parser PS5.1/pip passaram. Dois casos novos de orquestração AST/fronteiras mockadas, incluindo controle negativo. Nenhum endpoint/PE/MSI/serviço no host. Cobertura app/agente88,88%; gates globais por módulo e PostgreSQL/Redis permanecem pendentes.

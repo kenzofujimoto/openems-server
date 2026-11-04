@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-04",
+  "source_revision": "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff",
+  "run_id": "eb8486c4e5d940238c9ff17c3336f6d8",
+  "status": "prestart_refused_existing_acceptance_lock",
+  "acceptance_started": false,
+  "operator_error": "The file C:\\openems-catalog-acceptance.lock already exists.",
+  "harness_line": 225,
+  "refused_before": ["new private run directory", "scheduled acceptance worker", "MSI install", "endpoint enforcement"],
+  "shared_report_still_belongs_to": {
+    "source_revision": "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+    "run_id": "0e93a06a306e493b9d1fe4975ce2aaf8",
+    "status": "failed"
+  },
+  "lock_behavior": "CreateNew sentinel intentionally survives a prior attempt; the file handle is closed immediately. A fresh snapshot restore is required, not merely a restart or resume.",
+  "vmware_observation": {
+    "checkpoint_restore_at_utc": "2026-11-04T17:33:26.063Z",
+    "checkpoint_file": "OpenEMS-Win11-Lab-e74dadd3.vmss",
+    "checkpoint_read_only": false,
+    "snapshot_uid": 1,
+    "snapshot_name": "clean-preflight-before-controls",
+    "snapshot_count": 1,
+    "active_disk": "OpenEMS-Win11-Lab-000002.vmdk",
+    "independent_disk_mode_explicitly_configured": false
+  },
+  "guest_metadata_requested": "Read-only listing of C:\\openems-catalog* names and creation/modification timestamps; no reply received yet.",
+  "next_action": "Use VM > Snapshot > Snapshot Manager, select clean-preflight-before-controls and Go To; resume, reconnect exact ISO and execute shortcut09 once. If lock persists after confirmed revert, inspect guest metadata and snapshot contents before changing the sentinel.",
+  "lock_deleted": false,
+  "harness_guard_bypassed": false,
+  "product_or_acceptance_source_changes": false,
+  "repeat_local_suites_needed": false
+}
