@@ -1,6 +1,6 @@
 # Persistência das evidências de limpeza do aceite do catálogo
 
-Estado: plano proposto, sem implementação. Aguardar aprovação explícita antes de alterar os três arquivos de código/teste. Coleta 12 ainda pendente; preservar a VM e não iniciar outra rodada.
+Estado: plano proposto, sem implementação. Aguardar aprovação explícita antes de alterar os três arquivos de código/teste. Coleta 12 concluída e preservada; manter a VM no estado atual até a próxima preparação, sem iniciar outra rodada.
 
 ## Problema observado
 
@@ -8,7 +8,7 @@ A rodada fonte 5e71292/run eb8486c4 concluiu sete checks, inclusive uma hora rea
 
 A coleta 10 confirmou posteriormente remoção MSI com retorno zero, ausência dos controles próprios e preservação dos 14 IDs CI externos. Não encontrou eventos de alteração do firewall; 483 regras atuais têm nomes únicos. A mudança original continua sem causa identificada e a rodada permanece reprovada.
 
-Quatro ACKs negativos da v6 mostram falhas locais de enforcement. O backend da fixture descartou a categoria do erro. A coleta 11 não serve para concluir ausência de falhas: seu filtro estava incorreto. O filtro corrigido do coletor 12 foi verificado com 12 casos sintéticos em Windows PowerShell 5.1; seu resultado ainda precisa ser analisado.
+Quatro ACKs negativos da v6 mostram falhas locais de enforcement. O backend da fixture descartou a categoria do erro. A coleta 11 não serve para concluir ausência de falhas: seu filtro estava incorreto. O filtro corrigido do coletor 12 foi verificado com 12 casos sintéticos em Windows PowerShell 5.1. A coleta válida confirmou duas falhas OSError e duas LocalError, correlacionadas aos quatro ACKs negativos; o hash do log coincide com o observado na coleta 11. Os dados coletados não identificam a operação que falhou; este plano melhora a coleta e não promete corrigir esses erros do produto por suposição.
 
 ## Escopo
 
@@ -22,9 +22,9 @@ Produto nativo e adaptadores de controle ficam fora deste plano. Se os logs indi
 
 ## Sequência
 
-1. Rever a coleta 12 e preservar seus bytes; distinguir falha do coletor, categoria local conhecida e causa demonstrada. Atualizar este plano se os dados exigirem outro escopo.
-2. Escrever regressões vermelhas para baseline/snapshot final persistidos; regra removida, modificada ou com nome duplicado provoca reprovação com diferença identificável; estado sem alterações passa; falha da guarda não impede registrar os demais resultados de limpeza; evidência ausente ou adulterada é rejeitada pelo host.
-3. Acrescentar regressão para retenção de “enforcement failed: categoria permitida” em ACK negativo, sem exportar mensagem arbitrária ou segredos. Erros não podem desaparecer nem se transformar em sucesso.
+1. Concluído: coleta 12 preservada e revisada, duas falhas OSError e duas LocalError correlacionadas por horário. Manter separadas a falha do coletor 11, as categorias locais conhecidas e a causa ainda desconhecida. A implementação dos próximos passos depende da aprovação deste plano.
+2. Escrever regressões vermelhas para baseline/snapshot final persistidos; regra removida, modificada ou com nome duplicado provoca reprovação com diferença identificável; estado sem alterações passa; falha da guarda não impede registrar os demais resultados de limpeza; evidência ausente ou adulterada é rejeitada pelo host. Distinguir snapshot válido vazio, consulta falha, truncamento e limpeza parcial; nenhum estado incompleto pode aprovar o aceite.
+3. Acrescentar regressão para retenção de “enforcement failed: categoria permitida” em ACK negativo, sem exportar mensagem arbitrária ou segredos. Categoria ausente/desconhecida deve preservar uma falha com marcador seguro de desconhecido, ligada a versão/digest/horário. Erros não podem desaparecer nem se transformar em sucesso.
 4. Rodar a suíte Python completa permitida e commitar os testes no vermelho antes da implementação. Nenhum serviço, MSI, PE de fixture ou controle será executado no host.
 5. Implementar o mínimo: persistir baseline antes da instalação; capturar estado final antes da guarda; registrar diferenças e resultados independentes da limpeza mesmo com reprovação. Falhas de consulta continuam explícitas e não significam ausência de controles.
 6. Versionar o contrato de evidência da nova mídia. O host recalcula a preservação a partir dos snapshots e rejeita dados ausentes/inconsistentes; flags de sucesso do guest não bastam. Relatórios antigos permanecem na versão original, sem reclassificação.

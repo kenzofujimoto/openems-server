@@ -221,7 +221,7 @@
     "independent_cleanup_confirmed": true,
     "reason_cleanup_evidence_missing": "The firewall assertion threw before the cleanup object and check were constructed.",
     "root_cause": null,
-    "next_step": "Preserve guest for corrected collector12. Collector11 empty output is invalid because its regex rejected known failure lines. Proposed three-file evidence plan remains unimplemented pending approval.",
+    "next_step": "All requested diagnostics preserved and reviewed. Await explicit approval of docs/catalog-cleanup-evidence-plan.md before three-file TDD evidence changes. No new run or product fix is justified by category alone.",
     "msi_exit_zero_independently_confirmed": true
   },
   "diagnostic_preparation": {
@@ -343,11 +343,63 @@
     "sha256": "1ccd95ea5b46bbc6e3c0ec0906491704ca81d476c2f9e97813aacbc600727ab0",
     "shortcut": "12 - Collect catalog agent log diagnostics retry as administrator.lnk",
     "output": "catalog-agent-log-diagnostics-eb8486c4-retry1.json",
-    "status": "requested_not_received",
+    "status": "completed_archived_reviewed",
     "scope_unchanged": true,
     "powershell_5_1_parser_passed": true,
     "powershell_version": "5.1.26100.9711",
     "synthetic_cases_passed": 12,
     "elevated_shortcut_and_arguments_verified": true
+  },
+  "agent_log_retry_review": {
+    "file": "vm-catalog-5e71292-agent-log-diagnostics-2026-11-04.json",
+    "sha256": "1ba7cea99f4e36b3b8c3a7c42e050ebcc9df73633a38dc7343f02d5bba18fb9e",
+    "bytes": 2519,
+    "collection_status": "completed",
+    "collection_errors": [],
+    "diagnostic_valid": true,
+    "elapsed_seconds": 8,
+    "log_metadata_matches_collector11": true,
+    "log_file": {
+      "modified_utc": "2026-11-04T19:36:00.2259763Z",
+      "sha256": "e8c729cb8ab2ec48650f294ad35e8f748157eb212c8abb998a00a21c266b0578",
+      "name": "agent.log",
+      "bytes": 654
+    },
+    "observations_correlated_to_acks": [
+      {
+        "log_at_utc": "2026-11-04T18:38:00Z",
+        "error_kind": "OSError",
+        "ack_at_utc": "2026-11-04T18:38:03.9978569Z",
+        "ack_delay_seconds": 3.997856
+      },
+      {
+        "log_at_utc": "2026-11-04T19:14:07Z",
+        "error_kind": "OSError",
+        "ack_at_utc": "2026-11-04T19:14:12.6724344Z",
+        "ack_delay_seconds": 5.672434
+      },
+      {
+        "log_at_utc": "2026-11-04T19:35:09Z",
+        "error_kind": "LocalError",
+        "ack_at_utc": "2026-11-04T19:35:11.8198749Z",
+        "ack_delay_seconds": 2.819874
+      },
+      {
+        "log_at_utc": "2026-11-04T19:35:18Z",
+        "error_kind": "LocalError",
+        "ack_at_utc": "2026-11-04T19:35:26.9815436Z",
+        "ack_delay_seconds": 8.981543
+      }
+    ],
+    "error_category_counts": {
+      "OSError": 2,
+      "LocalError": 2
+    },
+    "root_cause_identified": false,
+    "interpretation": "OSError denotes I/O failure and LocalError a local operation/control error. Neither records the failing operation or identifies WDAC, firewall, staging or another subsystem as cause.",
+    "worker_state_at_export": "Running",
+    "worker_result_at_export": 267009,
+    "worker_state_note": "The parent exported completed diagnostics while Task Scheduler still reported Running. This snapshot is not proof of the final process exit code.",
+    "run_reclassified": false
   }
 }

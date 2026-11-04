@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 04/11/2026: coleta 12 válida; plano de evidências aguarda aprovação
+
+[Coleta corrigida original](validation/vm-catalog-5e71292-agent-log-diagnostics-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): concluída sem erros de coleta; mesmo log de 654 bytes/hash da coleta 11. Foram identificados OSError às 18:38:00Z e 19:14:07Z, LocalError às 19:35:09Z e 19:35:18Z, todos entre 2,8 e 9,0 segundos antes dos quatro ACKs negativos correspondentes. As categorias confirmam falhas locais, mas não identificam a operação ou subsistema que falhou. O estado da tarefa ainda era Running no instante da exportação; esse campo não comprova um exit code final. O relatório completo de diagnóstico foi recebido.
+
+Todas as coletas solicitadas foram preservadas e revisadas. Limpeza independente, remoção MSI0 e os 14 IDs CI externos permanecem confirmados pela coleta 10. A rodada 09 permanece reprovada; causa da diferença do firewall e das falhas locais ainda desconhecida. Nenhuma nova coleta manual solicitada. Manter a VM no estado atual; não iniciar outra rodada.
+
+[Plano concreto proposto](docs/catalog-cleanup-evidence-plan.md), ainda sem implementação: três arquivos (teste, roteiro, builder), TDD vermelho commitado antes do ajuste, persistência de baseline/diferenças/limpeza mesmo em falha, retenção restrita de categorias de ACK e verificação independente no host. Mantém a guarda e todos os prazos/critérios; não altera produto nativo nem atribui causa sem evidência. Aguarda aprovação explícita conforme a regra do AGENTS.md para duas ou mais alterações de arquivos. Dados/documentação já atualizados; gates locais anteriores não foram repetidos sem mudança de código. As pendências anteriores da coleta 12 abaixo são históricas.
+
 ## Atualização vigente — 04/11/2026: filtro do coletor 11 inválido; repetição 12 preparada
 
 [Coleta 11 original preservada](validation/vm-catalog-5e71292-agent-log-diagnostics-invalid-filter-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): execução concluída em 22 segundos, mas a lista vazia de falhas é inválida. O filtro gerado perdeu escapes e rejeita uma linha sintética válida do logger nativo; não concluir ausência de erros pelos dados dessa coleta. O log preservado tem 654 bytes.
