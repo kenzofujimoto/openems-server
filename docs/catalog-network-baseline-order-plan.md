@@ -1,5 +1,7 @@
 # Correção do isolamento da referência de rede no aceite do catálogo
 
+Estado da rodada09: sete checks de comportamento/liberação passaram, inclusive3602,795s reais sem nova atribuição. Aceite completo reprovado pela guarda de preservação de firewall durante cleanup; baseline/diff não persistidos. [Revisão](../validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json). Coletor10 solicitado; preservar guest. Não afrouxar a guarda, reclassificar a rodada ou repetir a hora antes de identificar a alteração e confirmar limpeza. A preparação e os gates concluídos abaixo permanecem históricos.
+
 Estado: TDD concluído dentro do escopo original aprovado. Vermelho `baee7c0` (1falha esperada/1453sucessos/57skips/quatro integrais desmarcados); correção `5e71292`. Verde completo1454Python/251Rust/154painel e gates estáticos/build. [Pacote/ISO novos conferidos](../validation/catalog-vm-preparation-5e71292-2026-11-04.json), run eb8486c4e5d940238c9ff17c3336f6d8, atalho09. Nova rodada ainda não iniciada. Dados e limpeza independente da falha anterior revisados; restaurar snapshot limpo antes do novo aceite. Produto e limites intactos.
 
 ## Escopo e autorização
