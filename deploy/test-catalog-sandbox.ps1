@@ -487,16 +487,17 @@ try {
     $backend=Start-Backend
     $null=Invoke-Msi $false; $installed=$true
     Wait-Ack $assignment
-    $assignment=Publish-Assignment 'absent'; Wait-Ack $assignment
-    $absent=Delivery-Evidence $assignment
-    if ($absent.own_policy_present) { throw 'An absent catalog app unexpectedly installed a WDAC policy.' }
-    Record-Check 'absent' $absent
-
+    # Reference probes must finish before catalog process termination becomes active.
     $url='https://example.org/'
     $network=@{before=@{};blocked=@{};released=@{};firewall_paths=@();control_has_rule=$false}
     $probeA=Invoke-Fixture $a $url; $probeControl=Invoke-Fixture $aControl $url
     $network.before=@{target_exit=$probeA.exit;control_exit=$probeControl.exit}
     if ($probeA.exit -ne 0 -or $probeControl.exit -ne 0) { throw 'Both fixture paths must reach the external network before firewall acceptance.' }
+    $assignment=Publish-Assignment 'absent'; Wait-Ack $assignment
+    $absent=Delivery-Evidence $assignment
+    if ($absent.own_policy_present) { throw 'An absent catalog app unexpectedly installed a WDAC policy.' }
+    Record-Check 'absent' $absent
+
     $assignment=Publish-Assignment 'network'; Wait-Ack $assignment
     $rules=@(Owned-FirewallRules)
     $network.firewall_paths=@($rules | Get-NetFirewallApplicationFilter -ErrorAction Stop | ForEach-Object Program)
