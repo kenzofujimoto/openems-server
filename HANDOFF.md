@@ -1,5 +1,11 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 04/11/2026: rodada09 ativa, cinco critérios passaram; hora real em observação
+
+Fonte `5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff`, run `eb8486c4e5d940238c9ff17c3336f6d8`, iniciada `2026-11-04T18:26:45.8255262Z`. Recibo/manifesto/MSIs conferidos contra o pacote preparado. App ausente, rede com referência/liberação, encerramento do processo com controle vivo, WDAC original/renomeado (native_error4551, sem criação/sentinel, política enforced) e remoção quando todas as amostras faltam passaram. Rechecagem real em andamento:2761s no relatório às19:21:57Z, sem erro. Ainda faltam hora completa/liberação/remoção normal/limpeza; **não declarar aceite nem restaurar o snapshot**.
+
+Restauração limpa confirmada no log VMware: checkpoint `OpenEMS-Win11-Lab-Snapshot1.vmsn`, readOnlyTRUE, às18:01:04Z; ISO correta conectada às18:24:49Z. Trava anterior foi superada pela preparação correta, sem alteração do roteiro. Monitorar `C:\Users\kenzo.fujimoto\Documents\OpenEMS-Lab\Results\catalog-result.json`; checkpoint local `.venv/dual-scenario-fix-2026-11-03/CURRENT-VM-RUN09.json`. Após status final, preservar bytes e validar semanticamente pelo builder com input `.venv/catalog-acceptance-5e71292-2026-11-04/catalog-input`. Em qualquer falha, conferir liberação/limpeza antes de descartar guest. Código/gates congelados; não repetir testes ou gerar mídia. As pendências anteriores de início abaixo são históricas.
+
 ## Atualização vigente — 04/11/2026: tentativa09 recusada antes da instalação por trava existente
 
 [Registro de pré-início](validation/catalog-vm-5e71292-prestart-lock-2026-11-04.json): `C:\openems-catalog-acceptance.lock` já existe, erro na linha225. A chamada foi recusada antes de criar a pasta eb8486c4, registrar worker ou instalar MSI; o relatório compartilhado segue sendo a falha948608e/0e93a06a. Não classificar como resultado de enforcement da nova fonte. A trava CreateNew permanece por design após uma tentativa, exigindo snapshot limpo. Não apagar nem afrouxar a guarda.
