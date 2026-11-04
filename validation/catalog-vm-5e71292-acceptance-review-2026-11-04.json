@@ -218,10 +218,11 @@
     "offending_rule_identified": false,
     "baseline_persisted": false,
     "msi_exit_zero_inferred_from_control_flow": true,
-    "independent_cleanup_confirmed": false,
+    "independent_cleanup_confirmed": true,
     "reason_cleanup_evidence_missing": "The firewall assertion threw before the cleanup object and check were constructed.",
     "root_cause": null,
-    "next_step": "Run collector10 in preserved guest, review firewall events, MSI result and independent cleanup. No restore or rerun yet."
+    "next_step": "Preserve guest for collector11 sanitized agent log failures. Original firewall change remains unidentified without baseline or events.",
+    "msi_exit_zero_independently_confirmed": true
   },
   "diagnostic_preparation": {
     "shortcut": "10 - Collect catalog cleanup diagnostics as administrator.lnk",
@@ -231,6 +232,99 @@
     "powershell_5_1_parser_passed": true,
     "elevated_shortcut_and_arguments_verified": true,
     "scope": "Read-only endpoint/MSI/firewall diagnostics; own staging/task/report writes only; no fixtures executed or controls changed.",
-    "status": "requested_not_received"
+    "status": "completed_archived_reviewed"
+  },
+  "cleanup_diagnostic_review": {
+    "file": "vm-catalog-5e71292-cleanup-diagnostics-2026-11-04.json",
+    "sha256": "b5288a4bc5351022473cf3bb4844c4eac342977a46807253eaf16865e844b852",
+    "bytes": 277728,
+    "collection_status": "completed",
+    "collection_errors": [],
+    "elapsed_seconds": 53,
+    "cleanup_now": {
+      "code_integrity_policy_ids": [
+        "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+        "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+        "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+        "1678656c-05ef-481f-bc5b-ebd8c991502d",
+        "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+        "2678656c-05ef-481f-bc5b-ebd8c991502d",
+        "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+        "5dac656c-21ad-4a02-ab49-649917162e70",
+        "60fd87f8-4593-44a0-91b0-2e0da022f248",
+        "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+        "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+        "a072029f-588b-4b5e-b7f9-05aad67df687",
+        "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+        "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+      ],
+      "own_code_integrity_count": 0,
+      "nrpt_count": 0,
+      "watchdog_present": false,
+      "application_journal_present": false,
+      "owned_firewall_count": 0,
+      "service_present": false
+    },
+    "msi_removal": [
+      {
+        "main_engine_return_codes": [
+          0,
+          0
+        ],
+        "file": {
+          "modified_utc": "2026-11-04T19:36:09.4234694Z",
+          "sha256": "08f735fa0235c1dd4a5f6fbe765edd92ea43bb1cdcd663eb55a0304112a477e7",
+          "name": "remove.msi.log",
+          "bytes": 92542
+        }
+      }
+    ],
+    "fixture_registrations": [],
+    "foreign_ci_ids_unchanged": true,
+    "foreign_ci_count": 14,
+    "release_ack_verified": true,
+    "current_firewall_rule_count": 483,
+    "current_duplicate_name_count": 0,
+    "firewall_change_event_count": 0,
+    "firewall_change_root_cause_identified": false,
+    "baseline_missing": true,
+    "failed_ack_observations": [
+      {
+        "at_utc": "2026-11-04T18:38:03.9978569Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      },
+      {
+        "at_utc": "2026-11-04T19:14:12.6724344Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      },
+      {
+        "at_utc": "2026-11-04T19:35:11.8198749Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      },
+      {
+        "at_utc": "2026-11-04T19:35:26.9815436Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      }
+    ],
+    "failed_acks_meaning": "A local enforcement cycle returned Err. Adapter/root cause cannot be inferred from the ACK because the fixture backend omitted its error field.",
+    "run_reclassified": false
+  },
+  "agent_log_diagnostic_preparation": {
+    "script": "11-collect-catalog-agent-log-diagnostics.ps1",
+    "sha256": "4dbc9b5295a5ac99e20dab3dc54232c87b5878c9d584c51f3912dc58db351ead",
+    "shortcut": "11 - Collect catalog agent log diagnostics as administrator.lnk",
+    "output": "catalog-agent-log-diagnostics-eb8486c4.json",
+    "status": "requested_not_received",
+    "scope": "Four fixed log files, bounded sizes, only timestamps and allowlisted enforcement failure categories in the run interval. No raw logs/config/state/secrets.",
+    "powershell_5_1_parser_passed": true,
+    "elevated_shortcut_and_arguments_verified": true
   }
 }
