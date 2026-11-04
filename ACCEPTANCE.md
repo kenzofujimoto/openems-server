@@ -1,5 +1,9 @@
 # Aceite final do roadmap desktop
 
+## Atualização — 04/11/2026: diagnóstico concluído; novo aceite pendente
+
+[Revisão do coletor 06](validation/catalog-vm-d87d059-diagnostic-review-2026-11-04.json) confirmou ACK bruto de liberação v7 e limpeza independente, com preservação dos 14 IDs CI externos. Os seis XMLs próprios exportados conferem por tamanho/hash e reproduzem o contêiner kernel vazio já corrigido na fonte 948608e. A rodada d87d059 continua reprovada; o guest pode agora ser restaurado ao snapshot limpo, pois os dados necessários foram preservados e revisados. Nova rodada 948608e/0e93a06a pelo atalho 07 ainda não iniciada; exigir todos os critérios e 3600 segundos reais. Testes locais e preparação não substituem o aceite Windows.
+
 ## Estado vigente — 03/11/2026: 948608e validado localmente; VM pendente
 
 [Validação e pacote](validation/catalog-vm-preparation-948608e-2026-11-03.json): **1452 Python, 251 Rust e 154 painel passaram**, além dos gates estáticos/build/release. Python teve 57 skips e quatro casos integrais de controles desmarcados no host. A tentativa Rust inicial teve uma falha no marcador do filho inerte antes do timeout de cinco segundos; a suíte completa serial passou sem alterar limites/asserts. Cobertura app/agente 88,88%; gates completos por módulo e PostgreSQL/Redis continuam pendentes.
