@@ -221,7 +221,7 @@
     "independent_cleanup_confirmed": true,
     "reason_cleanup_evidence_missing": "The firewall assertion threw before the cleanup object and check were constructed.",
     "root_cause": null,
-    "next_step": "Preserve guest for collector11 sanitized agent log failures. Original firewall change remains unidentified without baseline or events.",
+    "next_step": "Preserve guest for corrected collector12. Collector11 empty output is invalid because its regex rejected known failure lines. Proposed three-file evidence plan remains unimplemented pending approval.",
     "msi_exit_zero_independently_confirmed": true
   },
   "diagnostic_preparation": {
@@ -322,9 +322,32 @@
     "sha256": "4dbc9b5295a5ac99e20dab3dc54232c87b5878c9d584c51f3912dc58db351ead",
     "shortcut": "11 - Collect catalog agent log diagnostics as administrator.lnk",
     "output": "catalog-agent-log-diagnostics-eb8486c4.json",
-    "status": "requested_not_received",
+    "status": "completed_invalid_filter",
     "scope": "Four fixed log files, bounded sizes, only timestamps and allowlisted enforcement failure categories in the run interval. No raw logs/config/state/secrets.",
     "powershell_5_1_parser_passed": true,
+    "elevated_shortcut_and_arguments_verified": true
+  },
+  "agent_log_diagnostic_review": {
+    "file": "vm-catalog-5e71292-agent-log-diagnostics-invalid-filter-2026-11-04.json",
+    "sha256": "77c36f8671b6b5ad4b84ef8c82a2f6903fb1b1086d75f7562fb7232a27c0388f",
+    "bytes": 1306,
+    "collection_status": "completed",
+    "diagnostic_valid": false,
+    "reason": "The generated collector regex lost backslash escapes and rejected a known valid enforcement failure line. Empty observations cannot be interpreted as absence of local errors.",
+    "original_filter": "^(d{4}-dd-ddT[0-9:]+Z) policy enforcement failed ((ConfigError|PolicyError|StateError|HTTPError|TransportError|LocalError|OSError))$",
+    "corrected_filter": "^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z) policy enforcement failed [(](ConfigError|PolicyError|StateError|HTTPError|TransportError|LocalError|OSError)[)]$",
+    "known_failure_red_reproduced": true
+  },
+  "agent_log_retry_preparation": {
+    "script": "12-collect-catalog-agent-log-diagnostics-retry1.ps1",
+    "sha256": "1ccd95ea5b46bbc6e3c0ec0906491704ca81d476c2f9e97813aacbc600727ab0",
+    "shortcut": "12 - Collect catalog agent log diagnostics retry as administrator.lnk",
+    "output": "catalog-agent-log-diagnostics-eb8486c4-retry1.json",
+    "status": "requested_not_received",
+    "scope_unchanged": true,
+    "powershell_5_1_parser_passed": true,
+    "powershell_version": "5.1.26100.9711",
+    "synthetic_cases_passed": 12,
     "elevated_shortcut_and_arguments_verified": true
   }
 }

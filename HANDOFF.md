@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Atualização vigente — 04/11/2026: filtro do coletor 11 inválido; repetição 12 preparada
+
+[Coleta 11 original preservada](validation/vm-catalog-5e71292-agent-log-diagnostics-invalid-filter-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): execução concluída em 22 segundos, mas a lista vazia de falhas é inválida. O filtro gerado perdeu escapes e rejeita uma linha sintética válida do logger nativo; não concluir ausência de erros pelos dados dessa coleta. O log preservado tem 654 bytes.
+
+Coletor 12 preparado e solicitado: 12 - Collect catalog agent log diagnostics retry as administrator.lnk, saída catalog-agent-log-diagnostics-eb8486c4-retry1.json. Mesmo escopo restrito e somente leitura do 11; filtro corrigido sem depender de escapes, parser e 12 casos sintéticos verificados em Windows PowerShell 5.1, atalho elevado conferido. Preservar guest e aguardar a saída. Limpeza independente da coleta 10 continua confirmada; causa do firewall e quatro erros locais permanecem desconhecidos, e o aceite continua reprovado.
+
+[Plano proposto para evidências completas](docs/catalog-cleanup-evidence-plan.md): persistir baseline/diff/limpeza e categoria restrita de ACK, com TDD em teste/roteiro/builder. Nenhuma implementação iniciada; aguardar diagnóstico 12 e aprovação explícita antes de alterar os três arquivos. Nenhum novo MSI/ISO, controle no host, restauração ou repetição de suítes. As pendências anteriores do 11 abaixo são históricas.
+
 ## Atualização vigente — 04/11/2026: coleta 10 confirmou remoção; falha de firewall ainda sem causa
 
 [Coleta 10 original](validation/vm-catalog-5e71292-cleanup-diagnostics-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): concluída em 53 segundos, sem erros. Log MSI com retornos 0/0; serviço, watchdog e diário de aplicações ausentes; NRPT, firewall próprio e política CI própria zerados; registros das fixtures ausentes. Os mesmos 14 IDs CI externos foram preservados e o ACK de liberação v7 foi conferido. **Limpeza atual confirmada, mas a rodada continua reprovada pela guarda de preservação do firewall.**
