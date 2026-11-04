@@ -1,5 +1,9 @@
 # Aceite final do roadmap desktop
 
+## Diagnóstico — 04/11/2026: referência de rede interfere com bloqueio de processo
+
+[Coleta08 e revisão](validation/catalog-network-order-diagnostic-review-2026-11-04.json) confirmaram liberação/limpeza independente,14IDs CI preservados e HTTPS200 com ambos os EXEs exit0 após remover o agente. A política `absent` v2 ainda bloqueia o nome do processo original quando o roteiro inicia sua referência de rede; o log mostra esse encerramento no intervalo. Regressão isolada reproduziu a falha com as políticas da API real e fronteiras mockadas, sem controles/EXEs no host. [Continuação TDD](docs/catalog-network-baseline-order-plan.md) vai isolar as referências sob a política `allow` já reconhecida. Nenhuma aceitação reclassificada; rede/processo/WDAC/hora real continuam pendentes, e os prazos/critérios não mudam.
+
 ## Resultado vigente — 04/11/2026: 948608e reprovado antes do bloqueio de rede
 
 [Rodada original](validation/vm-catalog-948608e-result-2026-11-04.json), run0e93a06a: app ausente passou, mas um ou ambos os executáveis próprios falharam no HTTPS de referência antes de publicar a política de rede. **Rede/processo/WDAC/hora real sem aceite.** [Análise](validation/catalog-vm-948608e-network-baseline-failure-2026-11-04.json) preserva o resultado; limpeza reportou MSI0 e nenhum erro/controle próprio, mantendo14IDs CI externos. Coletor08 solicitado para conferir estado atual, ACK de liberação e distinguir DNS/conexão/HTTPS/execução individual como SYSTEM. Host obteve HTTP200 no mesmo destino. Não restaurar o guest antes dos diagnósticos. Nenhum código, limite ou critério alterado para converter a falha em sucesso.

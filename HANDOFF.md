@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Continuação vigente — 04/11/2026: coleta 08 concluída e interferência do roteiro reproduzida
+
+[Coleta original preservada](validation/vm-catalog-948608e-network-diagnostics-2026-11-04.json) e [revisão](validation/catalog-network-order-diagnostic-review-2026-11-04.json): concluída em119s sem erros; ACK bruto v7 e limpeza independente conferidos,14IDs CI externos preservados. Após remoção, DNS/TCP/HTTPS200 e ambos os EXEs por hash tiveram exit0. Isso não prova a causa exclusiva da falha anterior, pois o agente já estava removido.
+
+Interferência concreta: a política `absent` v2 contém `app_control.blocked=['openems-catalog-a.exe']`; o roteiro testa o HTTPS desse processo antes de publicar a política de rede, ainda com essa lista ativa. O log registra seu encerramento às14:26:29Z nesse intervalo. [Plano de continuação no escopo original aprovado](docs/catalog-network-baseline-order-plan.md): somente teste e roteiro do catálogo, mover referências para depois do ACK `allow` v1 e antes de `absent` v2, preservando oito checks/ACK90s/hora real3600s. Produto/builder/MSIs/critérios intactos até aqui.
+
+Nova regressão em `tests/test_catalog_sandbox.py` usa API real com bytes inertes e somente statements de orquestração extraídos por AST, com todas as fronteiras mockadas e allowlist antes de executar. Resultado direcionado:1falha esperada/1sucesso (controle negativo),155desmarcados. Nenhum PE/MSI/serviço/controle no host. Suíte completa permitida RED em andamento: helper `.venv/dual-scenario-fix-2026-11-03/run-catalog-order-suite.ps1 -Phase red`, logs `catalog-order-full-red.*`; não implementar o roteiro antes do resultado completo e do commit vermelho. Preservar guest até novo pacote pronto; rodada948608e permanece reprovada. As pendências de coleta abaixo são históricas.
+
 ## Estado vigente — 04/11/2026: rodada 07 falhou na conectividade inicial; coleta 08 pendente
 
 [Resultado original](validation/vm-catalog-948608e-result-2026-11-04.json) e [análise/recibo da coleta](validation/catalog-vm-948608e-network-baseline-failure-2026-11-04.json), fonte 948608e/run0e93a06a: **failed**, recibo de pacote conferido. App ausente passou; pelo menos um dos dois executáveis próprios não completou HTTPS para `example.org` antes da política de rede. O roteiro não reteve os códigos individuais nessa falha. Bloqueio de rede, processo, WDAC e hora real não foram alcançados. Não atribuir a falha ao WDAC nem afrouxar critérios. Limpeza reportou MSI 0, sem erros/controles próprios, com 14 IDs CI externos preservados; confirmação independente e ACK bruto ainda pendentes.
