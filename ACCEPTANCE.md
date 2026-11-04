@@ -1,5 +1,9 @@
 # Aceite final do roadmap desktop
 
+## Resultado vigente — 04/11/2026: 948608e reprovado antes do bloqueio de rede
+
+[Rodada original](validation/vm-catalog-948608e-result-2026-11-04.json), run0e93a06a: app ausente passou, mas um ou ambos os executáveis próprios falharam no HTTPS de referência antes de publicar a política de rede. **Rede/processo/WDAC/hora real sem aceite.** [Análise](validation/catalog-vm-948608e-network-baseline-failure-2026-11-04.json) preserva o resultado; limpeza reportou MSI0 e nenhum erro/controle próprio, mantendo14IDs CI externos. Coletor08 solicitado para conferir estado atual, ACK de liberação e distinguir DNS/conexão/HTTPS/execução individual como SYSTEM. Host obteve HTTP200 no mesmo destino. Não restaurar o guest antes dos diagnósticos. Nenhum código, limite ou critério alterado para converter a falha em sucesso.
+
 ## Atualização — 04/11/2026: diagnóstico concluído; novo aceite pendente
 
 [Revisão do coletor 06](validation/catalog-vm-d87d059-diagnostic-review-2026-11-04.json) confirmou ACK bruto de liberação v7 e limpeza independente, com preservação dos 14 IDs CI externos. Os seis XMLs próprios exportados conferem por tamanho/hash e reproduzem o contêiner kernel vazio já corrigido na fonte 948608e. A rodada d87d059 continua reprovada; o guest pode agora ser restaurado ao snapshot limpo, pois os dados necessários foram preservados e revisados. Nova rodada 948608e/0e93a06a pelo atalho 07 ainda não iniciada; exigir todos os critérios e 3600 segundos reais. Testes locais e preparação não substituem o aceite Windows.
