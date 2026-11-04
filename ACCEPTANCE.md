@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 04/11/2026: roteiro corrigido e pacote5e71292 pronto
+
+[Recibo de pacote e gates](validation/catalog-vm-preparation-5e71292-2026-11-04.json): **1454 Python,251 Rust e154 painel passaram**, além dos gates estáticos/build. Python teve57skips e quatro casos integrais de controles desmarcados. TDD vermelho baee7c0 com1falha esperada/1453sucessos; correção5e71292 isola ambos os probes HTTPS sob allow já reconhecido, antes do bloqueio de processo absent. Produto/builder/regras e limites originais preservados; agente mantém SHA f33dfd05. Cobertura app/agente88,88%; gates completos por módulo e integrações vivas pendentes.
+
+MSIs0.4.0/0.4.1 sem fault injection/ISO `OpenEMS-Catalog-5e71292-eb8486c4.iso` e atalho09 conferidos. Nova rodada source5e71292/runeb8486c4e5d940238c9ff17c3336f6d8 **não iniciada e sem aceite Windows**. Dados da rodada948608e e coleta08 preservados; liberação e limpeza independente confirmadas,14IDs CI externos mantidos. Pode restaurar snapshot limpo e executar09 somente com a nova ISO conectada. Manter todos os oito critérios, ACK90s,3600s reais e remoção normal. As falhas anteriores permanecem reprovadas; validações locais não substituem enforcement real.
+
 ## Diagnóstico — 04/11/2026: referência de rede interfere com bloqueio de processo
 
 [Coleta08 e revisão](validation/catalog-network-order-diagnostic-review-2026-11-04.json) confirmaram liberação/limpeza independente,14IDs CI preservados e HTTPS200 com ambos os EXEs exit0 após remover o agente. A política `absent` v2 ainda bloqueia o nome do processo original quando o roteiro inicia sua referência de rede; o log mostra esse encerramento no intervalo. Regressão isolada reproduziu a falha com as políticas da API real e fronteiras mockadas, sem controles/EXEs no host. [Continuação TDD](docs/catalog-network-baseline-order-plan.md) vai isolar as referências sob a política `allow` já reconhecida. Nenhuma aceitação reclassificada; rede/processo/WDAC/hora real continuam pendentes, e os prazos/critérios não mudam.

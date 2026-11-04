@@ -1,5 +1,7 @@
 # Correção do isolamento da referência de rede no aceite do catálogo
 
+Estado: TDD concluído dentro do escopo original aprovado. Vermelho `baee7c0` (1falha esperada/1453sucessos/57skips/quatro integrais desmarcados); correção `5e71292`. Verde completo1454Python/251Rust/154painel e gates estáticos/build. [Pacote/ISO novos conferidos](../validation/catalog-vm-preparation-5e71292-2026-11-04.json), run eb8486c4e5d940238c9ff17c3336f6d8, atalho09. Nova rodada ainda não iniciada. Dados e limpeza independente da falha anterior revisados; restaurar snapshot limpo antes do novo aceite. Produto e limites intactos.
+
 ## Escopo e autorização
 
 Continuação do roteiro de catálogo já aprovado com TDD: somente `tests/test_catalog_sandbox.py` e `deploy/test-catalog-sandbox.ps1`, ambos no escopo original de três arquivos. Não altera o produto, o builder, regras expandidas, prazos ou critérios. Evidências e handoff serão atualizados. As aprovações anteriores permanecem válidas; esta manutenção corrige a execução do roteiro existente.
