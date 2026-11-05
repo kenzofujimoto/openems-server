@@ -349,6 +349,7 @@ $statePath = 'C:\ProgramData\openems\state.json'
 $result = [ordered]@{run_id=$manifest.run_id;source_revision=$manifest.source_revision;status='running';passed=$false
     error=$null;cleanup_errors=@();checks=@();started_utc=[DateTime]::UtcNow.ToString('o');finished_utc=$null
     evidence_format=2;firewall_before=$null;ack_observations=@()
+    fixture_probes=@();network_enumeration=$null
     scope='real host catalog API expansion; local fixture transport; installed Windows service'
     package_receipt=@{source_revision=$manifest.source_revision;packages=$manifest.packages;manifest_sha256=$manifest._manifest_sha256}}
 $backend = $null
@@ -653,16 +654,130 @@ function Start-Fixture([string]$Path, [string]$Sentinel, [string]$Url, [int]$Hol
     [void]$ownedProcesses.Add($process)
     return $process
 }
-function Invoke-Fixture([string]$Path, [string]$Url='-') {
-    $sentinel=Join-Path $work ([Guid]::NewGuid().ToString('N')+'.started')
-    try { $process=Start-Fixture $Path $sentinel $Url 3000 }
-    catch [ComponentModel.Win32Exception] {
-        return @{exit=-1;native_error=$_.Exception.NativeErrorCode;process_created=$false;started=(Test-Path -LiteralPath $sentinel);alive_after_sentinel=$false}
+function Wait-FixtureStartup([scriptblock]$Observe, [scriptblock]$ElapsedMilliseconds,
+                             [scriptblock]$Pause={ Start-Sleep -Milliseconds 300 }, [int]$TimeoutMilliseconds=10000) {
+    function Read-StartupSample {
+        $sample = @{at_ms=$null;marker_present=$null;process_exited=$null;error_kind=$null}
+        try {
+            $observed = & $Observe
+            if ($observed.marker_present -isnot [bool] -or $observed.process_exited -isnot [bool]) {
+                throw 'The fixture observation did not return a definite state.'
+            }
+            $sample.marker_present = $observed.marker_present
+            $sample.process_exited = $observed.process_exited
+        } catch {
+            $sample.error_kind = 'query_failed'
+        }
+        $sample.at_ms = & $ElapsedMilliseconds
+        return $sample
     }
-    Wait-Until { $process.HasExited -or (Test-Path -LiteralPath $sentinel) } 10 'The fixture did not reach its sentinel.'
-    $alive=-not $process.HasExited
-    if (-not $process.WaitForExit(15000)) { throw 'The owned fixture exceeded its probe timeout.' }
-    return @{exit=$process.ExitCode;native_error=0;process_created=$true;started=(Test-Path -LiteralPath $sentinel);alive_after_sentinel=$alive}
+    $last = $null
+    $terminal = $null
+    while ((& $ElapsedMilliseconds) -lt $TimeoutMilliseconds) {
+        $sample = Read-StartupSample
+        if ($sample.at_ms -ge $TimeoutMilliseconds) {
+            $terminal = $sample
+            break
+        }
+        if ($null -ne $sample.error_kind) {
+            return @{status='unavailable';elapsed_ms=$sample.at_ms;last_in_window=$last;terminal=$sample}
+        }
+        $last = $sample
+        if ($sample.marker_present) {
+            return @{status='started';elapsed_ms=$sample.at_ms;last_in_window=$last;terminal=$null}
+        }
+        if ($sample.process_exited) {
+            return @{status='exited';elapsed_ms=$sample.at_ms;last_in_window=$last;terminal=$null}
+        }
+        $null = & $Pause
+    }
+    # A completed read outside the window is diagnostic, even when it found the marker.
+    if ($null -eq $terminal) { $terminal = Read-StartupSample }
+    return @{status='timeout';elapsed_ms=$terminal.at_ms;last_in_window=$last;terminal=$terminal}
+}
+function Invoke-Fixture([string]$Path, [string]$Url='-', [string]$Phase, [string]$Role) {
+    $sentinelId = [Guid]::NewGuid().ToString('N')
+    $sentinel = Join-Path $work ($sentinelId+'.started')
+    $probe = @{
+        phase=$Phase;role=$Role;sentinel_id=$sentinelId;status='launching'
+        pid=$null;process_created=$null;native_error=$null
+        launch=@{started_utc=$null;finished_utc=$null;elapsed_ms=$null}
+        startup=$null;exit_wait=$null;marker_created_utc=$null;marker_metadata_error=$null
+    }
+    $result.fixture_probes += @($probe)
+    try {
+        $probe.launch.started_utc = [DateTime]::UtcNow.ToString('o')
+        $launchClock = [Diagnostics.Stopwatch]::StartNew()
+        try {
+            $process = Start-Fixture $Path $sentinel $Url 3000
+            $startupClock = [Diagnostics.Stopwatch]::StartNew()
+        } catch [ComponentModel.Win32Exception] {
+            $probe.status = 'native_refused'
+            $probe.native_error = $_.Exception.NativeErrorCode
+            $probe.process_created = $false
+        } catch {
+            $probe.status = 'launch_failed'
+            throw 'The owned fixture could not be started.'
+        } finally {
+            $launchClock.Stop()
+            $probe.launch.finished_utc = [DateTime]::UtcNow.ToString('o')
+            $probe.launch.elapsed_ms = $launchClock.Elapsed.TotalMilliseconds
+        }
+        if ($probe.status -ceq 'native_refused') {
+            try { $started = Test-Path -LiteralPath $sentinel -ErrorAction Stop }
+            catch { throw 'The fixture marker could not be observed after the native refusal.' }
+            return @{exit=-1;native_error=$probe.native_error;process_created=$false;started=$started;alive_after_sentinel=$false}
+        }
+        $probe.process_created = $true
+        $probe.native_error = 0
+        $probe.pid = $process.Id
+        $probe.startup = Wait-FixtureStartup {
+            @{marker_present=(Test-Path -LiteralPath $sentinel -ErrorAction Stop);process_exited=$process.HasExited}
+        } { $startupClock.Elapsed.TotalMilliseconds }
+        if ($probe.startup.status -ceq 'timeout') {
+            $probe.status = 'startup_timeout'
+            throw 'The fixture did not reach its sentinel.'
+        }
+        if ($probe.startup.status -ceq 'unavailable') {
+            $probe.status = 'startup_unavailable'
+            throw 'The fixture startup state could not be observed.'
+        }
+        $probe.exit_wait = @{elapsed_ms=$null;timed_out=$null;exit_code=$null}
+        $exitClock = $null
+        try {
+            $alive = -not $probe.startup.last_in_window.process_exited -and -not $process.HasExited
+            $exitClock = [Diagnostics.Stopwatch]::StartNew()
+            $probe.exit_wait.timed_out = -not $process.WaitForExit(15000)
+            if (-not $probe.exit_wait.timed_out) { $probe.exit_wait.exit_code = $process.ExitCode }
+        } catch {
+            $probe.status = 'exit_unavailable'
+            throw 'The owned fixture exit state could not be observed.'
+        } finally {
+            if ($null -ne $exitClock) {
+                $exitClock.Stop()
+                $probe.exit_wait.elapsed_ms = $exitClock.Elapsed.TotalMilliseconds
+            }
+        }
+        if ($probe.exit_wait.timed_out) {
+            $probe.status = 'exit_timeout'
+            throw 'The owned fixture exceeded its probe timeout.'
+        }
+        if ($probe.startup.status -ceq 'exited') {
+            $probe.status = 'startup_exited'
+            throw 'The owned fixture exited before its sentinel was observed.'
+        }
+        $probe.status = 'completed'
+        return @{exit=$probe.exit_wait.exit_code;native_error=0;process_created=$true;started=$true;alive_after_sentinel=$alive}
+    } finally {
+        try {
+            $markerObserved = $null -ne $probe.startup -and (
+                ($null -ne $probe.startup.last_in_window -and $probe.startup.last_in_window.marker_present -eq $true) -or
+                ($null -ne $probe.startup.terminal -and $probe.startup.terminal.marker_present -eq $true))
+            if ($markerObserved -or (Test-Path -LiteralPath $sentinel -ErrorAction Stop)) {
+                $probe.marker_created_utc = (Get-Item -LiteralPath $sentinel -ErrorAction Stop).CreationTimeUtc.ToString('o')
+            }
+        } catch { $probe.marker_metadata_error = 'query_failed' }
+    }
 }
 function Install-Fixture($Fixture) {
     $path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OpenemsCatalog-'+$manifest.run_id+'-'+$Fixture.app_id.Replace('.','-')
@@ -705,7 +820,8 @@ try {
     # Reference probes must finish before catalog process termination becomes active.
     $url='https://example.org/'
     $network=@{before=@{};blocked=@{};released=@{};firewall_paths=@();control_has_rule=$false}
-    $probeA=Invoke-Fixture $a $url; $probeControl=Invoke-Fixture $aControl $url
+    $probeA=Invoke-Fixture $a $url -Phase 'network_before' -Role 'target'
+    $probeControl=Invoke-Fixture $aControl $url -Phase 'network_before' -Role 'control'
     $network.before=@{target_exit=$probeA.exit;control_exit=$probeControl.exit}
     if ($probeA.exit -ne 0 -or $probeControl.exit -ne 0) { throw 'Both fixture paths must reach the external network before firewall acceptance.' }
     $assignment=Publish-Assignment 'absent'; Wait-Ack $assignment
@@ -714,14 +830,38 @@ try {
     Record-Check 'absent' $absent
 
     $assignment=Publish-Assignment 'network'; Wait-Ack $assignment
-    $rules=@(Owned-FirewallRules)
-    $network.firewall_paths=@($rules | Get-NetFirewallApplicationFilter -ErrorAction Stop | ForEach-Object Program)
-    $network.control_has_rule=@($network.firewall_paths | Where-Object { $_ -ieq $aControl }).Count -gt 0
-    $probeA=Invoke-Fixture $a $url; $probeControl=Invoke-Fixture $aControl $url
+    $enumeration = @{
+        status='running';started_utc=[DateTime]::UtcNow.ToString('o');finished_utc=$null
+        elapsed_ms=$null;rule_count=$null;filter_count=$null;error_kind=$null
+    }
+    $result.network_enumeration = $enumeration
+    $enumerationClock = [Diagnostics.Stopwatch]::StartNew()
+    try {
+        $rules = @(Owned-FirewallRules)
+        $enumeration.rule_count = $rules.Count
+        $filters = @($rules | Get-NetFirewallApplicationFilter -ErrorAction Stop)
+        $enumeration.filter_count = $filters.Count
+        $network.firewall_paths = @($filters | ForEach-Object Program)
+        $network.control_has_rule = @($network.firewall_paths | Where-Object { $_ -ieq $aControl }).Count -gt 0
+        $enumeration.status = 'complete'
+    } catch {
+        $enumeration.status = 'failed'
+        $enumeration.error_kind = 'query_failed'
+        throw 'The owned network firewall filters could not be enumerated.'
+    } finally {
+        $enumerationClock.Stop()
+        $enumeration.finished_utc = [DateTime]::UtcNow.ToString('o')
+        $enumeration.elapsed_ms = $enumerationClock.Elapsed.TotalMilliseconds
+    }
+    $probeA=Invoke-Fixture $a $url -Phase 'network_blocked' -Role 'target'
+    $probeControl=Invoke-Fixture $aControl $url -Phase 'network_blocked' -Role 'control'
     $network.blocked=@{target_process_created=$probeA.process_created;target_exit=$probeA.exit;control_exit=$probeControl.exit}
     if (-not $probeA.alive_after_sentinel -or -not $probeControl.alive_after_sentinel) { throw 'Network probes must remain alive after their sentinel.' }
     $assignment=Publish-Assignment 'network_release'; Wait-Ack $assignment
-    $network.released=@{target_exit=(Invoke-Fixture $a $url).exit;control_exit=(Invoke-Fixture $aControl $url).exit}
+    $network.released=@{
+        target_exit=(Invoke-Fixture $a $url -Phase 'network_release' -Role 'target').exit
+        control_exit=(Invoke-Fixture $aControl $url -Phase 'network_release' -Role 'control').exit
+    }
     Record-Check 'network' $network
 
     Install-Fixture $manifest.fixtures.a
@@ -736,7 +876,11 @@ try {
     $processEvidence.target_exited=$targetProcess.HasExited; $processEvidence.control_still_running=-not $controlProcess.HasExited
     Record-Check 'process' $processEvidence
     $policy=Own-Policy
-    $wdac=@{policy_enforced=($null -ne $policy -and [string]$policy.IsEnforced -ieq 'true');original=(Invoke-Fixture $a);renamed=(Invoke-Fixture $aControl)}
+    $wdac=@{
+        policy_enforced=($null -ne $policy -and [string]$policy.IsEnforced -ieq 'true')
+        original=(Invoke-Fixture $a -Phase 'wdac' -Role 'original')
+        renamed=(Invoke-Fixture $aControl -Phase 'wdac' -Role 'renamed')
+    }
     Assert-DeniedExecution $wdac.original; Assert-DeniedExecution $wdac.renamed
     if (-not $wdac.policy_enforced) { throw 'The catalog WDAC policy is not enforced.' }
     Record-Check 'wdac' $wdac
@@ -751,7 +895,7 @@ try {
         before=(Hourly-Observation);after=$null;assignment_observations=@((Assignment-Observation));before_admission=$null;after_denial=$null}
     $hourWatch=[Diagnostics.Stopwatch]::StartNew()
     Install-Fixture $manifest.fixtures.b
-    $admitted=Invoke-Fixture $bControl
+    $admitted=Invoke-Fixture $bControl -Phase 'hourly_before' -Role 'renamed'
     if ($admitted.exit -ne 0 -or -not $admitted.process_created) { throw 'The later fixture was not admitted before natural hourly rechecking.' }
     $hourly.before_admission=@{process_created=$admitted.process_created;native_error=$admitted.native_error}
     $lastMinute=-1
@@ -775,7 +919,7 @@ try {
         }
         Start-Sleep -Seconds 5
     }
-    $hourly.after_denial=Invoke-Fixture $bControl
+    $hourly.after_denial=Invoke-Fixture $bControl -Phase 'hourly_after' -Role 'renamed'
     $hourly.elapsed_seconds=$hourWatch.Elapsed.TotalSeconds; $hourly.finished_utc=[DateTime]::UtcNow.ToString('o')
     $hourly.assignment_observations+=@((Assignment-Observation))
     Assert-HourlyEvidence $hourly
@@ -783,7 +927,8 @@ try {
 
     $assignment=Publish-Assignment 'release'; Wait-Ack $assignment
     $release=Delivery-Evidence $assignment
-    $release.original_exit=(Invoke-Fixture $b).exit; $release.renamed_exit=(Invoke-Fixture $bControl).exit
+    $release.original_exit=(Invoke-Fixture $b -Phase 'release' -Role 'original').exit
+    $release.renamed_exit=(Invoke-Fixture $bControl -Phase 'release' -Role 'renamed').exit
     $release.firewall_rule_count=@(Owned-FirewallRules).Count
     Record-Check 'release' $release
 } catch {
