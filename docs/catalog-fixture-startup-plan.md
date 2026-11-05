@@ -1,6 +1,6 @@
 # Evidências de inicialização das sondas do catálogo
 
-Estado proposto para aprovação. A coleta 14 e a rodada 13 foram preservadas. A rodada continua reprovada.
+Plano aprovado e implementado com TDD em 1bf393a. O vermelho em 24f8a47 confirmou 20 regressões. O verde aprovou 1.543 testes. Mídia conferida para a rodada 15 em snapshot limpo.
 
 ## Evidência e limite do diagnóstico
 

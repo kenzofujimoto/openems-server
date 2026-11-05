@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 05/11/2026. Rodada 15 preparada
+
+O vermelho de 24f8a47 confirmou 20 falhas esperadas. A implementação 1bf393a aprovou 1.543 testes na mesma suíte permitida, com 57 pulados e quatro controles legados desmarcados. Ruff, pip check e PowerShell 5.1 passaram. Cada sonda registra fase, papel, PID, marcador, criação do processo, observação e encerramento. A enumeração de rede tem medição própria. A leitura terminal após os 10 s fica no diagnóstico. A causa da falha anterior segue em aberto.
+
+A ISO OpenEMS-Catalog-1bf393a-7820bffa.iso, os MSIs 0.4.0/0.4.1, dez arquivos ópticos e o atalho elevado 15 foram conferidos. Fonte 1bf393abfeba3458509c3c82cb912ddfd45d9012, run 7820bffae47c42e9a2598f81acc88986. Restaurar clean-preflight-before-controls com Go To no VMware, montar a ISO com Connected e executar 15 - Catalog acceptance as administrator.lnk em OpenEMSResults com UAC. A rodada aguarda início e mantém os oito critérios, ACK de 90 s, hora real e limpeza. [Recibo](validation/catalog-vm-preparation-1bf393a-2026-11-05.json).
+
+A rodada 13 permanece reprovada. Coleta 14 e limpeza anterior preservadas. As etapas anteriores de aprovação e execução de testes abaixo são históricas.
+
 ## Estado vigente — 05/11/2026. Coleta 14 revisada e plano de sondas pendente
 
 Coleta concluída em 69 s, sem erros. Os quatro hashes conferem. Dois marcadores foram criados nas referências e um às 12:58:02Z sob v3. Os eventos filtrados ficaram vazios e o LocalError do agente corresponde ao ACK negativo v2 anterior. Os dados deixam em aberto qual sonda expirou e se o terceiro marcador apareceu após a última leitura. O intervalo ACK v3→marcador inclui a enumeração do firewall. [Coleta original](validation/vm-catalog-b6d4be5-startup-diagnostics-2026-11-05.json) e [revisão](validation/catalog-vm-b6d4be5-startup-failure-review-2026-11-05.json).
