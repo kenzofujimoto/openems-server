@@ -1,6 +1,6 @@
 # Persistência das evidências de limpeza do aceite do catálogo
 
-Estado: plano proposto, sem implementação. Aguardar aprovação explícita antes de alterar os três arquivos de código/teste. Coleta 12 concluída e preservada; manter a VM no estado atual até a próxima preparação, sem iniciar outra rodada.
+Estado aprovado com TDD e implementado em b6d4be5. O vermelho de 3b42cb5 confirmou 63 regressões. A suíte verde aprovou 1.523 testes. O pacote v2 está conferido e aguarda o aceite real em snapshot limpo.
 
 ## Problema observado
 

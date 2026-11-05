@@ -1,5 +1,15 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 05/11/2026. Evidências v2 prontas para aceite na VM
+
+O vermelho do commit 3b42cb5 teve 63 falhas esperadas e 1.460 sucessos. A implementação b6d4be5 passou na mesma suíte completa permitida com 1.523 sucessos, 57 skips e quatro casos integrais legados desmarcados. Ruff, pip check e parser PS5.1 passaram. O roteiro grava o baseline antes do MSI, registra diferenças e resultados independentes de limpeza em caso de falha, retém categorias seguras dos ACKs e finaliza o relatório após a coleta. O verificador do host recalcula a preservação. O exportador copia cada versão do checkpoint uma vez.
+
+A ISO OpenEMS-Catalog-b6d4be5-a6c27d86.iso, os dez arquivos ópticos, os MSIs 0.4.0/0.4.1 e o atalho 13 foram conferidos. O agente nativo mantém o SHA-256 f33dfd05…; a nova mídia corresponde à fonte b6d4be52550c59ad7c5e8083bca193229212aa28 e ao run a6c27d86de834dbb85cafe8388c82d70. A rodada real está pendente. [Recibo de preparação](validation/catalog-vm-preparation-b6d4be5-2026-11-05.json).
+
+Próxima ação no VMware. Desbloquear a VM no próprio VMware, usar Go To no snapshot clean-preflight-before-controls, montar a ISO nova e marcar Connected. No guest, abrir OpenEMSResults e executar 13 - Catalog acceptance as administrator.lnk com UAC. Aguardar o aceite integral com 90 s por ACK, uma hora real e limpeza normal. A CLI pede a senha de criptografia para operações de snapshot; não enviar senha pelo chat. A VM estava fora da lista de VMs em execução.
+
+A rodada anterior permanece reprovada, com limpeza confirmada e causas específicas de firewall/OSError/LocalError desconhecidas. A melhoria é de evidências. Integrações vivas, USB físico e cobertura global continuam pendentes. As etapas de aprovação, diagnóstico e suíte em execução abaixo são históricas.
+
 ## Estado vigente — 04/11/2026: coleta 12 válida; plano de evidências aguarda aprovação
 
 [Coleta corrigida original](validation/vm-catalog-5e71292-agent-log-diagnostics-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): concluída sem erros de coleta; mesmo log de 654 bytes/hash da coleta 11. Foram identificados OSError às 18:38:00Z e 19:14:07Z, LocalError às 19:35:09Z e 19:35:18Z, todos entre 2,8 e 9,0 segundos antes dos quatro ACKs negativos correspondentes. As categorias confirmam falhas locais, mas não identificam a operação ou subsistema que falhou. O estado da tarefa ainda era Running no instante da exportação; esse campo não comprova um exit code final. O relatório completo de diagnóstico foi recebido.
