@@ -1,5 +1,15 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 05/11/2026. Rodada 16 pronta para VMware
+
+Plano aprovado. RED `397b9db` com quatro falhas esperadas no Rust e sete no PowerShell. Implementação `06c4ccf` registra versão, categoria, etapas fechadas e códigos Win32 observados, preservando a categoria do ACK, a ordem das falhas e o log anterior. Códigos de saída do filho e do CiTool continuam fora do campo Win32. A ausência de código no PowerShell 5.1 precisou de `$null` explícito para não serializar como `{}`.
+
+GREEN com 256 Rust, 1.550 Python (57 pulados e quatro desmarcados), 336 contratos com PostgreSQL/Redis descartáveis e 154 testes do painel. Release, Clippy, fmt, parser PS5.1 e Ruff em `app agent tests tools` passaram. Ruff na raiz acusa S603 preexistente em `deploy/linux/build_package.py`. Logs em `.venv/catalog-local-diagnostics`.
+
+MSIs de produção 0.4.0/0.4.1 inspecionados em modo somente leitura, manifesto e conteúdo do catálogo verificados em `.venv/catalog-acceptance-06c4ccf-diagnostics`, run `c9f2efe63fbb4daaba277816206549c2`. O verificador agora reconhece a entrada de diretório retornada pelo `tar`, extrai em pasta nova e compara tipos e hashes dos 11 arquivos. ISO `C:\Users\kenzo.fujimoto\Documents\OpenEMS-Lab\OpenEMS-Catalog-06c4ccf-c9f2efe6.iso`, SHA-256 `a2373ec873ea25e79ea2d1d1669d43104c6194e7d191ed742635f70c581b7cd2`. Atalho elevado `16 - Catalog acceptance and diagnostics as administrator.lnk` conferido. O launcher faz a exportação sanitizada após o aceite e passou no parser e em uma fixture inerte no PowerShell 5.1. Recibo em `.venv/catalog-acceptance-06c4ccf-diagnostics/MEDIA-RECEIPT.json`.
+
+A VM está suspensa. O operador deve restaurar `clean-preflight-before-controls` com **Go To**, retomar a VM, conectar a ISO pelo CD/DVD e executar o atalho 16 em `\\vmware-host\Shared Folders\OpenEMSResults` com UAC. Acompanhar apenas o run `c9f2efe6…` em `catalog-result.json` e `catalog-enforcement-diagnostics-c9f2efe6.json`. O aceite da rodada 15 segue arquivado e os cinco erros antigos ainda não têm operação de origem confirmada.
+
 ## Estado vigente — 05/11/2026. Integração local do catálogo aprovada
 
 Passaram 336 testes com PostgreSQL 16.15 e Redis 7.4.11 descartáveis, incluindo o upgrade da tabela de eventos. Dois workers HTTP usaram os mesmos stores. No Edge headless, o operador de teste publicou v1 no painel sem regra gerada. O inventário de um endpoint sintético recebido pelo outro worker gerou v2 com uma regra de hash opcional. O Redis entregou a atualização a ambos os endpoints. O ACK sintético v2, a entrada de auditoria e a leitura da nova versão no segundo painel passaram. [Evidência](validation/catalog-live-integration-2026-11-05.json).
