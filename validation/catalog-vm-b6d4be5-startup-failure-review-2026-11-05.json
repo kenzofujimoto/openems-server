@@ -61,10 +61,62 @@
     "file": "14-collect-catalog-startup-diagnostics.ps1",
     "sha256": "be5e9b0ba0dd21744b450e7c7712a0baebba9c32d67fd027cf7d98566eb24496",
     "output": "catalog-startup-diagnostics-a6c27d86.json",
-    "status": "requested_not_received",
+    "status": "completed_archived_reviewed",
     "powershell_5_1_parser_passed": true,
     "synthetic_filter_checks": 4,
     "elevated_shortcut_verified": true,
     "shortcut": "14 - Collect catalog startup diagnostics as administrator.lnk"
+  },
+  "diagnostic_review": {
+    "file": "vm-catalog-b6d4be5-startup-diagnostics-2026-11-05.json",
+    "sha256": "746d759f1dc462b576bb7d6b5ad524394d45927b36b72e767b967cb9b866bec8",
+    "bytes": 7933,
+    "elapsed_seconds": 69,
+    "collection_errors": [],
+    "fixture_hashes_verified": 4,
+    "sentinel_count": 3,
+    "sentinels_by_stage": {
+      "baseline": 2,
+      "v3_network": 1
+    },
+    "third_sentinel_utc": "2026-11-05T12:58:02.4098028Z",
+    "v3_ack_to_third_sentinel_seconds": 207.717158,
+    "prior_successful_network_v3_to_v4_ack_seconds": 235.667123,
+    "fixture_role_identified": false,
+    "matched_event_counts": {
+      "application_events": 0,
+      "code_integrity_events": 0,
+      "defender_events": 0,
+      "system_storage_events": 0,
+      "process_audit_events": 0
+    },
+    "agent_observations": [
+      {
+        "error_kind": "LocalError",
+        "at_utc": "2026-11-05T12:53:34Z",
+        "kind": "enforcement_failed"
+      }
+    ],
+    "local_error_ack_delta_seconds": 11.768678,
+    "cross_run_firewall_rule_counts": {
+      "only_after_run09": 3,
+      "only_before_run13": 2,
+      "common": 480,
+      "interpretation": "Cross-run comparison; the original run09 baseline is unavailable."
+    },
+    "inert_wait_reproduction": {
+      "powershell": "5.1",
+      "deadline_ms": 1000,
+      "marker_logically_ready_ms": 300,
+      "sample_times_ms": [
+        5
+      ],
+      "elapsed_ms": 1418,
+      "timed_out": true,
+      "endpoint_actions": false,
+      "interpretation": "The sampling loop can miss a ready state across a delayed sleep. The VM cause is unproven."
+    },
+    "run_reclassified": false,
+    "next_step": "Await approval of docs/catalog-fixture-startup-plan.md before two-file TDD changes."
   }
 }

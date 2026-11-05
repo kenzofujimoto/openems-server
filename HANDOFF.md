@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 05/11/2026. Coleta 14 revisada e plano de sondas pendente
+
+Coleta concluída em 69 s, sem erros. Os quatro hashes conferem. Dois marcadores foram criados nas referências e um às 12:58:02Z sob v3. Os eventos filtrados ficaram vazios e o LocalError do agente corresponde ao ACK negativo v2 anterior. Os dados deixam em aberto qual sonda expirou e se o terceiro marcador apareceu após a última leitura. O intervalo ACK v3→marcador inclui a enumeração do firewall. [Coleta original](validation/vm-catalog-b6d4be5-startup-diagnostics-2026-11-05.json) e [revisão](validation/catalog-vm-b6d4be5-startup-failure-review-2026-11-05.json).
+
+Em PowerShell 5.1, um ensaio inerte reproduziu a janela do laço. Uma condição pronta aos 300 ms ficou sem nova amostra depois de uma pausa de 1.150 ms com prazo de 1 s. A causa da rodada real continua desconhecida. A limpeza v2 e as 482 regras externas preservadas permanecem verificadas. O aceite da rodada 13 segue reprovado.
+
+Próximo passo proposto em docs/catalog-fixture-startup-plan.md. Evidência por sonda e regressões em dois arquivos com TDD, janela de 10 s, ACK de 90 s e hora real. Aprovação explícita pendente antes de editar roteiro/testes. Manter a VM no estado atual, com todas as coletas necessárias arquivadas. O pedido do coletor 14 abaixo é histórico.
+
 ## Estado vigente — 05/11/2026. Rodada 13 falhou na espera pelo marcador
 
 O VMware restaurou o snapshot 1 às 12:46:46Z e conectou a ISO b6d4be5 às 12:50:05Z. A rodada v2 a6c27d86 encerrou às 13:04:00Z com “The fixture did not reach its sentinel.” As referências HTTPS iniciais e o check de app ausente passaram. Depois do ACK positivo v3 de rede e antes da publicação v4, uma das duas sondas criou um processo sem observar seu encerramento ou marcador na janela de 10 s. A fixture grava o marcador antes de HTTPS. O relatório não distingue qual sonda falhou. Um LocalError v2 antecedeu o ACK v3 positivo; a relação causal continua desconhecida. [Relatório original](validation/vm-catalog-b6d4be5-result-2026-11-05.json) e [revisão](validation/catalog-vm-b6d4be5-startup-failure-review-2026-11-05.json).
