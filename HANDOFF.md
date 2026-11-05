@@ -1,5 +1,17 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 05/11/2026. Aceite do catálogo aprovado no laboratório VMware
+
+A rodada 15, fonte 1bf393a e run 7820bffae47c42e9a2598f81acc88986, passou nos oito critérios. O verificador do host confirmou o recibo e todos os efeitos. App ausente, bloqueio e liberação de rede, encerramento seletivo do processo, recusa WDAC do original e do renomeado, retirada da política quando todas as amostras faltam, hora real, liberação e remoção normal foram observados. [Relatório original](validation/vm-catalog-1bf393a-result-2026-11-05.json) e [revisão independente](validation/catalog-vm-1bf393a-acceptance-review-2026-11-05.json).
+
+A rechecagem levou 3.602,759 s monotônicos e 3.603,433 s UTC. Foram 63 observações da mesma atribuição v6, com avanço de 3.608 s no diário. A cópia renomeada iniciou antes e foi recusada com erro nativo 4551 depois. O ACK v7 confirmou a liberação, com exit 0 nos dois caminhos. Doze sondas foram registradas, com três recusas nativas e nove marcadores no prazo. O maior tempo observado até marcador foi 767 ms. A enumeração de rede levou 202,315 s nesta execução.
+
+MSI 0, serviço/watchdog ausentes, NRPT e firewall próprios zerados, política CI própria e registros de fixtures ausentes. Os 14 IDs CI externos e as 482 regras de firewall originais foram preservados. As duas diferenças foram adições do Microsoft Weather. A rodada finalizou às 16:09:19Z, com zero erros de limpeza. As falhas anteriores continuam registradas em suas próprias revisões.
+
+Os ACKs guardaram três OSError e dois LocalError na v6. Cada OSError foi seguido de ACK positivo da mesma atribuição. Os dois LocalError antecederam a liberação v7 positiva. Os códigos e horários ficam na revisão. Investigar as operações específicas antes de ampliar o piloto. A causa do timeout da rodada 13 continua em aberto.
+
+O escopo aprovado é a expansão real da API em processo e a aplicação pelo serviço Windows via backend local do laboratório. Próximos passos são investigar os erros locais, validar o fluxo com servidor/painel e PostgreSQL/Redis reais, verificar republicação por inventário de frota e repetir o aceite USB físico. Os gates globais de cobertura por módulo ainda estão pendentes. A VM pode ficar no estado final limpo. Os checkpoints abaixo são históricos.
+
 ## Estado vigente — 05/11/2026. Rodada 15 preparada
 
 O vermelho de 24f8a47 confirmou 20 falhas esperadas. A implementação 1bf393a aprovou 1.543 testes na mesma suíte permitida, com 57 pulados e quatro controles legados desmarcados. Ruff, pip check e PowerShell 5.1 passaram. Cada sonda registra fase, papel, PID, marcador, criação do processo, observação e encerramento. A enumeração de rede tem medição própria. A leitura terminal após os 10 s fica no diagnóstico. A causa da falha anterior segue em aberto.

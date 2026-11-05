@@ -1,6 +1,6 @@
 # Evidências de inicialização das sondas do catálogo
 
-Plano aprovado e implementado com TDD em 1bf393a. O vermelho em 24f8a47 confirmou 20 regressões. O verde aprovou 1.543 testes. Mídia conferida para a rodada 15 em snapshot limpo.
+Plano implementado com TDD em 1bf393a e verificado no aceite VMware da rodada 15. As oito verificações passaram, incluindo a hora real e a remoção. Cinco ACKs negativos foram preservados na revisão e suas causas continuam em investigação.
 
 ## Evidência e limite do diagnóstico
 
