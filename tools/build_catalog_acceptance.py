@@ -8,6 +8,7 @@ through the real in-process server API using explicitly synthetic inventory.
 from __future__ import annotations
 
 import argparse
+from collections import Counter, defaultdict
 from copy import deepcopy
 from datetime import UTC, datetime
 import hashlib
@@ -33,6 +34,15 @@ CASES = ("allow", "absent", "network", "network_release", "present", "later", "r
 CHECKS = ("absent", "network", "process", "wdac", "all_absent", "hourly", "release", "cleanup")
 HARNESS = ROOT / "deploy/test-catalog-sandbox.ps1"
 DENIAL_CODES = {577, 1260, 4551}
+EVIDENCE_FORMAT = 2
+FIREWALL_FIELDS = ("enabled", "direction", "action")
+FIREWALL_VALUES = {
+    "enabled": {"True", "False", "NotConfigured"},
+    "direction": {"Inbound", "Outbound"},
+    "action": {"Allow", "Block", "NotConfigured"},
+}
+ACK_ERROR_KINDS = {"ConfigError", "PolicyError", "StateError", "HTTPError", "TransportError",
+                   "LocalError", "OSError", "unknown"}
 
 
 def revision() -> str:
@@ -239,7 +249,7 @@ def build(source: Path, output: Path, *, run_id: str, now: datetime | None = Non
     shutil.copyfile(HARNESS, output / HARNESS.name)
     for name in PACKAGES:
         shutil.copyfile(Path(source) / "final-msi" / name, output / name)
-    manifest = {"format": 1, "phase": "catalog", "source_revision": current, "run_id": run_id,
+    manifest = {"format": 1, "evidence_format": EVIDENCE_FORMAT, "phase": "catalog", "source_revision": current, "run_id": run_id,
                 "created_at": now.isoformat(), "guest_work_directory": guest, "packages": packages,
                 "fixtures": fixtures, "policies": policies,
                 "expansion_proof": {"synthetic_catalog": True, "real_server_api": True,
@@ -297,6 +307,7 @@ def verify_package(directory: Path, *, expected_revision: str | None = None) -> 
         raise ValueError("catalog package source revision mismatch")
     if manifest.get("phase") != "catalog" or manifest.get("format") != 1:
         raise ValueError("unsupported catalog package format")
+    _evidence_format(manifest)
     if manifest.get("guest_work_directory") != "C:\\openems-catalog-" + run_id:
         raise ValueError("guest directory is not bound to this run")
     files = _object(manifest.get("files"), "files")
@@ -324,6 +335,12 @@ def _require(condition: bool, message: str) -> None:
 def _integer_is(value: Any, expected: int) -> bool:
     """JSON booleans and floating-point values are not observed integer codes."""
     return type(value) is int and value == expected
+
+
+def _evidence_format(value: dict[str, Any]) -> int:
+    version = value.get("evidence_format", 1)
+    _require(type(version) is int and version in {1, EVIDENCE_FORMAT}, "unsupported catalog evidence format")
+    return version
 
 
 def _denied(observation: Any) -> None:
@@ -425,6 +442,101 @@ def _cleanup(evidence: dict[str, Any]) -> None:
     _same_foreign(evidence)
 
 
+def _firewall_snapshot(value: Any) -> dict[str, Any]:
+    snapshot = _object(value, "firewall snapshot")
+    _require(set(snapshot) == {"status", "at_utc", "rules", "error", "truncated", "observed_count"},
+             "firewall snapshot fields are incomplete or unexpected")
+    rules = snapshot["rules"]
+    _require(snapshot["status"] == "complete" and snapshot["error"] is None
+             and snapshot["truncated"] is False and isinstance(rules, list)
+             and _integer_is(snapshot["observed_count"], len(rules)) and len(rules) <= 10000,
+             "firewall snapshot is incomplete")
+    stamp = snapshot["at_utc"]
+    _require(isinstance(stamp, str) and stamp.endswith(("Z", "+00:00")), "firewall snapshot time must be UTC")
+    _utc(stamp)
+    for item in rules:
+        rule = _object(item, "firewall rule")
+        _require(set(rule) == {"name", *FIREWALL_FIELDS}
+                 and isinstance(rule["name"], str) and bool(rule["name"].strip()),
+                 "firewall rule identity or fields are invalid")
+        _require(all(isinstance(rule[field], str) and rule[field] in FIREWALL_VALUES[field]
+                     for field in FIREWALL_FIELDS), "firewall rule values must be canonical strings")
+    return snapshot
+
+
+def _firewall_differences(before: list[dict], after: list[dict]) -> Counter:
+    after_by_name: dict[str, list[dict]] = defaultdict(list)
+    for rule in after:
+        after_by_name[rule["name"].casefold()].append(rule)
+    original_names = {rule["name"].casefold() for rule in before}
+    differences: Counter = Counter()
+    for rule in before:
+        name = rule["name"]
+        matches = after_by_name.get(name.casefold(), [])
+        if not matches:
+            differences[name, "missing", ()] += 1
+        elif len(matches) != 1:
+            differences[name, "duplicate", ()] += 1
+        else:
+            changed = tuple(field for field in FIREWALL_FIELDS if rule[field] != matches[0][field])
+            if changed:
+                differences[name, "changed", changed] += 1
+    for rule in after:
+        if rule["name"].casefold() not in original_names:
+            differences[rule["name"], "added", ()] += 1
+    return differences
+
+
+def _observed_differences(value: Any) -> Counter:
+    _require(isinstance(value, list), "firewall differences must be an array")
+    differences: Counter = Counter()
+    for item in value:
+        row = _object(item, "firewall difference")
+        _require(set(row) == {"name", "kind", "fields"} and isinstance(row["name"], str)
+                 and isinstance(row["kind"], str) and isinstance(row["fields"], list)
+                 and all(isinstance(field, str) for field in row["fields"]), "invalid firewall difference")
+        differences[row["name"], row["kind"], tuple(row["fields"])] += 1
+    return differences
+
+
+def _cleanup_v2(report: dict[str, Any], check: Any) -> None:
+    evidence = _object(_object(check, "firewall cleanup check").get("evidence"), "firewall cleanup evidence")
+    firewall = _object(evidence.get("firewall"), "firewall preservation evidence")
+    baseline = _firewall_snapshot(report.get("firewall_before"))
+    before = _firewall_snapshot(firewall.get("before"))
+    after = _firewall_snapshot(firewall.get("after"))
+    _require(before == baseline, "firewall cleanup does not match the persisted baseline")
+    _require(_utc(after["at_utc"]) >= _utc(before["at_utc"]), "firewall snapshot times are reversed")
+    differences = _firewall_differences(before["rules"], after["rules"])
+    _require(_observed_differences(firewall.get("differences")) == differences,
+             "reported firewall differences do not match the observed rules")
+    preserved = all(kind == "added" for _, kind, _ in differences)
+    _require(firewall.get("preserved") is preserved, "reported firewall preservation does not match the observed rules")
+    _require(preserved, "an unrelated firewall rule changed")
+    _require(evidence.get("collection_status") == "complete" and evidence.get("collection_errors") == [],
+             "cleanup observations are incomplete")
+
+
+def _ack_observations(value: Any, assignments: set[tuple[int, str]]) -> tuple[list[dict], set[tuple[int, str]]]:
+    _require(isinstance(value, list), "ACK observations must be an array")
+    failures = []
+    positive = set()
+    for item in value:
+        row = _object(item, "ACK observation")
+        _require(set(row) == {"version", "digest", "success", "at_utc", "error_kind"}, "invalid ACK observation fields")
+        identity = _identity(row)
+        _require(identity in assignments, "ACK observation does not match a catalog assignment")
+        _utc(row["at_utc"])
+        if row["success"] is True:
+            _require(row["error_kind"] is None, "a successful ACK cannot have an error category")
+            positive.add(identity)
+        else:
+            _require(row["success"] is False and isinstance(row["error_kind"], str)
+                     and row["error_kind"] in ACK_ERROR_KINDS, "a failed ACK requires a safe error category")
+            failures.append(row)
+    return failures, positive
+
+
 def _evidence(name: str, value: Any, manifest: dict[str, Any]) -> None:
     evidence = _object(value, name + " evidence")
     _require(bool(evidence), name + " evidence is empty")
@@ -459,6 +571,8 @@ def _evidence(name: str, value: Any, manifest: dict[str, Any]) -> None:
 def summarize_report(report: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
     """Re-evaluate observed effects independently; guest passed flags are not evidence."""
     errors = []
+    version = 1
+    local_failures = []
     try:
         report = _object(report, "report")
         _require(report.get("run_id") == manifest.get("run_id"), "report run_id mismatch")
@@ -467,19 +581,29 @@ def summarize_report(report: dict[str, Any], manifest: dict[str, Any]) -> dict[s
         expected = {"source_revision": manifest.get("source_revision"), "packages": manifest.get("packages"),
                     "manifest_sha256": manifest.get("_manifest_sha256")}
         _require(receipt == expected and bool(expected["manifest_sha256"]), "report package receipt mismatch")
+        version = _evidence_format(manifest)
+        _require(_evidence_format(report) == version, "report evidence format does not match the package")
+        rows = report.get("checks")
+        _require(isinstance(rows, list), "catalog checks must be an array")
+        checks = {_object(row, "check").get("name"): row for row in rows}
+        if version == EVIDENCE_FORMAT:
+            assignments = {_identity(row) for row in manifest["policies"].values()}
+            local_failures, positive = _ack_observations(report.get("ack_observations"), assignments)
+            _cleanup_v2(report, checks.get("cleanup"))
+            _require(positive == assignments, "matching positive ACK observations for all assignments are required")
         _require(report.get("status") == "passed" and report.get("passed") is True, "report is not completed successfully")
         _require(report.get("error") is None and report.get("cleanup_errors") == [], "report or cleanup contains an error")
-        rows = report.get("checks")
-        _require(isinstance(rows, list) and len(rows) == len(CHECKS), "the complete set of catalog checks is required")
-        checks = {_object(row, "check").get("name"): row for row in rows}
-        _require(set(checks) == set(CHECKS), "catalog checks are missing or duplicated")
+        _require(len(rows) == len(CHECKS) and set(checks) == set(CHECKS), "catalog checks are missing or duplicated")
         for name in CHECKS:
             check = checks[name]
             _require(check.get("status") == "passed", name + " did not pass")
             _evidence(name, check.get("evidence"), manifest)
     except (ValueError, TypeError, KeyError, OverflowError) as error:
         errors.append(str(error))
-    return {"passed": not errors, "errors": errors}
+    summary = {"passed": not errors, "errors": errors}
+    if version == EVIDENCE_FORMAT:
+        summary["local_enforcement_failures"] = local_failures
+    return summary
 
 
 def _committed_sources() -> None:

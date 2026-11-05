@@ -77,6 +77,10 @@ function Assert-HourlyEvidence($Evidence) {
     Assert-DeniedExecution (Field $Evidence 'after_denial' $null)
 }
 function Assert-CatalogEvidence($Report, $Manifest) {
+    $evidenceFormat = Field $Manifest 'evidence_format' 1 'integer'
+    if ($evidenceFormat -notin @(1,2) -or (Field $Report 'evidence_format' 1 'integer') -ne $evidenceFormat) {
+        throw 'The catalog evidence format does not match the input manifest.'
+    }
     if ((Field $Report 'passed' $null 'boolean') -ne $true -or (Field $Report 'status' '' 'string') -cne 'passed' -or
         (Field $Report 'error' $null) -or @(Field $Report 'cleanup_errors' @()).Count -ne 0 -or
         (Field $Report 'run_id' '' 'string') -cne (Field $Manifest 'run_id' 'missing') -or
@@ -149,6 +153,69 @@ function Assert-CatalogEvidence($Report, $Manifest) {
         (Field $cleanup 'watchdog_present' $null 'boolean') -ne $false -or (Field $cleanup 'nrpt_count' -1 'integer') -ne 0 -or
         (Field $cleanup 'owned_firewall_rules' -1 'integer') -ne 0 -or (Field $cleanup 'own_policy_present' $null 'boolean') -ne $false -or
         (Field $cleanup 'fixture_registry_present' $null 'boolean') -ne $false) { throw 'Normal MSI removal or cleanup is incomplete.' }
+    if ($evidenceFormat -eq 2) {
+        if ((Field $cleanup 'collection_status' '' 'string') -cne 'complete' -or
+            @(Field $cleanup 'collection_errors' 'missing').Count -ne 0) { throw 'The cleanup observations are incomplete.' }
+        $firewall = Field $cleanup 'firewall' $null
+        $before = Field $firewall 'before' $null
+        $after = Field $firewall 'after' $null
+        $comparison = Compare-FirewallSnapshots $before $after
+        if (-not $comparison.preserved -or (Field $firewall 'preserved' $null 'boolean') -ne $true) {
+            throw 'An unrelated firewall rule changed or its snapshot is incomplete.'
+        }
+        $persistedBefore = Field $Report 'firewall_before' $null
+        foreach ($property in @('status','at_utc','observed_count','error','truncated')) {
+            $expected = Field $before $property $null
+            $type = switch ($property) { 'observed_count' { 'integer' } 'truncated' { 'boolean' } 'error' { '' } default { 'string' } }
+            if ((Field $persistedBefore $property 'missing' $type) -cne $expected) {
+                throw 'The cleanup baseline differs from the persisted preinstallation snapshot.'
+            }
+        }
+        $persistedRules = @(Field $persistedBefore 'rules' 'missing')
+        $baselineRules = @(Field $before 'rules' @())
+        if ($persistedRules.Count -ne $baselineRules.Count) { throw 'The persisted firewall baseline rule count changed.' }
+        for ($index=0; $index -lt $baselineRules.Count; $index++) {
+            foreach ($property in @('name','enabled','direction','action')) {
+                if ((Field $persistedRules[$index] $property '' 'string') -cne (Field $baselineRules[$index] $property '' 'string')) {
+                    throw 'The persisted firewall baseline rule changed.'
+                }
+            }
+        }
+        $differences = @(Field $firewall 'differences' 'missing')
+        if ($differences.Count -ne $comparison.differences.Count) { throw 'The firewall difference list is inconsistent.' }
+        for ($index=0; $index -lt $differences.Count; $index++) {
+            $expected = $comparison.differences[$index]
+            $observed = $differences[$index]
+            if ((Field $observed 'name' '' 'string') -cne $expected.name -or
+                (Field $observed 'kind' '' 'string') -cne $expected.kind -or
+                @(Field $observed 'fields' 'missing').Count -ne 0) { throw 'The observed firewall difference changed.' }
+        }
+        $knownAssignments = @{}
+        foreach ($name in @('allow','absent','network','network_release','present','later','release')) {
+            $assignment = Field $Manifest.policies $name $null
+            $knownAssignments[(Field $assignment 'version' 0 'integer')] = Field $assignment 'digest' '' 'string'
+        }
+        $positiveAcks = @{}
+        foreach ($ack in @(Field $Report 'ack_observations' @())) {
+            $keys = if ($ack -is [Collections.IDictionary]) { @($ack.Keys) } else { @($ack.PSObject.Properties | ForEach-Object Name) }
+            $version = Field $ack 'version' 0 'integer'
+            $digest = Field $ack 'digest' '' 'string'
+            $success = Field $ack 'success' $null 'boolean'
+            $at = Field $ack 'at_utc' '' 'string'
+            $kind = Field $ack 'error_kind' 'missing'
+            if ($keys.Count -ne 5 -or @($keys | Where-Object { $_ -cnotin @('version','digest','success','at_utc','error_kind') }).Count -ne 0 -or
+                -not $knownAssignments.ContainsKey($version) -or $knownAssignments[$version] -cne $digest -or $digest -cnotmatch '^[0-9a-f]{64}$' -or
+                $at -cnotmatch '(Z|[+-][0-9]{2}:[0-9]{2})$') { throw 'The catalog ACK observation is invalid.' }
+            $null = [DateTimeOffset]::Parse($at)
+            if ($success) {
+                if ($null -ne $kind) { throw 'A successful ACK carried a failure category.' }
+                $positiveAcks[$version] = $true
+            } elseif ($kind -isnot [string] -or $kind -cnotin @('ConfigError','PolicyError','StateError','HTTPError','TransportError','LocalError','OSError','unknown')) {
+                throw 'The negative ACK category is invalid.'
+            }
+        }
+        if ($positiveAcks.Count -ne 7) { throw 'The catalog ACK history does not prove every assignment succeeded.' }
+    }
 }
 function Get-Sha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
@@ -169,7 +236,7 @@ function Wait-Until([scriptblock]$Condition, [int]$Seconds, [string]$Message) {
     }
     throw $Message
 }
-function Read-Rows([string]$Name) {
+function Read-Rows([string]$Name, [switch]$RequireComplete) {
     $path = Join-Path $script:work $Name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @() }
     $stream = [IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
@@ -177,7 +244,10 @@ function Read-Rows([string]$Name) {
     finally { $stream.Dispose() }
     $lines = @($text -split "`r?`n")
     # An append may be in flight; only complete lines are observations.
-    if (-not $text.EndsWith("`n") -and $lines.Count) { $lines = @($lines | Select-Object -SkipLast 1) }
+    if (-not $text.EndsWith("`n") -and $lines.Count) {
+        if ($RequireComplete -and $text.Length -gt 0) { throw 'The final observation log contains an incomplete row.' }
+        $lines = @($lines | Select-Object -SkipLast 1)
+    }
     return @($lines | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
 }
 function Wait-Ack($Assignment) {
@@ -206,6 +276,7 @@ $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 if ($manifest.phase -cne 'catalog' -or $manifest.run_id -cnotmatch '^[0-9a-f]{32}$' -or
     $manifest.source_revision -cnotmatch '^[0-9a-f]{40}$' -or
     $manifest.guest_work_directory -cne ('C:\openems-catalog-' + $manifest.run_id)) { throw 'The catalog manifest identity or guest path is invalid.' }
+if ((Field $manifest 'evidence_format' 1 'integer') -ne 2) { throw 'This catalog harness requires evidence format 2.' }
 $manifest | Add-Member -NotePropertyName '_manifest_sha256' -NotePropertyValue (Get-Sha256 $manifestPath)
 foreach ($entry in $manifest.files.PSObject.Properties) {
     $name = $entry.Name
@@ -242,17 +313,24 @@ if (-not $SystemPhase) {
         $watch = [Diagnostics.Stopwatch]::StartNew()
         $resultPath = Join-Path $work $reportName
         $lastPrinted = ''
+        $lastExported = $null
         while ($watch.Elapsed.TotalSeconds -lt ($timeoutSeconds+600)) {
             if (Test-Path -LiteralPath $resultPath) {
-                try { $outcome=Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json }
+                try {
+                    $checkpoint = Get-Content -LiteralPath $resultPath -Raw
+                    $outcome = if ($checkpoint -cne $lastExported) { $checkpoint | ConvertFrom-Json } else { $null }
+                }
                 catch [ArgumentException] { Start-Sleep -Milliseconds 300; continue }
                 catch [IO.IOException] { Start-Sleep -Milliseconds 300; continue }
-                Write-Report (Join-Path $OutputDirectory $reportName) $outcome -SharedFolder
-                $summary = ([string]$outcome.status) + ':' + @($outcome.checks).Count
-                if ($summary -cne $lastPrinted) { Write-Host ('Catalog acceptance: ' + $summary); $lastPrinted=$summary }
-                if ($outcome.status -ne 'running') {
-                    if ($outcome.passed) { Assert-CatalogEvidence $outcome $manifest; exit 0 }
-                    throw 'Catalog acceptance failed. Preserve the guest and catalog-result.json; do not restore before reviewing cleanup.'
+                if ($null -ne $outcome) {
+                    Write-Report (Join-Path $OutputDirectory $reportName) $outcome -SharedFolder
+                    $lastExported = $checkpoint
+                    $summary = ([string]$outcome.status) + ':' + @($outcome.checks).Count
+                    if ($summary -cne $lastPrinted) { Write-Host ('Catalog acceptance: ' + $summary); $lastPrinted=$summary }
+                    if ($outcome.status -ne 'running') {
+                        if ($outcome.passed) { Assert-CatalogEvidence $outcome $manifest; exit 0 }
+                        throw 'Catalog acceptance failed. Preserve the guest and catalog-result.json; do not restore before reviewing cleanup.'
+                    }
                 }
             }
             Start-Sleep -Milliseconds 500
@@ -270,6 +348,7 @@ $journalPath = 'C:\ProgramData\openems\application-control.json'
 $statePath = 'C:\ProgramData\openems\state.json'
 $result = [ordered]@{run_id=$manifest.run_id;source_revision=$manifest.source_revision;status='running';passed=$false
     error=$null;cleanup_errors=@();checks=@();started_utc=[DateTime]::UtcNow.ToString('o');finished_utc=$null
+    evidence_format=2;firewall_before=$null;ack_observations=@()
     scope='real host catalog API expansion; local fixture transport; installed Windows service'
     package_receipt=@{source_revision=$manifest.source_revision;packages=$manifest.packages;manifest_sha256=$manifest._manifest_sha256}}
 $backend = $null
@@ -279,12 +358,12 @@ $ownedProcesses = New-Object Collections.ArrayList
 $registryPaths = @()
 $globalWatch = [Diagnostics.Stopwatch]::StartNew()
 $codeBefore = @()
-$firewallBefore = @()
+$firewallBefore = $null
 $hostsBefore = $null
 $ownPolicyId = $null
 
-function Record-Check([string]$Name, $Evidence) {
-    $result.checks += @{name=$Name;status='passed';evidence=$Evidence;at_utc=[DateTime]::UtcNow.ToString('o')}
+function Record-Check([string]$Name, $Evidence, [string]$Status='passed') {
+    $result.checks += @{name=$Name;status=$Status;evidence=$Evidence;at_utc=[DateTime]::UtcNow.ToString('o')}
     Write-Report $resultPath $result
 }
 function Read-Journal {
@@ -308,20 +387,134 @@ function Own-Policy {
 function Foreign-PolicyIds {
     return @(Code-Policies | Where-Object { ([string]$_.PolicyID).Trim('{}') -ine ([string]$script:ownPolicyId).Trim('{}') } | ForEach-Object PolicyID | Sort-Object)
 }
-function Firewall-Snapshot {
-    return @(Get-NetFirewallRule -PolicyStore PersistentStore -ErrorAction Stop | Where-Object { $_.Group -ne $applicationGroup } |
-        Select-Object Name,Enabled,Direction,Action)
-}
-function Assert-FirewallPreserved {
-    $after = @(Firewall-Snapshot)
-    foreach ($before in $firewallBefore) {
-        $match = @($after | Where-Object Name -EQ $before.Name)
-        if ($match.Count -ne 1 -or $match[0].Enabled -ne $before.Enabled -or $match[0].Direction -ne $before.Direction -or
-            $match[0].Action -ne $before.Action) { throw 'An unrelated firewall rule changed.' }
+function Capture-FirewallSnapshot([ValidateRange(1,10000)][int]$MaximumRules=10000) {
+    $snapshot = @{
+        status='failed';at_utc=[DateTime]::UtcNow.ToString('o');rules=@()
+        error='firewall_query_failed';truncated=$false;observed_count=0
     }
+    try {
+        $native = @(Get-NetFirewallRule -PolicyStore PersistentStore -ErrorAction Stop |
+            Where-Object { $_.Group -ne $applicationGroup })
+        $snapshot.observed_count = $native.Count
+        $snapshot.error = 'firewall_rule_invalid'
+        $snapshot.rules = @($native | Select-Object -First $MaximumRules | ForEach-Object {
+            $rule = @{name=[string]$_.Name;enabled=[string]$_.Enabled;direction=[string]$_.Direction;action=[string]$_.Action}
+            if ($rule.name -notmatch '\S' -or $rule.enabled -cnotin @('True','False','NotConfigured') -or
+                $rule.direction -cnotin @('Inbound','Outbound') -or $rule.action -cnotin @('Allow','Block','NotConfigured')) {
+                throw 'The firewall rule has invalid metadata.'
+            }
+            $rule
+        })
+        $snapshot.truncated = $snapshot.observed_count -gt $snapshot.rules.Count
+        if ($snapshot.truncated) {
+            $snapshot.status = 'truncated'
+            $snapshot.error = 'firewall_rule_limit'
+        } else {
+            $snapshot.status = 'complete'
+            $snapshot.error = $null
+        }
+    } catch {
+        # Keep only an allowlisted marker. Native diagnostics may include unrelated rule details.
+        $snapshot.rules = @()
+    }
+    return $snapshot
+}
+function Compare-FirewallSnapshots($Before,$After) {
+    function Test-CompleteSnapshot($Snapshot) {
+        try {
+            if ($null -eq $Snapshot) { return $false }
+            $keys = if ($Snapshot -is [Collections.IDictionary]) { @($Snapshot.Keys) } else { @($Snapshot.PSObject.Properties | ForEach-Object Name) }
+            if ($keys.Count -ne 6 -or @($keys | Where-Object { $_ -cnotin @('status','at_utc','rules','error','truncated','observed_count') }).Count -ne 0 -or
+                (Field $Snapshot 'status' '' 'string') -cne 'complete' -or (Field $Snapshot 'truncated' $null 'boolean') -ne $false -or
+                $null -ne (Field $Snapshot 'error' 'missing') -or $Snapshot.rules -isnot [array] -or
+                (Field $Snapshot 'observed_count' -1 'integer') -ne $Snapshot.rules.Count) { return $false }
+            $at = Field $Snapshot 'at_utc' '' 'string'
+            if ($at -cnotmatch '(Z|\+00:00)$') { return $false }
+            $null = [DateTimeOffset]::Parse($at)
+            foreach ($rule in $Snapshot.rules) {
+                if ((Field $rule 'name' '' 'string') -notmatch '\S' -or
+                    (Field $rule 'enabled' '' 'string') -cnotin @('True','False','NotConfigured') -or
+                    (Field $rule 'direction' '' 'string') -cnotin @('Inbound','Outbound') -or
+                    (Field $rule 'action' '' 'string') -cnotin @('Allow','Block','NotConfigured')) { return $false }
+            }
+            return $true
+        } catch { return $false }
+    }
+    $comparison = @{before=$Before;after=$After;differences=@();preserved=$false}
+    if (-not (Test-CompleteSnapshot $Before) -or -not (Test-CompleteSnapshot $After) -or
+        [DateTimeOffset]::Parse($After.at_utc) -lt [DateTimeOffset]::Parse($Before.at_utc)) { return $comparison }
+    $byName = @{}
+    foreach ($rule in $After.rules) {
+        if (-not $byName.ContainsKey($rule.name)) { $byName[$rule.name] = @() }
+        $byName[$rule.name] += @($rule)
+    }
+    $previousNames = @{}
+    $differences = @(
+        foreach ($rule in $Before.rules) {
+            $previousNames[$rule.name] = $true
+            $sameName = if ($byName.ContainsKey($rule.name)) { @($byName[$rule.name]) } else { @() }
+            $sameName = @($sameName | Where-Object { $null -ne $_ })
+            if ($sameName.Count -eq 0) { @{name=$rule.name;kind='missing';fields=@()} }
+            elseif ($sameName.Count -ne 1) { @{name=$rule.name;kind='duplicate';fields=@()} }
+            else {
+                $changed = @(foreach ($property in @('enabled','direction','action')) {
+                    if ($sameName[0].$property -cne $rule.$property) { $property }
+                })
+                if ($changed.Count -ne 0) { @{name=$rule.name;kind='changed';fields=$changed} }
+            }
+        }
+        foreach ($rule in $After.rules) {
+            if (-not $previousNames.ContainsKey($rule.name)) { @{name=$rule.name;kind='added';fields=@()} }
+        }
+    )
+    $comparison.differences = @($differences | Sort-Object -Property @{Expression={$_.name}},@{Expression={$_.kind}})
+    $comparison.preserved = @($differences | Where-Object { $_.kind -cne 'added' }).Count -eq 0
+    return $comparison
+}
+function Assert-FirewallPreserved($Firewall) {
+    if (-not $Firewall.preserved) { throw 'An unrelated firewall rule changed or its snapshot is incomplete.' }
 }
 function Owned-FirewallRules {
     return @(Get-NetFirewallRule -PolicyStore PersistentStore -ErrorAction Stop | Where-Object Group -EQ $applicationGroup)
+}
+function Collect-CleanupEvidence($Before,$MsiExit,$ForeignBefore,$RegistryPaths) {
+    $cleanup = @{
+        msi_exit=$MsiExit;service_present=$null;watchdog_present=$null;nrpt_count=$null
+        owned_firewall_rules=$null;own_policy_present=$null;foreign_before=@($ForeignBefore)
+        foreign_after=$null;fixture_registry_present=$null;firewall=$null
+        collection_status='complete';collection_errors=@()
+    }
+    if ($null -eq $MsiExit) { $cleanup.collection_errors += @{field='msi_exit';error='not_observed'} }
+    try {
+        $cleanup.service_present = @(Get-Service -ErrorAction Stop | Where-Object Name -EQ 'openems-agent').Count -ne 0
+    } catch { $cleanup.collection_errors += @{field='service_present';error='query_failed'} }
+    try {
+        $cleanup.watchdog_present = @(Get-ScheduledTask -ErrorAction Stop | Where-Object TaskName -EQ 'openems-agent watchdog').Count -ne 0
+    } catch { $cleanup.collection_errors += @{field='watchdog_present';error='query_failed'} }
+    try {
+        $cleanup.nrpt_count = @(Get-DnsClientNrptRule -ErrorAction Stop | Where-Object Comment -EQ 'openems-agent managed DNS filter').Count
+    } catch { $cleanup.collection_errors += @{field='nrpt_count';error='query_failed'} }
+    try {
+        $cleanup.owned_firewall_rules = @(Owned-FirewallRules).Count
+    } catch { $cleanup.collection_errors += @{field='owned_firewall_rules';error='query_failed'} }
+    try {
+        $cleanup.own_policy_present = $null -ne (Own-Policy)
+    } catch { $cleanup.collection_errors += @{field='own_policy_present';error='query_failed'} }
+    try {
+        $cleanup.foreign_after = @(Foreign-PolicyIds)
+    } catch { $cleanup.collection_errors += @{field='foreign_after';error='query_failed'} }
+    try {
+        $cleanup.fixture_registry_present = @($RegistryPaths | Where-Object { Test-Path -LiteralPath $_ -ErrorAction Stop }).Count -ne 0
+    } catch { $cleanup.collection_errors += @{field='fixture_registry_present';error='query_failed'} }
+    try {
+        $after = Capture-FirewallSnapshot
+        $cleanup.firewall = Compare-FirewallSnapshots $Before $after
+        if ($null -eq $Before -or $Before.status -cne 'complete' -or $after.status -cne 'complete') {
+            $cleanup.collection_errors += @{field='firewall';error='snapshot_incomplete'}
+        }
+    } catch { $cleanup.collection_errors += @{field='firewall';error='query_failed'} }
+    if ($cleanup.collection_errors.Count -ne 0) { $cleanup.collection_status = 'partial' }
+    return $cleanup
 }
 function Publish-Assignment([string]$Name) {
     $assignment = Field $manifest.policies $Name $null
@@ -375,6 +568,25 @@ function Start-Backend {
         $listener.Prefixes.Add($Origin+'/')
         $token=[Guid]::NewGuid().ToString('N')+[Guid]::NewGuid().ToString('N')
         $client='catalog-'+$RunId
+        function Ack-Observation($Upload,[string]$AtUtc=[DateTime]::UtcNow.ToString('o')) {
+            $version = $Upload.version
+            $digest = $Upload.digest
+            $success = $Upload.success
+            if (($version -isnot [int] -and $version -isnot [long]) -or $version -lt 1 -or
+                $digest -isnot [string] -or $digest -cnotmatch '^[0-9a-f]{64}\z' -or $success -isnot [bool]) {
+                throw 'The ACK does not identify a valid catalog assignment.'
+            }
+            $kind = $null
+            if (-not $success) {
+                $kind = 'unknown'
+                $errorProperty = $Upload.PSObject.Properties['error']
+                if ($null -ne $errorProperty -and $errorProperty.Value -is [string] -and
+                    $errorProperty.Value -cmatch '^enforcement failed: (ConfigError|PolicyError|StateError|HTTPError|TransportError|LocalError|OSError)\z') {
+                    $kind = $Matches[1]
+                }
+            }
+            return @{version=$version;digest=$digest;success=$success;at_utc=$AtUtc;error_kind=$kind}
+        }
         function Append-Observation([string]$Name,$Value) {
             $bytes=(New-Object Text.UTF8Encoding($false)).GetBytes(($Value | ConvertTo-Json -Depth 20 -Compress)+"`r`n")
             for ($attempt=1; ; $attempt++) {
@@ -401,7 +613,7 @@ function Start-Backend {
                         'config/assigned' { $answer=Get-Content -LiteralPath (Join-Path $Work 'active-policy.json') -Raw | ConvertFrom-Json }
                         'config/ack' {
                             $upload=$raw | ConvertFrom-Json
-                            Append-Observation 'ack.log' @{version=$upload.version;digest=$upload.digest;success=$upload.success;at_utc=[DateTime]::UtcNow.ToString('o')}
+                            Append-Observation 'ack.log' (Ack-Observation $upload)
                         }
                         'inventory' {
                             $upload=$raw | ConvertFrom-Json
@@ -477,7 +689,10 @@ try {
     if (-not (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\CiTool.exe')) -or
         @(Get-Module -ListAvailable ConfigCI).Count -eq 0) { throw 'This guest has no supported CiTool/ConfigCI capability.' }
     $codeBefore=@(Code-Policies | ForEach-Object PolicyID | Sort-Object)
-    $firewallBefore=@(Firewall-Snapshot)
+    $firewallBefore=Capture-FirewallSnapshot
+    $result.firewall_before=$firewallBefore
+    Write-Report $resultPath $result
+    if ($firewallBefore.status -cne 'complete') { throw 'The preinstallation firewall snapshot is incomplete.' }
     if (@(Owned-FirewallRules).Count -ne 0) { throw 'Restore the clean snapshot; owned application firewall rules already exist.' }
     $hostsPath=Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
     $hostsBefore=Get-Sha256 $hostsPath
@@ -572,13 +787,17 @@ try {
     $release.firewall_rule_count=@(Owned-FirewallRules).Count
     Record-Check 'release' $release
 } catch {
-    $result.status='failed'; $result.error=$_.Exception.Message
+    $result.error=$_.Exception.Message
 } finally {
     foreach ($process in $ownedProcesses) {
         try { if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }; $process.Dispose() }
         catch { $result.cleanup_errors+=@('An owned fixture process could not be stopped.') }
     }
-    if ($null -ne (Get-Service openems-agent -ErrorAction SilentlyContinue)) { $installed=$true }
+    if (-not $installed) {
+        try {
+            $installed = @(Get-Service -ErrorAction Stop | Where-Object Name -EQ 'openems-agent').Count -ne 0
+        } catch { $result.cleanup_errors+=@('The installed service state could not be determined for normal removal.') }
+    }
     if ($installed) {
         try {
             if ($null -eq $backend -or $backend.State -ne 'Running') { throw 'The local backend is unavailable for normal release; preserve the guest.' }
@@ -595,16 +814,31 @@ try {
         catch { $result.cleanup_errors+=@('The local backend could not be stopped.') }
     }
     try {
-        $owned=@(Owned-FirewallRules)
-        Assert-FirewallPreserved
+        $result.ack_observations = @(Read-Rows 'ack.log' -RequireComplete)
+    } catch {
+        $result.cleanup_errors+=@('The ACK history could not be collected completely.')
+        try { $result.ack_observations = @(Read-Rows 'ack.log') }
+        catch { $result.cleanup_errors+=@('The available ACK history could not be read.') }
+    }
+    $cleanup = Collect-CleanupEvidence $firewallBefore $msiRemovalExit $codeBefore $registryPaths
+    $cleanupStatus = 'passed'
+    try {
+        if ($cleanup.collection_status -cne 'complete') { throw 'The cleanup observations are incomplete.' }
+        Assert-FirewallPreserved $cleanup.firewall
         if ($null -ne $hostsBefore -and (Get-Sha256 $hostsPath) -cne $hostsBefore) { throw 'The hosts file was not restored.' }
-        $cleanup=@{msi_exit=$msiRemovalExit;service_present=($null -ne (Get-Service openems-agent -ErrorAction SilentlyContinue))
-            watchdog_present=(@(Get-ScheduledTask -ErrorAction Stop | Where-Object TaskName -EQ 'openems-agent watchdog').Count -gt 0)
-            nrpt_count=@(Get-DnsClientNrptRule -ErrorAction Stop | Where-Object Comment -EQ 'openems-agent managed DNS filter').Count
-            owned_firewall_rules=$owned.Count;own_policy_present=($null -ne (Own-Policy));foreign_before=@($codeBefore)
-            foreign_after=@(Foreign-PolicyIds);fixture_registry_present=(@($registryPaths | Where-Object { Test-Path -LiteralPath $_ }).Count -gt 0)}
-        Record-Check 'cleanup' $cleanup
-    } catch { $result.cleanup_errors+=@($_.Exception.Message) }
+        if ($cleanup.msi_exit -ne 0 -or $cleanup.service_present -or $cleanup.watchdog_present -or
+            $cleanup.nrpt_count -ne 0 -or $cleanup.owned_firewall_rules -ne 0 -or
+            $cleanup.own_policy_present -or $cleanup.fixture_registry_present) { throw 'Normal MSI removal or cleanup is incomplete.' }
+        if ($cleanup.foreign_before.Count -ne $cleanup.foreign_after.Count -or
+            @($cleanup.foreign_before | Where-Object { $_ -notin $cleanup.foreign_after }).Count -ne 0) {
+            throw 'Foreign Code Integrity policies changed.'
+        }
+    } catch {
+        $cleanupStatus = 'failed'
+        $result.cleanup_errors+=@($_.Exception.Message)
+    }
+    try { Record-Check 'cleanup' $cleanup $cleanupStatus }
+    catch { $result.cleanup_errors+=@('The cleanup checkpoint could not be persisted.') }
     $result.finished_utc=[DateTime]::UtcNow.ToString('o')
     if (-not $result.error -and $result.cleanup_errors.Count -eq 0) {
         $result.passed=$true; $result.status='passed'
