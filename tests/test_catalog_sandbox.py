@@ -657,7 +657,7 @@ def pure(tmp_path, functions, expression, data):
     return observed
 
 
-def isolated(tmp_path, functions, expression, data, commands=()):
+def isolated(tmp_path, functions, expression, data, commands=(), *, callbacks=(), methods=()):
     # Check actual selected helper bodies before invocation; every endpoint query
     # has a mock in the expression. Loading the harness top-level is forbidden.
     allowed = sorted(set(functions) | set(commands) | {
@@ -666,23 +666,358 @@ def isolated(tmp_path, functions, expression, data, commands=()):
     })
     guard = r"""
 $safeCommands=__ALLOWED__
+$safeCallbacks=__CALLBACKS__
+$safeMethods=__METHODS__
 $selectedFunctions=@($tree.FindAll({param($node)
     $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -in @($Names -split ',')
 },$true))
 foreach($definition in $selectedFunctions){
     $nested=@($definition.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst]},$true) | ForEach-Object Name)
     foreach($command in @($definition.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))){
-        if($command.GetCommandName() -notin ($safeCommands+$nested)){throw 'Unmocked command in isolated helper.'}
+        if($command.GetCommandName() -in ($safeCommands+$nested)){continue}
+        $first=$command.CommandElements[0]
+        if($command.InvocationOperator -eq 'Ampersand' -and
+            $first -is [Management.Automation.Language.VariableExpressionAst] -and
+            $first.VariablePath.UserPath -in $safeCallbacks){continue}
+        throw 'Unmocked command in isolated helper.'
     }
     foreach($method in @($definition.FindAll({param($node) $node -is [Management.Automation.Language.InvokeMemberExpressionAst]},$true))){
-        if($method.Member.Value -notin @('ToString','Contains','ContainsKey','Add','GetEnumerator','GetType','Equals','Parse','ToUniversalTime','ToLowerInvariant')){
+        if($method.Member.Value -notin ($safeMethods+@('ToString','Contains','ContainsKey','Add','GetEnumerator','GetType','Equals','Parse','ToUniversalTime','ToLowerInvariant'))){
             throw 'Unexpected method in isolated helper.'
         }
     }
 }
 """
-    guard = guard.replace("__ALLOWED__", "@(" + ",".join("'" + name + "'" for name in allowed) + ")")
+    for key, values in (("__ALLOWED__", allowed), ("__CALLBACKS__", callbacks), ("__METHODS__", methods)):
+        guard = guard.replace(key, "@(" + ",".join("'" + name + "'" for name in values) + ")")
     return pure(tmp_path, functions, "$global:catalogTestData=$fixtureData\n" + guard + expression, data)
+
+
+def startup_sample(duration_ms, *, marker=False, exited=False, error=False):
+    return {"duration_ms": duration_ms, "marker": marker, "exited": exited, "error": error}
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("samples,pauses,status,last_ms,terminal_ms", [
+    pytest.param([startup_sample(1, marker=True)], [], "started", 1, None, id="immediate"),
+    pytest.param([startup_sample(9999, marker=True)], [], "started", 9999, None, id="before-deadline"),
+    pytest.param([startup_sample(10000, marker=True)], [], "timeout", None, 10000, id="exact-deadline"),
+    pytest.param([startup_sample(1), startup_sample(9800, marker=True)], [300],
+                 "timeout", 1, 10101, id="slow-predicate"),
+    pytest.param([startup_sample(0), startup_sample(1, marker=True)], [11500],
+                 "timeout", 0, 11501, id="pause-misses-window"),
+    pytest.param([startup_sample(20, exited=True)], [], "exited", 20, None, id="exit-before-marker"),
+    pytest.param([startup_sample(20, marker=True, exited=True)], [], "started", 20, None, id="marker-and-exit"),
+    pytest.param([startup_sample(0), startup_sample(1, error=True)], [11500],
+                 "timeout", 0, 11501, id="terminal-query-fails"),
+])
+def test_fixture_startup_clock_rejects_terminal_observations_as_success(tmp_path, samples, pauses, status,
+                                                                 last_ms, terminal_ms):
+    expression = r"""
+$global:startupClock=0;$global:startupReads=0;$global:startupPauses=0
+$observe={
+    $item=$global:catalogTestData.samples[$global:startupReads]
+    $global:startupReads++
+    if($null -eq $item){throw 'Unexpected additional observation.'}
+    $global:startupClock+=$item.duration_ms
+    if($item.error){throw 'synthetic-private-query-error'}
+    return @{marker_present=$item.marker;process_exited=$item.exited}
+}
+$pause={
+    $delta=$global:catalogTestData.pauses[$global:startupPauses]
+    $global:startupPauses++
+    if($null -eq $delta){throw 'Unexpected additional wait.'}
+    $global:startupClock+=$delta
+}
+$observed=Wait-FixtureStartup $observe {$global:startupClock} $pause
+if($observed.status -cne $fixtureData.status -or $observed.elapsed_ms -ne $global:startupClock -or
+   $global:startupReads -ne @($fixtureData.samples).Count -or $global:startupPauses -ne @($fixtureData.pauses).Count){
+    throw 'The startup window changed or read more than once after the deadline.'
+}
+if($null -eq $fixtureData.last_ms){
+    if($null -ne $observed.last_in_window){throw 'A late sample was marked within the window.'}
+}elseif($observed.last_in_window.at_ms -ne $fixtureData.last_ms){
+    throw 'The last in-window sample time must come from the end of its read.'
+}
+if($null -eq $fixtureData.terminal_ms){
+    if($null -ne $observed.terminal){throw 'An on-time result should not require a terminal read.'}
+}else{
+    if($observed.terminal.at_ms -ne $fixtureData.terminal_ms){throw 'The terminal observation lost its monotonic time.'}
+    $lastSample=$fixtureData.samples[-1]
+    if($lastSample.error){
+        if($observed.terminal.error_kind -cne 'query_failed' -or $null -ne $observed.terminal.marker_present -or
+            $null -ne $observed.terminal.process_exited){throw 'A failed read reported a definite state.'}
+    }elseif($observed.terminal.marker_present -ne $lastSample.marker){
+        throw 'A terminal observation did not preserve the late marker.'
+    }
+}
+if($fixtureData.status -ceq 'started' -and $observed.last_in_window.marker_present -isnot [bool]){
+    throw 'An observed marker must retain its type.'
+}
+"""
+    observed = isolated(tmp_path, ["Wait-FixtureStartup"], expression, {
+        "samples": samples, "pauses": pauses, "status": status, "last_ms": last_ms, "terminal_ms": terminal_ms,
+    }, ["Start-Sleep"], callbacks=("Observe", "ElapsedMilliseconds", "Pause"))
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+def test_fixture_startup_records_unavailable_sample_without_inventing_marker_or_exit(tmp_path):
+    expression = r"""
+$observed=Wait-FixtureStartup {throw 'synthetic-private-query-error'} {5} {throw 'Must not retry a failed query.'}
+if($observed.status -cne 'unavailable'){throw 'A failed query must be distinguishable from timeout or exit.'}
+$errors=@(@($observed.last_in_window,$observed.terminal) | Where-Object {$null -ne $_ -and $_.error_kind -ceq 'query_failed'})
+if($errors.Count -ne 1 -or $null -ne $errors[0].marker_present -or $null -ne $errors[0].process_exited){
+    throw 'Startup query error was lost or misreported as a known state.'
+}
+if(($observed | ConvertTo-Json -Depth 10) -like '*synthetic-private*'){throw 'Raw query error leaked.'}
+"""
+    observed = isolated(tmp_path, ["Wait-FixtureStartup"], expression, {},
+                        ["Start-Sleep"], callbacks=("Observe", "ElapsedMilliseconds", "Pause"))
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("kind,phase,role", [
+    ("completed", "network_before", "target"),
+    ("metadata_unavailable", "network_blocked", "control"),
+    ("native_refused", "wdac", "renamed"),
+    ("startup_timeout", "network_blocked", "target"),
+    ("startup_unavailable", "network_blocked", "control"),
+    ("exit_timeout", "network_release", "target"),
+    ("exit_before_marker", "hourly_before", "renamed"),
+])
+def test_fixture_probe_keeps_marker_pid_deadlines_and_outcome_after_failures(tmp_path, kind, phase, role):
+    expression = r"""
+$work='C:\inert';$result=[ordered]@{fixture_probes=@()};$global:probeSentinel=$null;$global:exitTimeout=$null
+function global:Start-Fixture($Path,$Sentinel,$Url,$HoldMilliseconds){
+    $global:probeSentinel=$Sentinel
+    if($HoldMilliseconds -ne 3000){throw 'Fixture hold time changed.'}
+    if($global:catalogTestData.kind -ceq 'native_refused'){
+        throw [ComponentModel.Win32Exception]::new(4551,'synthetic-private-native-message')
+    }
+    $fake=[pscustomobject]@{Id=71;HasExited=($global:catalogTestData.kind -ceq 'exit_before_marker');ExitCode=0}
+    $fake|Add-Member ScriptMethod WaitForExit {
+        param($Milliseconds)
+        $global:exitTimeout=$Milliseconds
+        return $global:catalogTestData.kind -cne 'exit_timeout'
+    }
+    return $fake
+}
+function global:Wait-FixtureStartup {
+    switch($global:catalogTestData.kind){
+        'startup_timeout' {return @{status='timeout';elapsed_ms=10101;last_in_window=$null;terminal=@{
+            at_ms=10101;marker_present=$true;process_exited=$false;error_kind=$null}}}
+        'startup_unavailable' {return @{status='unavailable';elapsed_ms=3;terminal=$null;last_in_window=@{
+            at_ms=3;marker_present=$null;process_exited=$null;error_kind='query_failed'}}}
+        'exit_before_marker' {return @{status='exited';elapsed_ms=5;terminal=$null;last_in_window=@{
+            at_ms=5;marker_present=$false;process_exited=$true;error_kind=$null}}}
+        default {return @{status='started';elapsed_ms=5;terminal=$null;last_in_window=@{
+            at_ms=5;marker_present=$true;process_exited=$false;error_kind=$null}}}
+    }
+}
+function global:Test-Path {
+    if($global:catalogTestData.kind -ceq 'startup_unavailable'){throw 'synthetic-private-query-message'}
+    return $global:catalogTestData.kind -notin @('native_refused','startup_timeout')
+}
+function global:Get-Item {
+    if($global:catalogTestData.kind -ceq 'metadata_unavailable'){throw 'synthetic-private-metadata-message'}
+    return [pscustomobject]@{CreationTimeUtc=[DateTime]::Parse('2026-11-05T10:10:10Z').ToUniversalTime()}
+}
+$failed=$false;$failure=$null;$probe=$null
+try{$probe=Invoke-Fixture 'C:\inert\fixture.exe' '-' -Phase $fixtureData.phase -Role $fixtureData.role}
+catch{$failed=$true;$failure=$_.Exception.Message}
+if(@($result.fixture_probes).Count -ne 1){throw 'Each attempted probe must leave one observation even after failure.'}
+$row=$result.fixture_probes[0]
+if($row.phase -cne $fixtureData.phase -or $row.role -cne $fixtureData.role -or
+   $row.sentinel_id -cnotmatch '^[a-f0-9]{32}$' -or
+   $row.sentinel_id -cne [IO.Path]::GetFileNameWithoutExtension($global:probeSentinel)){
+    throw 'The phase and role cannot be correlated with the unique marker.'
+}
+$launchStart=[DateTimeOffset]::Parse($row.launch.started_utc)
+$launchEnd=[DateTimeOffset]::Parse($row.launch.finished_utc)
+if($launchEnd -lt $launchStart -or $null -eq $row.launch.elapsed_ms -or $row.launch.elapsed_ms -lt 0){
+    throw 'The launch clock is missing or invalid.'
+}
+if(($row|ConvertTo-Json -Depth 16) -match 'synthetic-private|C:\\\\inert' -or $failure -like '*synthetic-private*'){
+    throw 'Probe evidence exposed a path or raw diagnostic.'
+}
+if($fixtureData.kind -ceq 'native_refused'){
+    if($failed -or $row.status -cne 'native_refused' -or $row.native_error -ne 4551 -or
+       $row.process_created -ne $false -or $null -ne $row.pid -or $null -ne $row.startup -or
+       $null -ne $row.exit_wait -or $probe.native_error -ne 4551 -or $probe.started -ne $false -or
+       $probe.process_created -ne $false){throw 'A native refusal must retain its original code and process state.'}
+}else{
+    if($row.pid -ne 71 -or $row.process_created -ne $true -or $row.native_error -ne 0){
+        throw 'A returned process handle must be associated with its PID.'
+    }
+    switch($fixtureData.kind){
+        'startup_timeout' {
+            if(-not $failed -or $row.status -cne 'startup_timeout' -or $row.startup.status -cne 'timeout' -or
+               $row.startup.terminal.marker_present -ne $true -or $null -ne $row.exit_wait){
+                throw 'A late marker was promoted or its timeout evidence was lost.'
+            }
+        }
+        'startup_unavailable' {
+            if(-not $failed -or $row.status -cne 'startup_unavailable' -or
+               $row.startup.last_in_window.error_kind -cne 'query_failed' -or $null -ne $row.exit_wait){
+                throw 'A failed startup read lost its evidence.'
+            }
+        }
+        'exit_timeout' {
+            if(-not $failed -or $row.status -cne 'exit_timeout' -or $row.startup.status -cne 'started' -or
+               $row.exit_wait.timed_out -ne $true -or $null -ne $row.exit_wait.exit_code -or
+               $null -eq $row.exit_wait.elapsed_ms -or $global:exitTimeout -ne 15000){
+                throw 'The distinct exit deadline or its evidence was lost.'
+            }
+        }
+        'exit_before_marker' {
+            if($row.startup.status -cne 'exited' -or (-not $failed -and $probe.started -ne $false)){
+                throw 'Exit before the marker must never become an observed start.'
+            }
+        }
+        default {
+            if($failed -or $row.status -cne 'completed' -or $row.startup.status -cne 'started' -or
+               $row.exit_wait.timed_out -ne $false -or $row.exit_wait.exit_code -ne 0 -or
+               $null -eq $row.exit_wait.elapsed_ms -or $global:exitTimeout -ne 15000 -or
+               $probe.started -ne $true -or $probe.alive_after_sentinel -ne $true -or $probe.exit -ne 0){
+                throw 'Successful start and exit must remain separate observations.'
+            }
+            if($fixtureData.kind -ceq 'metadata_unavailable'){
+                if($null -ne $row.marker_created_utc -or $row.marker_metadata_error -cne 'query_failed'){
+                    throw 'A diagnostic metadata failure must be explicit without changing acceptance.'
+                }
+            }elseif($null -eq $row.marker_created_utc -or $null -ne $row.marker_metadata_error){
+                throw 'Marker creation UTC was not captured.'
+            }
+        }
+    }
+}
+"""
+    observed = isolated(tmp_path, ["Invoke-Fixture"], expression, {"kind": kind, "phase": phase, "role": role},
+                        ["Start-Fixture", "Wait-FixtureStartup", "Wait-Until", "Get-Item", "Test-Path", "Join-Path"],
+                        methods=("NewGuid", "StartNew", "Stop", "WaitForExit"))
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("kind", ["complete", "rules_unavailable", "filters_unavailable"])
+def test_network_filter_enumeration_has_its_own_clock_and_failure_evidence(tmp_path, kind):
+    expression = r"""
+$main=@($tree.FindAll({param($node)
+    $node -is [Management.Automation.Language.TryStatementAst] -and
+    $node.Body.Statements.Count -gt 0 -and $node.Body.Statements[0].Extent.Text.TrimStart().StartsWith('Assert-ProductionPackage ')
+},$true))
+if($main.Count -ne 1){throw 'Expected one acceptance body.'}
+$statements=@($main[0].Body.Statements)
+$start=@(for($index=0;$index -lt $statements.Count;$index++){
+    if($statements[$index].Extent.Text.Contains("Publish-Assignment 'network'")){$index}
+})
+if($start.Count -ne 1){throw 'Expected one network assignment.'}
+$end=@(for($index=$start[0]+1;$index -lt $statements.Count;$index++){
+    if($statements[$index].Extent.Text.Contains('Invoke-Fixture')){$index;break}
+})
+if($end.Count -ne 1 -or $end[0] -le ($start[0]+1)){throw 'Cannot isolate filter enumeration.'}
+$selected=@($statements[$start[0]..($end[0]-1)])
+$allowed=@('Publish-Assignment','Wait-Ack','Owned-FirewallRules','Get-NetFirewallApplicationFilter',
+    'ForEach-Object','Where-Object')
+foreach($statement in $selected){
+    foreach($command in @($statement.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))){
+        if($command.GetCommandName() -notin $allowed){throw 'Unexpected command in filter enumeration.'}
+    }
+    foreach($method in @($statement.FindAll({param($node)
+        $node -is [Management.Automation.Language.InvokeMemberExpressionAst]},$true))){
+        if($method.Member.Value -notin @('StartNew','Stop','ToString','GetType')){
+            throw 'Unexpected method in filter enumeration.'
+        }
+    }
+    if(@($statement.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst]},$true)).Count){
+        throw 'Unexpected function definition in filter enumeration.'
+    }
+}
+$result=[ordered]@{network_enumeration=$null}
+$network=@{firewall_paths=@();control_has_rule=$false};$aControl='C:\inert\control.exe'
+$global:networkAcked=$false
+function Publish-Assignment($Name){if($Name -cne 'network'){throw 'Unexpected policy.'};return @{version=3}}
+function Wait-Ack($Assignment){if($Assignment.version -ne 3){throw 'Unexpected ACK.'};$global:networkAcked=$true}
+function Owned-FirewallRules {
+    if(-not $global:networkAcked){throw 'Filter enumeration preceded the policy ACK.'}
+    if($global:catalogTestData.kind -ceq 'rules_unavailable'){throw 'synthetic-private-rules-error'}
+    return @([pscustomobject]@{Direction='Inbound'},[pscustomobject]@{Direction='Outbound'})
+}
+$global:catalogTestData=$fixtureData
+function global:Get-NetFirewallApplicationFilter {
+    param([Parameter(ValueFromPipeline=$true)]$Rule)
+    process{
+        if($global:catalogTestData.kind -ceq 'filters_unavailable'){throw 'synthetic-private-filter-error'}
+        [pscustomobject]@{Program='C:\inert\fixture.exe'}
+    }
+}
+$failed=$false;$failure=$null
+try{. ([scriptblock]::Create(($selected | ForEach-Object {$_.Extent.Text}) -join [Environment]::NewLine))}
+catch{$failed=$true;$failure=$_.Exception.Message}
+$row=$result.network_enumeration
+if($null -eq $row){throw 'Filter enumeration outcome was lost before the probe started.'}
+$started=[DateTimeOffset]::Parse($row.started_utc)
+$finished=[DateTimeOffset]::Parse($row.finished_utc)
+if($finished -lt $started -or $null -eq $row.elapsed_ms -or $row.elapsed_ms -lt 0){
+    throw 'Enumeration must have its own UTC and monotonic clocks.'
+}
+if(($row | ConvertTo-Json -Depth 8) -like '*synthetic-private*' -or $failure -like '*synthetic-private*'){
+    throw 'A raw enumeration error escaped.'
+}
+if($fixtureData.kind -ceq 'complete'){
+    if($failed -or $row.status -cne 'complete' -or $row.rule_count -ne 2 -or $row.filter_count -ne 2 -or
+        $null -ne $row.error_kind -or @($network.firewall_paths).Count -ne 2 -or $network.control_has_rule){
+        throw 'Enumeration evidence or existing network check was changed.'
+    }
+}else{
+    if(-not $failed -or $row.status -cne 'failed' -or -not $row.error_kind -or $null -ne $row.filter_count){
+        throw 'A failed enumeration must keep its own failure outcome and unknown count.'
+    }
+    if(($fixtureData.kind -ceq 'rules_unavailable' -and $null -ne $row.rule_count) -or
+        ($fixtureData.kind -ceq 'filters_unavailable' -and $row.rule_count -ne 2)){
+        throw 'Counts captured before the error were lost or invented.'
+    }
+}
+"""
+    observed = pure(tmp_path, ["Wait-Ack"], expression, {"kind": kind})
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+def test_all_fixture_probe_calls_identify_their_phase_and_role(tmp_path):
+    expression = r"""
+$calls=@($tree.FindAll({param($node)
+    $node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -ceq 'Invoke-Fixture'
+},$true) | Sort-Object {$_.Extent.StartOffset})
+if($calls.Count -ne @($fixtureData.pairs).Count){throw 'The existing fixture probe sequence changed.'}
+for($index=0;$index -lt $calls.Count;$index++){
+    $actual=@{}
+    $elements=@($calls[$index].CommandElements)
+    for($offset=1;$offset -lt ($elements.Count-1);$offset++){
+        if($elements[$offset] -is [Management.Automation.Language.CommandParameterAst] -and
+            $elements[$offset].ParameterName -in @('Phase','Role')){
+            $actual[$elements[$offset].ParameterName]=$elements[$offset+1].Value
+        }
+    }
+    if($actual.Phase -cne $fixtureData.pairs[$index].phase -or $actual.Role -cne $fixtureData.pairs[$index].role){
+        throw ('Missing or wrong fixture phase/role at probe '+$index+'.')
+    }
+}
+"""
+    pairs = [{"phase": phase, "role": role} for phase, roles in [
+        ("network_before", ("target", "control")), ("network_blocked", ("target", "control")),
+        ("network_release", ("target", "control")), ("wdac", ("original", "renamed")),
+        ("hourly_before", ("renamed",)), ("hourly_after", ("renamed",)), ("release", ("original", "renamed")),
+    ] for role in roles]
+    observed = pure(tmp_path, ["Wait-Ack"], expression, {"pairs": pairs})
+    assert observed["accepted"] is True, observed
 
 
 @WINDOWS[0]
