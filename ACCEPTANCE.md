@@ -1,5 +1,13 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 05/11/2026. Rodada 13 falhou na espera pelo marcador
+
+O VMware restaurou o snapshot 1 às 12:46:46Z e conectou a ISO b6d4be5 às 12:50:05Z. A rodada v2 a6c27d86 encerrou às 13:04:00Z com “The fixture did not reach its sentinel.” As referências HTTPS iniciais e o check de app ausente passaram. Depois do ACK positivo v3 de rede e antes da publicação v4, uma das duas sondas criou um processo sem observar seu encerramento ou marcador na janela de 10 s. A fixture grava o marcador antes de HTTPS. O relatório não distingue qual sonda falhou. Um LocalError v2 antecedeu o ACK v3 positivo; a relação causal continua desconhecida. [Relatório original](validation/vm-catalog-b6d4be5-result-2026-11-05.json) e [revisão](validation/catalog-vm-b6d4be5-startup-failure-review-2026-11-05.json).
+
+O host reavaliou o recibo, app ausente e limpeza. MSI 0, ausência de serviço/watchdog/NRPT/firewall/CI próprios e registros de fixture, mesmas 482 regras externas sem diferenças e mesmos 14 IDs CI externos. A coleta de limpeza v2 funcionou nesta falha. Rede, processo, WDAC e rechecagem de uma hora não concluíram; a rodada permanece reprovada.
+
+Preservar a VM. Coletor 14 solicitado em OpenEMSResults com o atalho 14 - Collect catalog startup diagnostics as administrator.lnk. Ele lê hashes/tempos dos arquivos e marcadores próprios, categorias sanitizadas do agente e eventos delimitados de inicialização. Parser PS5.1, quatro verificações sintéticas de filtros e atalho elevado conferidos. Aguardar catalog-startup-diagnostics-a6c27d86.json. Código e pacote congelados enquanto o diagnóstico está pendente. Os checkpoints anteriores abaixo são históricos.
+
 ## Estado vigente — 05/11/2026. Evidências v2 prontas para aceite na VM
 
 O vermelho do commit 3b42cb5 teve 63 falhas esperadas e 1.460 sucessos. A implementação b6d4be5 passou na mesma suíte completa permitida com 1.523 sucessos, 57 skips e quatro casos integrais legados desmarcados. Ruff, pip check e parser PS5.1 passaram. O roteiro grava o baseline antes do MSI, registra diferenças e resultados independentes de limpeza em caso de falha, retém categorias seguras dos ACKs e finaliza o relatório após a coleta. O verificador do host recalcula a preservação. O exportador copia cada versão do checkpoint uma vez.

@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-05",
+  "source_revision": "b6d4be52550c59ad7c5e8083bca193229212aa28",
+  "run_id": "a6c27d86de834dbb85cafe8388c82d70",
+  "status": "failed_startup_sentinel",
+  "report": {
+    "file": "vm-catalog-b6d4be5-result-2026-11-05.json",
+    "sha256": "faf2c30babff89365f10b83b9132d423473840369c62d606b6afb08a05196249",
+    "bytes": 828869
+  },
+  "package_receipt_verified": true,
+  "host_verification": {
+    "passed": false,
+    "errors": [
+      "matching positive ACK observations for all assignments are required"
+    ],
+    "local_enforcement_failures": [
+      {
+        "at_utc": "2026-11-05T12:53:45.7686782Z",
+        "error_kind": "LocalError",
+        "version": 2,
+        "success": false,
+        "digest": "e8797d05eaf278c66ef173e8cda0ff1d3c654528ba1e935236569a5f843c82b4"
+      }
+    ]
+  },
+  "guest_error": "The fixture did not reach its sentinel.",
+  "cleanup_errors": [],
+  "passed_effects_verified": [
+    "absent",
+    "cleanup"
+  ],
+  "cleanup_msi_exit": 0,
+  "firewall_preserved": true,
+  "firewall_rules_before_after": [
+    482,
+    482
+  ],
+  "firewall_differences": [],
+  "foreign_ci_ids_preserved": 14,
+  "snapshot_restore_at_utc": "2026-11-05T12:46:46.827Z",
+  "iso_connected_at_utc": "2026-11-05T12:50:05.510Z",
+  "positive_assignment_versions": [
+    1,
+    2,
+    3,
+    7
+  ],
+  "failed_ack_observations": [
+    {
+      "at_utc": "2026-11-05T12:53:45.7686782Z",
+      "error_kind": "LocalError",
+      "version": 2,
+      "success": false,
+      "digest": "e8797d05eaf278c66ef173e8cda0ff1d3c654528ba1e935236569a5f843c82b4"
+    }
+  ],
+  "failure_scope": "One of the two blocked-network fixture calls did not observe a process exit or sentinel within the startup wait after successful v3 ACK and before network_release v4. The report did not persist which fixture or elapsed runtime details.",
+  "root_cause_identified": false,
+  "diagnostic_script": {
+    "file": "14-collect-catalog-startup-diagnostics.ps1",
+    "sha256": "be5e9b0ba0dd21744b450e7c7712a0baebba9c32d67fd027cf7d98566eb24496",
+    "output": "catalog-startup-diagnostics-a6c27d86.json",
+    "status": "requested_not_received",
+    "powershell_5_1_parser_passed": true,
+    "synthetic_filter_checks": 4,
+    "elevated_shortcut_verified": true,
+    "shortcut": "14 - Collect catalog startup diagnostics as administrator.lnk"
+  }
+}
