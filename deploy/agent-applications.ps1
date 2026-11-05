@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $group = 'openems application control'
 $events = @()
+$script:diagnosticStage = 'app_request'
 function Field($Object, [string]$Name, $Default) {
     if ($null -eq $Object) { return $Default }
     $property = $Object.PSObject.Properties[$Name]
@@ -13,12 +14,28 @@ function Field($Object, [string]$Name, $Default) {
     return $property.Value
 }
 function Result($Value) { $Value | ConvertTo-Json -Depth 12 -Compress | Write-Output }
+function Get-NativeErrorCode([Exception]$Exception) {
+    for ($depth = 0; $null -ne $Exception -and $depth -lt 8; $depth++) {
+        if ($Exception -is [ComponentModel.Win32Exception] -and $Exception.NativeErrorCode -gt 0) {
+            return [int]$Exception.NativeErrorCode
+        }
+        # Only HRESULT_FROM_WIN32 encodes a Win32 error in the low word.
+        $hresult = $Exception.HResult
+        if (($hresult -band -65536) -eq -2147024896 -and ($hresult -band 65535) -ne 0) {
+            return ($hresult -band 65535)
+        }
+        $Exception = $Exception.InnerException
+    }
+    return $null
+}
 function Protect-File([string]$Path) {
     $acl = New-Object Security.AccessControl.FileSecurity
     $acl.SetSecurityDescriptorSddlForm('O:SYD:P(A;;FA;;;SY)')
     Set-Acl -LiteralPath $Path -AclObject $acl
 }
 function Save-State {
+    $callerStage = $script:diagnosticStage
+    $script:diagnosticStage = 'app_journal'
     $temporary = $request.state_path + '.' + [guid]::NewGuid().ToString('N') + '.tmp'
     try {
         [IO.File]::Open($temporary, 'CreateNew', 'Write', 'None').Dispose()
@@ -28,6 +45,7 @@ function Save-State {
     } finally {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
     }
+    $script:diagnosticStage = $callerStage
 }
 function Set-StateField([string]$Name, $Value) {
     # Journals written before a field existed are upgraded in place.
@@ -375,7 +393,10 @@ function Execution-Events {
     return @($blocked)
 }
 try {
-    if ($request.mode -eq 'inventory') { Result @{inventory=@(Inventory)}; exit 0 }
+    if ($request.mode -eq 'inventory') {
+        $script:diagnosticStage = 'app_inventory'
+        Result @{inventory=@(Inventory)}; exit 0
+    }
     if ($request.mode -eq 'plan') {
         $rules = @(Field $request.policy 'execution_rules' @())
         Result @{execution_rules=$rules; network_blocked=@(Field $request.policy 'network_blocked' @()); requires_system=$true}; exit 0
@@ -385,6 +406,7 @@ try {
     if ($request.mode -notin @('apply','cleanup')) { throw 'OPENEMS_INVALID_MODE' }
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') { throw 'OPENEMS_SYSTEM_REQUIRED' }
     if (-not [IO.Path]::IsPathRooted([string]$request.state_path)) { throw 'OPENEMS_INVALID_STATE_PATH' }
+    $script:diagnosticStage = 'app_journal'
     if (Test-Path -LiteralPath $request.state_path) {
         $script:state = Get-Content -LiteralPath $request.state_path -Raw | ConvertFrom-Json
         if ($script:state.format -ne 1 -or [string]$script:state.policy_id -notmatch '^\{[A-Fa-f0-9-]{36}\}$') { throw 'OPENEMS_INVALID_JOURNAL' }
@@ -395,8 +417,11 @@ try {
         $script:state = [pscustomobject]@{format=1; policy_id=([guid]::NewGuid().ToString('B')); wdac_owned=$false; execution_digest=''; version=0; firewall=@(); last_record_id=$cursor}
     }
     if ($request.mode -eq 'cleanup') {
+        $script:diagnosticStage = 'app_wdac_remove'
         Remove-Wdac
+        $script:diagnosticStage = 'app_firewall'
         foreach ($entry in @($script:state.firewall)) { Remove-Firewall $entry }
+        $script:diagnosticStage = 'app_journal'
         Remove-Item -LiteralPath $request.state_path -Force -ErrorAction SilentlyContinue
         Result @{inventory=@();events=@();capabilities=@('app-control:network')}; exit 0
     }
@@ -405,11 +430,13 @@ try {
     # No persistent writes when an unsupported execution policy cannot be applied at all.
     # Windows editions without App Control (Home) skip present-only catalog rules; process and network
     # controls still apply. Explicit execution rules keep failing there, as the administrator asked for them.
+    $script:diagnosticStage = 'app_wdac_query'
     if ($execution.Count -and -not (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\CiTool.exe'))) {
         if (@($execution | Where-Object { -not [bool](Field $_ 'if_present' $false) }).Count) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
         $execution = @()
     }
     if ($execution.Count) { $null = @(Policies); Import-Module ConfigCI -ErrorAction Stop }
+    $script:diagnosticStage = 'app_journal'
     Save-State
     $script:directory = Join-Path (Split-Path -Parent $request.state_path) ('app-control-' + $script:state.policy_id.Trim('{}'))
     if (-not (Test-Path -LiteralPath $script:directory)) {
@@ -418,8 +445,12 @@ try {
         $acl.SetSecurityDescriptorSddlForm('O:SYD:P(A;OICI;FA;;;SY)')
         Set-Acl -LiteralPath $script:directory -AclObject $acl
     }
-    if ($execution.Count -eq 0) { Remove-Wdac }
+    if ($execution.Count -eq 0) {
+        $script:diagnosticStage = 'app_wdac_remove'
+        Remove-Wdac
+    }
     else {
+        $script:diagnosticStage = 'app_wdac_query'
         $serialized = ConvertTo-Json -InputObject $execution -Depth 8 -Compress
         $hasher = [Security.Cryptography.SHA256]::Create()
         try { $digest = ([BitConverter]::ToString($hasher.ComputeHash([Text.Encoding]::UTF8.GetBytes($serialized)))).Replace('-','').ToLowerInvariant() }
@@ -436,17 +467,20 @@ try {
         $samples = @()
         if (-not $current -or $recheck) {
             if ($null -ne $active -and (-not $script:state.wdac_owned -or [string]$active.FriendlyName -cne 'openems application control')) { throw 'OPENEMS_EXTERNAL_POLICY_CHANGE' }
+            $script:diagnosticStage = 'app_sample_discovery'
             $samples = @(Resolve-Samples $request.policy)
             $present = (@($samples | ForEach-Object { [string]$_.id }) | Sort-Object) -join ','
             if ($optional) { Set-StateField 'optional_checked_at' ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) }
             if ($current -and $present -ceq $presentBefore) { Save-State; $samples = @() }
             elseif ($samples.Count -eq 0) {
                 # Every rule was present-only and absent here: no policy, nothing to deny.
+                $script:diagnosticStage = 'app_wdac_remove'
                 Remove-Wdac
                 $script:state.execution_digest = $digest; Set-StateField 'present_rules' ''; Save-State
             } else { Set-StateField 'present_rules' $present }
         }
         if ($samples.Count) {
+            $script:diagnosticStage = 'app_wdac_generate'
             $consoleOut = [Console]::Out
             try {
                 # ConfigCI writes directly to Console.Out, outside PowerShell's redirectable streams.
@@ -531,15 +565,18 @@ try {
                 [Console]::SetOut($consoleOut)
             }
             # Ownership intent is durable before CiTool can change the system.
+            $script:diagnosticStage = 'app_wdac_apply'
             $script:state.wdac_owned = $true; Save-State
             & (Join-Path $env:SystemRoot 'System32\CiTool.exe') --update-policy $binaryPath -json | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'OPENEMS_WDAC_DEPLOY_FAILED' }
+            $script:diagnosticStage = 'app_wdac_verify'
             $active = Own-Policy
             if ($null -eq $active -or [string]$active.IsEnforced -ine 'true') { throw 'OPENEMS_RESTART_REQUIRED' }
             $script:state.execution_digest = $digest; Save-State
             $events += @{kind='app_control_applied'; detail='execution policy applied'; rule_id='execution-policy'}
         }
     }
+    $script:diagnosticStage = 'app_firewall'
     $desired = @()
     foreach ($path in $network) {
         $path = Safe-Path $path
@@ -568,8 +605,12 @@ try {
         if ($entry.name -notin @($desired | ForEach-Object name)) { Remove-Firewall $entry }
     }
     $script:state.firewall = @($desired)
-    if ($script:state.wdac_owned) { $events += @(Execution-Events) }
+    if ($script:state.wdac_owned) {
+        $script:diagnosticStage = 'app_execution_events'
+        $events += @(Execution-Events)
+    }
     # Present-only rules keep the journal so the hourly re-check is remembered while nothing is owned.
+    $script:diagnosticStage = 'app_journal'
     $presentOnly = @($execution | Where-Object { [bool](Field $_ 'if_present' $false) }).Count -gt 0
     if ($script:state.wdac_owned -or $desired.Count -or $presentOnly) { Save-State }
     else { Remove-Item -LiteralPath $request.state_path -Force -ErrorAction SilentlyContinue }
@@ -578,5 +619,6 @@ try {
     Result @{inventory=@();events=@($events);capabilities=$capabilities}
 } catch {
     $code = if ($_.Exception.Message -match 'OPENEMS_RESTART_REQUIRED') { 'restart_required' } elseif ($_.Exception.Message -match 'OPENEMS_UNSUPPORTED') { 'unsupported' } else { 'control_failed' }
-    Result @{error=$code}; exit 1
+    $osCode = Get-NativeErrorCode $_.Exception
+    Result @{error=$code; diagnostic=@{stage=$script:diagnosticStage; os_code=$osCode}}; exit 1
 }

@@ -46,6 +46,7 @@ fn run_with_limits(script: &'static str, request: &Value, flags: u32, timeout: s
 #[cfg(windows)]
 mod script_transport {
     use super::*;
+    use crate::error::Stage;
     use std::fs::{self, File};
     use std::io::{Read, Write};
     use std::os::windows::{
@@ -68,6 +69,11 @@ mod script_transport {
 
     fn failure(message: &str) -> AgentError {
         AgentError::Local(message.into())
+    }
+
+    fn staging_os_failure(message: &str) -> AgentError {
+        let code = std::io::Error::last_os_error().raw_os_error().filter(|&code| code != 0);
+        failure(message).at_code(Stage::ControlStaging, code)
     }
 
     fn wide(path: &Path) -> Result<Vec<u16>> {
@@ -93,8 +99,11 @@ mod script_transport {
         let mut text = std::ptr::null_mut();
         // SAFETY: callers pass a validated SID owned by a live token/security descriptor.
         unsafe {
-            if IsValidSid(sid) == 0 || ConvertSidToStringSidW(sid, &mut text) == 0 {
+            if IsValidSid(sid) == 0 {
                 return Err(failure("Windows control identity is unavailable"));
+            }
+            if ConvertSidToStringSidW(sid, &mut text) == 0 {
+                return Err(staging_os_failure("Windows control identity is unavailable"));
             }
             let _memory = LocalMemory(text.cast());
             let mut length = 0;
@@ -120,7 +129,7 @@ mod script_transport {
                 &mut length,
             ) == 0
             {
-                return Err(failure("Windows control identity is unavailable"));
+                return Err(staging_os_failure("Windows control identity is unavailable"));
             }
             sid_text((*(buffer.as_ptr() as *const TOKEN_USER)).User.Sid)
         }
@@ -150,7 +159,7 @@ mod script_transport {
                 )
             } == 0
             {
-                return Err(failure("private Windows control security could not be created"));
+                return Err(staging_os_failure("private Windows control security could not be created"));
             }
             Ok(Self { memory: LocalMemory(descriptor), sid })
         }
@@ -174,7 +183,7 @@ mod script_transport {
             // SAFETY: GetSecurityInfo allocates the descriptor and owns all returned pointers.
             // Inspection uses a pinned handle, rather than resolving an attacker-changeable name.
             unsafe {
-                if GetSecurityInfo(
+                let status = GetSecurityInfo(
                     file.as_raw_handle(),
                     SE_FILE_OBJECT,
                     OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
@@ -183,18 +192,18 @@ mod script_transport {
                     &mut acl,
                     std::ptr::null_mut(),
                     &mut descriptor,
-                ) != 0
-                {
-                    return Err(failure("private Windows control permissions could not be verified"));
+                );
+                if status != 0 {
+                    return Err(failure("private Windows control permissions could not be verified")
+                        .at_code(Stage::ControlStaging, i32::try_from(status).ok()));
                 }
                 let _memory = LocalMemory(descriptor);
                 let mut control = 0;
                 let mut revision = 0;
-                if GetSecurityDescriptorControl(descriptor, &mut control, &mut revision) == 0
-                    || control & SE_DACL_PROTECTED == 0
-                    || owner.is_null()
-                    || sid_text(owner)? != self.sid
-                    || acl.is_null()
+                if GetSecurityDescriptorControl(descriptor, &mut control, &mut revision) == 0 {
+                    return Err(staging_os_failure("private Windows control owner or DACL is invalid"));
+                }
+                if control & SE_DACL_PROTECTED == 0 || owner.is_null() || sid_text(owner)? != self.sid || acl.is_null()
                 {
                     return Err(failure("private Windows control owner or DACL is invalid"));
                 }
@@ -207,7 +216,7 @@ mod script_transport {
                 for index in 0..(*acl).AceCount {
                     let mut raw = std::ptr::null_mut();
                     if GetAce(acl, index.into(), &mut raw) == 0 {
-                        return Err(failure("private Windows control ACE is unavailable"));
+                        return Err(staging_os_failure("private Windows control ACE is unavailable"));
                     }
                     let ace = &*(raw as *const ACCESS_ALLOWED_ACE);
                     // ACCESS_ALLOWED_ACE_TYPE is zero; object/callback/deny ACEs are not accepted.
@@ -348,7 +357,7 @@ mod script_transport {
             };
             let populated = staged.populate(script, &security);
             if let Err(error) = populated {
-                return combine(Err(error), staged.cleanup());
+                return combine(Err(error.at_if_missing(Stage::ControlStaging)), staged.cleanup());
             }
             Ok(staged)
         }
@@ -418,7 +427,10 @@ mod script_transport {
             };
             drop(self.directory_guard.take());
             drop(self.root_guard.take());
-            file.and(directory).map_err(|_| failure("Windows control private script cleanup failed"))
+            file.and(directory).map_err(|error| {
+                failure("Windows control private script cleanup failed")
+                    .at_code(Stage::ControlCleanup, error.raw_os_error())
+            })
         }
     }
 
@@ -437,10 +449,12 @@ mod script_transport {
     }
 
     fn combine<T>(outcome: Result<T>, cleanup: Result<()>) -> Result<T> {
-        match (outcome, cleanup) {
+        match (outcome, cleanup.map_err(|error| error.at_if_missing(Stage::ControlCleanup))) {
             (result, Ok(())) => result,
             (Ok(_), Err(error)) => Err(error),
-            (Err(error), Err(_)) => Err(failure(&format!("{error}; private script cleanup failed"))),
+            (Err(error), Err(cleanup)) => Err(failure(&format!("{error}; private script cleanup failed"))
+                .with_related(&error)
+                .with_related(&cleanup)),
         }
     }
 
@@ -452,6 +466,16 @@ mod script_transport {
     impl Streams {
         fn failed(&self) -> bool {
             self.input.is_err() || self.output.is_err() || self.diagnostics.is_err()
+        }
+
+        fn with_failures(&self, mut primary: AgentError) -> AgentError {
+            for related in [self.input.as_ref().err(), self.output.as_ref().err(), self.diagnostics.as_ref().err()]
+                .into_iter()
+                .flatten()
+            {
+                primary = primary.with_related(related);
+            }
+            primary
         }
     }
 
@@ -505,7 +529,8 @@ mod script_transport {
                     return Ok(status);
                 }
                 if Instant::now() >= deadline {
-                    return Err(failure("Windows control timed out; its journal is retained for recovery"));
+                    return Err(failure("Windows control timed out; its journal is retained for recovery")
+                        .at(Stage::ControlTimeout));
                 }
                 std::thread::sleep(Duration::from_millis(25));
             }
@@ -527,18 +552,19 @@ mod script_transport {
         }
 
         fn collect(&mut self) -> Streams {
-            fn join<T>(thread: Option<JoinHandle<std::io::Result<T>>>, missing: T) -> Result<T> {
+            fn join<T>(thread: Option<JoinHandle<std::io::Result<T>>>, missing: T, stage: Stage) -> Result<T> {
                 match thread {
-                    Some(thread) => {
-                        thread.join().map_err(|_| failure("control I/O worker failed"))?.map_err(Into::into)
-                    }
+                    Some(thread) => thread
+                        .join()
+                        .map_err(|_| failure("control I/O worker failed").at(stage))?
+                        .map_err(|error| AgentError::Io(error).at(stage)),
                     None => Ok(missing),
                 }
             }
             // Join every worker before checking any result, including on process failure.
-            let input = join(self.input.take(), ());
-            let output = join(self.output.take(), Vec::new());
-            let diagnostics = join(self.diagnostics.take(), Vec::new());
+            let input = join(self.input.take(), (), Stage::ControlInput);
+            let output = join(self.output.take(), Vec::new(), Stage::ControlOutput);
+            let diagnostics = join(self.diagnostics.take(), Vec::new(), Stage::ControlStderr);
             Streams { input, output, diagnostics }
         }
 
@@ -546,28 +572,41 @@ mod script_transport {
             let status = match self.wait(timeout) {
                 Ok(status) => status,
                 Err(error) => {
-                    self.stop()?;
+                    let error = error.at_if_missing(Stage::ControlWait);
+                    self.stop().map_err(|stop| stop.at(Stage::ControlStop).with_related(&error))?;
                     let streams = self.collect();
                     return if streams.failed() {
-                        Err(failure(&format!("{error}; control I/O ended while stopping")))
+                        Err(streams.with_failures(
+                            failure(&format!("{error}; control I/O ended while stopping")).with_related(&error),
+                        ))
                     } else {
                         Err(error)
                     };
                 }
             };
-            let streams = self.collect();
-            let bytes = streams.output?;
-            let diagnostics = streams.diagnostics;
-            if !status.success() || streams.input.is_err() || diagnostics.is_err() || bytes.len() as u64 > LIMIT {
+            let Streams { input, output, diagnostics } = self.collect();
+            let bytes = output?;
+            if !status.success() || input.is_err() || diagnostics.is_err() || bytes.len() as u64 > LIMIT {
                 let error = serde_json::from_slice::<Value>(&bytes).ok();
                 let message = match error.as_ref().and_then(|value| value["error"].as_str()) {
                     Some("restart_required") => "Windows control requires a restart; its protected journal is retained",
                     Some("unsupported") => "Windows does not support the requested control",
                     _ => "Windows control failed; verify OS support and its protected journal",
                 };
-                return Err(failure(message));
+                let mut result = failure(message).at(Stage::ControlResponse);
+                if let Some(diagnostic) = error.as_ref().and_then(|value| value.get("diagnostic"))
+                    && let Some(stage) = diagnostic["stage"].as_str().and_then(Stage::from_app_name)
+                {
+                    let code = diagnostic["os_code"].as_i64().and_then(|code| i32::try_from(code).ok());
+                    result = result.at_code(stage, code);
+                }
+                for related in [input.err(), diagnostics.err()].into_iter().flatten() {
+                    result = result.with_related(&related);
+                }
+                return Err(result);
             }
-            serde_json::from_slice(&bytes).map_err(|_| failure("Windows control returned invalid output"))
+            serde_json::from_slice(&bytes)
+                .map_err(|_| failure("Windows control returned invalid output").at(Stage::ControlResponse))
         }
     }
 
@@ -583,12 +622,15 @@ mod script_transport {
     }
 
     pub(super) fn run(script: &'static str, request: &Value, flags: u32, timeout: Duration) -> Result<Value> {
-        let bytes = serde_json::to_vec(request).map_err(|_| failure("invalid control request"))?;
+        let bytes =
+            serde_json::to_vec(request).map_err(|_| failure("invalid control request").at(Stage::ControlRequest))?;
         if bytes.len() as u64 > LIMIT {
-            return Err(failure("control request exceeds its size limit"));
+            return Err(failure("control request exceeds its size limit").at(Stage::ControlRequest));
         }
-        let mut staged = StagedScript::new(script)?;
-        let outcome = ControlProcess::spawn(&mut staged, bytes, flags).and_then(|mut process| process.execute(timeout));
+        let mut staged = StagedScript::new(script).map_err(|error| error.at_if_missing(Stage::ControlStaging))?;
+        let outcome = ControlProcess::spawn(&mut staged, bytes, flags)
+            .map_err(|error| error.at(Stage::ControlSpawn))
+            .and_then(|mut process| process.execute(timeout));
         combine(outcome, staged.cleanup())
     }
 
@@ -596,6 +638,18 @@ mod script_transport {
     mod security_tests {
         use super::*;
         use serde_json::json;
+
+        #[test]
+        fn cleanup_failure_keeps_the_legacy_category_and_records_both_operations() {
+            let original = AgentError::Io(std::io::Error::from_raw_os_error(5)).at(Stage::ControlSpawn);
+            let cleanup = AgentError::Io(std::io::Error::from_raw_os_error(32)).at(Stage::ControlCleanup);
+            let error = combine::<()>(Err(original), Err(cleanup)).unwrap_err();
+
+            assert_eq!(error.kind(), "LocalError");
+            assert!(error.to_string().contains("private script cleanup failed"));
+            let stages: Vec<_> = error.diagnostics().iter().map(ToString::to_string).collect();
+            assert_eq!(stages, ["control_spawn:5", "control_cleanup:32"]);
+        }
 
         #[test]
         fn cleanup_preserves_a_directory_that_was_never_verified() {
@@ -881,6 +935,7 @@ $result|ConvertTo-Json -Compress"#,
 
         if expect_timeout {
             assert!(failure.to_string().contains("timed out"), "{failure}");
+            assert!(failure.diagnostics().iter().any(|stage| stage.to_string() == "control_timeout"));
         }
         let staged = std::fs::read_to_string(marker).expect("the inert child must publish its path before failing");
         assert_transport_artifacts_removed(&staged);

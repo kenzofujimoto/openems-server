@@ -2,7 +2,7 @@
 
 use crate::api::{ApiClient, platform_name};
 use crate::config::AgentConfig;
-use crate::error::{AgentError, Result};
+use crate::error::{AgentError, Result, Stage};
 use crate::hosts::{apply_hosts, clear_hosts};
 use crate::policy::{Assignment, validate_assignment};
 use crate::processes::{kill_process, list_processes, processes_to_kill};
@@ -144,10 +144,10 @@ pub fn enforce_at(
     log: &Logger,
     when: jiff::Timestamp,
 ) -> Result<Enforcement> {
-    let (_, apps) = assignment.blocked_lists()?;
-    let filter = assignment.web_filter()?;
+    let (_, apps) = assignment.blocked_lists().map_err(|error| error.at(Stage::PolicyValidation))?;
+    let filter = assignment.web_filter().map_err(|error| error.at(Stage::PolicyValidation))?;
     if filter.requires_monitoring() && !cfg.dns_filter {
-        return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()));
+        return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()).at(Stage::PolicyValidation));
     }
     let rules = filter.rules_at(when);
     let sites = rules.blocked().to_vec();
@@ -159,14 +159,20 @@ pub fn enforce_at(
         false
     } else if release || cfg.dns_filter {
         // In DNS mode the resolver enforces the rules; a hosts block would be a second source.
-        clear_hosts(&cfg.hosts_path)?
+        clear_hosts(&cfg.hosts_path).map_err(|error| error.at(Stage::Hosts))?
     } else {
-        apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })?
+        apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })
+            .map_err(|error| error.at(Stage::Hosts))?
     };
-    let killed = if apps.is_empty() { Vec::new() } else { processes_to_kill(&list_processes()?, &apps)? };
+    let killed = if apps.is_empty() {
+        Vec::new()
+    } else {
+        let running = list_processes().map_err(|error| error.at(Stage::ProcessEnumerate))?;
+        processes_to_kill(&running, &apps).map_err(|error| error.at(Stage::ProcessSelect))?
+    };
     for name in &killed {
         if !cfg.dry_run {
-            kill_process(name)?;
+            kill_process(name).map_err(|error| error.at(Stage::ProcessTerminate))?;
         }
         log(&format!("{}{name}", if cfg.dry_run { "[dry-run] would terminate " } else { "terminated " }));
     }
@@ -711,12 +717,15 @@ impl Runtime {
         let now = jiff::Timestamp::now();
         let result = assignment
             .web_filter()
+            .map_err(|error| error.at(Stage::PolicyValidation))
             .and_then(|rules| {
                 if rules.requires_monitoring() && !self.cfg.dns_filter {
-                    return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()));
+                    return Err(AgentError::Policy("web monitoring requires the DNS resolver".into())
+                        .at(Stage::PolicyValidation));
                 }
                 if !category_data_ready(&rules, self.blocked_domains.categories()) {
-                    return Err(AgentError::Policy("web action policy requires all referenced category data".into()));
+                    return Err(AgentError::Policy("web action policy requires all referenced category data".into())
+                        .at(Stage::PolicyValidation));
                 }
                 let body = assignment.body.clone().map_or_else(|| json!({}), serde_json::Value::Object);
                 let changed = self.controls.apply(&body, self.cfg.dry_run)?;
@@ -749,7 +758,7 @@ impl Runtime {
                 }
                 inner.hosts_state = current;
                 inner.cached = Some(outside);
-                self.save(&inner)?;
+                self.save(&inner).map_err(|error| error.at(Stage::EndpointState))?;
                 Ok(enforcement)
             });
         if result.is_ok() && self.cfg.dns_filter && !self.cfg.dry_run {
@@ -784,6 +793,7 @@ impl Runtime {
                 true
             }
             Err(error) => {
+                let version = assignment.version;
                 inner.pending = Some(Pending {
                     generation,
                     assignment,
@@ -795,6 +805,13 @@ impl Runtime {
                 self.session.set_protected(false);
                 self.publish_session();
                 (self.log)(&format!("policy enforcement failed ({})", error.kind()));
+                let stages = error.diagnostics().iter().map(ToString::to_string).collect::<Vec<_>>().join(",");
+                if !stages.is_empty() {
+                    (self.log)(&format!(
+                        "policy enforcement diagnostic version={version} category={} stages={stages}",
+                        error.kind()
+                    ));
+                }
                 false
             }
         }

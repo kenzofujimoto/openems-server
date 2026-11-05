@@ -1,6 +1,6 @@
 //! Native control orchestration and bounded offline reporting. An unavailable control is an error.
 
-use crate::error::{AgentError, Result};
+use crate::error::{AgentError, Result, Stage};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -96,12 +96,15 @@ impl Backend for Machine {
     fn apply(&self, body: &Value, state_path: &Path) -> ApplyResult {
         #[cfg(windows)]
         {
-            let usb = crate::usb::validate(body.get("usb_control"))?;
-            let apps = crate::applications::validate(body.get("app_control"))?;
-            let mut changed = events(crate::usb::reconcile(&usb, state_path)?.events);
+            let usb =
+                crate::usb::validate(body.get("usb_control")).map_err(|error| error.at(Stage::PolicyValidation))?;
+            let apps = crate::applications::validate(body.get("app_control"))
+                .map_err(|error| error.at(Stage::PolicyValidation))?;
+            let mut changed =
+                events(crate::usb::reconcile(&usb, state_path).map_err(|error| error.at(Stage::UsbReconcile))?.events);
             let applications = match crate::applications::reconcile(&apps, state_path) {
                 Ok(outcome) => outcome,
-                Err(error) => return Err(ApplyFailure { error, events: changed }),
+                Err(error) => return Err(ApplyFailure { error: error.at(Stage::AppReconcile), events: changed }),
             };
             changed.extend(events(applications.events));
             Ok(changed)
@@ -254,11 +257,12 @@ impl ControlManager {
         let changed = match result {
             Ok(changed) => changed,
             Err(failure) => {
-                self.record(failure.events)?;
-                return Err(failure.error);
+                let error = failure.error.at_if_missing(Stage::ControlApply);
+                self.record(failure.events).map_err(|persist| persist.at(Stage::ControlEvents).with_related(&error))?;
+                return Err(error);
             }
         };
-        self.record(changed.clone())?;
+        self.record(changed.clone()).map_err(|error| error.at(Stage::ControlEvents))?;
         Ok(changed)
     }
 
