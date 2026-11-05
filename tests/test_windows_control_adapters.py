@@ -22,6 +22,12 @@ POWERSHELL = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32/Windo
 REGISTRY = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions"
 INSTANCE = r"USBSTOR\DISK\fixture"
 IDENTITY = "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"
+APP_DIAGNOSTIC_STAGES = {
+    "app_request", "app_journal", "app_inventory", "app_wdac_query", "app_sample_discovery",
+    "app_wdac_generate", "app_wdac_apply", "app_wdac_verify", "app_wdac_remove", "app_firewall",
+    "app_execution_events",
+}
+PRIVATE_EXCEPTION = "synthetic-private-diagnostic-marker"
 pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell 5.1")]
 
 
@@ -60,7 +66,7 @@ $global:LASTEXITCODE=0
     return tmp_path
 
 
-def invoke_adapter(directory, kind, request, *, simulate_system=True):
+def invoke_adapter(directory, kind, request, *, simulate_system=True, mock_override=""):
     source = (ROOT / "deploy" / f"agent-{kind}.ps1").read_text(encoding="utf-8")
     assert source.count(IDENTITY) == 1, "Review the identity seam if the production guard changes"
     if simulate_system:
@@ -70,7 +76,7 @@ def invoke_adapter(directory, kind, request, *, simulate_system=True):
     source = source.replace("CiTool.exe", "Mock-CiTool.ps1")
     prefix = "$script:fixtureRoot='" + str(directory).replace("'", "''") + "'\n"
     script = directory / f"{kind}-test-copy.ps1"
-    script.write_text(prefix + MOCKS.read_text(encoding="utf-8") + "\n" + source, encoding="utf-8")
+    script.write_text(prefix + MOCKS.read_text(encoding="utf-8") + "\n" + mock_override + "\n" + source, encoding="utf-8")
     return subprocess.run(
         [str(POWERSHELL), "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script)],
         input=json.dumps(request), capture_output=True, text=True, encoding="utf-8", timeout=90, check=False,
@@ -101,6 +107,21 @@ def usb_request(directory, mode="apply", action="block"):
 def assert_success(result):
     assert result.returncode == 0, (result.stdout, result.stderr)
     return json.loads(result.stdout)
+
+
+def assert_app_error(result, category):
+    assert result.returncode == 1, (result.stdout, result.stderr)
+    response = json.loads(result.stdout)
+    assert response["error"] == category
+    assert response.keys() <= {"error", "diagnostic"}, response
+    if "diagnostic" in response:
+        diagnostic = response["diagnostic"]
+        assert isinstance(diagnostic, dict), diagnostic
+        assert diagnostic.keys() == {"stage", "os_code"}, diagnostic
+        assert diagnostic["stage"] in APP_DIAGNOSTIC_STAGES, diagnostic
+        code = diagnostic["os_code"]
+        assert code is None or (type(code) is int and -(2**31) <= code < 2**31), diagnostic
+    return response
 
 
 def test_mocked_wdac_success_and_cleanup_preserve_the_json_contract(tmp_path):
@@ -135,8 +156,109 @@ def test_configci_console_output_does_not_corrupt_adapter_json(tmp_path, rule_ki
 def test_configci_failure_restores_console_output_for_the_error_json(tmp_path):
     directory = fixture_environment(tmp_path, scenario="console_failure")
     result = invoke_adapter(directory, "applications", wdac_request(directory))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
+
+
+APP_FAILURE_MOCKS = {
+    "generate": r"""
+function New-CIPolicyRule {
+    [CmdletBinding()] param([string]$FilePathRule,[switch]$Deny)
+    [Console]::Out.WriteLine('__PRIVATE__')
+    Trace-Mock 'InjectedAppFailure' 'generate'
+    throw __EXCEPTION__
+}
+""",
+    "firewall": r"""
+$script:injectedFirewallReads = 0
+function Get-NetFirewallRule {
+    [CmdletBinding()] param([string]$PolicyStore,[string]$Name)
+    $script:injectedFirewallReads++
+    if ($script:injectedFirewallReads -eq 1) { return $null }
+    Trace-Mock 'InjectedAppFailure' 'firewall'
+    throw __EXCEPTION__
+}
+function Get-NetFirewallApplicationFilter { throw 'Unexpected application filter query.' }
+""",
+    "journal": r"""
+function Move-Item {
+    [CmdletBinding()] param([string]$LiteralPath,[string]$Destination,[switch]$Force)
+    Assert-FixturePath $LiteralPath
+    Assert-FixturePath $Destination
+    Trace-Mock 'InjectedAppFailure' 'journal'
+    throw __EXCEPTION__
+}
+""",
+    "sample": r"""
+$script:injectedSignatureReads = 0
+function Get-AuthenticodeSignature {
+    [CmdletBinding()] param([string]$LiteralPath)
+    Assert-FixturePath $LiteralPath
+    $script:injectedSignatureReads++
+    if ($script:injectedSignatureReads -eq 1) {
+        return [pscustomobject]@{Status='Valid';SignatureType='Authenticode';
+            SignerCertificate=[pscustomobject]@{Subject='CN=Fixture Publisher'}}
+    }
+    Trace-Mock 'InjectedAppFailure' 'sample'
+    throw __EXCEPTION__
+}
+""",
+}
+
+
+@pytest.mark.parametrize("boundary,exception,stage,code", [
+    ("generate", "[ComponentModel.Win32Exception]::new(5, '__PRIVATE__')", "app_wdac_generate", 5),
+    ("firewall", "[ComponentModel.Win32Exception]::new(5, '__PRIVATE__')", "app_firewall", 5),
+    # HRESULT_FROM_WIN32(ERROR_SHARING_VIOLATION), represented as a signed .NET Int32.
+    ("journal", "[IO.IOException]::new('__PRIVATE__', -2147024864)", "app_journal", 32),
+    ("sample", "[InvalidOperationException]::new('__PRIVATE__ Win32 5')", "app_sample_discovery", None),
+    # E_FAIL is an HRESULT without a Win32 facility.
+    ("generate", "[Runtime.InteropServices.COMException]::new('__PRIVATE__', -2147467259)",
+     "app_wdac_generate", None),
+])
+def test_application_adapter_emits_only_closed_stage_and_observed_system_code(tmp_path, boundary, exception, stage, code):
+    directory = fixture_environment(tmp_path)
+    request = wdac_request(directory, "publisher" if boundary == "sample" else "path")
+    if boundary == "firewall":
+        request["policy"]["execution_rules"] = []
+        request["policy"]["network_blocked"] = [str(directory / "fixture.exe")]
+    override = APP_FAILURE_MOCKS[boundary].replace("__EXCEPTION__", exception).replace("__PRIVATE__", PRIVATE_EXCEPTION)
+
+    result = invoke_adapter(directory, "applications", request, mock_override=override)
+
+    assert {"name": "InjectedAppFailure", "detail": boundary} in calls(directory)
+    assert PRIVATE_EXCEPTION not in result.stdout + result.stderr
+    assert str(directory) not in result.stdout + result.stderr
+    response = assert_app_error(result, "control_failed")
+    assert response == {"error": "control_failed", "diagnostic": {"stage": stage, "os_code": code}}
+    assert not (directory / "active-policy.json").exists()
+
+
+def test_application_adapter_preserves_restart_required_with_verify_diagnostic(tmp_path):
+    directory = fixture_environment(tmp_path)
+    tool = directory / "systemroot/System32/Mock-CiTool.ps1"
+    mock = tool.read_text(encoding="utf-8")
+    assert mock.count("IsEnforced=$true") == 1
+    tool.write_text(mock.replace("IsEnforced=$true", "IsEnforced=$false"), encoding="utf-8")
+
+    result = invoke_adapter(directory, "applications", wdac_request(directory))
+
+    assert assert_app_error(result, "restart_required") == {
+        "error": "restart_required", "diagnostic": {"stage": "app_wdac_verify", "os_code": None},
+    }
+    assert json.loads((directory / "active-policy.json").read_text(encoding="utf-8-sig"))["IsEnforced"] is False
+
+
+def test_application_adapter_preserves_unsupported_without_inventing_system_code(tmp_path):
+    directory = fixture_environment(tmp_path)
+    (directory / "systemroot/System32/Mock-CiTool.ps1").unlink()
+    request = wdac_request(directory)
+
+    result = invoke_adapter(directory, "applications", request)
+
+    response = assert_app_error(result, "unsupported")
+    assert response.get("diagnostic", {}).get("stage") in APP_DIAGNOSTIC_STAGES, response
+    assert response["diagnostic"]["os_code"] is None
+    assert not Path(request["state_path"]).exists()
 
 
 @pytest.mark.parametrize("kind", ["publisher", "name"])
@@ -195,8 +317,7 @@ def test_wdac_driver_aliases_still_resolve_to_the_exact_private_copy(tmp_path, s
 def test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
     result = invoke_adapter(directory, "applications", wdac_request(directory, "publisher"))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
     assert not (directory / "active-policy.json").exists()
     assert not any(call["name"] in {"New-CIPolicyRule", "Merge-CIPolicy"} for call in calls(directory))
 
@@ -288,8 +409,7 @@ def test_wdac_single_hash_uses_fresh_empty_system_private_catalogs_without_chang
 def test_wdac_hash_still_refuses_a_failed_signature_query_before_catalog_generation(tmp_path):
     directory = fixture_environment(tmp_path, scenario="signature_failure")
     result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
     assert any(call["name"] == "Get-AuthenticodeSignature" for call in calls(directory))
     assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
     assert not (directory / "active-policy.json").exists()
@@ -556,8 +676,7 @@ def test_wdac_dual_scenario_rejects_invalid_or_non_equivalent_input_without_rewr
     generated = dual_scenario_policy(change)
     directory = fixture_environment(tmp_path, generated_policy=generated)
     result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
     generated_call = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicy")
     assert Path(generated_call["output"]).read_bytes() == generated
     assert not any(call["name"] in {"Merge-CIPolicy", "ConvertFrom-CIPolicy"} for call in calls(directory))
@@ -572,8 +691,7 @@ def test_wdac_dual_scenario_rejects_invalid_or_non_equivalent_input_without_rewr
 def test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
     result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
     assert not (directory / "active-policy.json").exists()
     assert not any(call["name"] == "Merge-CIPolicy" for call in calls(directory))
 
@@ -670,8 +788,11 @@ def test_production_system_guard_still_rejects_unprivileged_apply(tmp_path, kind
     directory = fixture_environment(tmp_path)
     request = usb_request(directory) if kind == "usb" else wdac_request(directory)
     result = invoke_adapter(directory, kind, request, simulate_system=False)
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    if kind == "applications":
+        assert_app_error(result, "control_failed")
+    else:
+        assert result.returncode == 1
+        assert json.loads(result.stdout) == {"error": "control_failed"}
     assert not Path(request["state_path"]).exists()
     assert calls(directory) == []
 
@@ -756,7 +877,7 @@ def test_present_only_rules_keep_the_present_sample_and_strict_rules_still_fail(
     request = wdac_request(strict, "publisher")
     request["policy"]["execution_rules"][0]["sample_path"] = str(strict / "absent.exe")
     result = invoke_adapter(strict, "applications", request)
-    assert result.returncode == 1 and json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
 
 
 def test_present_only_rules_are_rechecked_hourly_so_later_installs_get_denied(tmp_path):
@@ -791,4 +912,4 @@ def test_catalog_rules_are_skipped_where_windows_has_no_application_control(tmp_
     strict = fixture_environment(tmp_path / "strict-home")
     (strict / "systemroot/System32/Mock-CiTool.ps1").unlink()
     refused = invoke_adapter(strict, "applications", wdac_request(strict, "publisher"))
-    assert refused.returncode == 1 and json.loads(refused.stdout) == {"error": "unsupported"}
+    assert_app_error(refused, "unsupported")

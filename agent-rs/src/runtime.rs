@@ -1074,5 +1074,105 @@ mod tests {
         let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();
         assert!(!board.protected);
     }
+
+    struct DiagnosticControls(fn() -> crate::controls::ApplyResult);
+
+    impl crate::controls::Backend for DiagnosticControls {
+        fn apply(&self, _: &serde_json::Value, _: &std::path::Path) -> crate::controls::ApplyResult {
+            (self.0)()
+        }
+
+        fn inventory(&self, _: &std::path::Path) -> Result<crate::controls::Inventory> {
+            unreachable!()
+        }
+
+        fn capabilities(&self) -> Vec<String> {
+            Vec::new()
+        }
+    }
+
+    fn observe_failed_enforcement(backend: DiagnosticControls, block_event_write: bool, category: &str) -> String {
+        let (dir, mut runtime) = network_runtime();
+        let logs = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&logs);
+        runtime.log = Arc::new(move |line| captured.lock().unwrap().push(line.to_owned()));
+        runtime.controls = crate::controls::ControlManager::new(&runtime.cfg.state_path, Arc::new(backend)).unwrap();
+        if block_event_write {
+            std::fs::create_dir(dir.path().join("control-pending.json")).unwrap();
+        }
+        assert!(!runtime.enforce_observed(office_observation(), Instant::now()));
+        let inner = runtime.lock();
+        let outcome = &inner.pending.as_ref().unwrap().outcome;
+        assert!(matches!(outcome, Outcome::Failed(message) if message == &format!("enforcement failed: {category}")));
+        assert!(runtime.blocked_domains.contains("example.org"));
+        let logs = logs.lock().unwrap();
+        assert!(logs.iter().any(|line| line == &format!("policy enforcement failed ({category})")));
+        let log =
+            logs.iter().find(|line| line.starts_with("policy enforcement diagnostic ")).expect("safe diagnostic log");
+        assert!(log.contains("version=1"));
+        assert!(log.contains(&format!("category={category}")));
+        assert!(!log.contains("private-marker"));
+        log.clone()
+    }
+
+    #[test]
+    fn native_control_io_error_preserves_its_code_locally_and_keeps_the_ack_category() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| Err(AgentError::Io(std::io::Error::from_raw_os_error(5)).into())),
+            false,
+            "OSError",
+        );
+        assert!(log.contains("control_apply:5"));
+    }
+
+    #[test]
+    fn event_write_error_keeps_precedence_and_locally_identifies_both_failures() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| {
+                Err(crate::controls::ApplyFailure {
+                    error: std::io::Error::from_raw_os_error(5).into(),
+                    events: vec![crate::controls::ControlEvent {
+                        at: "2026-11-05T00:00:00Z".into(),
+                        kind: "usb_block".into(),
+                        target: "private-marker".into(),
+                        rule_id: "policy".into(),
+                    }],
+                })
+            }),
+            true,
+            "OSError",
+        );
+        assert!(log.contains("control_events"));
+        assert!(log.contains("control_apply:5"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn trusted_control_response_adds_only_an_allowlisted_stage_and_native_code() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| {
+                const SCRIPT: &str = r#"[Console]::In.ReadToEnd()|Out-Null; [Console]::Error.WriteLine('private-marker'); '{"error":"restart_required","diagnostic":{"stage":"app_wdac_verify","os_code":5,"ignored":"private-marker"}}'; exit 1"#;
+                crate::windows_control::run(SCRIPT, &json!({})).map(|_| Vec::new()).map_err(Into::into)
+            }),
+            false,
+            "LocalError",
+        );
+        assert!(log.contains("app_wdac_verify:5"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn unknown_control_stage_is_discarded_with_its_numeric_code() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| {
+                const SCRIPT: &str = r#"[Console]::In.ReadToEnd()|Out-Null; '{"error":"private-marker","diagnostic":{"stage":"private-marker","os_code":987654}}'; exit 1"#;
+                crate::windows_control::run(SCRIPT, &json!({})).map(|_| Vec::new()).map_err(Into::into)
+            }),
+            false,
+            "LocalError",
+        );
+        assert!(log.contains("control_response"));
+        assert!(!log.contains("987654"));
+    }
     include!("runtime_action_tests.rs");
 }
