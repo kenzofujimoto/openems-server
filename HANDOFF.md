@@ -1,5 +1,15 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 05/11/2026. Integração local do catálogo aprovada
+
+Passaram 336 testes com PostgreSQL 16.15 e Redis 7.4.11 descartáveis, incluindo o upgrade da tabela de eventos. Dois workers HTTP usaram os mesmos stores. No Edge headless, o operador de teste publicou v1 no painel sem regra gerada. O inventário de um endpoint sintético recebido pelo outro worker gerou v2 com uma regra de hash opcional. O Redis entregou a atualização a ambos os endpoints. O ACK sintético v2, a entrada de auditoria e a leitura da nova versão no segundo painel passaram. [Evidência](validation/catalog-live-integration-2026-11-05.json).
+
+O ensaio inicial esperava 409 ao repetir o mesmo horário. Corrigido conforme os stores existentes. Inventário estritamente mais antigo recebe 409. Repetições iguais ou mais recentes com as mesmas identidades mantiveram v2 e não geraram nova notificação. Workers e contêineres de teste encerrados.
+
+Os dados de cobertura da suíte Windows e dos contratos com banco real somam 96,94% em 33 módulos app/agent, todos acima dos limiares locais. Os testes com stores reais cobriram 55 dos 57 casos antes pulados; os dois restantes exigem instalação de serviço/MSI. O CI combinado entre plataformas e o USB físico continuam pendentes.
+
+O aceite VMware segue aprovado no escopo da rodada 15. Três OSError e dois LocalError guardam apenas a categoria; as operações de origem continuam desconhecidas. O [plano de diagnóstico](docs/catalog-local-enforcement-diagnostics-plan.md) propõe seis arquivos com TDD para registrar etapas e códigos seguros. Aguardar aprovação explícita antes de alterar código. Os checkpoints abaixo são históricos.
+
 ## Estado vigente — 05/11/2026. Aceite do catálogo aprovado no laboratório VMware
 
 A rodada 15, fonte 1bf393a e run 7820bffae47c42e9a2598f81acc88986, passou nos oito critérios. O verificador do host confirmou o recibo e todos os efeitos. App ausente, bloqueio e liberação de rede, encerramento seletivo do processo, recusa WDAC do original e do renomeado, retirada da política quando todas as amostras faltam, hora real, liberação e remoção normal foram observados. [Relatório original](validation/vm-catalog-1bf393a-result-2026-11-05.json) e [revisão independente](validation/catalog-vm-1bf393a-acceptance-review-2026-11-05.json).
