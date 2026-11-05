@@ -269,11 +269,159 @@ def report_for(manifest):
                     "owned_firewall_rules": 0, "own_policy_present": False, "fixture_registry_present": False,
                     "foreign_before": ["foreign-policy"], "foreign_after": ["foreign-policy"]},
     }
-    return {"run_id": manifest["run_id"], "source_revision": manifest["source_revision"],
+    report = {"run_id": manifest["run_id"], "source_revision": manifest["source_revision"],
             "status": "passed", "passed": True, "error": None, "cleanup_errors": [],
             "package_receipt": {"source_revision": manifest["source_revision"], "packages": manifest["packages"],
                                 "manifest_sha256": manifest["_manifest_sha256"]},
             "checks": [{"name": name, "status": "passed", "evidence": evidence[name]} for name in CHECKS]}
+    if manifest.get("evidence_format") == 2:
+        add_v2_evidence(report, manifest)
+    return report
+
+
+def firewall_rule(name="foreign-rule", *, enabled="True", direction="Inbound", action="Allow"):
+    return {"name": name, "enabled": enabled, "direction": direction, "action": action}
+
+
+def firewall_snapshot(rules=None, *, at_utc="2026-11-02T15:59:58Z"):
+    rules = [firewall_rule()] if rules is None else deepcopy(rules)
+    return {"status": "complete", "at_utc": at_utc, "rules": rules, "error": None,
+            "truncated": False, "observed_count": len(rules)}
+
+
+def add_v2_evidence(report, manifest):
+    """Supply observed values, never let a passed flag replace raw observations."""
+    before = firewall_snapshot()
+    after = firewall_snapshot(at_utc="2026-11-02T17:01:00Z")
+    report.update(evidence_format=2, firewall_before=deepcopy(before), ack_observations=[
+        {key: assignment[key] for key in ("version", "digest")} |
+        {"success": True, "at_utc": "2026-11-02T16:00:00Z", "error_kind": None}
+        for assignment in manifest["policies"].values()
+    ])
+    cleanup = next(row["evidence"] for row in report["checks"] if row["name"] == "cleanup")
+    cleanup.update(collection_status="complete", collection_errors=[], firewall={
+        "before": before, "after": after, "differences": [], "preserved": True,
+    })
+    return report
+
+
+def direct_v2_manifest():
+    return {
+        "run_id": RUN_ID, "source_revision": REVISION, "_manifest_sha256": "d" * 64,
+        "evidence_format": 2, "guest_work_directory": "C:\\openems-catalog-" + RUN_ID,
+        "fixtures": {"a": {"file": "a.exe"}},
+        "packages": {"openems-agent.msi": {"sha256": "e" * 64, "bytes": 1}},
+        "policies": {name: {"version": index + 1, "digest": "c" * 64}
+                     for index, name in enumerate(CASES)},
+    }
+
+
+def v2_mutation(report, change):
+    report = deepcopy(report)
+    for apply in (mutate_v2_snapshot, mutate_v2_firewall, mutate_v2_metadata):
+        if apply(report, change):
+            return report
+    raise AssertionError("Unknown v2 mutation: " + change)
+
+
+def mutate_v2_snapshot(report, change):
+    cleanup = report["checks"][-1]["evidence"]
+    firewall = cleanup["firewall"]
+    if change == "missing_firewall":
+        del cleanup["firewall"]
+    elif change == "missing_baseline":
+        del report["firewall_before"]
+    elif change == "baseline_replaced":
+        firewall["before"]["rules"][0]["name"] = "unbound-baseline"
+    elif change == "missing_after":
+        del firewall["after"]
+    elif change == "query_failed":
+        firewall["after"].update(status="failed", error="firewall_query_failed")
+    elif change == "truncated":
+        firewall["after"].update(status="truncated", truncated=True, observed_count=2)
+    elif change == "truncated_flag":
+        firewall["after"]["truncated"] = True
+    elif change == "missing_rule_count":
+        del firewall["after"]["observed_count"]
+    elif change == "wrong_rule_count":
+        firewall["after"]["observed_count"] += 1
+    elif change == "boolean_rule_count":
+        firewall["after"]["observed_count"] = True
+    elif change == "invalid_timestamp":
+        firewall["after"]["at_utc"] = "not-a-timestamp"
+    elif change == "error_on_complete":
+        firewall["after"]["error"] = "firewall_query_failed"
+    else:
+        return False
+    return True
+
+
+def mutate_v2_firewall(report, change):
+    firewall = report["checks"][-1]["evidence"]["firewall"]
+    if change == "removed_rule":
+        firewall["after"]["rules"] = []
+        firewall["after"]["observed_count"] = 0
+    elif change == "changed_enabled":
+        firewall["after"]["rules"][0]["enabled"] = "False"
+    elif change == "changed_direction":
+        firewall["after"]["rules"][0]["direction"] = "Outbound"
+    elif change == "changed_action":
+        firewall["after"]["rules"][0]["action"] = "Block"
+    elif change == "duplicate_after":
+        firewall["after"]["rules"] *= 2
+        firewall["after"]["observed_count"] = 2
+    elif change == "false_preserved":
+        firewall["preserved"] = False
+    elif change == "coerced_preserved":
+        firewall["preserved"] = 1
+    elif change == "fabricated_difference":
+        firewall["differences"] = [{"name": "foreign-rule", "kind": "changed", "fields": ["enabled"]}]
+    elif change == "unrecorded_addition":
+        firewall["after"]["rules"].append(firewall_rule("new-rule"))
+        firewall["after"]["observed_count"] += 1
+    elif change == "invalid_enum":
+        firewall["after"]["rules"][0]["enabled"] = 1
+    elif change == "empty_rule_name":
+        firewall["after"]["rules"][0]["name"] = ""
+    else:
+        return False
+    return True
+
+
+def mutate_v2_metadata(report, change):
+    cleanup = report["checks"][-1]["evidence"]
+    if change == "partial_cleanup":
+        cleanup["collection_status"] = "partial"
+    elif change == "query_error_in_cleanup":
+        cleanup["collection_errors"] = [{"field": "service_present", "error": "query_failed"}]
+    elif change == "missing_cleanup_status":
+        del cleanup["collection_status"]
+    elif change == "missing_acks":
+        del report["ack_observations"]
+    elif change == "foreign_ack_identity":
+        report["ack_observations"][0]["digest"] = "f" * 64
+    elif change == "ack_raw_detail":
+        report["ack_observations"][0]["error"] = "unexpected raw diagnostic text"
+    elif change == "ack_invalid_timestamp":
+        report["ack_observations"][0]["at_utc"] = "not-a-timestamp"
+    elif change == "missing_version":
+        del report["evidence_format"]
+    elif change == "downgrade":
+        report["evidence_format"] = 1
+    else:
+        return False
+    return True
+
+
+V2_INVALID = (
+    "missing_firewall", "missing_baseline", "baseline_replaced", "missing_after", "query_failed",
+    "truncated", "truncated_flag", "missing_rule_count", "wrong_rule_count", "boolean_rule_count",
+    "invalid_timestamp", "error_on_complete", "removed_rule", "changed_enabled", "changed_direction",
+    "changed_action", "duplicate_after", "false_preserved", "coerced_preserved", "fabricated_difference",
+    "unrecorded_addition", "invalid_enum", "empty_rule_name", "partial_cleanup", "query_error_in_cleanup",
+    "missing_cleanup_status", "missing_acks", "foreign_ack_identity", "ack_raw_detail",
+    "ack_invalid_timestamp", "missing_version", "downgrade",
+)
 
 
 REPORT_MUTATIONS = (
@@ -383,15 +531,78 @@ def test_host_verifier_refuses_boolean_exit_codes_coerced_flags_and_future_check
     assert bool(summary["errors"]) is (change != "none"), summary
 
 
+def test_new_catalog_packages_require_evidence_v2_without_relabelling_legacy(builder, package):
+    output, manifest = package()
+    assert manifest.get("evidence_format") == 2, "new media must require persisted cleanup evidence"
+    assert builder.verify_package(output)["evidence_format"] == 2
+
+
+@pytest.mark.parametrize("change", V2_INVALID)
+def test_v2_host_recomputes_firewall_and_refuses_incomplete_cleanup_despite_passed_flags(builder, change):
+    manifest = direct_v2_manifest()
+    report = v2_mutation(report_for(manifest), change)
+    summary = builder.summarize_report(report, manifest)
+    assert summary["passed"] is False and summary["errors"], summary
+
+
+@pytest.mark.parametrize("kind", ["unchanged", "empty", "added", "case_only"])
+def test_v2_host_preserves_the_original_firewall_guard_semantics(builder, kind):
+    manifest = direct_v2_manifest()
+    report = report_for(manifest)
+    firewall = report["checks"][-1]["evidence"]["firewall"]
+    if kind == "empty":
+        before, after = firewall_snapshot([]), firewall_snapshot([], at_utc="2026-11-02T17:01:00Z")
+        report["firewall_before"] = deepcopy(before)
+        firewall.update(before=before, after=after)
+    elif kind == "added":
+        firewall["after"]["rules"].append(firewall_rule("new-rule"))
+        firewall["after"]["observed_count"] += 1
+        firewall["differences"] = [{"name": "new-rule", "kind": "added", "fields": []}]
+    elif kind == "case_only":
+        firewall["after"]["rules"][0]["name"] = "FOREIGN-RULE"
+    summary = builder.summarize_report(report, manifest)
+    assert summary["passed"] is True and summary["errors"] == [], summary
+
+
+@pytest.mark.parametrize("error_kind", ["OSError", "LocalError", "unknown"])
+def test_v2_host_exposes_negative_ack_observations_without_replacing_the_eight_effects(builder, error_kind):
+    manifest = direct_v2_manifest()
+    report = report_for(manifest)
+    failed = {**report["ack_observations"][5], "success": False, "error_kind": error_kind}
+    report["ack_observations"].insert(6, failed)
+    summary = builder.summarize_report(report, manifest)
+    assert summary["passed"] is True and summary["local_enforcement_failures"] == [failed], summary
+
+
+def test_v2_failed_flags_do_not_hide_the_missing_firewall_evidence(builder):
+    manifest = direct_v2_manifest()
+    report = v2_mutation(report_for(manifest), "missing_firewall")
+    report.update(status="failed", passed=False)
+    summary = builder.summarize_report(report, manifest)
+    assert not summary["passed"] and any("firewall" in error.lower() for error in summary["errors"]), summary
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_v1_evidence_keeps_its_original_contract_without_v2_claims(builder, explicit):
+    manifest = direct_v2_manifest()
+    manifest.pop("evidence_format")
+    report = report_for(manifest)
+    if explicit:
+        manifest["evidence_format"] = 1
+        report["evidence_format"] = 1
+    summary = builder.summarize_report(report, manifest)
+    assert summary["passed"] is True, summary
+
+
 PURE_DRIVER = r"""param([string]$Source,[string]$DataPath,[string]$ExpressionPath,[string]$Names)
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
 $tokens=$null;$parseErrors=$null
 $tree=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$parseErrors)
 if($parseErrors.Count) { throw 'Catalog harness did not parse.' }
-foreach($name in (@('Field') + @($Names -split ','))) {
+foreach($name in (@('Field','Compare-FirewallSnapshots') + @($Names -split ',') | Select-Object -Unique)) {
     $matches=@($tree.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true))
-    if($name -eq 'Field' -and $matches.Count -eq 0) { continue }
+    if($name -in @('Field','Compare-FirewallSnapshots') -and $matches.Count -eq 0 -and $name -notin @($Names -split ',')) { continue }
     if($matches.Count -ne 1) { throw ('Expected one pure helper: '+$name) }
     # Only the selected definition is loaded. Never execute the harness top-level.
     . ([scriptblock]::Create($matches[0].Extent.Text))
@@ -409,6 +620,10 @@ function New-NetFirewallRule { $script:writeAttempts++;throw 'Forbidden host fir
 function Set-NetFirewallRule { $script:writeAttempts++;throw 'Forbidden host firewall' }
 function Remove-NetFirewallRule { $script:writeAttempts++;throw 'Forbidden host firewall' }
 function Get-CimInstance { throw 'A pure predicate must use its observation, not inspect this host.' }
+function global:Get-NetFirewallRule { throw 'Forbidden host endpoint query: firewall' }
+function global:Get-Service { throw 'Forbidden host endpoint query: service' }
+function global:Get-ScheduledTask { throw 'Forbidden host endpoint query: task' }
+function global:Get-DnsClientNrptRule { throw 'Forbidden host endpoint query: NRPT' }
 function Start-Sleep { throw 'Unit tests must not wait for a real acceptance interval.' }
 $fixtureData=Get-Content -LiteralPath $DataPath -Raw | ConvertFrom-Json
 $script:deadline=$null
@@ -440,6 +655,278 @@ def pure(tmp_path, functions, expression, data):
     observed = json.loads(result.stdout.lstrip("\ufeff"))
     assert observed["engine"] == 5 and observed["writes"] == 0, observed
     return observed
+
+
+def isolated(tmp_path, functions, expression, data, commands=()):
+    # Check actual selected helper bodies before invocation; every endpoint query
+    # has a mock in the expression. Loading the harness top-level is forbidden.
+    allowed = sorted(set(functions) | set(commands) | {
+        "Field", "Where-Object", "Select-Object", "ForEach-Object", "Sort-Object", "ConvertTo-Json",
+        "ConvertFrom-Json", "Compare-FirewallSnapshots", "Add-Member", "Write-Output",
+    })
+    guard = r"""
+$safeCommands=__ALLOWED__
+$selectedFunctions=@($tree.FindAll({param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -in @($Names -split ',')
+},$true))
+foreach($definition in $selectedFunctions){
+    $nested=@($definition.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst]},$true) | ForEach-Object Name)
+    foreach($command in @($definition.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))){
+        if($command.GetCommandName() -notin ($safeCommands+$nested)){throw 'Unmocked command in isolated helper.'}
+    }
+    foreach($method in @($definition.FindAll({param($node) $node -is [Management.Automation.Language.InvokeMemberExpressionAst]},$true))){
+        if($method.Member.Value -notin @('ToString','Contains','ContainsKey','Add','GetEnumerator','GetType','Equals','Parse','ToUniversalTime','ToLowerInvariant')){
+            throw 'Unexpected method in isolated helper.'
+        }
+    }
+}
+"""
+    guard = guard.replace("__ALLOWED__", "@(" + ",".join("'" + name + "'" for name in allowed) + ")")
+    return pure(tmp_path, functions, "$global:catalogTestData=$fixtureData\n" + guard + expression, data)
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("change", [
+    "missing_firewall", "baseline_replaced", "query_failed", "truncated", "boolean_rule_count",
+    "removed_rule", "changed_enabled", "duplicate_after", "fabricated_difference", "partial_cleanup",
+    "missing_acks", "foreign_ack_identity", "downgrade",
+])
+def test_v2_guest_rejects_unobserved_firewall_and_cleanup_despite_passed_flags(tmp_path, change):
+    manifest = direct_v2_manifest()
+    report = v2_mutation(report_for(manifest), change)
+    observed = pure(tmp_path, ["Assert-DeniedExecution", "Assert-HourlyEvidence", "Assert-CatalogEvidence"],
+                    "Assert-CatalogEvidence $fixtureData.report $fixtureData.manifest",
+                    {"report": report, "manifest": manifest})
+    assert observed["accepted"] is False, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("kind", ["empty", "owned_filtered", "failed", "truncated"])
+def test_firewall_snapshot_records_completeness_and_never_coerces_query_failure_to_empty(tmp_path, kind):
+    native = [{"Name": "rule-" + str(index), "Enabled": "True", "Direction": "Inbound", "Action": "Allow", "Group": ""}
+              for index in range(3 if kind == "truncated" else 1)]
+    if kind == "empty":
+        native = []
+    elif kind == "owned_filtered":
+        native.append({"Name": "own-rule", "Enabled": "False", "Direction": "Outbound",
+                       "Action": "Block", "Group": "openems application control"})
+    expression = r"""
+$applicationGroup='openems application control'
+function global:Get-NetFirewallRule {
+    if($global:catalogTestData.kind -ceq 'failed'){throw 'synthetic-sensitive-diagnostic'}
+    return @($global:catalogTestData.native)
+}
+$snapshot=Capture-FirewallSnapshot 2
+if($fixtureData.kind -ceq 'failed'){
+    if($snapshot.status -cne 'failed' -or -not $snapshot.error -or $snapshot.error -like '*sensitive*'){
+        throw 'A failed query must be explicit and sanitized.'
+    }
+}elseif($fixtureData.kind -ceq 'truncated'){
+    if($snapshot.status -cne 'truncated' -or $snapshot.truncated -ne $true -or
+        $snapshot.observed_count -ne 3 -or @($snapshot.rules).Count -ne 2){throw 'Truncation was hidden.'}
+}else{
+    if($snapshot.status -cne 'complete' -or $snapshot.truncated -ne $false -or $null -ne $snapshot.error -or
+        $snapshot.observed_count -ne $fixtureData.expected){throw 'Snapshot completeness changed.'}
+    if(@($snapshot.rules).Count -ne $fixtureData.expected){throw 'Owned rule or empty-query handling changed.'}
+    if($fixtureData.expected -gt 0 -and ($snapshot.rules[0].enabled -cne 'True' -or
+        $snapshot.rules[0].direction -cne 'Inbound' -or $snapshot.rules[0].action -cne 'Allow')){
+        throw 'CIM enum values did not retain canonical scalar meaning.'
+    }
+}
+$null=[DateTimeOffset]::Parse($snapshot.at_utc)
+"""
+    observed = isolated(tmp_path, ["Capture-FirewallSnapshot"], expression,
+                        {"kind": kind, "native": native, "expected": 0 if kind == "empty" else 1},
+                        ["Get-NetFirewallRule"])
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("error,expected", [
+    ("enforcement failed: OSError", "OSError"),
+    ("enforcement failed: LocalError", "LocalError"),
+    (None, "unknown"),
+    ("enforcement failed: token=synthetic-sensitive-marker", "unknown"),
+])
+def test_negative_ack_retains_safe_category_and_exact_identity_without_raw_text(tmp_path, error, expected):
+    assignment = {"version": 6, "digest": "c" * 64}
+    expression = r"""
+$manifest=$fixtureData.manifest
+$row=Ack-Observation $fixtureData.upload '2026-11-02T16:00:00Z'
+if($row.version -ne 6 -or $row.digest -cne $fixtureData.upload.digest -or $row.success -ne $false -or
+    $row.at_utc -cne '2026-11-02T16:00:00Z' -or $row.error_kind -cne $fixtureData.expected){
+    throw 'ACK identity, failure or safe category was lost.'
+}
+$serialized=$row|ConvertTo-Json -Compress
+if($serialized -like '*synthetic-sensitive-marker*' -or @($row.Keys).Count -ne 5){
+    throw 'An ACK leaked raw diagnostic fields.'
+}
+"""
+    observed = isolated(tmp_path, ["Ack-Observation"], expression, {
+        "manifest": direct_v2_manifest(),
+        "upload": {**assignment, "success": False, "error": error}, "expected": expected,
+    })
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("firewall_changed,query_failed", [(True, False), (False, True)])
+def test_cleanup_collects_other_fields_even_when_firewall_or_service_query_fails(tmp_path, firewall_changed, query_failed):
+    before = firewall_snapshot()
+    after = firewall_snapshot(at_utc="2026-11-02T17:01:00Z")
+    if firewall_changed:
+        after["rules"][0]["enabled"] = "False"
+    expression = r"""
+function global:Capture-FirewallSnapshot {return $global:catalogTestData.after}
+function global:Get-Service {if($global:catalogTestData.query_failed){throw 'synthetic-sensitive-diagnostic'};return $null}
+function global:Get-ScheduledTask {return @()}
+function global:Get-DnsClientNrptRule {return @()}
+function global:Owned-FirewallRules {return @()}
+function global:Own-Policy {return $null}
+function global:Foreign-PolicyIds {return @('foreign-policy')}
+function global:Test-Path {return $false}
+$cleanup=Collect-CleanupEvidence $fixtureData.before 0 @('foreign-policy') @()
+if($cleanup.msi_exit -ne 0 -or $cleanup.watchdog_present -ne $false -or $cleanup.nrpt_count -ne 0 -or
+    $cleanup.owned_firewall_rules -ne 0 -or $cleanup.own_policy_present -ne $false -or
+    $cleanup.fixture_registry_present -ne $false -or @($cleanup.foreign_after).Count -ne 1){
+    throw 'A failed check suppressed independent cleanup observations.'
+}
+if($fixtureData.query_failed){
+    if($cleanup.collection_status -cne 'partial' -or $null -ne $cleanup.service_present -or
+        @($cleanup.collection_errors | Where-Object field -EQ 'service_present').Count -ne 1){
+        throw 'A failed query masqueraded as an absent service.'
+    }
+    if(($cleanup|ConvertTo-Json -Depth 12) -like '*sensitive*'){throw 'Raw cleanup error leaked.'}
+}else{
+    if($cleanup.collection_status -cne 'complete' -or @($cleanup.collection_errors).Count -ne 0 -or
+        $cleanup.firewall.preserved -ne $false -or @($cleanup.firewall.differences).Count -ne 1){
+        throw 'Firewall drift disappeared or prevented complete cleanup evidence.'
+    }
+}
+"""
+    observed = isolated(tmp_path, ["Compare-FirewallSnapshots", "Collect-CleanupEvidence"], expression,
+                        {"before": before, "after": after, "query_failed": query_failed},
+                        ["Capture-FirewallSnapshot", "Get-Service", "Get-ScheduledTask", "Get-DnsClientNrptRule",
+                         "Owned-FirewallRules", "Own-Policy", "Foreign-PolicyIds", "Test-Path"])
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+def test_firewall_baseline_is_in_the_persisted_report_before_the_first_msi(tmp_path):
+    expression = r"""
+$main=@($tree.FindAll({param($node) $node -is [Management.Automation.Language.TryStatementAst] -and
+    $node.Body.Statements.Count -gt 0 -and $node.Body.Statements[0].Extent.Text.TrimStart().StartsWith('Assert-ProductionPackage ')
+},$true))
+if($main.Count -ne 1){throw 'Expected one actual acceptance body.'}
+$statements=@($main[0].Body.Statements)
+$start=@(for($index=0;$index -lt $statements.Count;$index++){
+    if($statements[$index].Extent.Text -match '^\$firewallBefore\s*='){$index}
+})
+$end=@(for($index=0;$index -lt $statements.Count;$index++){
+    if($statements[$index].Extent.Text.Contains('Invoke-Msi $false')){$index}
+})
+if($start.Count -ne 1 -or $end.Count -ne 1){throw 'Cannot isolate baseline-to-install stage.'}
+$selected=@($statements[$start[0]..$end[0]])
+$allowed=@('Firewall-Snapshot','Capture-FirewallSnapshot','Owned-FirewallRules','Join-Path','Get-Sha256',
+    'Publish-Assignment','Start-Backend','Invoke-Msi','Write-Report','Field')
+foreach($statement in $selected){
+    foreach($command in @($statement.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))){
+        if($command.GetCommandName() -notin $allowed){throw 'Unexpected baseline-stage command.'}
+    }
+    if(@($statement.FindAll({param($node) $node -is [Management.Automation.Language.InvokeMemberExpressionAst]},$true)).Count){
+        throw 'Unexpected baseline-stage method.'
+    }
+}
+$manifest=$fixtureData.manifest;$work='C:\inert';$resultPath='C:\inert\result.json'
+$result=@{status='running';firewall_before=$null};$script:persistedBaseline=$null;$script:msiCalls=0
+function Firewall-Snapshot {return @()}
+function Capture-FirewallSnapshot {return $fixtureData.before}
+function Owned-FirewallRules {return @()}
+function Get-Sha256 {return 'synthetic-hosts-hash'}
+function Publish-Assignment {return $manifest.policies.allow}
+function Start-Backend {return [pscustomobject]@{State='Running'}}
+function Write-Report($Path,$Value){$script:persistedBaseline=$Value.firewall_before}
+function Invoke-Msi([bool]$Remove){
+    if($Remove){throw 'Unexpected removal.'}
+    $script:msiCalls++
+    if($null -eq $script:persistedBaseline -or $script:persistedBaseline.status -cne 'complete' -or
+        $script:persistedBaseline.rules[0].name -cne 'foreign-rule'){throw 'MSI started before baseline persistence.'}
+    return 0
+}
+. ([scriptblock]::Create(($selected | ForEach-Object {$_.Extent.Text}) -join [Environment]::NewLine))
+if($script:msiCalls -ne 1){throw 'Isolated installation boundary was not reached.'}
+"""
+    observed = pure(tmp_path, ["Wait-Ack"], expression,
+                    {"manifest": direct_v2_manifest(), "before": firewall_snapshot()})
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("firewall_changed", [False, True])
+def test_catch_finally_keeps_cleanup_and_only_publishes_final_failure_after_finished_timestamp(tmp_path, firewall_changed):
+    manifest = direct_v2_manifest()
+    cleanup = report_for(manifest)["checks"][-1]["evidence"]
+    if firewall_changed:
+        cleanup["firewall"]["after"]["rules"][0]["enabled"] = "False"
+        cleanup["firewall"]["differences"] = [{"name": "foreign-rule", "kind": "changed", "fields": ["enabled"]}]
+        cleanup["firewall"]["preserved"] = False
+    expression = r"""
+$main=@($tree.FindAll({param($node) $node -is [Management.Automation.Language.TryStatementAst] -and
+    $node.Body.Statements.Count -gt 0 -and $node.Body.Statements[0].Extent.Text.TrimStart().StartsWith('Assert-ProductionPackage ')
+},$true))
+if($main.Count -ne 1 -or $main[0].CatchClauses.Count -ne 1 -or $null -eq $main[0].Finally){throw 'Expected actual catch/finally.'}
+$selected=@($main[0].CatchClauses[0],$main[0].Finally)
+$allowed=@('Get-Service','Publish-Assignment','Wait-Ack','Invoke-Msi','Test-Path','Remove-Item','Stop-Job','Remove-Job',
+    'Owned-FirewallRules','Assert-FirewallPreserved','Get-Sha256','Get-ScheduledTask','Where-Object',
+    'Get-DnsClientNrptRule','Own-Policy','Foreign-PolicyIds','Record-Check','Assert-CatalogEvidence',
+    'Write-Report','Collect-CleanupEvidence','Read-Rows','Field')
+foreach($part in $selected){
+    foreach($command in @($part.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))){
+        if($command.GetCommandName() -notin $allowed){throw 'Unexpected command in isolated finalization.'}
+    }
+}
+$result=[ordered]@{status='running';passed=$false;error=$null;cleanup_errors=@();checks=@();finished_utc=$null}
+$ownedProcesses=@();$registryPaths=@();$backend=$null;$installed=$false;$msiRemovalExit=0
+$codeBefore=@('foreign-policy');$hostsBefore=$null;$resultPath='C:\inert\result.json'
+$firewallBefore=$fixtureData.cleanup.firewall.before;$manifest=$fixtureData.manifest
+$script:publications=@()
+function global:Get-Service {return $null}
+function global:Get-ScheduledTask {return @()}
+function global:Get-DnsClientNrptRule {return @()}
+function Owned-FirewallRules {return @()}
+function Own-Policy {return $null}
+function Foreign-PolicyIds {return @('foreign-policy')}
+function Assert-FirewallPreserved {if($fixtureData.firewall_changed){throw 'Synthetic foreign firewall drift.'}}
+function Collect-CleanupEvidence {return $fixtureData.cleanup}
+function Stop-Job {throw 'A real job must never be stopped by this test.'}
+function Remove-Job {throw 'A real job must never be removed by this test.'}
+function Write-Report($Path,$Value){
+    $script:publications+=@(($Value|ConvertTo-Json -Depth 24|ConvertFrom-Json))
+}
+function Record-Check($Name,$Evidence){
+    $result.checks+=@(@{name=$Name;evidence=$Evidence;status='passed'})
+    Write-Report $resultPath $result
+}
+$program='try { throw ''Synthetic original failure.'' } '+$main[0].CatchClauses[0].Extent.Text+
+    ' finally '+$main[0].Finally.Extent.Text
+. ([scriptblock]::Create($program))
+if(@($result.checks|Where-Object name -EQ 'cleanup').Count -ne 1){throw 'Failure suppressed cleanup evidence.'}
+if($result.status -cne 'failed' -or -not $result.finished_utc){throw 'Original failure lost its final status.'}
+foreach($published in $script:publications){
+    if($published.status -cne 'running' -and -not $published.finished_utc){
+        throw 'Parent could observe a final status before cleanup completed.'
+    }
+}
+"""
+    observed = pure(tmp_path, ["Wait-Ack"], expression,
+                    {"manifest": manifest, "cleanup": cleanup, "firewall_changed": firewall_changed, "rows": []})
+    assert observed["accepted"] is True, observed
 
 
 @WINDOWS[0]
