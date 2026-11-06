@@ -364,12 +364,25 @@ function Block-Event([string]$Text, [string]$PolicyId) {
         $document = New-Object Xml.XmlDocument
         $document.XmlResolver = $null; $document.Load($reader)
     } finally { $reader.Dispose() }
-    if ([int]$document.Event.System.EventID -ne 3077) { return $null }
+    $root = $document.PSBase.DocumentElement
+    $eventNamespace = 'http://schemas.microsoft.com/win/2004/08/events/event'
+    if ($root.PSBase.LocalName -cne 'Event' -or $root.PSBase.NamespaceURI -cnotin @('', $eventNamespace)) { return $null }
+    $namespaces = [Xml.XmlNamespaceManager]::new($document.PSBase.NameTable)
+    $prefix = ''
+    if ($root.PSBase.NamespaceURI) {
+        $namespaces.AddNamespace('evt', $eventNamespace)
+        $prefix = 'evt:'
+    }
+    $eventId = $root.SelectSingleNode("${prefix}System/${prefix}EventID", $namespaces)
+    if ($null -eq $eventId -or $eventId.PSBase.InnerText -cne '3077') { return $null }
     $data = @{}
-    foreach ($field in @($document.Event.EventData.Data)) { $data[[string]$field.Name] = [string]$field.'#text' }
+    foreach ($field in $root.SelectNodes("${prefix}EventData/${prefix}Data", $namespaces)) {
+        $data[$field.GetAttribute('Name')] = $field.PSBase.InnerText
+    }
     if (-not $data.ContainsKey('PolicyGUID') -or ([string]$data.PolicyGUID).Trim('{}') -ine $PolicyId.Trim('{}')) { return $null }
-    $target = if ($data.ContainsKey('FileName')) { [string]$data.FileName } else { 'blocked executable (path unavailable)' }
+    $target = if ($data['File Name']) { $data['File Name'] } else { $data['FileName'] }
     $target = $target -replace '[\x00-\x1f\x7f]',''
+    if ([string]::IsNullOrWhiteSpace($target)) { $target = 'blocked executable (path unavailable)' }
     if ($target.Length -gt 512) { $target = $target.Substring(0,512) }
     return @{kind='app_block'; detail=$target; rule_id=$PolicyId.Trim('{}')}
 }

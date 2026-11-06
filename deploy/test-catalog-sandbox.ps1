@@ -220,13 +220,110 @@ function Assert-CatalogEvidence($Report, $Manifest) {
 function Get-Sha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
 }
-function Write-Report([string]$Path, $Value, [switch]$SharedFolder) {
+function Write-Report([string]$Path, $Value, [switch]$SharedFolder, [switch]$LocalCheckpoint) {
     $temporary = $Path + '.tmp'
     try {
         $Value | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $temporary -Encoding UTF8
         if ($SharedFolder) { Copy-Item -LiteralPath $temporary -Destination $Path -Force }
+        elseif ($LocalCheckpoint) {
+            # The private checkpoint has one writer. A reader may still hold the previous version.
+            try { [IO.File]::Replace($temporary, $Path, [NullString]::Value) }
+            catch [IO.FileNotFoundException] { [IO.File]::Move($temporary, $Path) }
+        }
         else { Move-Item -LiteralPath $temporary -Destination $Path -Force }
-    } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force } }
+    } finally {
+        if ($LocalCheckpoint) { [IO.File]::Delete($temporary) }
+        elseif (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
+}
+function Read-SnapshotText([string]$Path, [int]$MaximumBytes=4194304) {
+    # Read one immutable version while allowing its owner to replace the pathname.
+    $share = [IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, $share)
+    try {
+        $length = $stream.Length
+        if ($length -gt $MaximumBytes) { throw 'The catalog snapshot exceeds its size limit.' }
+        $reader = [IO.BinaryReader]::new($stream)
+        $bytes = $reader.ReadBytes([int]$length)
+        if ($bytes.Length -ne $length) { throw [IO.IOException]::new('The catalog snapshot ended during reading.') }
+    } finally { $stream.Dispose() }
+    return [Text.UTF8Encoding]::new($false, $true).GetString($bytes).TrimStart([char]0xFEFF)
+}
+function Read-CatalogJson([string]$Path, [switch]$AllowMissing) {
+    for ($attempt=1; $attempt -le 5; $attempt++) {
+        try { $text = Read-SnapshotText $Path; break }
+        catch [IO.FileNotFoundException], [IO.DirectoryNotFoundException] {
+            if ($attempt -eq 5) {
+                if ($AllowMissing) { return $null }
+                throw
+            }
+        }
+        catch [IO.IOException], [UnauthorizedAccessException] {
+            if ($attempt -eq 5) { throw }
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    $snapshot = $text | ConvertFrom-Json
+    if ($snapshot -isnot [pscustomobject]) { throw 'The catalog snapshot must contain a JSON object.' }
+    return $snapshot
+}
+function Remove-CatalogTaskIfInactive([string]$TaskName) {
+    for ($attempt=0; $attempt -lt 20; $attempt++) {
+        try { $task = Get-ScheduledTask -TaskName $TaskName -TaskPath '\' -ErrorAction Stop }
+        catch { Write-Warning 'Catalog worker state could not be verified. The task was retained.'; return }
+        if ($null -ne $task -and [string]$task.State -ceq 'Ready') {
+            Unregister-ScheduledTask -TaskName $TaskName -TaskPath '\' -Confirm:$false -ErrorAction Continue
+            return
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    Write-Warning 'Catalog worker was not observed inactive. The task was retained.'
+}
+function Observe-CatalogTask([string]$ResultPath, [string]$SharedPath, $Manifest, [string]$TaskName, [int]$Seconds) {
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $lastPrinted = ''
+    $lastExported = $null
+    $readErrors = 0
+    while ($watch.Elapsed.TotalSeconds -lt $Seconds) {
+        # The report can carry three copies of a large firewall snapshot.
+        try { $checkpoint = Read-SnapshotText $ResultPath 33554432; $readErrors = 0 }
+        catch [IO.FileNotFoundException] { $checkpoint = $null }
+        catch [IO.IOException], [UnauthorizedAccessException] {
+            $readErrors++
+            if ($readErrors -ge 8) { throw 'Catalog report could not be read. The worker and private report were retained.' }
+            $checkpoint = $null
+        }
+        if ($null -ne $checkpoint -and $checkpoint -cne $lastExported) {
+            $outcome = $checkpoint | ConvertFrom-Json
+            $status = Field $outcome 'status' '' 'string'
+            $receipt = Field $outcome 'package_receipt' $null
+            if ((Field $outcome 'run_id' '' 'string') -cne $Manifest.run_id -or
+                (Field $outcome 'source_revision' '' 'string') -cne $Manifest.source_revision -or
+                (Field $receipt 'manifest_sha256' '' 'string') -cne $Manifest._manifest_sha256 -or
+                $status -cnotin @('running','passed','failed')) { throw 'The catalog checkpoint identity is invalid.' }
+            if ($status -cne 'running') {
+                $finished = [DateTimeOffset]::MinValue
+                if (-not [DateTimeOffset]::TryParse((Field $outcome 'finished_utc' '' 'string'), [ref]$finished) -or
+                    $finished.Offset -ne [TimeSpan]::Zero) {
+                    throw 'The catalog checkpoint is missing its terminal timestamp.'
+                }
+                if ((Field $outcome 'passed' $null 'boolean') -ne ($status -ceq 'passed')) {
+                    throw 'The catalog terminal status is inconsistent.'
+                }
+            }
+            try { Write-Report $SharedPath $outcome -SharedFolder }
+            catch { throw 'Catalog report export failed. The worker and private report were retained.' }
+            $lastExported = $checkpoint
+            $summary = $status + ':' + @($outcome.checks).Count
+            if ($summary -cne $lastPrinted) { Write-Host ('Catalog acceptance: ' + $summary); $lastPrinted = $summary }
+            if ($status -cne 'running') {
+                Remove-CatalogTaskIfInactive $TaskName
+                return $outcome
+            }
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    throw 'Catalog acceptance did not finish; preserve the guest and partial result for recovery.'
 }
 function Wait-Until([scriptblock]$Condition, [int]$Seconds, [string]$Message) {
     $watch = [Diagnostics.Stopwatch]::StartNew()
@@ -307,36 +404,11 @@ if (-not $SystemPhase) {
     $action = New-ScheduledTaskAction -Execute (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -Argument (
         '-NoProfile -ExecutionPolicy Bypass -File "' + $scriptPath + '" -SystemPhase -DisposableVm -OutputDirectory "' + $work + '"')
     $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Seconds ($timeoutSeconds+900))
-    try {
-        Register-ScheduledTask -TaskName $taskName -Action $action -Settings $settings -User SYSTEM -RunLevel Highest | Out-Null
-        Start-ScheduledTask -TaskName $taskName
-        $watch = [Diagnostics.Stopwatch]::StartNew()
-        $resultPath = Join-Path $work $reportName
-        $lastPrinted = ''
-        $lastExported = $null
-        while ($watch.Elapsed.TotalSeconds -lt ($timeoutSeconds+600)) {
-            if (Test-Path -LiteralPath $resultPath) {
-                try {
-                    $checkpoint = Get-Content -LiteralPath $resultPath -Raw
-                    $outcome = if ($checkpoint -cne $lastExported) { $checkpoint | ConvertFrom-Json } else { $null }
-                }
-                catch [ArgumentException] { Start-Sleep -Milliseconds 300; continue }
-                catch [IO.IOException] { Start-Sleep -Milliseconds 300; continue }
-                if ($null -ne $outcome) {
-                    Write-Report (Join-Path $OutputDirectory $reportName) $outcome -SharedFolder
-                    $lastExported = $checkpoint
-                    $summary = ([string]$outcome.status) + ':' + @($outcome.checks).Count
-                    if ($summary -cne $lastPrinted) { Write-Host ('Catalog acceptance: ' + $summary); $lastPrinted=$summary }
-                    if ($outcome.status -ne 'running') {
-                        if ($outcome.passed) { Assert-CatalogEvidence $outcome $manifest; exit 0 }
-                        throw 'Catalog acceptance failed. Preserve the guest and catalog-result.json; do not restore before reviewing cleanup.'
-                    }
-                }
-            }
-            Start-Sleep -Milliseconds 500
-        }
-        throw 'Catalog acceptance did not finish; preserve the guest and partial result for recovery.'
-    } finally { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction Continue }
+    Register-ScheduledTask -TaskName $taskName -TaskPath '\' -Action $action -Settings $settings -User SYSTEM -RunLevel Highest | Out-Null
+    Start-ScheduledTask -TaskName $taskName -TaskPath '\'
+    $outcome = Observe-CatalogTask (Join-Path $work $reportName) (Join-Path $OutputDirectory $reportName) $manifest $taskName ($timeoutSeconds+600)
+    if ($outcome.status -ceq 'passed' -and $outcome.passed -eq $true) { Assert-CatalogEvidence $outcome $manifest; exit 0 }
+    throw 'Catalog acceptance failed. Preserve the guest and catalog-result.json; do not restore before reviewing cleanup.'
 }
 
 if ($identity.User.Value -cne 'S-1-5-18') { throw 'SystemPhase requires SYSTEM.' }
@@ -365,10 +437,10 @@ $ownPolicyId = $null
 
 function Record-Check([string]$Name, $Evidence, [string]$Status='passed') {
     $result.checks += @{name=$Name;status=$Status;evidence=$Evidence;at_utc=[DateTime]::UtcNow.ToString('o')}
-    Write-Report $resultPath $result
+    Write-Report $resultPath $result -LocalCheckpoint
 }
-function Read-Journal {
-    return Get-Content -LiteralPath $journalPath -Raw -ErrorAction Stop | ConvertFrom-Json
+function Read-Journal([switch]$AllowMissing) {
+    return Read-CatalogJson $journalPath -AllowMissing:$AllowMissing
 }
 function Code-Policies {
     $raw = & (Join-Path $env:SystemRoot 'System32\CiTool.exe') --list-policies -json
@@ -376,8 +448,8 @@ function Code-Policies {
     return @(($raw | ConvertFrom-Json).Policies)
 }
 function Own-Policy {
-    if (Test-Path -LiteralPath $journalPath) {
-        $journal = Read-Journal
+    $journal = Read-Journal -AllowMissing
+    if ($null -ne $journal) {
         $script:ownPolicyId = [string]$journal.policy_id
     }
     # Normal MSI removal deletes the journal. Its previously observed GUID still identifies leftovers.
@@ -789,7 +861,7 @@ function Install-Fixture($Fixture) {
     New-ItemProperty -LiteralPath $path -Name DisplayVersion -Value '1.0.0' -PropertyType String | Out-Null
 }
 function Assignment-Observation {
-    $cache=Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+    $cache=Read-CatalogJson $statePath
     return @{version=$cache.profile.version;digest=$cache.profile.digest}
 }
 function Hourly-Observation {
@@ -798,7 +870,7 @@ function Hourly-Observation {
     return @{version=$assignment.version;digest=$assignment.digest;optional_checked_at=[long](Field $journal 'optional_checked_at' 0)}
 }
 
-Write-Report $resultPath $result
+Write-Report $resultPath $result -LocalCheckpoint
 try {
     Assert-ProductionPackage (Join-Path $work 'openems-agent.msi')
     if (-not (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\CiTool.exe')) -or
@@ -806,7 +878,7 @@ try {
     $codeBefore=@(Code-Policies | ForEach-Object PolicyID | Sort-Object)
     $firewallBefore=Capture-FirewallSnapshot
     $result.firewall_before=$firewallBefore
-    Write-Report $resultPath $result
+    Write-Report $resultPath $result -LocalCheckpoint
     if ($firewallBefore.status -cne 'complete') { throw 'The preinstallation firewall snapshot is incomplete.' }
     if (@(Owned-FirewallRules).Count -ne 0) { throw 'Restore the clean snapshot; owned application firewall rules already exist.' }
     $hostsPath=Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
@@ -907,7 +979,7 @@ try {
         if ($minute -ne $lastMinute) {
             $hourly.assignment_observations+=@($observation); $lastMinute=$minute
             $result.hourly_progress_seconds=[math]::Floor($hourWatch.Elapsed.TotalSeconds)
-            Write-Report $resultPath $result
+            Write-Report $resultPath $result -LocalCheckpoint
         }
         if ($hourWatch.Elapsed.TotalSeconds -ge 3600) {
             $observed=Hourly-Observation
@@ -990,7 +1062,7 @@ try {
         try { Assert-CatalogEvidence $result $manifest }
         catch { $result.passed=$false; $result.status='failed'; $result.error=$_.Exception.Message }
     } else { $result.passed=$false; $result.status='failed' }
-    Write-Report $resultPath $result
+    Write-Report $resultPath $result -LocalCheckpoint
 }
 if ($result.passed) { exit 0 }
 exit 1
