@@ -1,0 +1,49 @@
+{
+  "source_revision": "6e59e44fb27e04f3920cad6b0c158c2060d3f8ba",
+  "run_id": "13cc77634d414d2da5ca440143e3f4b0",
+  "manifest_sha256": "20d201aa1468bc0514f2cfcd1bec00bf5033f2e3ceac054af2b6dcc4994e25b7",
+  "launcher_sha256": "858e3f67d2780260f8e11b508a63d86a3814ae954551ca5dfbe37bae74bcef66",
+  "iso": {
+    "name": "OpenEMS-Catalog-6e59e44-13cc7763.iso",
+    "sha256": "9e741f1ed790f27171b5765b64dff7678d46dfcb76677b2a9e5e6baabe4d16e3",
+    "bytes": 17498112,
+    "files_verified": 11
+  },
+  "packages": {
+    "openems-agent.msi": {
+      "version": "0.4.0",
+      "sha256": "3d1bfb10f9aa06b4ad07d3ed46ff1b940f6904e21daffe62fc6d76be73482775",
+      "bytes": 8667136
+    },
+    "openems-agent-next.msi": {
+      "version": "0.4.1",
+      "sha256": "8bd930f3b16b289458f992dee84b477e92e78873f515584ef6e9f3638ab8a245",
+      "bytes": 8667136
+    }
+  },
+  "shortcut": {
+    "name": "17 - Catalog acceptance and diagnostics as administrator.lnk",
+    "sha256": "2c85fde86e2732d847619bc04b9f4c00d030b80b3e2be7d284d5b7dc4731eb91",
+    "elevation_verified": true,
+    "launcher_parsed_in_powershell_5_1": true
+  },
+  "local_tests": {
+    "initial_red_commit": "d04cd96",
+    "initial_expected_failures": 22,
+    "invalid_journal_red_commit": "4a59dc3",
+    "invalid_journal_expected_failures": 2,
+    "python_passed": 1580,
+    "python_skipped": 57,
+    "python_deselected": 4,
+    "rust_passed": 256,
+    "panel_passed": 154,
+    "live_storage_contracts_passed": 336,
+    "inert_guest_preflight_cases_passed": 3
+  },
+  "guest_preflight": {
+    "firewall_stable_seconds": 90,
+    "appx_quiet_seconds": 180,
+    "timeout_seconds": 900
+  },
+  "guest_execution_started": false
+}

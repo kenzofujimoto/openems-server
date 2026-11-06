@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 17 pronta para VMware
+
+O plano de leituras e parser foi aprovado e implementado em `6e59e44`. O checkpoint privado usa substituição atômica e as leituras do relatório, estado e diário permitem substituição enquanto o handle está aberto. O observador mantém a tarefa quando a leitura ou a exportação falham. O parser lê campos vazios e `File Name` em XML 3077 com namespace, conserva a seleção por GUID e os limites de XML. O diário vazio ou com JSON `null` é recusado explicitamente.
+
+Verde com 1.580 Python, 256 Rust, 154 do painel e 336 contratos com PostgreSQL e Redis. Houve 57 skips e quatro casos integrais legados desmarcados no Python. A ISO e os 11 arquivos extraídos foram verificados. O atalho 17 acrescenta uma verificação de 90 s de estabilidade das regras e três minutos sem atividade AppX, com limite de 15 min. A guarda do firewall no encerramento mantém o critério original. [Recibo da rodada 17](validation/catalog-vm-preparation-6e59e44-2026-11-06.json).
+
+Restaurar `clean-preflight-before-controls` com **Go To**, retomar a VM, montar `C:\Users\kenzo.fujimoto\Documents\OpenEMS-Lab\OpenEMS-Catalog-6e59e44-13cc7763.iso` em CD/DVD com **Connected** e executar o atalho 17 em `\\vmware-host\Shared Folders\OpenEMSResults`. Aguardar `Catalog acceptance: running` depois da verificação inicial. Acompanhar somente o run `13cc77634d414d2da5ca440143e3f4b0`, o `catalog-result.json` e o `catalog-enforcement-diagnostics-13cc7763.json`. A rodada 17 e o USB físico seguem pendentes.
+
 ## Estado vigente — 06/11/2026. Rodada 16 recuperada e reprovada no firewall externo
 
 Fonte `06c4ccf`, run `c9f2efe63fbb4daaba277816206549c2`. Às 09:20, o exportador inicial parou após `ItemExistsUnauthorizedAccessError` no `Test-Path`. O worker continuou. O operador executou `16-recover-catalog.ps1` e a recuperação preservou os bytes do relatório final, com hash confirmado pelo diagnóstico. O teste encerrou às 10:15:50. Sete critérios passaram. O sexto mediu 3.618,217 s monotônicos, 63 observações da v6, aumento de 3.614 s no diário e recusa nativa 4551 após a rechecagem. A v7 confirmou liberação e ambos os executáveis voltaram a iniciar.
