@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 06/11/2026. Rodada 17 interrompida por suspensão
+
+A verificação inicial confirmou 109 s de firewall estável. A rodada 17 passou nos cinco primeiros critérios e registrou 1.804 s de rechecagem antes de a VM suspender. Após 53min14s em ACPI S1, retomou e encerrou pelo limite total. O relatório final foi exportado. O MSI retornou 0, não restaram artefatos próprios e os 14 IDs externos de Code Integrity permaneceram. A guarda do firewall reprovou pela ausência de duas regras externas, do Fotos e do Feedback Hub. [Revisão da rodada 17](validation/catalog-vm-6e59e44-acceptance-review-2026-11-06.json).
+
+Os ACKs das sete atribuições foram positivos. A coleta registrou um timeout local de reconciliação após a retomada. Os erros de persistência e do parser da rodada 16 ficaram ausentes no intervalo observado. A repetição ainda precisa de uma hora efetiva e de preservação do firewall. Preparar o próximo snapshot com a suspensão automática desativada e os aplicativos do Windows estabilizados.
+
 ## Estado vigente — 06/11/2026. Rodada 16 reprovada na preservação do firewall
 
 O exportador do guest parou ao consultar o relatório local. O worker concluiu, e a recuperação exportou o relatório final e o diagnóstico com hash correspondente. Sete critérios passaram, incluindo 3.618,217 s de rechecagem monotônica, recusa WDAC 4551 e liberação v7. A remoção teve MSI 0, nenhum artefato próprio e os 14 IDs externos de Code Integrity preservados. O diff independente confirmou uma regra ausente do Feedback Hub e cinco adições. A guarda de preservação reprovou a rodada. [Revisão da rodada 16](validation/catalog-vm-06c4ccf-acceptance-review-2026-11-06.json).

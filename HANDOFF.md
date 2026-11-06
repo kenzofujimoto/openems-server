@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 17 encerrou após suspensão
+
+O run `13cc77634d414d2da5ca440143e3f4b0` retomou às 13:22:39, após 53min14s em ACPI S1. O worker encerrou às 13:27:06 com limite total excedido. Os cinco primeiros critérios passaram. O último avanço horário foi 1.804 s, então a hora efetiva ficou sem comprovação. O exportador publicou o resultado terminal após retomar. A coleta manual confirmou o hash do relatório e a configuração de suspensão de 900 s em AC e 600 s em DC. [Revisão da rodada 17](validation/catalog-vm-6e59e44-acceptance-review-2026-11-06.json).
+
+A liberação v7 teve ACK positivo na limpeza. O MSI retornou 0, nenhum artefato próprio restou e os 14 IDs externos de Code Integrity foram preservados. Entre as capturas do firewall, surgiram cinco regras de aplicativos do Windows e desapareceram duas regras externas, do Fotos e do Feedback Hub. A guarda final reprovou. Os ACKs das sete atribuições foram positivos. A única falha no log local foi `control_timeout` em `app_reconcile` segundos após a retomada. Os erros `endpoint_state:5` e `app_execution_events` da rodada 16 não apareceram no intervalo observado.
+
+Preservar a evidência e a sessão final. Uma nova execução precisa de snapshot limpo com aplicativos do Windows estabilizados, suspensão automática desativada na VM de laboratório e identidade de rodada nova. A guarda final de firewall e a hora efetiva continuam obrigatórias. A VM e o host não tiveram configuração de energia alterada nesta rodada.
+
 ## Estado vigente — 06/11/2026. Rodada 17 suspensa no meio da rechecagem
 
 A repetição com `17-start-catalog-retry.ps1` passou no preflight. Quatro amostras de 482 regras permaneceram estáveis por 109 s. AppX foi observado e a idade do evento mais recente subiu de 224 para 334 s durante as amostras. O timeout inicial não tem causa específica confirmada. O worker iniciou às 11:52:55 e aprovou os cinco primeiros critérios.
