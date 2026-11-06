@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 16 recuperada e reprovada no firewall externo
+
+Fonte `06c4ccf`, run `c9f2efe63fbb4daaba277816206549c2`. Às 09:20, o exportador inicial parou após `ItemExistsUnauthorizedAccessError` no `Test-Path`. O worker continuou. O operador executou `16-recover-catalog.ps1` e a recuperação preservou os bytes do relatório final, com hash confirmado pelo diagnóstico. O teste encerrou às 10:15:50. Sete critérios passaram. O sexto mediu 3.618,217 s monotônicos, 63 observações da v6, aumento de 3.614 s no diário e recusa nativa 4551 após a rechecagem. A v7 confirmou liberação e ambos os executáveis voltaram a iniciar.
+
+MSI 0 e artefatos próprios removidos. Os 14 IDs externos de Code Integrity foram preservados. O diff recalculado do firewall vai de 482 a 486 regras, com cinco adições de aplicativos do Windows e ausência de uma regra do Feedback Hub. O critério de preservação continua reprovado. O relatório bruto com SID de laboratório fica na pasta local do pacote e em `OpenEMSResults`. A revisão rastreada mascara esse SID. [Revisão da rodada 16](validation/catalog-vm-06c4ccf-acceptance-review-2026-11-06.json).
+
+Nove falhas locais, todas na v6. Sete `endpoint_state:5`, seis com correspondência única com ACK `OSError`. Dois `app_execution_events` sem código de sistema, ambos possíveis para o único ACK `LocalError`. Em arquivos inertes, `std::fs::rename` deu o mesmo Win32 5 com leitor sem `FileShare.Delete` e passou ao permitir esse compartilhamento. O parser 3077 rejeitou `Data` vazio em XML sintético com `PropertyNotFoundStrict`. A coleta `16-read-catalog-events.ps1` foi solicitada para conferir os registros reais de Code Integrity e Feedback Hub. Preservar o guest enquanto essa coleta estiver pendente. [Plano TDD proposto, ainda sem alterações de produto](docs/catalog-guest-observation-plan.md).
+
 ## Estado vigente — 05/11/2026. Rodada 16 pronta para VMware
 
 Plano aprovado. RED `397b9db` com quatro falhas esperadas no Rust e sete no PowerShell. Implementação `06c4ccf` registra versão, categoria, etapas fechadas e códigos Win32 observados, preservando a categoria do ACK, a ordem das falhas e o log anterior. Códigos de saída do filho e do CiTool continuam fora do campo Win32. A ausência de código no PowerShell 5.1 precisou de `$null` explícito para não serializar como `{}`.

@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 06/11/2026. Rodada 16 reprovada na preservação do firewall
+
+O exportador do guest parou ao consultar o relatório local. O worker concluiu, e a recuperação exportou o relatório final e o diagnóstico com hash correspondente. Sete critérios passaram, incluindo 3.618,217 s de rechecagem monotônica, recusa WDAC 4551 e liberação v7. A remoção teve MSI 0, nenhum artefato próprio e os 14 IDs externos de Code Integrity preservados. O diff independente confirmou uma regra ausente do Feedback Hub e cinco adições. A guarda de preservação reprovou a rodada. [Revisão da rodada 16](validation/catalog-vm-06c4ccf-acceptance-review-2026-11-06.json).
+
+Os seis ACKs `OSError` correspondem a `endpoint_state:5`. Uma sétima falha dessa etapa ficou apenas no log. Duas falhas locais de leitura/processamento dos eventos WDAC coincidem com um ACK `LocalError`, sem pareamento único. A corrida entre leitura e substituição e a exceção do parser em XML com campo vazio foram reproduzidas em entradas inertes. A coleta dos eventos reais continua pendente. O aceite da rodada 15 mantém seu resultado histórico. [Plano proposto](docs/catalog-guest-observation-plan.md).
+
 ## Estado vigente — 05/11/2026. Integração local do catálogo aprovada
 
 Passaram 336 testes com PostgreSQL 16.15 e Redis 7.4.11 descartáveis, incluindo o upgrade da tabela de eventos. Dois workers HTTP usaram os mesmos stores. No Edge headless, o operador de teste publicou v1 no painel sem regra gerada. O inventário de um endpoint sintético recebido pelo outro worker gerou v2 com uma regra de hash opcional. O Redis entregou a atualização a ambos os endpoints. O ACK sintético v2, a entrada de auditoria e a leitura da nova versão no segundo painel passaram. [Evidência](validation/catalog-live-integration-2026-11-05.json).
