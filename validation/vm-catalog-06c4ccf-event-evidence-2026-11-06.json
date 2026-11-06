@@ -1,0 +1,264 @@
+﻿{
+    "run_id":  "c9f2efe63fbb4daaba277816206549c2",
+    "report_sha256":  "3a8c01b1142704d7b8f12624f3efd6bb542f1d7237da721956bfad6e5d071c4a",
+    "code_integrity_examined":  3,
+    "firewall_examined":  0,
+    "appx_examined":  500,
+    "own_ci_events":  [
+                          {
+                              "parser_error_type":  "PropertyNotFoundException",
+                              "id":  3077,
+                              "parser_status":  "failed",
+                              "empty_fields":  3,
+                              "utc":  "2026-11-06T13:12:17.5275832Z",
+                              "file_name_field":  true,
+                              "strict_property_missing":  true,
+                              "role":  "b-renamed",
+                              "policy_guid_valid":  true,
+                              "record_id":  177,
+                              "empty_text_expression":  true,
+                              "filename_field":  false
+                          },
+                          {
+                              "parser_error_type":  "PropertyNotFoundException",
+                              "id":  3077,
+                              "parser_status":  "failed",
+                              "empty_fields":  3,
+                              "utc":  "2026-11-06T12:11:34.9331556Z",
+                              "file_name_field":  true,
+                              "strict_property_missing":  true,
+                              "role":  "a-renamed",
+                              "policy_guid_valid":  true,
+                              "record_id":  123,
+                              "empty_text_expression":  true,
+                              "filename_field":  false
+                          },
+                          {
+                              "parser_error_type":  "PropertyNotFoundException",
+                              "id":  3077,
+                              "parser_status":  "failed",
+                              "empty_fields":  3,
+                              "utc":  "2026-11-06T12:11:34.7349650Z",
+                              "file_name_field":  true,
+                              "strict_property_missing":  true,
+                              "role":  "a-original",
+                              "policy_guid_valid":  true,
+                              "record_id":  119,
+                              "empty_text_expression":  true,
+                              "filename_field":  false
+                          }
+                      ],
+    "feedback_hub_firewall_events":  [
+
+                                     ],
+    "feedback_hub_appx_events":  [
+                                     {
+                                         "utc":  "2026-11-06T13:15:29.2000478Z",
+                                         "id":  613,
+                                         "record_id":  8547
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:29.1417950Z",
+                                         "id":  472,
+                                         "record_id":  8546
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:29.1390530Z",
+                                         "id":  472,
+                                         "record_id":  8545
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:29.1355211Z",
+                                         "id":  472,
+                                         "record_id":  8544
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:29.1264100Z",
+                                         "id":  478,
+                                         "record_id":  8543
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:29.1242614Z",
+                                         "id":  400,
+                                         "record_id":  8542
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:27.6249069Z",
+                                         "id":  617,
+                                         "record_id":  8541
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:27.6248349Z",
+                                         "id":  617,
+                                         "record_id":  8540
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:27.6247127Z",
+                                         "id":  617,
+                                         "record_id":  8539
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:27.6218766Z",
+                                         "id":  617,
+                                         "record_id":  8538
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:27.6013270Z",
+                                         "id":  617,
+                                         "record_id":  8537
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:27.6012338Z",
+                                         "id":  617,
+                                         "record_id":  8536
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:27.6011284Z",
+                                         "id":  617,
+                                         "record_id":  8535
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.2770173Z",
+                                         "id":  813,
+                                         "record_id":  8533
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.2769652Z",
+                                         "id":  822,
+                                         "record_id":  8532
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.2735604Z",
+                                         "id":  821,
+                                         "record_id":  8531
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.2368472Z",
+                                         "id":  5507,
+                                         "record_id":  8530
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.2366688Z",
+                                         "id":  5507,
+                                         "record_id":  8529
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.2364764Z",
+                                         "id":  5507,
+                                         "record_id":  8528
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.2363104Z",
+                                         "id":  5507,
+                                         "record_id":  8527
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:26.1735637Z",
+                                         "id":  617,
+                                         "record_id":  8526
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:25.8147383Z",
+                                         "id":  617,
+                                         "record_id":  8525
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:25.2182172Z",
+                                         "id":  617,
+                                         "record_id":  8524
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:25.2043167Z",
+                                         "id":  617,
+                                         "record_id":  8523
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:25.0957802Z",
+                                         "id":  855,
+                                         "record_id":  8522
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:25.0109488Z",
+                                         "id":  854,
+                                         "record_id":  8521
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:24.9964926Z",
+                                         "id":  607,
+                                         "record_id":  8520
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:24.9943471Z",
+                                         "id":  10002,
+                                         "record_id":  8519
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:24.9404170Z",
+                                         "id":  603,
+                                         "record_id":  8518
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:16.1691515Z",
+                                         "id":  613,
+                                         "record_id":  8513
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:16.0875324Z",
+                                         "id":  472,
+                                         "record_id":  8512
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:15.5594537Z",
+                                         "id":  478,
+                                         "record_id":  8511
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:15.5519425Z",
+                                         "id":  400,
+                                         "record_id":  8510
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:15.5516026Z",
+                                         "id":  617,
+                                         "record_id":  8509
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:15.5439450Z",
+                                         "id":  617,
+                                         "record_id":  8508
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:14.9705096Z",
+                                         "id":  8101,
+                                         "record_id":  8507
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:14.9704655Z",
+                                         "id":  8106,
+                                         "record_id":  8506
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:15:14.9596211Z",
+                                         "id":  8100,
+                                         "record_id":  8505
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:14:34.9594104Z",
+                                         "id":  574,
+                                         "record_id":  8504
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:14:31.6912668Z",
+                                         "id":  607,
+                                         "record_id":  8502
+                                     },
+                                     {
+                                         "utc":  "2026-11-06T13:14:31.6898912Z",
+                                         "id":  10002,
+                                         "record_id":  8501
+                                     }
+                                 ],
+    "collection_errors":  [
+
+                          ]
+}
