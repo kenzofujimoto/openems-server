@@ -1109,6 +1109,155 @@ if($serialized -like '*synthetic-sensitive-marker*' -or @($row.Keys).Count -ne 5
 
 @WINDOWS[0]
 @WINDOWS[1]
+@pytest.mark.parametrize("shares_delete", [True, False])
+def test_catalog_private_checkpoint_replaces_only_if_the_open_snapshot_allows_it(tmp_path, shares_delete):
+    expression = r"""
+function Set-Content([string]$LiteralPath,[string]$Encoding,[Parameter(ValueFromPipeline)]$InputObject) {
+    process {
+        if($LiteralPath -cne ($fixtureData.path+'.tmp')){throw 'Unexpected fixture write.'}
+        [IO.File]::WriteAllText($LiteralPath,[string]$InputObject,(New-Object Text.UTF8Encoding($true)))
+    }
+}
+function Test-Path([string]$LiteralPath) { return [IO.File]::Exists($LiteralPath) }
+function Remove-Item([string]$LiteralPath,[switch]$Force) {
+    if($LiteralPath -cne ($fixtureData.path+'.tmp')){throw 'Unexpected fixture deletion.'}
+    [IO.File]::Delete($LiteralPath)
+}
+function Move-Item {throw 'Private checkpoints require a single replacement operation.'}
+$path=$fixtureData.path
+Write-Report $path @{marker='first'} -LocalCheckpoint
+$share=[IO.FileShare]::ReadWrite
+if($fixtureData.shares_delete){$share=$share -bor [IO.FileShare]::Delete}
+$held=[IO.File]::Open($path,'Open','Read',$share)
+try {
+    $refused=$false
+    try { Write-Report $path @{marker='second'} -LocalCheckpoint }
+    catch [IO.IOException], [UnauthorizedAccessException] { $refused=$true }
+    $old=New-Object IO.StreamReader($held)
+    try { if(($old.ReadToEnd()|ConvertFrom-Json).marker -cne 'first'){throw 'Reader lost the previous checkpoint.'} }
+    finally { $old.Dispose() }
+    $expected=if($fixtureData.shares_delete){'second'}else{'first'}
+    if($refused -eq $fixtureData.shares_delete -or
+       ([IO.File]::ReadAllText($path)|ConvertFrom-Json).marker -cne $expected -or [IO.File]::Exists($path+'.tmp')){
+        throw 'Checkpoint replacement or preservation changed.'
+    }
+} finally { $held.Dispose() }
+"""
+    observed = pure(tmp_path, ["Write-Report"], expression,
+                    {"path": str(tmp_path / "report.json"), "shares_delete": shares_delete})
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("mode", ["assignment", "journal", "bounded"])
+def test_catalog_state_and_journal_readers_share_delete_and_bound_input(tmp_path, mode):
+    expression = r"""
+$path=$fixtureData.path
+[IO.File]::WriteAllText($path,'{"profile":{"version":6,"digest":"owned"},"policy_id":"owned"}',(New-Object Text.UTF8Encoding($true)))
+$definition=@($tree.FindAll({param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Read-SnapshotText'
+},$true))
+if($definition.Count -ne 1 -or $definition[0].Extent.Text -notmatch 'FileShare\]::Delete' -or
+   $definition[0].Extent.Text -notmatch 'FileShare\]::ReadWrite'){throw 'Reader must allow replacement of the open snapshot.'}
+$script:statePath=$path;$script:journalPath=$path
+function Get-Content {throw 'The live state reader must not take a share-delete-blocking handle.'}
+switch($fixtureData.mode){
+  'assignment' {if((Assignment-Observation).version -ne 6){throw 'Assignment observation changed.'}}
+  'journal' {if((Read-Journal).policy_id -cne 'owned'){throw 'Journal observation changed.'}}
+  'bounded' {
+    $refused=$false
+    try { $null=Read-SnapshotText $path 12 } catch { $refused=$_.Exception.Message -match 'size limit' }
+    if(-not $refused){throw 'The reader accepted an oversized checkpoint.'}
+  }
+}
+"""
+    functions = ["Read-SnapshotText", "Read-CatalogJson", "Assignment-Observation", "Read-Journal"]
+    observed = pure(tmp_path, functions, expression, {"path": str(tmp_path / "state.json"), "mode": mode})
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("case", ["transient", "persistent", "export_error", "foreign_terminal", "missing_finish"])
+def test_catalog_observer_exports_only_the_verified_terminal_and_preserves_worker_on_errors(tmp_path, case):
+    expression = r"""
+$script:reads=0;$script:exports=0;$script:removed=0
+function Read-SnapshotText {
+    $script:reads++
+    if($fixtureData.case -ceq 'persistent' -or ($fixtureData.case -ceq 'transient' -and $script:reads -eq 1)) {
+        throw (New-Object UnauthorizedAccessException('synthetic temporary denial'))
+    }
+    return ($fixtureData.report|ConvertTo-Json -Depth 16 -Compress)
+}
+function Write-Report {
+    $script:exports++
+    if($fixtureData.case -ceq 'export_error'){throw (New-Object IO.IOException('synthetic export failure'))}
+}
+function Start-Sleep { }
+function Remove-CatalogTaskIfInactive { $script:removed++ }
+$failed=$false
+try { $report=Observe-CatalogTask 'C:\inert\report.json' 'C:\inert\shared.json' $fixtureData.manifest 'inert-task' 5 }
+catch { $failed=$true }
+switch($fixtureData.case){
+ 'transient' {
+    if($failed -or $script:reads -ne 2 -or $script:exports -ne 1 -or $script:removed -ne 1 -or
+       $report.status -cne 'passed'){throw 'A transient read error suppressed the terminal export.'}
+ }
+ 'persistent' {
+    if(-not $failed -or $script:reads -lt 2 -or $script:reads -gt 20 -or $script:exports -or $script:removed){
+        throw 'A permanent denial escaped the bounded observer or removed the worker.'
+    }
+ }
+ 'export_error' {
+    if(-not $failed -or $script:exports -ne 1 -or $script:removed){throw 'Export failure removed the worker.'}
+ }
+ {$_ -in 'foreign_terminal','missing_finish'} {
+    if(-not $failed -or $script:exports -or $script:removed){throw 'An invalid terminal checkpoint was accepted.'}
+ }
+}
+"""
+    manifest = direct_v2_manifest()
+    report = report_for(manifest)
+    report["finished_utc"] = "2026-11-02T17:02:00Z" if case != "missing_finish" else None
+    if case == "foreign_terminal":
+        report["run_id"] = "f" * 32
+    observed = pure(tmp_path, ["Observe-CatalogTask"], expression,
+                    {"case": case, "manifest": manifest, "report": report})
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
+@pytest.mark.parametrize("states,expected", [(["Running", "Ready"], 1), (["Queued"], 0), (["Unknown"], 0)])
+def test_catalog_task_is_removed_only_after_an_inactive_observation(tmp_path, states, expected):
+    expression = r"""
+$global:catalogTaskStates=@($fixtureData.states)
+$WarningPreference='SilentlyContinue'
+$global:catalogTaskObservations=0;$global:catalogTaskRemovals=0
+function global:Get-ScheduledTask {
+    $index=[Math]::Min($global:catalogTaskObservations,$global:catalogTaskStates.Count-1)
+    $global:catalogTaskObservations++
+    return [pscustomobject]@{State=$global:catalogTaskStates[$index]}
+}
+function Unregister-ScheduledTask {
+    if($global:catalogTaskStates[[Math]::Min($global:catalogTaskObservations-1,$global:catalogTaskStates.Count-1)] -cne 'Ready'){
+        throw 'The task was removed while it could still execute.'
+    }
+    $global:catalogTaskRemovals++
+}
+function Start-Sleep { }
+Remove-CatalogTaskIfInactive 'inert-task'
+if($global:catalogTaskRemovals -ne $fixtureData.expected -or $global:catalogTaskObservations -gt 25){
+    throw 'Task ownership or its bounded observation changed.'
+}
+"""
+    observed = pure(tmp_path, ["Remove-CatalogTaskIfInactive"], expression, {"states": states, "expected": expected})
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
 @pytest.mark.parametrize("firewall_changed,query_failed", [(True, False), (False, True)])
 def test_cleanup_collects_other_fields_even_when_firewall_or_service_query_fails(tmp_path, firewall_changed, query_failed):
     before = firewall_snapshot()

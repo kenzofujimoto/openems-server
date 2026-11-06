@@ -10,6 +10,7 @@ import os
 import subprocess
 from pathlib import Path
 import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape, quoteattr
 
 import pytest
 
@@ -18,6 +19,10 @@ MOCKS = ROOT / "tests" / "fixtures" / "windows_controls_mocks.ps1"
 DUAL_SCENARIO_XML = ROOT / "tests/fixtures/wdac-dual-scenario-hash.xml"
 CI_NAMESPACE = "urn:schemas-microsoft-com:sipolicy"
 CI = {"ci": CI_NAMESPACE}
+WINDOWS_EVENT_NAMESPACE = "http://schemas.microsoft.com/win/2004/08/events/event"
+EVENT_POLICY_ID = "31fc30a0-8454-4528-bd8d-50d84c1522a9"
+FOREIGN_EVENT_POLICY_ID = "46526793-2032-45d6-a93f-84ac3d17fc01"
+BLOCKED_FIXTURE_PATH = r"\Device\HarddiskVolume3\OpenEMS Fixtures\blocked & renamed.exe"
 POWERSHELL = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32/WindowsPowerShell/v1.0/powershell.exe"
 REGISTRY = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions"
 INSTANCE = r"USBSTOR\DISK\fixture"
@@ -122,6 +127,108 @@ def assert_app_error(result, category):
         code = diagnostic["os_code"]
         assert code is None or (type(code) is int and -(2**31) <= code < 2**31), diagnostic
     return response
+
+
+def ci_event_xml(fields, *, policy_id=EVENT_POLICY_ID, event_id=3077, namespace="default"):
+    prefix = "ci:" if namespace == "prefixed" else ""
+    if namespace == "prefixed":
+        declaration = f' xmlns:ci="{WINDOWS_EVENT_NAMESPACE}"'
+    elif namespace == "default":
+        declaration = f' xmlns="{WINDOWS_EVENT_NAMESPACE}"'
+    else:
+        declaration = ""
+    entries = list(fields)
+    if policy_id is not None:
+        entries.insert(0, ("PolicyGUID", "{" + policy_id.upper() + "}"))
+    data = []
+    for name, value in entries:
+        start = f"<{prefix}Data Name={quoteattr(name)}"
+        data.append(start + ("/>" if value is None else f">{escape(value)}</{prefix}Data>"))
+    return (
+        f"<{prefix}Event{declaration}><{prefix}System>"
+        f'<{prefix}Provider Name="Microsoft-Windows-CodeIntegrity"/>'
+        f"<{prefix}EventID>{event_id}</{prefix}EventID><{prefix}EventRecordID>177</{prefix}EventRecordID>"
+        f"</{prefix}System><{prefix}EventData>{''.join(data)}</{prefix}EventData></{prefix}Event>"
+    )
+
+
+def invoke_event_plan(directory, xml):
+    return invoke_adapter(directory, "applications", {
+        "mode": "event-plan", "policy_id": EVENT_POLICY_ID, "xml": xml,
+    }, simulate_system=False)
+
+
+@pytest.mark.parametrize("namespace,fields", [
+    pytest.param("default", [("File Name", BLOCKED_FIXTURE_PATH)], id="current-file-name"),
+    pytest.param("default", [("File Name", BLOCKED_FIXTURE_PATH), ("SHA1 Hash", None),
+                             ("Policy Name", ""), ("PublisherName", None)], id="current-empty-optionals"),
+    pytest.param("default", [("FileName", BLOCKED_FIXTURE_PATH), ("Policy Name", None)], id="legacy-empty-optionals"),
+    pytest.param("default", [("File Name", ""), ("FileName", BLOCKED_FIXTURE_PATH)], id="empty-current-legacy-fallback"),
+    pytest.param("prefixed", [("File Name", BLOCKED_FIXTURE_PATH), ("Policy Name", "")], id="qualified-event-prefix"),
+    pytest.param("unqualified", [("FileName", BLOCKED_FIXTURE_PATH)], id="legacy-unqualified"),
+])
+def test_wdac_block_event_reads_namespaced_file_name_and_empty_optional_data(tmp_path, namespace, fields):
+    directory = fixture_environment(tmp_path)
+    result = invoke_event_plan(directory, ci_event_xml(fields, namespace=namespace))
+    assert assert_success(result) == {"events": [
+        {"kind": "app_block", "detail": BLOCKED_FIXTURE_PATH, "rule_id": EVENT_POLICY_ID},
+    ]}
+    assert calls(directory) == []
+
+
+@pytest.mark.parametrize("policy_id,event_id", [
+    pytest.param(FOREIGN_EVENT_POLICY_ID, 3077, id="foreign-guid"),
+    pytest.param(None, 3077, id="missing-guid"),
+    pytest.param(EVENT_POLICY_ID, 3076, id="audit-event"),
+])
+def test_wdac_block_event_ignores_other_policy_ids_and_non_block_events(tmp_path, policy_id, event_id):
+    directory = fixture_environment(tmp_path)
+    xml = ci_event_xml([("File Name", BLOCKED_FIXTURE_PATH), ("SHA1 Hash", None)],
+                       policy_id=policy_id, event_id=event_id)
+    assert assert_success(invoke_event_plan(directory, xml)) == {"events": []}
+    assert calls(directory) == []
+
+
+def test_wdac_block_event_preserves_target_sanitization_and_size_bound(tmp_path):
+    directory = fixture_environment(tmp_path)
+    clean = BLOCKED_FIXTURE_PATH + "x" * 520
+    xml = ci_event_xml([("File Name", "\t" + clean[:25] + "\n\x7f" + clean[25:])])
+    result = invoke_event_plan(directory, xml)
+    assert assert_success(result) == {"events": [
+        {"kind": "app_block", "detail": clean[:512], "rule_id": EVENT_POLICY_ID},
+    ]}
+    assert calls(directory) == []
+
+
+def test_wdac_block_event_reports_unavailable_target_when_file_fields_are_empty(tmp_path):
+    directory = fixture_environment(tmp_path)
+    xml = ci_event_xml([("File Name", None), ("FileName", "")])
+    result = invoke_event_plan(directory, xml)
+    assert assert_success(result) == {"events": [
+        {"kind": "app_block", "detail": "blocked executable (path unavailable)", "rule_id": EVENT_POLICY_ID},
+    ]}
+    assert calls(directory) == []
+
+
+@pytest.mark.parametrize("malicious", ["malformed", "oversized", "internal-dtd", "external-dtd"])
+def test_wdac_block_event_rejects_invalid_and_unsafe_xml(tmp_path, malicious):
+    directory = fixture_environment(tmp_path)
+    xml = ci_event_xml([("File Name", "ENTITY_PLACEHOLDER")])
+    if malicious == "malformed":
+        xml = xml.removesuffix("</Event>")
+    elif malicious == "oversized":
+        xml = xml.replace("ENTITY_PLACEHOLDER", "x" * 65537)
+    elif malicious == "internal-dtd":
+        xml = f'<!DOCTYPE Event [<!ENTITY fixture "{PRIVATE_EXCEPTION}">]>' + xml.replace("ENTITY_PLACEHOLDER", "&fixture;")
+    else:
+        target = directory / "inert-entity.txt"
+        target.write_text(PRIVATE_EXCEPTION, encoding="utf-8")
+        xml = f'<!DOCTYPE Event [<!ENTITY fixture SYSTEM "{target.as_uri()}">]>' + xml.replace("ENTITY_PLACEHOLDER", "&fixture;")
+    result = invoke_event_plan(directory, xml)
+    assert_app_error(result, "control_failed")
+    assert PRIVATE_EXCEPTION not in result.stdout + result.stderr
+    assert str(directory) not in result.stdout + result.stderr
+    assert calls(directory) == []
 
 
 def test_mocked_wdac_success_and_cleanup_preserve_the_json_contract(tmp_path):
