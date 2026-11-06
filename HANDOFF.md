@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 17 parou antes da instalação
+
+O atalho 17 expirou na verificação inicial de 15 min, antes de gravar o marcador ou chamar o roteiro de aceite. O relatório compartilhado continua sendo da rodada 16. A mensagem original juntava estabilidade do firewall e silêncio de AppX, então a causa específica do timeout ainda não foi observada.
+
+Publicado `17-start-catalog-retry.ps1` em `OpenEMSResults`, SHA-256 `a23696c0517c30f40078d5843fdf67e907fa78ef581d214c99beef21c53569a6`. Reusa a ISO `6e59e44-13cc7763` e o run `13cc77634d414d2da5ca440143e3f4b0`. Confere os hashes ópticos e a ausência de trava, serviço, pasta, tarefa e regras próprias antes do aceite. Exige 90 s de firewall estável dentro de cinco minutos e exporta a idade do último evento AppX para `catalog-preflight-13cc7763.json`. AppX é observação. O critério final de preservação segue igual. Cinco casos inertes passaram no PowerShell 5.1 e o parser do novo launcher passou. Nenhuma mudança no MSI ou no roteiro de aceite.
+
+Manter a VM e a ISO atuais. Executar na janela elevada `& '\\vmware-host\Shared Folders\OpenEMSResults\17-start-catalog-retry.ps1'`. Aguardar preflight, `catalog-result.json` do run correto e diagnóstico `catalog-enforcement-diagnostics-13cc7763.json`.
+
 ## Estado vigente — 06/11/2026. Rodada 17 pronta para VMware
 
 O plano de leituras e parser foi aprovado e implementado em `6e59e44`. O checkpoint privado usa substituição atômica e as leituras do relatório, estado e diário permitem substituição enquanto o handle está aberto. O observador mantém a tarefa quando a leitura ou a exportação falham. O parser lê campos vazios e `File Name` em XML 3077 com namespace, conserva a seleção por GUID e os limites de XML. O diário vazio ou com JSON `null` é recusado explicitamente.
