@@ -1,5 +1,11 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 06/11/2026. Rodada 18 aprovada na VM
+
+O run `cd0e715e3e1b42238c7b4ee15fb1034b` passou nos oito critérios, confirmados pelo verificador do host. O preflight aqueceu o guest por 5.492 s e observou 316 s estáveis com 485 regras e cinco pacotes do Windows. Nenhum evento de suspensão apareceu nos logs do VMware entre a conexão da ISO e o resultado terminal. [Revisão da rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json).
+
+A rechecagem registrou 3.609,187 s monotônicos, 63 observações da v6, aumento de 3.608 s no diário e recusa WDAC 4551 após a hora. A v7 liberou as duas cópias. A remoção retornou MSI 0, sem artefatos próprios. As 485 regras externas do firewall e os 14 IDs externos de Code Integrity ficaram intactos. As sete atribuições tiveram ACK positivo, nenhum ACK negativo e o log protegido não registrou falha de enforcement no intervalo. A evidência da rodada 18 confirma a correção no laboratório; o aceite USB físico continua pendente.
+
 ## Estado vigente — 06/11/2026. Rodada 17 interrompida por suspensão
 
 A verificação inicial confirmou 109 s de firewall estável. A rodada 17 passou nos cinco primeiros critérios e registrou 1.804 s de rechecagem antes de a VM suspender. Após 53min14s em ACPI S1, retomou e encerrou pelo limite total. O relatório final foi exportado. O MSI retornou 0, não restaram artefatos próprios e os 14 IDs externos de Code Integrity permaneceram. A guarda do firewall reprovou pela ausência de duas regras externas, do Fotos e do Feedback Hub. [Revisão da rodada 17](validation/catalog-vm-6e59e44-acceptance-review-2026-11-06.json).

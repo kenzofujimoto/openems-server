@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 18 aprovada
+
+Fonte `ec50572`, run `cd0e715e3e1b42238c7b4ee15fb1034b`. O operador restaurou o snapshot original, conectou a mídia e iniciou o atalho 18. O aquecimento durou 5.492 s. As amostras finais de 485 regras e cinco pacotes permaneceram iguais por 316 s. Os quatro logs mais recentes do VMware não mostraram suspensão ou saída do VMX durante o intervalo verificado. O preflight e o aceite rodaram sem nova ação do operador.
+
+O verificador do host confirmou os oito critérios. Rechecagem monotônica de 3.609,187 s com 63 observações da v6, avanço de 3.608 s no diário e recusa nativa 4551. Liberação v7 com as duas cópias retornando exit 0. MSI 0, serviço/watchdog/NRPT/firewall/CI próprios e registros das fixtures ausentes. As 485 regras e os 14 IDs externos foram preservados. A rodada terminou às 16:39:18, com ACK positivo nas sete atribuições e zero ACK negativo. A coleta automática do log completou e bateu com o hash do relatório. Nenhuma falha local registrada nessa rodada. [Revisão da rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json).
+
+Relatório bruto e coleta preservados localmente em `.venv/catalog-acceptance-ec50572-round18/`. Revisão sanitizada no repositório. A VM ficou no estado final após a remoção. As rodadas 16 e 17 mantêm seus resultados históricos. O próximo aceite pendente é o USB físico.
+
 ## Estado vigente — 06/11/2026. Rodada 18 pronta com proteção temporária contra suspensão
 
 O operador ajustou a configuração de energia da VM após a rodada 17. Como restaurar o snapshot antigo pode reverter a preferência, a nova mídia mantém um `PowerRequestSystemRequired` da própria VM durante o preflight e o aceite e libera o handle ao terminar. A implementação foi compilada em PowerShell 5.1 no host sem abrir uma solicitação de energia. A aplicação efetiva será verificada na VM. [PowerSetRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powersetrequest).
