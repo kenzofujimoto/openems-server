@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 18 pronta com proteção temporária contra suspensão
+
+O operador ajustou a configuração de energia da VM após a rodada 17. Como restaurar o snapshot antigo pode reverter a preferência, a nova mídia mantém um `PowerRequestSystemRequired` da própria VM durante o preflight e o aceite e libera o handle ao terminar. A implementação foi compilada em PowerShell 5.1 no host sem abrir uma solicitação de energia. A aplicação efetiva será verificada na VM. [PowerSetRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powersetrequest).
+
+O launcher usa um período mínimo de 90 min para deixar o Windows processar os aplicativos da imagem restaurada. Exige pelo menos cinco minutos de amostras iguais do firewall e das versões registradas do Fotos, Feedback Hub, Câmera, Store e Clima, com limite de 110 min. Quatro casos inertes passaram, incluindo versão de app que muda durante a amostragem e firewall que nunca estabiliza. A guarda final do firewall continua idêntica. O preflight registra `catalog-preflight-e7809d0a.json` e só depois inicia a instalação. Não há alteração de código do produto nem do harness desde `6e59e44`.
+
+Fonte `476ed6d`, run `e7809d0a1b2c4fbcb7271c166ae8eff3`. ISO `C:\Users\kenzo.fujimoto\Documents\OpenEMS-Lab\OpenEMS-Catalog-476ed6d-e7809d0a.iso`, SHA-256 `f57352f83fc429f376fafd5311ed5c4106afe7ae5df64701768212392b161b95`. Onze arquivos conferidos, MSIs 0.4.0/0.4.1 inspecionados e atalho `18 - Catalog acceptance and diagnostics as administrator.lnk` verificado. Recibo em `.venv/catalog-acceptance-476ed6d-round18/MEDIA-RECEIPT.json`. A execução aguarda o operador restaurar `clean-preflight-before-controls`, conectar a nova ISO e iniciar o atalho 18. O teste e o USB físico seguem pendentes.
+
 ## Estado vigente — 06/11/2026. Rodada 17 encerrou após suspensão
 
 O run `13cc77634d414d2da5ca440143e3f4b0` retomou às 13:22:39, após 53min14s em ACPI S1. O worker encerrou às 13:27:06 com limite total excedido. Os cinco primeiros critérios passaram. O último avanço horário foi 1.804 s, então a hora efetiva ficou sem comprovação. O exportador publicou o resultado terminal após retomar. A coleta manual confirmou o hash do relatório e a configuração de suspensão de 900 s em AC e 600 s em DC. [Revisão da rodada 17](validation/catalog-vm-6e59e44-acceptance-review-2026-11-06.json).
