@@ -1179,6 +1179,22 @@ switch($fixtureData.mode){
 
 @WINDOWS[0]
 @WINDOWS[1]
+@pytest.mark.parametrize("contents", ["", "null"])
+def test_existing_invalid_journal_is_never_treated_as_missing(tmp_path, contents):
+    expression = r"""
+[IO.File]::WriteAllText($fixtureData.path, [string]$fixtureData.contents)
+$script:journalPath=$fixtureData.path
+$refused=$false
+try { $null=Read-Journal -AllowMissing } catch { $refused=$true }
+if(-not $refused){throw 'An existing invalid journal was treated as missing.'}
+"""
+    observed = pure(tmp_path, ["Read-SnapshotText", "Read-CatalogJson", "Read-Journal"], expression,
+                    {"path": str(tmp_path / "journal.json"), "contents": contents})
+    assert observed["accepted"] is True, observed
+
+
+@WINDOWS[0]
+@WINDOWS[1]
 @pytest.mark.parametrize("case", ["transient", "persistent", "export_error", "foreign_terminal", "missing_finish"])
 def test_catalog_observer_exports_only_the_verified_terminal_and_preserves_worker_on_errors(tmp_path, case):
     expression = r"""
@@ -1195,6 +1211,7 @@ function Write-Report {
     if($fixtureData.case -ceq 'export_error'){throw (New-Object IO.IOException('synthetic export failure'))}
 }
 function Start-Sleep { }
+function Write-Host { }
 function Remove-CatalogTaskIfInactive { $script:removed++ }
 $failed=$false
 try { $report=Observe-CatalogTask 'C:\inert\report.json' 'C:\inert\shared.json' $fixtureData.manifest 'inert-task' 5 }
@@ -1605,8 +1622,10 @@ def test_cached_wdac_identity_is_checked_even_after_removal_deletes_its_journal(
 $global:policyProbeData=$fixtureData
 $script:journalPath='C:\not-a-real-test-journal.json'
 $script:ownPolicyId=$fixtureData.cached_id
-function global:Test-Path([string]$LiteralPath) { return [bool]$global:policyProbeData.journal_exists }
-function global:Read-Journal { return $global:policyProbeData.journal }
+function global:Read-Journal {
+    if($global:policyProbeData.journal_exists){return $global:policyProbeData.journal}
+    return $null
+}
 function global:Code-Policies { return @($global:policyProbeData.policies) }
 $observed=Own-Policy
 $actual=if($null -eq $observed){''}else{[string]$observed.PolicyID}
