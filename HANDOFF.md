@@ -1,5 +1,11 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 17 suspensa no meio da rechecagem
+
+A repetição com `17-start-catalog-retry.ps1` passou no preflight. Quatro amostras de 482 regras permaneceram estáveis por 109 s. AppX foi observado e a idade do evento mais recente subiu de 224 para 334 s durante as amostras. O timeout inicial não tem causa específica confirmada. O worker iniciou às 11:52:55 e aprovou os cinco primeiros critérios.
+
+O último `catalog-result.json` do run `13cc77634d414d2da5ca440143e3f4b0` registra `running`, `hourly_progress_seconds=1804`, às 12:29:17. SHA-256 `479164a2ec3f13b41c91e7280c157bbf02d2d23d7746ab3742b6cad588c24a2b`. O VMware registrou entrada ACPI S1 às 12:29:25 e concluiu a suspensão às 12:30:07. A CLI exige a senha de criptografia para retomar. Operador deve usar **Resume this virtual machine** no VMware, preservando a sessão e a ISO atuais. Após retomar, confirmar avanço e avaliar o intervalo suspenso separadamente para comprovar a hora efetiva. Resultado terminal e limpeza ainda pendentes.
+
 ## Estado vigente — 06/11/2026. Rodada 17 parou antes da instalação
 
 O atalho 17 expirou na verificação inicial de 15 min, antes de gravar o marcador ou chamar o roteiro de aceite. O relatório compartilhado continua sendo da rodada 16. A mensagem original juntava estabilidade do firewall e silêncio de AppX, então a causa específica do timeout ainda não foi observada.
