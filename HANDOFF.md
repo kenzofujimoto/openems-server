@@ -1,5 +1,11 @@
 # Handoff — roadmap v2
 
+## Estado vigente — 06/11/2026. Rodada 19 de USB físico pronta
+
+O PENMACK passou no aceite histórico `675308c`. A repetição do build atual usa o mesmo par de MSIs aprovado no catálogo da rodada 18, sem recompilar, e o roteiro USB `test-controls-sandbox.ps1` intacto. O launcher de laboratório verifica snapshot limpo, hashes e identidade do PENMACK (rótulo, VID `058F`, PID `6387`, 4.026.531.840 bytes, USB fora de boot/sistema), verifica duas amostras de firewall e aplicativos, e mantém uma solicitação temporária de energia na VM durante o teste. O suplemento confere ACK de liberação, MSI 0, ausência de artefatos próprios e canário de leitura/escrita/exclusão após a remoção. Quatro casos inertes da seleção do disco passaram em PowerShell 5.1.
+
+Fonte `ec50572`, run `91a579649d9444f4bb9ff8b3914d1ecf`. ISO `C:\Users\kenzo.fujimoto\Documents\OpenEMS-Lab\OpenEMS-USB-ec50572-91a57964.iso`, SHA-256 `0b8471933bdc7878e3d50c81d6b66f707a59e12435c194156d9b45bc83486eaf`, sete arquivos conferidos. Atalho `19 - Physical USB acceptance as administrator.lnk` verificado. Recibo em `.venv/usb-acceptance-ec50572-91a57964/MEDIA-RECEIPT.json`. O operador deve restaurar `clean-preflight-before-controls`, conectar a ISO e redirecionar somente o PENMACK para o guest. Saída exclusiva em `OpenEMSResults\usb-91a57964`. Ainda sem execução física desta fonte.
+
 ## Estado vigente — 06/11/2026. Rodada 18 aprovada
 
 Fonte `ec50572`, run `cd0e715e3e1b42238c7b4ee15fb1034b`. O operador restaurou o snapshot original, conectou a mídia e iniciou o atalho 18. O aquecimento durou 5.492 s. As amostras finais de 485 regras e cinco pacotes permaneceram iguais por 316 s. Os quatro logs mais recentes do VMware não mostraram suspensão ou saída do VMX durante o intervalo verificado. O preflight e o aceite rodaram sem nova ação do operador.
