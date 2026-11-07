@@ -1,6 +1,12 @@
 # Handoff — roadmap v2
 
-## Estado vigente — 07/11/2026. USB físico 19 reprovado; recuperação pendente
+## Estado vigente — 07/11/2026. USB físico 19 reprovado; recuperação 22 pendente
+
+A recuperação 21 iniciou às 18:51:14Z e terminou às 18:53:46Z sem executar MSI. Seu backend passou no health HTTP, mas só recebeu a própria sonda: nenhum contato do agente e nenhum ACK durante 90,853 s. Resultado preservado como `usb-recovery-91a57964.json`, SHA-256 `7500f567f2b6bfdb94bfd6cb534cec266bda776998a9ca7f958549c72e52cd7d`, também arquivado localmente. O runtime aplica backoff exponencial de conexão até 300 s com jitter de 0,8–1,2; a falta de contato é compatível com esse intervalo, mas ainda não há confirmação da causa exata nesta VM.
+
+Solicitado ao operador `& '\\vmware-host\Shared Folders\OpenEMSResults\22-retry-usb-release-and-remove.ps1'`, SHA-256 `ce2d94d2a8d9f8bd677afcf0d28d17a9e2d971eb11af659d302a0d9232199c24`. Usa o mesmo fluxo normal da recuperação 21 e, após verificar a saúde do backend, reinicia normalmente o serviço para retomar a sincronização. Continua exigindo ACK em 90 s, cache correspondente e diário USB ausente antes de MSI `/x`. Saída nova `usb-recovery-91a57964-retry1.json`; a primeira tentativa e o aceite reprovado permanecem intactos. Parser PS 5.1 e sete casos inertes passaram novamente. Às 18:58Z a segunda tentativa ainda não tinha exportado relatório nem recebido confirmação do operador. Preservar VM, ISO e PENMACK. Aguardar execução/erro e revisar a remoção antes de restaurar.
+
+O plano `docs/usb-backend-lifecycle-plan.md` propõe correção do ciclo de vida e observação de reconexão em dois arquivos de código/teste, com TDD e novos recibos. Está proposto, sem aprovação; nenhuma mudança no harness ou produto foi feita. Solicitar aprovação explícita antes de escrever os testes vermelhos. Concluir primeiro a recuperação normal do guest.
 
 O operador iniciou o run `91a579649d9444f4bb9ff8b3914d1ecf` com a fonte congelada `ec50572`. O preflight reconheceu o PENMACK em E:, VID `058F`, PID `6387`, 4.026.531.840 bytes; 482 regras de firewall e cinco pacotes ficaram estáveis por 78 s. Passaram instalação/inventário autenticado, bloqueio de armazenamento com HID saudável e persistência após reinício offline. A retomada do backend falhou e a limpeza não recebeu ACK. A rodada terminou reprovada às 18:30:11Z. Exceções, somente leitura e remoção física não foram aprovados.
 

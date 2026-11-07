@@ -1,0 +1,40 @@
+# USB fixture backend lifecycle and reconnect plan
+
+Status: proposed; explicit approval required before changing source or tests.
+
+## Evidence and limits
+
+Physical USB run `91a579649d9444f4bb9ff8b3914d1ecf`, frozen source `ec50572`, passed installation/inventory, storage blocking with healthy HID, and cached enforcement after an offline service restart. The next backend start raised `Fixture backend did not start; job state Running; reason `. Cleanup published an empty v3 file but did not receive an ACK. The guest retained a running agent, cached blocking v2 and its USB journal. Current observation found no responding listener. The original startup exception was discarded, so its specific cause remains unknown.
+
+Code inspection identified independent lifecycle defects: `Start-Backend` retains its new job only in a local variable until it returns; a failure loses the handle, allowing cleanup to start another job. Attempts also share an unqualified readiness file. A late instance can satisfy another attempt's readiness check. The catch replaces both timeouts and filesystem failures with the same message.
+
+Runtime synchronization uses exponential connection backoff capped at 300 seconds with 0.8–1.2 jitter. After a long offline interval, a healthy fixture can wait up to 360 seconds for the next scheduled attempt. Recovery 21 served its own verified health request but received no agent contact within 90 seconds; it performed no MSI removal. This is consistent with backoff, but the precise cause of that guest interval has not been established. Recovery 22 adds a normal service restart after fixture health verification; its outcome remains pending.
+
+## Scope
+
+- `tests/test_controls_fixture_backend.py`: safe mocked lifecycle/reconnect contracts and isolated loopback fixture tests. Never execute the harness top level, an agent, an MSI or OS controls on the host.
+- `deploy/test-controls-sandbox.ps1`: backend ownership, readiness, bounded reconnect observation and safe lifecycle diagnostics for USB/application fixture usage.
+- `HANDOFF.md` and sanitized validation evidence: record actual outcomes after implementation and guest execution.
+
+No native product, USB adapter, installation authority, protected configuration or service uninstall logic changes. Preserve the existing eight USB acceptance criteria, device identity checks, HID checks, physical read/write/delete proof and normal removal requirement.
+
+## Steps
+
+1. Preserve the original failed report, preflight, supplemental checks and diagnostics with hashes. Complete and independently review normal release/removal in the current guest before restoring any snapshot. A cleanup recovery does not pass run 19.
+2. Add failing tests first and commit them as `test(acceptance): add failing backend lifecycle specs`. Cover a startup timeout, readiness read failure, a late marker from a prior attempt, an already owned job, failed teardown, mismatched health assignment, delayed authenticated reconnect and the unchanged 90-second ACK window. Check that failures preserve the original safe category and cannot create an untracked second job. Run the full permitted test suite to establish expected failures and unrelated results.
+3. Implement the smallest lifecycle fix. Assign the newly created job to the script-owned handle immediately. Refuse overlapping starts. Give each attempt a unique readiness identity and verify the actual authenticated HTTP assignment before declaring readiness. On failure, stop/remove only the owned job and retain its handle if teardown fails. Never kill a listener based solely on its TCP PID; HTTP.sys can use PID 4.
+4. Record bounded safe lifecycle events: attempt identity, UTC time, elapsed time, job state and exception category. Exclude request bodies, authorization values, endpoint configuration, raw command lines and unrestricted stderr. Preserve failed startup evidence across cleanup.
+5. Treat reconnect observation separately from policy acknowledgment. After restarting the offline fixture, observe a real authenticated agent request, excluding the fixture's own health probe, for at most 360 seconds. Only then publish the next release assignment and begin the existing 90-second ACK deadline. A missing reconnect or negative/missing ACK fails the run. Apply the same prerequisite to fallback cleanup when needed; do not edit cache or protection state to obtain removal.
+6. Run the full permitted test suites, scoped lint and PowerShell 5.1 parsing. Retain the four documented legacy host-invoking test deselections and disable service-install tests on the host. Re-run the real PostgreSQL/Redis contracts when the full acceptance workflow requires them. Commit the green implementation separately, then refactor only with meaningful validation.
+7. Reuse the frozen catalog-approved MSIs if their hashes remain unchanged. Build a fresh USB ISO/run identity containing the updated verified harness, inspect every extracted file and stage a fresh shortcut. After approved current-guest cleanup, restore the clean snapshot and repeat the physical USB acceptance. Independently verify all eight criteria, exact release ACK, MSI exit 0, absence of owned artifacts, preserved HID and final physical read/write/delete proof. Keep prior failures unchanged.
+
+## Risks and acceptance constraints
+
+- A slow or failing guest startup may still exceed the existing 120-second fixture startup bound. The change must report the actual safe failure and leave no untracked job; it does not silently extend that bound.
+- A readiness file alone cannot prove the correct process serves the endpoint. Authenticate and compare the HTTP assignment's version and digest.
+- Observe the 360-second reconnect bound independently; never add it to or reset the 90-second ACK deadline after release publication.
+- The observer must preserve an active worker when evidence cannot be read/exported. Review the USB parent observer if tests demonstrate that lifecycle handling requires a further source file; seek approval for an expanded scope before implementing it.
+- Shared fixture changes affect the Applications harness too. Cover its existing routes and response behavior, and repeat guest acceptance if a material behavior change cannot be ruled out.
+- USB release may require physical re-enumeration. A pending physical return or reboot requirement stays pending/failed and cannot substitute for proof.
+
+Implementation and a new physical run await approval of this plan. Read-only investigation and the authorized normal cleanup of run 19 continue separately.
