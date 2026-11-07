@@ -8,7 +8,9 @@ Physical USB run `91a579649d9444f4bb9ff8b3914d1ecf`, frozen source `ec50572`, pa
 
 Code inspection identified independent lifecycle defects: `Start-Backend` retains its new job only in a local variable until it returns; a failure loses the handle, allowing cleanup to start another job. Attempts also share an unqualified readiness file. A late instance can satisfy another attempt's readiness check. The catch replaces both timeouts and filesystem failures with the same message.
 
-Runtime synchronization uses exponential connection backoff capped at 300 seconds with 0.8–1.2 jitter. After a long offline interval, a healthy fixture can wait up to 360 seconds for the next scheduled attempt. Recovery 21 served its own verified health request but received no agent contact within 90 seconds; it performed no MSI removal. This is consistent with backoff, but the precise cause of that guest interval has not been established. Recovery 22 adds a normal service restart after fixture health verification; its outcome remains pending.
+Runtime synchronization uses exponential connection backoff capped at 300 seconds with 0.8–1.2 jitter. After a long offline interval, a healthy fixture can wait up to 360 seconds for the next scheduled attempt. Recovery 21 served its own verified health request but received no agent contact within 90 seconds; it performed no MSI removal. This is consistent with backoff, but the precise cause of that guest interval has not been established. Recovery 22 verified fixture health and restarted the service normally. It handled 24 requests without fixture errors, but received negative ACKs for cached v2 and release v4. It failed the unchanged 90-second ACK window and performed no MSI removal. A read-only collector 23 was requested to identify the local enforcement stages and USB restore preconditions. The specific native failure remains unknown.
+
+Do not treat the backend lifecycle fix below as sufficient to resolve the new negative ACKs. Finish that investigation first. If it requires native adapter or additional test changes, revise this plan and obtain approval for the expanded scope before implementing it.
 
 ## Scope
 

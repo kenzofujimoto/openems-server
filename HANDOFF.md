@@ -1,6 +1,14 @@
 # Handoff — roadmap v2
 
-## Estado vigente — 07/11/2026. USB físico 19 reprovado; recuperação 22 pendente
+## Estado vigente — 07/11/2026. Recuperação USB 22 recebeu ACKs negativos; coleta 23 pendente
+
+O operador iniciou a recuperação 22 às 22:00:41Z. O backend passou no health HTTP, o serviço reiniciou normalmente e houve 24 requisições sem erros do fixture. O agente enviou ACK negativo da v2 às 22:01:41Z e dois negativos da liberação v4 às 22:02:12Z e 22:02:27Z. A janela de ACK terminou após 90,014 s e a recuperação encerrou reprovada às 22:02:41Z. Nenhum MSI foi executado. O erro atual é de aplicação local da política; a operação nativa ainda é desconhecida. O backend indisponível da rodada original e a primeira recuperação sem contato continuam fatos históricos separados.
+
+Resultado `usb-recovery-91a57964-retry1.json`, SHA-256 `4975f2821d65ecaf71fd5effe89a4c990e7301bb1dcb421912d85382b0772655`, arquivado com recibo em `.venv/usb-acceptance-ec50572-91a57964/preserved-recovery22/`. Preservar guest, ISO, PENMACK e serviço sem novo reinício até a leitura. O runtime pode manter v4 em memória apesar de conservar v2 no cache persistido.
+
+Solicitado `& '\\vmware-host\Shared Folders\OpenEMSResults\23-read-usb-release-failure.ps1'`. Coletor somente leitura, SHA-256 `346aafde1ee077f6688748e970372152fd8b3c7ebb9b29e26ddb3449bb2a9f42`, saída `usb-release-diagnostics-91a57964.json`. Confere a identidade da recuperação, lê categorias/etapas dos logs desde seu início, estado/cache, journal USB, presença e ProblemCode dos filhos próprios, quantidade de discos com UniqueId correspondente, flags e correspondência das restrições próprias e eventos PnP delimitados. Não exporta serial/UniqueId/InstanceId bruto. Não aplica políticas, reinicia serviço ou modifica permissões. Parser e caso inerte do diário passaram no PowerShell 5.1; revisão independente confirmou o escopo. Aguardar execução/resultado. O plano de ciclo de vida do backend continua proposto e não aprovado; a nova falha local precisa ser delimitada antes de ampliar seu escopo.
+
+## Histórico — recuperação 22 preparada antes da execução
 
 A recuperação 21 iniciou às 18:51:14Z e terminou às 18:53:46Z sem executar MSI. Seu backend passou no health HTTP, mas só recebeu a própria sonda: nenhum contato do agente e nenhum ACK durante 90,853 s. Resultado preservado como `usb-recovery-91a57964.json`, SHA-256 `7500f567f2b6bfdb94bfd6cb534cec266bda776998a9ca7f958549c72e52cd7d`, também arquivado localmente. O runtime aplica backoff exponencial de conexão até 300 s com jitter de 0,8–1,2; a falta de contato é compatível com esse intervalo, mas ainda não há confirmação da causa exata nesta VM.
 
