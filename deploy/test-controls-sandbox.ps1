@@ -142,6 +142,11 @@ function Write-Json([string]$Path, $Value, [switch]$SharedFolder) {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
     }
 }
+function Assert-ControlDeadline([DateTime]$Deadline) {
+    if ([DateTime]::UtcNow -ge $Deadline) {
+        throw [TimeoutException]::new('Controls observation deadline expired; preserve the guest and evidence.')
+    }
+}
 function Observe-ControlsResult([string]$ResultPath, [string]$TaskName, [string]$Destination,
     [DateTime]$Deadline, [string]$ExpectedWorkerId, [string]$ExpectedKind, [string]$ExpectedRevision = '') {
     $printed = 0
@@ -155,6 +160,7 @@ function Observe-ControlsResult([string]$ResultPath, [string]$TaskName, [string]
                 throw ('Controls report read failed; category ' + $cause.GetType().Name + '; preserve the worker task.')
             }
         }
+        Assert-ControlDeadline $Deadline
         if ($null -eq $text) { Start-Sleep -Milliseconds 500; continue }
         $outcome = $text | ConvertFrom-Json
         if ($outcome.worker_id -cne $ExpectedWorkerId -or $outcome.kind -cne $ExpectedKind -or
@@ -174,6 +180,7 @@ function Observe-ControlsResult([string]$ResultPath, [string]$TaskName, [string]
             }
         }
         Write-Json $Destination $outcome -SharedFolder
+        Assert-ControlDeadline $Deadline
         if (@($outcome.checks).Count -gt $printed) {
             $outcome.checks | Select-Object -Skip $printed | ForEach-Object { Write-Host ($_.status + ': ' + $_.name) }
             $printed = @($outcome.checks).Count
@@ -181,9 +188,11 @@ function Observe-ControlsResult([string]$ResultPath, [string]$TaskName, [string]
         if ($terminal) {
             # A final checkpoint can be published immediately before the worker exits.
             $taskState = [string](Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop).State
+            Assert-ControlDeadline $Deadline
             if ($taskState -in @('Ready', 'Disabled')) {
                 Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
             }
+            Assert-ControlDeadline $Deadline
             return $outcome
         }
         Start-Sleep -Milliseconds 500
@@ -244,7 +253,15 @@ function Record-Check([string]$Name) {
 }
 function Wait-Until([scriptblock]$Condition, [int]$Seconds, [string]$Message) {
     $until = [DateTime]::UtcNow.AddSeconds($Seconds)
-    while ([DateTime]::UtcNow -lt $until) { if (& $Condition) { return }; Start-Sleep -Milliseconds 300 }
+    while ([DateTime]::UtcNow -lt $until) {
+        $satisfied = & $Condition
+        # A slow read must not turn a result obtained after the deadline into success.
+        if ([DateTime]::UtcNow -ge $until) { break }
+        if ($satisfied) { return }
+        $remaining=[int][Math]::Floor(($until - [DateTime]::UtcNow).TotalMilliseconds)
+        if ($remaining -le 0) { break }
+        Start-Sleep -Milliseconds ([Math]::Min(300, $remaining))
+    }
     throw $Message
 }
 function Read-Rows([string]$Name) {
@@ -307,6 +324,12 @@ function Write-BackendLifecycle($Backend, [string]$Stage, [string]$ErrorCategory
     $stream=[IO.File]::Open((Join-Path $work 'backend-lifecycle.log'), 'Append', 'Write', ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
     try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
 }
+function Get-BackendRemainingMilliseconds($Backend, [DateTime]$Deadline) {
+    $remaining=($Deadline - [DateTime]::UtcNow).TotalMilliseconds
+    $clock=Get-BackendValue $Backend 'BackendClock' $null
+    if ($null -ne $clock) { $remaining=[Math]::Min($remaining, 120000 - $clock.Elapsed.TotalMilliseconds) }
+    return [int][Math]::Max(0, [Math]::Min([int]::MaxValue, [Math]::Floor($remaining)))
+}
 function Test-BackendReady($Backend, [DateTime]$Deadline) {
     $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'ready_receipt'
     if ([DateTime]::UtcNow -ge $Deadline -or $Backend.State -ne 'Running') { return $false }
@@ -318,29 +341,43 @@ function Test-BackendReady($Backend, [DateTime]$Deadline) {
     $expectedProcess = Get-BackendValue $Backend 'BackendProcessId' $null
     if ($null -ne $expectedProcess -and $processId -ne $expectedProcess) { return $false }
     $policy = Read-ControlText -Path (Join-Path $work 'policy.json') | ConvertFrom-Json
-    $remaining = [int][Math]::Floor(($Deadline - [DateTime]::UtcNow).TotalMilliseconds)
+    $remaining = Get-BackendRemainingMilliseconds $Backend $Deadline
     if ($remaining -le 0) { return $false }
     $request = [Net.HttpWebRequest]::Create($origin + '/fct/api/public/v1/config/assigned/')
     $request.Proxy=$null; $request.KeepAlive=$false
     $request.Timeout=[Math]::Min(5000, $remaining); $request.ReadWriteTimeout=$request.Timeout
     $request.Headers['Authorization']='Bearer sandbox-fixture-only'
     $request.Headers['X-Openems-Fixture-Probe']=$Backend.BackendAttemptId
-    $response=$null
+    $response=$null; $reader=$null
     $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_transport'
     try {
-        $response=$request.GetResponse()
+        $responseTask=$request.GetResponseAsync()
+        $remaining=Get-BackendRemainingMilliseconds $Backend $Deadline
+        if ($remaining -le 0 -or -not $responseTask.Wait($remaining)) { $request.Abort(); return $false }
+        $response=$responseTask.GetAwaiter().GetResult()
         $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_identity'
         if ([int]$response.StatusCode -ne 200 -or $response.Headers['X-Openems-Fixture-Attempt'] -cne $Backend.BackendAttemptId -or
             $response.ContentLength -lt 0 -or $response.ContentLength -gt 2097152) { return $false }
+        $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_body'
         $reader=New-Object IO.StreamReader($response.GetResponseStream())
-        try { $observed=$reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+        $bodyTask=$reader.ReadToEndAsync()
+        $remaining=Get-BackendRemainingMilliseconds $Backend $Deadline
+        if ($remaining -le 0 -or -not $bodyTask.Wait($remaining)) { $request.Abort(); return $false }
+        $observed=$bodyTask.GetAwaiter().GetResult() | ConvertFrom-Json
         $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_assignment'
-        if ($observed.version -ne $policy.version -or $observed.digest -cne $policy.digest) { return $false }
+        if ($observed.version -ne $policy.version -or $observed.digest -cne $policy.digest -or
+            (Get-BackendRemainingMilliseconds $Backend $Deadline) -le 0) { return $false }
         $Backend | Add-Member -Force NoteProperty BackendProcessId $processId
         $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'ready'
         return $true
-    } catch [Net.WebException] { return $false }
-    finally { if ($null -ne $response) { $response.Dispose() } }
+    } catch {
+        $cause=$_.Exception.GetBaseException()
+        if ($cause -is [Net.WebException] -or $cause -is [IO.IOException]) { $request.Abort(); return $false }
+        throw
+    } finally {
+        if ($null -ne $reader) { $reader.Dispose() }
+        if ($null -ne $response) { $response.Dispose() }
+    }
 }
 function Wait-BackendContact($Backend, [ValidateRange(1,360)][int]$Seconds = 360) {
     $observedAfter=[DateTime]::UtcNow
@@ -461,7 +498,9 @@ function Start-Backend {
         if ($job.State -ne 'Running' -and $job.State -ne 'NotStarted') { throw 'Fixture backend failed.' }
         if (-not (Test-BackendReady -Backend $job -Deadline $startupDeadline)) { return $false }
         Test-Path -LiteralPath $ready } 120 'startup'
+    if ($startupClock.Elapsed.TotalSeconds -ge 120 -or [DateTime]::UtcNow -ge $startupDeadline) { throw [TimeoutException]::new('Fixture startup timed out.') }
     Write-BackendLifecycle $job 'ready'
+    if ($startupClock.Elapsed.TotalSeconds -ge 120 -or [DateTime]::UtcNow -ge $startupDeadline) { throw [TimeoutException]::new('Fixture startup timed out.') }
     return $job
     }
     catch {
