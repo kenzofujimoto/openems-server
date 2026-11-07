@@ -1,6 +1,6 @@
 # USB fixture backend lifecycle and reconnect plan
 
-Status: proposed; explicit approval required before changing source or tests.
+Status: approved explicitly by the operator on 2026-11-07: "Aprovo o plano com TDD". Implementation and validation are in progress.
 
 ## Evidence and limits
 
@@ -44,4 +44,4 @@ No native product, USB adapter, installation authority, protected configuration 
 - Shared fixture changes affect the Applications harness too. Cover its existing routes and response behavior, and repeat guest acceptance if a material behavior change cannot be ruled out.
 - USB release may require physical re-enumeration. A pending physical return or reboot requirement stays pending/failed and cannot substitute for proof.
 
-Implementation and a new physical run await approval of this plan. The authorized normal cleanup of run 19 is complete and independently verified; the VM can remain in this final state until the next prepared run.
+The approved two-file scope is being implemented. Initial failing specifications were committed as `77e3ad3` after the full permitted suite showed 32 expected failures and 1,581 successes. The ownership/readiness/observer implementation `3f6921a` passed the full permitted suite with 1,613 successes, 57 skips and the four documented deselections. Review found additional late-success deadline edges; regressions and a further red/green cycle are required before packaging the new physical run. No scope expansion is needed. The normal cleanup of run 19 is independently verified; the VM can remain in this final state until the next prepared run.
