@@ -213,7 +213,11 @@ function Stop-Job {
     if($Case -eq 'teardown_failure') { throw [IO.IOException]::new('private-marker-must-not-leak') }
     $Job.State='Stopped'
 }
-function Remove-Job {param($Job,[switch]$Force,$ErrorAction) $script:removes++}
+function Remove-Job {
+    param($Job,[switch]$Force,$ErrorAction)
+    $script:removes++
+    if($Case -eq 'remove_failure') {throw [IO.IOException]::new('private-marker-must-not-leak')}
+}
 function Test-BackendReady {param($Backend,$Deadline) return $true}
 function Wait-Until {
     param([scriptblock]$Condition,[int]$Seconds,[string]$Message)
@@ -224,7 +228,7 @@ function Wait-Until {
 $firstError=$null;$secondError=$null
 try { $null=Start-Backend } catch {$firstError=$_.Exception.Message}
 $retainedAfterFailure=($script:backend -eq $script:fakeJob)
-if($Case -eq 'teardown_failure') {
+if($Case -in @('teardown_failure','remove_failure')) {
     try {$null=Start-Backend} catch {$secondError=$_.Exception.Message}
 }
 @{owned_during_wait=$script:ownedDuringWait;starts=$script:starts;stops=$script:stops;removes=$script:removes;
@@ -247,6 +251,14 @@ def test_failed_teardown_retains_ownership_and_prevents_an_overlapping_start(tmp
     assert result["starts"] == 1 and result["removes"] == 0
     assert "TimeoutException" in result["first_error"]
     assert result["second_error"] and "private-marker" not in result["first_error"] + result["second_error"]
+
+
+def test_failed_job_removal_retains_the_stopped_handle_and_prevents_an_overlapping_start(tmp_path):
+    result = _run_functions(tmp_path, JOB_LIFECYCLE_DRIVER, "remove_failure")
+    assert result["retained_after_failure"] is True
+    assert result["starts"] == result["stops"] == result["removes"] == 1
+    assert "TimeoutException" in result["first_error"] and result["second_error"]
+    assert "private-marker" not in result["first_error"] + result["second_error"]
 
 
 READY_DRIVER = r"""
@@ -302,6 +314,49 @@ def test_ready_receipt_requires_current_nonce_pid_and_authenticated_http_identit
         assert observed == [{"authorization": "Bearer sandbox-fixture-only", "probe": "a" * 32}]
     if case in {"old_nonce", "invalid_pid", "wrong_pid"}:
         assert observed == []
+
+
+def test_ready_health_body_must_finish_inside_the_existing_deadline(tmp_path):
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            import time
+
+            body = json.dumps({"version": 1, "digest": "fixture", "body": {}}).encode()
+            self.send_response(200)
+            self.send_header("X-Openems-Fixture-Attempt", "a" * 32)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            # Every individual read can succeed within 700 ms, while the complete
+            # response exceeds that total budget. Per-read timeouts alone fail here.
+            edges = [len(body) * index // 4 for index in range(5)]
+            try:
+                for index in range(4):
+                    time.sleep(0.3)
+                    self.wfile.write(body[edges[index]:edges[index + 1]])
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                # Deadline cancellation deliberately closes this disposable connection.
+                pass
+
+        def log_message(self, *_args):
+            pass
+
+    driver = READY_DRIVER.replace(
+        "$accepted=Test-BackendReady -Backend $job -Deadline ([DateTime]::UtcNow.AddSeconds(5))",
+        "$clock=[Diagnostics.Stopwatch]::StartNew();$accepted=Test-BackendReady -Backend $job -Deadline ([DateTime]::UtcNow.AddMilliseconds(700))",
+    ).replace("@{accepted=[bool]$accepted}", "@{accepted=[bool]$accepted;elapsed_ms=$clock.Elapsed.TotalMilliseconds}")
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        result = _run_functions(tmp_path, driver, "slow_body", f"http://127.0.0.1:{server.server_port}")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert result["accepted"] is False
+    assert result["elapsed_ms"] < 1050, result
 
 
 CONTACT_DRIVER = r"""
@@ -373,12 +428,14 @@ $script:unregistered=0;$script:exported=0;$script:exportAttempts=0;$script:readC
 function Read-ControlText {
     param($Path)
     $script:readCalls++
+    if($Case -eq 'late_read') {Microsoft.PowerShell.Utility\Start-Sleep -Milliseconds 750}
     if($Case -eq 'read_error') {throw [UnauthorizedAccessException]::new('bounded read failure')}
     return [IO.File]::ReadAllText($Path)
 }
 function Write-Json {
     param($Path,$Value,[switch]$SharedFolder)
     $script:exportAttempts++
+    if($Case -eq 'late_export') {Microsoft.PowerShell.Utility\Start-Sleep -Milliseconds 750}
     if($Case -eq 'export_error') {throw [IO.IOException]::new('shared folder unavailable')}
     $script:exported++;$script:order+=@('export')
 }
@@ -392,6 +449,7 @@ function Unregister-ScheduledTask {
 }
 function Start-Sleep {param($Milliseconds,$Seconds)}
 $deadline=[DateTime]::UtcNow.AddMilliseconds(150)
+if($Case -in @('late_read','late_export')) {$deadline=[DateTime]::UtcNow.AddMilliseconds(500)}
 if($Case -eq 'deadline') {$deadline=[DateTime]::UtcNow.AddSeconds(-1)}
 $returned=$false;$errorType=$null
 try {
@@ -426,6 +484,37 @@ def test_observer_unregisters_an_exited_worker_only_after_exporting_its_valid_te
     result = _run_functions(tmp_path, OBSERVER_DRIVER, "terminal_ready")
     assert result["returned"] is True and result["error_type"] is None
     assert result["order"] == ["export", "unregister"] and result["unregistered"] == 1
+
+
+@pytest.mark.parametrize("case", ["late_read", "late_export"])
+def test_observer_io_that_crosses_the_global_deadline_preserves_the_worker_task(tmp_path, case):
+    result = _run_functions(tmp_path, OBSERVER_DRIVER, case)
+    assert result["returned"] is False
+    assert result["unregistered"] == 0
+    assert result["read_calls"] == 1
+    if case == "late_export":
+        assert result["export_attempts"] == 1
+
+
+def test_reconnect_does_not_accept_a_read_that_finishes_after_its_bound(tmp_path):
+    body = r"""
+$attempt='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+$since=[DateTime]::UtcNow.AddMinutes(-1)
+$job=[pscustomobject]@{State='Running';BackendAttemptId=$attempt;BackendStartedUtc=$since}
+$script:reads=0
+function Read-Rows {
+    param($Name)
+    $script:reads++
+    Microsoft.PowerShell.Utility\Start-Sleep -Milliseconds 1200
+    return @(@{at_utc=[DateTime]::UtcNow.ToString('o');attempt_id=$attempt;route='messages/pull';status=200;
+        response_written=$true;is_probe=$false;authorized=$true;error_type=$null;trace_write_failures=0})
+}
+$accepted=$false
+try {$null=Wait-BackendContact -Backend $job -Seconds 1;$accepted=$true} catch {}
+@{accepted=$accepted;reads=$script:reads}|ConvertTo-Json -Compress
+"""
+    result = _run_functions(tmp_path, body, "late_contact")
+    assert result == {"accepted": False, "reads": 1}
 
 
 ACK_DRIVER = r"""
