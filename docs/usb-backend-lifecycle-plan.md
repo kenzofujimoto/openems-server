@@ -1,6 +1,6 @@
 # USB fixture backend lifecycle and reconnect plan
 
-Status: approved explicitly by the operator on 2026-11-07: "Aprovo o plano com TDD". Implementation and validation are in progress.
+Status: approved explicitly by the operator on 2026-11-07: "Aprovo o plano com TDD". Implementation and local validation completed; fresh physical guest acceptance pending.
 
 ## Evidence and limits
 
@@ -44,4 +44,6 @@ No native product, USB adapter, installation authority, protected configuration 
 - Shared fixture changes affect the Applications harness too. Cover its existing routes and response behavior, and repeat guest acceptance if a material behavior change cannot be ruled out.
 - USB release may require physical re-enumeration. A pending physical return or reboot requirement stays pending/failed and cannot substitute for proof.
 
-The approved two-file scope is being implemented. Initial failing specifications were committed as `77e3ad3` after the full permitted suite showed 32 expected failures and 1,581 successes. The ownership/readiness/observer implementation `3f6921a` passed the full permitted suite with 1,613 successes, 57 skips and the four documented deselections. Review found additional late-success deadline edges; regressions and a further red/green cycle are required before packaging the new physical run. No scope expansion is needed. The normal cleanup of run 19 is independently verified; the VM can remain in this final state until the next prepared run.
+The approved two-file scope is complete. Initial failing specifications were committed as `77e3ad3` after the full permitted suite showed 32 expected failures and 1,581 successes. The ownership/readiness/observer implementation `3f6921a` passed with 1,613 successes. Review found late-success deadline edges: regression commit `2b27cc6` reproduced four expected failures with 1,614 successes; fix `5354a16` passed with 1,618 successes. The same 57 skips and four documented legacy deselections apply. All 43 focused contracts passed, along with 256 sequential Rust tests, 154 panel tests, scoped lint, dependency checks and parsing. No native product source changed.
+
+Fresh media `OpenEMS-USB-5354a16-1daac332.iso` and elevated shortcut 26 were verified on 2026-11-08. Run `1daac33239ca434694a4a9117eb49fb0`, source `5354a16`, frozen native package provenance `ec50572`. See `validation/usb-lifecycle-5354a16-preparation-2026-11-08.json`. Seven optical files match staging in three extraction directories; the initial builder exit and successful fresh verification retries are retained in the preparation receipt. No optical contents or real controls were run on the host. The original run19 remains failed with independently verified cleanup. The remaining step is operator restoration of the clean guest snapshot, exact new ISO connection, PENMACK passthrough and physical acceptance using shortcut 26.

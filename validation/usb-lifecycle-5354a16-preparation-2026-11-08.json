@@ -1,0 +1,157 @@
+{
+  "source_revision": "5354a16a70a0e73a4601e2455a154c763580c585",
+  "plan": "docs/usb-backend-lifecycle-plan.md",
+  "plan_explicitly_approved": true,
+  "source_changes": [
+    "deploy/test-controls-sandbox.ps1",
+    "tests/test_controls_fixture_backend.py"
+  ],
+  "commits": {
+    "initial_red": "77e3ad3",
+    "initial_green": "3f6921a",
+    "deadline_red": "2b27cc6",
+    "final_green": "5354a16a70a0e73a4601e2455a154c763580c585"
+  },
+  "python_tdd_cycles": {
+    "initial_red": {
+      "tests": 1670,
+      "failures": 32,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1581,
+      "evidence": {
+        "name": "full-red.junit.xml",
+        "bytes": 316735,
+        "sha256": "a0514dbfb3533783278410ac371c5641baf85b3252e9f434d3518a996da7310a"
+      }
+    },
+    "initial_green": {
+      "tests": 1670,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1613,
+      "evidence": {
+        "name": "full-green.junit.xml",
+        "bytes": 258616,
+        "sha256": "759902730ffab31fdde43918bf429c636c9660461862fed4d169ff5535866942"
+      }
+    },
+    "deadline_red": {
+      "tests": 1675,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1614,
+      "evidence": {
+        "name": "full-deadline-red.junit.xml",
+        "bytes": 264857,
+        "sha256": "cfd975805a3236e3ac2c76e65bc689fc0cbcc1d68f96d4c0026882f9dedb1551"
+      }
+    },
+    "final_green": {
+      "tests": 1675,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1618,
+      "evidence": {
+        "name": "full-deadline-green.junit.xml",
+        "bytes": 259409,
+        "sha256": "1aee4de6dadca1e83fbb315d3e293a7997368651f786f43bcde797f83b5a31c5"
+      }
+    },
+    "focused_final": {
+      "tests": 43,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 43,
+      "evidence": {
+        "name": "focused-deadline-green.junit.xml",
+        "bytes": 7228,
+        "sha256": "7f34e35d25526b2836054131e5175f0914b062e5ba329c3b520acb6ced335860"
+      }
+    }
+  },
+  "deliberate_legacy_deselections": 4,
+  "service_install_tests_enabled_on_host": false,
+  "real_host_controls_executed": false,
+  "native_tests": {
+    "passed": 256,
+    "mode": "sequential",
+    "evidence": {
+      "name": "native-final.log",
+      "bytes": 26232,
+      "sha256": "91ea963bea7486d1dc75db6e2ef6139ac52d41194b54514429221b62936d46f7"
+    },
+    "baseline_note": "An earlier parallel run failed an inert 5-second marker test; unchanged code passed full sequential repetitions. No native source was changed."
+  },
+  "panel": {
+    "passed": 154,
+    "line_coverage_percent": 95.21,
+    "branch_coverage_percent": 83.81,
+    "function_coverage_percent": 89.98,
+    "evidence": {
+      "name": "panel-final.log",
+      "bytes": 9179,
+      "sha256": "cc720f5f685b1b9294f5872fd07212598f26f34e5f881a07418ca01bd8123458"
+    }
+  },
+  "checks": {
+    "scoped_ruff": "passed",
+    "pip_check": "passed",
+    "cargo_fmt": "passed",
+    "panel_lint": "passed",
+    "panel_typecheck": "passed",
+    "powershell_5_1_parsing_and_function_contracts": "passed",
+    "independent_code_review": "no remaining blocker"
+  },
+  "bounds_seconds": {
+    "startup_including_health": 120,
+    "reconnect_before_release": 360,
+    "exact_positive_ack": 90,
+    "overall_usb_acceptance": 1800
+  },
+  "media": {
+    "source_revision": "5354a16a70a0e73a4601e2455a154c763580c585",
+    "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+    "run_id": "1daac33239ca434694a4a9117eb49fb0",
+    "manifest_sha256": "fb1b6ac36f2712f2478261c0494e56cab515f109bb861e8bddc4e1cb683207c4",
+    "launcher_sha256": "55c79c815c2645d71d939e05c8253f6ad642799e73ccc7671d8c61f50ffd8c71",
+    "harness_sha256": "cd38dcc051692c65d11fe18662dfeadd343009526d1b32911401c37ba92ca5b9",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+        "bytes": 8667136
+      },
+      "openems-agent-next.msi": {
+        "sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+        "bytes": 8667136
+      }
+    },
+    "iso_path": "C:\\Users\\kenzo.fujimoto\\Documents\\OpenEMS-Lab\\OpenEMS-USB-5354a16-1daac332.iso",
+    "iso": {
+      "verified": true,
+      "files_verified": 7,
+      "iso_sha256": "483d3d970e43c334f2adaab177eec259c932783db4e18cdbc6c28920d95ac454",
+      "iso_bytes": 17469440,
+      "mounted_on_host": false,
+      "executables_executed": false
+    },
+    "guest_result_subdirectory": "usb-1daac332",
+    "guest_execution_started": false,
+    "verification_history": "Initial builder exited 1 after extraction; original cause not retained. Two fresh full extraction verifications passed. All three extraction directories now match every staged file.",
+    "shortcut": "C:\\Users\\kenzo.fujimoto\\Documents\\OpenEMS-Lab\\Results\\26 - Physical USB acceptance as administrator.lnk",
+    "shortcut_sha256": "e9d58a81332e1cd23f2918a3b93e410560a7fa21376889fbad00890dce67bc28",
+    "shortcut_arguments_length": 676
+  },
+  "media_evidence": {
+    "name": "FINAL-MEDIA-RECEIPT.json",
+    "bytes": 2137,
+    "sha256": "3b0469f86f78b3adf7282ca176504ab4170ae1d7ceb8f86941b6a4dbbcd1ea71"
+  },
+  "guest_execution_status": "pending_operator",
+  "physical_acceptance_status": "pending_new_run; original run19 remains failed and cleanup verified",
+  "native_package_rebuilt": false
+}
