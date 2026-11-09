@@ -1,0 +1,161 @@
+{
+  "run_id": "ac0193e3c4f545fc926b3206c3e7c80b",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "agent_sha256": "51de0a4ef1436fc5d7013533e57ad77cbaf254a0ff2e2ea200d4b1ab1f5f358f",
+  "production_msi_sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+  "status": "failed",
+  "browsers": [
+    {
+      "browser": "Chrome",
+      "passed": false,
+      "stage": "completed_allowed_https",
+      "error": null,
+      "cases": [
+        {
+          "case": "blocked_https",
+          "passed": true,
+          "status": 200,
+          "is_secure_context": true,
+          "failures": []
+        },
+        {
+          "case": "blocked_http",
+          "passed": true,
+          "status": 200,
+          "is_secure_context": true,
+          "failures": []
+        },
+        {
+          "case": "allowed_https",
+          "passed": false,
+          "status": 200,
+          "is_secure_context": true,
+          "failures": [
+            "Allowed page absent"
+          ]
+        }
+      ],
+      "original_report": "chrome-d33dfa93-f823-4377-889c-e417f03d7c8e/result.json",
+      "original_report_sha256": "1fc78a2754629036ef67faf2799642c08b0353732b8aae9a7342bc4a5436ec31"
+    },
+    {
+      "browser": "Firefox",
+      "passed": false,
+      "stage": "initializing",
+      "error": "Error: browsingContext.create timed out",
+      "cases": [],
+      "original_report": "firefox-7c1e4a08-4475-4535-95ee-d140a879f01a/result.json",
+      "original_report_sha256": "1f1361d79c4a171b2ebd484ace8a594661783b18b0eb5f7be19065e64f35acfd"
+    }
+  ],
+  "controller_result": {
+    "passed": false,
+    "simulated_policy": true,
+    "checks": [
+      "Guest fixture completed; browser results are separate."
+    ],
+    "error": null,
+    "cleanup_errors": [
+      "Trust roots differ from baseline."
+    ]
+  },
+  "owned_cleanup": {
+    "owned_root_absent": true,
+    "agent_process_absent": true,
+    "listeners_absent": true,
+    "hosts_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085"
+  },
+  "foreign_root_guard_passed": false,
+  "current_root_count": 20,
+  "limitations": [
+    "Chrome allowed-page HTTP200 and secure TLS were observed, but the immutable checker result failed its stale page-body text assertion; this report does not reclassify it.",
+    "Firefox navigation cases did not run because browsingContext.create timed out.",
+    "The controller did not export its original root-store baseline, so the exact root additions/removals cannot be recomputed.",
+    "Owned root/process/listener absence and hosts hash were collected after cleanup; they do not override the failed foreign-root guard.",
+    "No category/action/ordered-rule/SafeSearch/antibypass or MSI service acceptance is established by this foreground rendering fixture."
+  ],
+  "evidence_archive": ".venv/windows-release-ec50572-20261108/browser-retry1/preserved-results",
+  "evidence_files": [
+    {
+      "name": "bootstrap.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "bootstrap.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "browser-ready.json",
+      "bytes": 295,
+      "sha256": "37d987afe4c2e868af21cb99c91db7c2cc20be66ed14bd82ae9d276246f3779e"
+    },
+    {
+      "name": "chrome-d33dfa93-f823-4377-889c-e417f03d7c8e/allowed_https.png",
+      "bytes": 48274,
+      "sha256": "b74b4276f36e2d3c3c4d93097e4edff969797b543c992582bc884c23e0831f9d"
+    },
+    {
+      "name": "chrome-d33dfa93-f823-4377-889c-e417f03d7c8e/blocked_http.png",
+      "bytes": 30604,
+      "sha256": "9b0411c1e659f0efc81e89c069e8fa2b5937a49e4b5f3cc596473dc9361233b0"
+    },
+    {
+      "name": "chrome-d33dfa93-f823-4377-889c-e417f03d7c8e/blocked_https.png",
+      "bytes": 30604,
+      "sha256": "9b0411c1e659f0efc81e89c069e8fa2b5937a49e4b5f3cc596473dc9361233b0"
+    },
+    {
+      "name": "chrome-d33dfa93-f823-4377-889c-e417f03d7c8e/chrome.log",
+      "bytes": 151,
+      "sha256": "f2ee0f3e1191b634dbbb770c840eb3f5b4922e621867a13b9cad974ecb66ee1b"
+    },
+    {
+      "name": "chrome-d33dfa93-f823-4377-889c-e417f03d7c8e/result.json",
+      "bytes": 13208,
+      "sha256": "1fc78a2754629036ef67faf2799642c08b0353732b8aae9a7342bc4a5436ec31"
+    },
+    {
+      "name": "cleanup-diagnostics.json",
+      "bytes": 1840,
+      "sha256": "0fde63c88e3f97a859b14a53f9e6a0f37dfd74eccdb949edba9dc93e21e6363c"
+    },
+    {
+      "name": "controller.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "controller.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "firefox-7c1e4a08-4475-4535-95ee-d140a879f01a/firefox.stderr.log",
+      "bytes": 968,
+      "sha256": "b687ae7745256c8190bbfd705cf55da63749987b0942e3b04391c02d89d80f33"
+    },
+    {
+      "name": "firefox-7c1e4a08-4475-4535-95ee-d140a879f01a/firefox.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "firefox-7c1e4a08-4475-4535-95ee-d140a879f01a/result.json",
+      "bytes": 2665,
+      "sha256": "1f1361d79c4a171b2ebd484ace8a594661783b18b0eb5f7be19065e64f35acfd"
+    },
+    {
+      "name": "guest-result.json",
+      "bytes": 315,
+      "sha256": "b23c24e9616187d835fb3db8271b51c61795ab3fb7716bdc7519c810328eb939"
+    },
+    {
+      "name": "stop.signal",
+      "bytes": 44,
+      "sha256": "6378fee435b81142e31a8cdc190a3d73f05506d0ee3f39f2cf8307dc89a90c27"
+    }
+  ],
+  "real_host_controls_executed": false
+}
