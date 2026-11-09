@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "status": "failed_preserved_browser_acceptance_pending",
+  "native_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "agent_sha256": "51de0a4ef1436fc5d7013533e57ad77cbaf254a0ff2e2ea200d4b1ab1f5f358f",
+  "attempts": [
+    {
+      "attempt": 4,
+      "run_id": "15caaabb5d8747aa8d613cd4f254f6e4",
+      "source_revision": "7e84493c8bd133fd465c1609413470ba8763b448",
+      "passed": false,
+      "status": "failed_preserved",
+      "browser_summary": {
+        "chrome": {
+          "passed": true,
+          "cases": 3,
+          "error": null
+        },
+        "firefox": {
+          "passed": true,
+          "cases": 3,
+          "error": null
+        }
+      },
+      "remote_exit_codes": {
+        "chrome": 0,
+        "firefox": 0
+      },
+      "owned_cleanup_verified": true,
+      "guest_stopped_after_evidence_preservation": true,
+      "terminal_passed": false,
+      "terminal_error": null,
+      "terminal_cleanup_errors": [
+        "Trust roots differ from baseline or an owned root remains."
+      ],
+      "supervisor_error_categories": [],
+      "records": {
+        "state": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry4/BROWSER-RUN-STATE.json",
+          "sha256": "38a1a8e55abf01e84f4af4674dd490270776dc9b9657168c598a9841719bdf37",
+          "bytes": 723
+        },
+        "archive_receipt": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry4/preserved-results/RECEIPT.json",
+          "sha256": "4eea5c03931aa2fc0c03966939276bb5eb449ff0104969e5c20a99507613b152",
+          "bytes": 3598
+        },
+        "terminal": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry4/preserved-results/guest-result.json",
+          "sha256": "44a356cf14a0ab18c4b80f24b076149cfb2d8a412a6d5eae6f28733f5260200e",
+          "bytes": 340
+        },
+        "trust_after": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry4/preserved-results/trust-after.json",
+          "sha256": "58346e57598547854f85d9fb3c90aa3d5abc7e406e16ae61a9e5443838fc9f34",
+          "bytes": 3104
+        }
+      },
+      "trust": {
+        "complete_snapshot": true,
+        "passed": false,
+        "added": [
+          "B1BC968BD4F49D622AA89A81F2150152A41D829C",
+          "CABD2A79A1076A31F21D253635CB039D4329A5E8",
+          "DF717EAA4AD94EC9558499602D48DE5FBCF03A25"
+        ],
+        "removed": [],
+        "owned_root_present": false,
+        "before_count": 19,
+        "after_count": 22
+      }
+    },
+    {
+      "attempt": 5,
+      "run_id": "2d767e030efc49bb8b77771b058b3c3d",
+      "source_revision": "7e84493c8bd133fd465c1609413470ba8763b448",
+      "passed": false,
+      "status": "failed_preserved",
+      "browser_summary": {},
+      "remote_exit_codes": {},
+      "owned_cleanup_verified": true,
+      "guest_stopped_after_evidence_preservation": true,
+      "terminal_passed": false,
+      "terminal_error": "Browser-user preparation failed before baseline capture.",
+      "terminal_cleanup_errors": [
+        "error: invalid configuration: cannot read configuration: I/O error: O sistema n\u251c\u00fao pode encontrar o arquivo especificado. (os error 2)",
+        "Trust baseline unavailable; warm-up did not complete."
+      ],
+      "supervisor_error_categories": [
+        "RuntimeError"
+      ],
+      "records": {
+        "state": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry5/BROWSER-RUN-STATE.json",
+          "sha256": "365fe1383bc276498f30f673b2f3b1125f8c90780b2c67d00b0c49725dc0ff07",
+          "bytes": 596
+        },
+        "archive_receipt": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry5/preserved-results/RECEIPT.json",
+          "sha256": "85c5a12db797d7591ae500a037ef5fe7afef908b273ea9f1d53cdfd4a33a5d38",
+          "bytes": 1505
+        },
+        "terminal": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry5/preserved-results/guest-result.json",
+          "sha256": "e4dfe69ca5f4ce27e3b9c5309536225a0edfe061742ede06980e1b7f60cbdd4f",
+          "bytes": 483
+        },
+        "trust_after": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry5/preserved-results/trust-after.json",
+          "sha256": "c4c87872f4134dd335594471df651a69f2ef0947cec8ab6ae4bf7908af99ff83",
+          "bytes": 78
+        }
+      },
+      "trust": {
+        "complete_snapshot": false,
+        "passed": false,
+        "error": null
+      }
+    },
+    {
+      "attempt": 6,
+      "run_id": "b2ee5f23666247f08fbf73d700d1021a",
+      "source_revision": "7e84493c8bd133fd465c1609413470ba8763b448",
+      "passed": false,
+      "status": "failed_preserved",
+      "browser_summary": {
+        "chrome": {
+          "passed": true,
+          "cases": 3,
+          "error": null
+        },
+        "firefox": {
+          "passed": true,
+          "cases": 3,
+          "error": null
+        }
+      },
+      "remote_exit_codes": {
+        "chrome": 0,
+        "firefox": 0
+      },
+      "owned_cleanup_verified": true,
+      "guest_stopped_after_evidence_preservation": true,
+      "terminal_passed": false,
+      "terminal_error": null,
+      "terminal_cleanup_errors": [
+        "Trust roots differ from baseline or an owned root remains."
+      ],
+      "supervisor_error_categories": [],
+      "records": {
+        "state": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry6/BROWSER-RUN-STATE.json",
+          "sha256": "b950991f9c78b07dcd1d95de1468d58bcdb8da260d1d0f800ce3ffef4f1b0902",
+          "bytes": 754
+        },
+        "archive_receipt": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry6/preserved-results/RECEIPT.json",
+          "sha256": "6a21f914fd7790608704823c78cd613a6adeb0e589ad4ed2ac2c3e66f19f83ca",
+          "bytes": 4850
+        },
+        "terminal": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry6/preserved-results/guest-result.json",
+          "sha256": "44a356cf14a0ab18c4b80f24b076149cfb2d8a412a6d5eae6f28733f5260200e",
+          "bytes": 340
+        },
+        "trust_after": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry6/preserved-results/trust-after.json",
+          "sha256": "7c81469801b53f06fd59357495ad05d630e13161019d544f4f5395cef8e6c63f",
+          "bytes": 3105
+        }
+      },
+      "trust": {
+        "complete_snapshot": true,
+        "passed": false,
+        "added": [
+          "B1BC968BD4F49D622AA89A81F2150152A41D829C",
+          "DF717EAA4AD94EC9558499602D48DE5FBCF03A25"
+        ],
+        "removed": [],
+        "owned_root_present": false,
+        "before_count": 20,
+        "after_count": 22
+      }
+    },
+    {
+      "attempt": 7,
+      "run_id": "71a00a75349c421d8e86f81a90ba6f79",
+      "source_revision": "7e84493c8bd133fd465c1609413470ba8763b448",
+      "passed": false,
+      "status": "failed_preserved",
+      "browser_summary": {},
+      "remote_exit_codes": {},
+      "owned_cleanup_verified": true,
+      "guest_stopped_after_evidence_preservation": true,
+      "terminal_passed": false,
+      "terminal_error": "Browser-user preparation failed before baseline capture.",
+      "terminal_cleanup_errors": [
+        "error: invalid configuration: cannot read configuration: I/O error: O sistema n\u251c\u00fao pode encontrar o arquivo especificado. (os error 2)",
+        "Trust baseline unavailable; warm-up did not complete."
+      ],
+      "supervisor_error_categories": [
+        "RuntimeError"
+      ],
+      "records": {
+        "state": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry7/BROWSER-RUN-STATE.json",
+          "sha256": "6b8f96cc346c58666921515b949ab4ac5d91b8196bd32bdcff0377b29768a42b",
+          "bytes": 595
+        },
+        "archive_receipt": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry7/preserved-results/RECEIPT.json",
+          "sha256": "05272c22e57e4cd1e9df44613070dcf210ad75de9a426dd561c08bb73f6a962e",
+          "bytes": 1662
+        },
+        "terminal": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry7/preserved-results/guest-result.json",
+          "sha256": "e4dfe69ca5f4ce27e3b9c5309536225a0edfe061742ede06980e1b7f60cbdd4f",
+          "bytes": 483
+        },
+        "trust_after": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry7/preserved-results/trust-after.json",
+          "sha256": "c4c87872f4134dd335594471df651a69f2ef0947cec8ab6ae4bf7908af99ff83",
+          "bytes": 78
+        }
+      },
+      "trust": {
+        "complete_snapshot": false,
+        "passed": false,
+        "error": null
+      }
+    },
+    {
+      "attempt": 8,
+      "run_id": "ca0aad8db46a4ae88f5e4d28935083bb",
+      "source_revision": "7e84493c8bd133fd465c1609413470ba8763b448",
+      "passed": false,
+      "status": "failed_preserved",
+      "browser_summary": {},
+      "remote_exit_codes": {},
+      "owned_cleanup_verified": true,
+      "guest_stopped_after_evidence_preservation": true,
+      "terminal_passed": false,
+      "terminal_error": "Browser-user preparation did not complete within existing readiness/controller budgets.",
+      "terminal_cleanup_errors": [
+        "error: invalid configuration: cannot read configuration: I/O error: O sistema n\u251c\u00fao pode encontrar o arquivo especificado. (os error 2)",
+        "Trust baseline unavailable; warm-up did not complete."
+      ],
+      "supervisor_error_categories": [
+        "TimeoutExpired"
+      ],
+      "records": {
+        "state": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry8/BROWSER-RUN-STATE.json",
+          "sha256": "5444d2541f4d3851d2e9444619b5f74fece8196213a47f942d8c6d9ff4a7f36f",
+          "bytes": 4100
+        },
+        "archive_receipt": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry8/preserved-results/RECEIPT.json",
+          "sha256": "b5be1b45f2c43f2457e09300f3bc14af0635ba1d835e2166c9874754e600270a",
+          "bytes": 952
+        },
+        "terminal": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry8/preserved-results/guest-result.json",
+          "sha256": "766f20eb1ecdbd12c8e1b615bee1f90e49b929b8658ee04b57b22d35f4bddd30",
+          "bytes": 514
+        },
+        "trust_after": {
+          "path": ".venv/windows-release-ec50572-20261108/browser-retry8/preserved-results/trust-after.json",
+          "sha256": "c4c87872f4134dd335594471df651a69f2ef0947cec8ab6ae4bf7908af99ff83",
+          "bytes": 78
+        }
+      },
+      "trust": {
+        "complete_snapshot": false,
+        "passed": false,
+        "error": null
+      }
+    }
+  ],
+  "interpretation": [
+    "Attempts 4 and 6 passed three Chrome and three Firefox navigation cases with normal TLS, but failed the exact trust-root guard.",
+    "Attempt 6 agent-absent browser preparation independently reproduced an ISRG X1 root addition. This does not prove the cause of the two later additions.",
+    "Attempts 5, 7 and 8 failed preparation and provide no actual candidate navigation pass.",
+    "Attempt 8 exceeded its existing 60-second bootstrap transport bound; no actual candidate checkers ran.",
+    "Every listed guest was stopped only after owned cleanup verification and evidence preservation.",
+    "No trust difference was ignored, no roots were manually imported, no candidate binaries or native source were changed.",
+    "TLS rendering does not close MSI hardening, web actions, ordered rules, categories, SafeSearch or antibypass acceptance."
+  ],
+  "host_endpoint_controls_executed": false
+}
