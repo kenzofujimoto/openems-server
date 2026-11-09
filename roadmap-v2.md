@@ -4,9 +4,28 @@ Objetivo: chegar perto do que o FortiClient EMS oferece nas funções que não d
 
 Status: aprovado em 2026-10-22, com o agente em Rust. Andamento de cada fase em `HANDOFF.md`.
 
-Atualização em 2026-10-27: F3/F4 e o painel F7 foram implementados. Sessão com reboot e locais passaram em Sandbox; USB e aplicativos passaram nos checks automatizados, permanecendo USB físico e WDAC em VM compatível. Chrome/Firefox com o agente final continuam pendentes após rodada incompleta. F8 tem implementação e pacotes Linux aguardando VM; macOS permanece parcial, sem Network Extension/Endpoint Security. F9 foi excluída. Consulte [ACCEPTANCE](ACCEPTANCE.md) e [HANDOFF](HANDOFF.md) para o alcance dos aceites.
+## Estado vigente — 09/11/2026
 
-Documentação atual: [índice](docs/README.md) e [compatibilidade conceitual FortiGuard](docs/web-filter-compatibility.md). A seleção Permitir/Bloquear/Monitorar e a ampliação de categorias são [propostas para aprovação](docs/web-filter-actions-plan.md), sem implementação nesta atualização.
+O par MSI congelado de `ec50572` passou no [catálogo/WDAC opcional 8/8, rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) e no [USB físico 8/8, rodada 26](validation/usb-vm-5354a16-run26-review-2026-11-08.json). O roteiro USB é da revisão `5354a16`, com os mesmos MSIs de produção `c1e38743…` e próximo `eba1fc2e…`. Instalação, aplicação real, liberação e remoção foram verificadas no escopo dessas rodadas.
+
+| Área | Alcance atual |
+|---|---|
+| F3 — catálogo | Regras opcionais, hash/renomeado, rede, processo e rechecagem de uma hora aprovados no par atual |
+| F4 — USB | Hardware físico, exceção VID/PID/serial, bloqueio por instância, somente leitura, evento e limpeza aprovados no par atual |
+| F3 — editor assinado | Rodada28 atual falhou; diagnóstico preservado e mídia30 instrumentada pronta, execução pendente |
+| F2/F7 — navegadores/painel | Tentativas atuais4 e6 passaram seis navegações mas falharam na guarda de raízes externas; aceite global e ações web atuais pendentes. Painel aprovado no CI |
+| F5 — sessão e upgrade/reboot | [8/8 atuais aprovados](validation/windows-session-ec50572-review-2026-11-09.json), novo boot e limpeza verificados |
+| F6 — locais | [8/8 atuais aprovados](validation/windows-locations-ec50572-review-2026-11-09.json), transições e reinícios offline |
+| Gates da candidata | [CI, Security e CodeQL aprovados em7e84493](validation/windows-ci-7e84493-review-2026-11-09.json), cobertura97,28%; distribuição e aceites restantes pendentes |
+| F8/F9 | Linux aguarda aceite operacional em VM; macOS parcial, sem Network Extension/Endpoint Security completos; F9 excluída |
+
+O [plano de fechamento aprovado](windows-release-completion.md) preserva os aceites atuais e prepara as repetições restantes. O hash do próximo MSI em um recibo USB não comprova upgrade. Consulte [ACCEPTANCE](ACCEPTANCE.md) e [HANDOFF](HANDOFF.md) para versões, evidências e limitações.
+
+Documentação atual: [índice](docs/README.md), [compatibilidade conceitual FortiGuard](docs/web-filter-compatibility.md) e [aceite das ações web](docs/web-filter-actions-acceptance.md). Permitir/Bloquear/Monitorar e as categorias foram implementados; o [plano original](docs/web-filter-actions-plan.md) preserva seu histórico de aprovação.
+
+## Histórico — atualização de 27/10/2026
+
+Naquela data, F3/F4 e o painel F7 estavam implementados. Sessão com reboot e locais haviam passado em Sandbox; USB e aplicativos tinham apenas os checks automatizados nessa atualização, e Chrome/Firefox aguardavam conclusão. Os aceites posteriores e o alcance por binário estão na matriz vigente acima. F8 já permanecia parcial e F9 estava excluída.
 
 ## Decisões que precisam da sua aprovação
 

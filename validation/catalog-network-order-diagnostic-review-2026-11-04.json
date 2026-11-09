@@ -1,0 +1,123 @@
+{
+  "date": "2026-11-04",
+  "source_revision": "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+  "run_id": "0e93a06a306e493b9d1fe4975ce2aaf8",
+  "status": "diagnostics_complete_harness_policy_interference_identified",
+  "acceptance_passed": false,
+  "diagnostics": {
+    "file": "vm-catalog-948608e-network-diagnostics-2026-11-04.json",
+    "sha256": "2c4fba2a97eacc9147f74af0cc4af563bb2c792a3b6f3893e7bbb9f68c4dbcb6",
+    "bytes": 9734,
+    "collection_errors": []
+  },
+  "independent_cleanup_verified": true,
+  "release_ack": {
+    "at_utc": "2026-11-04T14:27:28.4956008Z",
+    "version": 7,
+    "success": true,
+    "digest": "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+  },
+  "cleanup_now": {
+    "code_integrity_policy_ids": [
+      "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "1678656c-05ef-481f-bc5b-ebd8c991502d",
+      "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "2678656c-05ef-481f-bc5b-ebd8c991502d",
+      "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+      "5dac656c-21ad-4a02-ab49-649917162e70",
+      "60fd87f8-4593-44a0-91b0-2e0da022f248",
+      "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+      "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+      "a072029f-588b-4b5e-b7f9-05aad67df687",
+      "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+      "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+    ],
+    "own_code_integrity_count": 0,
+    "nrpt_count": 0,
+    "watchdog_present": false,
+    "application_journal_present": false,
+    "owned_firewall_count": 0,
+    "service_present": false
+  },
+  "network_configuration": [
+    {
+      "ipv4_default_route_count": 1,
+      "adapter_statuses": [
+        "Up"
+      ],
+      "up_count": 1,
+      "at_utc": "2026-11-04T14:49:28.2739208Z"
+    }
+  ],
+  "dns": [
+    {
+      "address_count": 2,
+      "error_type": null,
+      "success": true,
+      "timed_out": false,
+      "host_name": "example.org"
+    }
+  ],
+  "tcp": [
+    {
+      "error_type": null,
+      "success": true,
+      "timed_out": false,
+      "host_name": "example.org",
+      "port": 443
+    }
+  ],
+  "https": [
+    {
+      "http_status": 200,
+      "timeout_ms": 8000,
+      "error_types": [],
+      "url": "https://example.org/",
+      "web_status": null,
+      "success": true,
+      "tls": "Tls12"
+    }
+  ],
+  "owned_fixture_probes_after_removal": [
+    {
+      "timed_out": false,
+      "file": "openems-catalog-a.exe",
+      "exit_code": 0,
+      "error_type": null,
+      "executed": true,
+      "sentinel_present": true,
+      "sha256": "00dbddca9a161d12ec4dc4570dfb700cb1c1fcbec46938c2f1410cb32f483b3c"
+    },
+    {
+      "timed_out": false,
+      "file": "openems-catalog-a-renamed.exe",
+      "exit_code": 0,
+      "error_type": null,
+      "executed": true,
+      "sentinel_present": true,
+      "sha256": "00dbddca9a161d12ec4dc4570dfb700cb1c1fcbec46938c2f1410cb32f483b3c"
+    }
+  ],
+  "harness_interference": {
+    "active_assignment_before_network_reference": "absent version2",
+    "blocked_processes": [
+      "openems-catalog-a.exe"
+    ],
+    "termination_events": [
+      {
+        "code": "owned_fixture_terminated",
+        "at_utc": "2026-11-04T14:26:29Z",
+        "image": "openems-catalog-a.exe"
+      }
+    ],
+    "source": "deploy/test-catalog-sandbox.ps1 runs the baseline after absent and before publishing network.",
+    "runtime_behavior": "agent-rs/src/runtime.rs enforces app_control.blocked by process name independently of optional WDAC sample discovery.",
+    "finding": "Baseline is not isolated from catalog process termination; target may be killed during its reference probe.",
+    "original_individual_exit_codes_available": false,
+    "network_failure_root_cause_exclusively_proven": false
+  },
+  "next_step": "Within approved catalog harness scope, add failing isolated orchestration tests, then move both reference probes under the acknowledged allow assignment before absent. Preserve actual process/network/WDAC/hourly criteria and immutable failed evidence.",
+  "guest_preserved": true
+}

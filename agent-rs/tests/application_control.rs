@@ -94,15 +94,16 @@ fn windows_paths_cannot_use_ads_or_normalization_to_target_a_protected_component
 
     fn plan(path: &str) -> bool {
         let root = std::env::var_os("SystemRoot").unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let script = directory.path().join("path-plan.ps1");
+        let mut source = b"\xef\xbb\xbf".to_vec();
+        source.extend_from_slice(include_str!("../../deploy/agent-applications.ps1").as_bytes());
+        std::fs::write(&script, source).unwrap();
         let mut process =
             Command::new(std::path::Path::new(&root).join("System32/WindowsPowerShell/v1.0/powershell.exe"))
-                .args([
-                    "-NoLogo",
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    include_str!("../../deploy/agent-applications.ps1"),
-                ])
+                .args(["-NoLogo", "-NoProfile", "-NonInteractive", "-File"])
+                .arg(&script)
+                .env("PSModulePath", std::path::Path::new(&root).join("System32/WindowsPowerShell/v1.0/Modules"))
                 .creation_flags(0x0800_0000)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())

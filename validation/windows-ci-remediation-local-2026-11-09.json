@@ -1,0 +1,232 @@
+{
+  "status": "local_validation_completed_hosted_checks_pending",
+  "commits": {
+    "compiler_red": "a8b73da",
+    "compiler_fix": "c0ae1ae5b879339f317a7cbf805c488f727a0cc3",
+    "minimatch_fix": "8685491",
+    "image_fix": "6e643d1",
+    "image_stage_contract_fix": "ffbeb7f"
+  },
+  "plan": "windows-ci-remediation.md",
+  "explicitly_approved": true,
+  "compiler_validation": {
+    "red": {
+      "file": "compiler-full-red.junit.xml",
+      "sha256": "c10b03d0a043890fbf3c752b6b58f8648a126df36a134d3759b522c5f1d013d5",
+      "bytes": 277522,
+      "tests": 1689,
+      "failures": 9,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1623
+    },
+    "focused_red": {
+      "file": "compiler-focused-red.junit.xml",
+      "sha256": "e4ebaca59fa7f611296e6b3cd8979a97e7ab7f36cacb914ecdfb87499deefb9a",
+      "bytes": 17181,
+      "tests": 14,
+      "failures": 8,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 6
+    },
+    "full_attempt": {
+      "file": "compiler-full-green.junit.xml",
+      "sha256": "072eb082c1e167f9683de75a68ef39ec3a26e3a61fbdacf46cb6ea7559419089",
+      "bytes": 281926,
+      "tests": 1689,
+      "failures": 0,
+      "errors": 5,
+      "skipped": 57,
+      "passed": 1627
+    },
+    "focused_green": {
+      "file": "compiler-focused-green.junit.xml",
+      "sha256": "7df85c4bd9d734d7471ed01d0eba30ec7164bd89f7d2eb4f2b78a86dbc944acf",
+      "bytes": 2708,
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 14
+    },
+    "environment_retry": {
+      "file": "compiler-panel-browser-retry.junit.xml",
+      "sha256": "7c0584313e911881d9e6f10d2983f655df00cba0f048e27267c52f89a8be1790",
+      "bytes": 879,
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 5
+    },
+    "same_five_setup_errors_retried": true,
+    "all_selected_checks_verified_across_full_attempt_and_retry": true,
+    "verified_passed_across_split_attempts": 1632,
+    "single_full_green_run": false,
+    "environment_issue": "Default Playwright cache missing; official Chromium runtime installed only in task-local cache with browser GC disabled. No source changes for the retry.",
+    "builder_sha256": "1f4f8c7f49eb80396f8a894af5d36f6ec0f194797730c2556dbee1cea5eb55bb",
+    "tests_sha256": "46d6b2d57152bbfa0ccf1048ac4e76dee4a2d824123e1db3837f23678b1f231d",
+    "real_compiler_or_guest_controls_executed": false
+  },
+  "supply_chain_validation": {
+    "npm_audit_including_dev_after_total": 0,
+    "panel_tests_passed": 154,
+    "panel_line_coverage_percent": 95.21,
+    "panel_gates": [
+      {
+        "gate": "lint",
+        "exit_code": 0
+      },
+      {
+        "gate": "typecheck",
+        "exit_code": 0
+      },
+      {
+        "gate": "coverage",
+        "exit_code": 0
+      },
+      {
+        "gate": "build",
+        "exit_code": 0
+      }
+    ],
+    "lock_delta_records": [
+      "node_modules/minimatch",
+      "node_modules/@isaacs/nonrecursive-glob-match"
+    ],
+    "docker_image_built_locally": false,
+    "hadolint_native_available": false,
+    "hosted_image_validation_pending": true,
+    "evidence_files": [
+      {
+        "name": "audit-before.json",
+        "bytes": 6045,
+        "sha256": "297ed8b8a13a2f91765bf078c80481a814431edeaaf4bc4e3076a7a8f6fdee04"
+      },
+      {
+        "name": "audit-after.json",
+        "bytes": 387,
+        "sha256": "54527be65a83f32c59a9b5f87044dd10df7e4945dbff75ad592fa2326d07103a"
+      },
+      {
+        "name": "npm-ci.log",
+        "bytes": 1113,
+        "sha256": "4f8404be8de97da5d773c357522acef777e56c90927ce97f55cfa0b184da8ebe"
+      },
+      {
+        "name": "lint.log",
+        "bytes": 61,
+        "sha256": "bf568734538e662e187b6c61bb6fcc5ed94da259c9772165b0f383bf9071671f"
+      },
+      {
+        "name": "typecheck.log",
+        "bytes": 56,
+        "sha256": "b812d1f76d918d0332705be862b6a63633f7b7eb7082aa1608d9b759c5f5b4b7"
+      },
+      {
+        "name": "coverage.log",
+        "bytes": 9193,
+        "sha256": "8d64f33ca620202784357b10dec63ced2aa1d2458b3ec8b328c83433c03e6994"
+      },
+      {
+        "name": "build.log",
+        "bytes": 1547,
+        "sha256": "54ab9c7b38f355b203748a7319448976b6c211252086ef58257a8f2d3b7f73b1"
+      },
+      {
+        "name": "panel-gates.json",
+        "bytes": 223,
+        "sha256": "fb6a76edd84257434600ac2ef702dc0ce29d1afa6014e760c0cc137e56403841"
+      }
+    ]
+  },
+  "inventory_diagnostic_review": {
+    "reviewed_utc": "2026-11-09T16:44:31.997188+00:00",
+    "run_id": "41a603c625de4d36ba17f86c01f5ce0f",
+    "status": "reviewed_expected_inventory_cache",
+    "original_report": {
+      "name": "inventory-diagnostic-41a603c625de4d36ba17f86c01f5ce0f.json",
+      "sha256": "98814fa511c79f286ff372bd02cf729b2852846282c7b8a98fa1571e675b2ab2",
+      "status_preserved": "failed",
+      "error_category_preserved": "unexpected_state_or_artifact"
+    },
+    "collector_observation": {
+      "exit_code": 0,
+      "elapsed_seconds": 54.165086,
+      "snapshot_keys": [
+        "applications",
+        "collected_at",
+        "usb_devices"
+      ],
+      "application_count": 234,
+      "usb_device_count": 8,
+      "bounded_snapshot": true,
+      "state_file_absent": true,
+      "usb_control_journal_absent": true,
+      "application_control_journal_absent": true,
+      "stdout": {
+        "bytes": 49242,
+        "sha256": "28b413eb24b2c2c4a7e61e84e5dac3c6480a70f89190eb31598bf0e256ce1f55"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "diagnostic_classifier_error": "The diagnostic demanded an empty working directory, but the native inventory intentionally writes an owned USB history cache. The existing integration test forbids control journals, not this inventory cache.",
+    "expected_cache": {
+      "name": "usb-inventory.json",
+      "bytes": 2570,
+      "sha256": "ddf35af85fcd5e21a821e85cac31811ca7ba18753033c81bdfa7ae6ea0fe8e62",
+      "source_creation": "agent-rs/src/usb.rs:157",
+      "source_atomic_write": "agent-rs/src/usb.rs:165",
+      "contents_exported": false
+    },
+    "limits": [
+      "This single local inventory completed in 54.165086 seconds; it does not establish the duration or slow phase of the hosted-runner operation that exceeded 90 seconds.",
+      "The original diagnostic failure is preserved and is not reclassified.",
+      "No agent configuration, service, DNS, policy or enforcement operation was requested.",
+      "The native code and accepted MSI bytes remain unchanged."
+    ],
+    "cleanup": {
+      "status": "removed_only_owned_cache_and_empty_private_directory",
+      "private_directory_mode": "0700",
+      "entry_count_before": 1,
+      "resolved_parent_checked": true,
+      "reparse_points_refused": true,
+      "link_count_checked": true,
+      "recursive_delete_used": false,
+      "cache_absent": true,
+      "directory_absent": true
+    }
+  },
+  "initial_pr": {
+    "number": 13,
+    "head_sha": "f9e963e0a19042521ebae45197cfdb1e039dac0c",
+    "base_sha": "e70d5ad53ea1b241965e5b8fa7d1d967042126e1",
+    "ci_run": 42609462979,
+    "security_run": 42609462838,
+    "codeql_run": 42609462961,
+    "ci_result": "failed_native_inventory_outer_90_second_timeout",
+    "security_result": "failed_sast_minimatch_and_image",
+    "codeql_result": "passed",
+    "linux_tests_passed": 1241,
+    "linux_windows_deselections": 438,
+    "combined_coverage_percent": 97.28
+  },
+  "fixed_image_built_and_scanned_locally": false,
+  "native_agent_and_accepted_msi_changed": false,
+  "host_endpoint_controls_applied": false,
+  "pending_guest_acceptances": [
+    "generic_applications_failed_run28",
+    "browser_retry1_failed",
+    "session_upgrade_reboot",
+    "locations"
+  ],
+  "pending_global_gates": [
+    "new_head_CI",
+    "new_head_Security",
+    "new_head_CodeQL"
+  ]
+}

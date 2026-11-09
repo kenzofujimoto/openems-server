@@ -1,0 +1,34 @@
+{
+  "status": "prepared_guest_execution_pending",
+  "run_id": "680d7eb36b4744fb9b9a24944534c78e",
+  "source_revision": "7e84493c8bd133fd465c1609413470ba8763b448",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+      "bytes": 8667136
+    },
+    "openems-agent-next.msi": {
+      "sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+      "bytes": 8667136
+    }
+  },
+  "manifest_sha256": "2e8a96ce0010df87854f8eb6a399fb638b36ce56be243c989dd53b01377d26de",
+  "harness_sha256": "826ffbff08c2f444e332612d705bc874f8bf7d48d27b2b293f7510bfe451374d",
+  "launcher_sha256": "4907935cc300689e8b37ddd6da9c1d81d92cb5b4c35915cf8fe8936155d6833e",
+  "iso_name": "OpenEMS-Applications-7e84493-680d7eb3.iso",
+  "iso_sha256": "47e69a93c8b97b5a7966a117ef959d2b90dca6375aa8ed3a8707d521e63b563a",
+  "iso_bytes": 17465344,
+  "files_verified": 5,
+  "powershell_5_1_parse": "passed",
+  "helper_sha256": "6116ab479702b7080bec636afd7f892b41523d6bda6c58845f15e8fab40cc7f7",
+  "shortcut_sha256": "2417a147ea29d435cb3adf91b038246bf5a6e7f52b073dad1cfbf4719ae83d8b",
+  "guest_account_guard_first": true,
+  "guest_execution_started": false,
+  "host_endpoint_controls_executed": false,
+  "previous_failed_run": "ff650fb5de4d4c0fa97b8b5efb3a1df8",
+  "previous_failure_preserved": true,
+  "ack_seconds": 90,
+  "network_request_seconds": 8,
+  "process_wait_seconds": 15
+}

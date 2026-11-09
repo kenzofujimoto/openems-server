@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-03",
+  "run_id": "385b1eb0f9304a6ebb308e0620215c6f",
+  "source_revision": "d87d0591f55c77e7c222db82e4b2b812e9866681",
+  "collector_05": {
+    "status": "timed_out",
+    "operator_reported_error": "Diagnostic collection timed out; preserve the guest.",
+    "script_line": 41,
+    "limit_seconds": 240,
+    "host_export_received": false,
+    "root_cause": "Unknown; no per-section checkpoint was exported."
+  },
+  "recovery_collector_06": {
+    "script": "06-collect-catalog-diagnostics-progress.ps1",
+    "sha256": "915696aa40b00123f098b22036eaed133a5f99c24d56fa47438b43bf26835259",
+    "bytes": 14625,
+    "shortcut": "06 - Collect catalog diagnostics with progress as administrator.lnk",
+    "shortcut_sha256": "7857857878abdbb22d7ab41066fbb2d5507d90593c3c8a873c41edef3734bd3a",
+    "output": "catalog-diagnostics-385b1eb0-progress.json",
+    "status": "prepared_operator_action_requested",
+    "bound_to_original_run_revision_and_manifest": true,
+    "recovers_completed_05_before_running_again": true,
+    "checkpoint_before_and_after_each_section": true,
+    "exports_progress_every_seconds": 5,
+    "exports_task_state_and_last_result": true,
+    "exports_partial_on_timeout": true,
+    "limit_seconds": 240,
+    "script_parser_powershell_5_1_passed": true,
+    "inert_report_helper_smoke_passed": true,
+    "smoke_scope": "AST-selected Save-Diagnostics/Capture on owned inert JSON files; no collector top-level, tasks, logs or endpoint controls on host.",
+    "installs_agent": false,
+    "applies_controls": false,
+    "changes_permissions": false,
+    "endpoint_writes": ["own collector staging", "temporary SYSTEM task", "own progress and report files", "copy to existing host result share"]
+  },
+  "guest_preserved": true,
+  "restore_allowed_only_after_review": true,
+  "catalog_acceptance_status": "failed",
+  "independent_cleanup_verified": false,
+  "raw_release_ack_verified": false
+}

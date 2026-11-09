@@ -1,5 +1,203 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 09/11/2026. CI aprovado; catálogo e USB atuais aprovados; demais aceites Windows pendentes
+
+O plano [windows-release-completion.md](windows-release-completion.md) foi aprovado explicitamente pelo operador em 08/11. O candidato usa o par MSI nativo de `ec50572`: produção SHA-256 `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a` e próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. As fontes nativas, scripts incorporados e dados DoH não mudaram entre essa revisão e o fechamento do aceite USB. Os resultados abaixo pertencem a esses bytes; o histórico permanece preservado.
+
+| Área | Evidência mais recente | Alcance para o candidato |
+|---|---|---|
+| Catálogo, hash WDAC, rede, processo e rechecagem após uma hora | [Rodada18 ec50572](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) | **8/8 aprovados**, 3.609s reais de rechecagem, liberação e limpeza verificadas |
+| USB físico, exceção VID/PID/serial, bloqueio por instância e somente leitura | [Rodada26, harness5354a16](validation/usb-vm-5354a16-run26-review-2026-11-08.json) | **8/8 aprovados**, mesmo parMSI, remoção MSI0 e canário final de leitura/escrita/exclusão |
+| Applications completo, incluindo editor e cópia renomeada | [Diagnóstico da rodada28](validation/applications-vm-f9e963e-run28-diagnostics29-review-2026-11-09.json) | Rodada atual falhou na sonda; limpeza própria verificada. Instrumentação aprovada e mídia30 pronta para repetição. Histórico675308c não fecha o candidato |
+| Chrome/Firefox e ações web no Windows físico | [Tentativas atuais4–8](validation/browser-ec50572-retries4-8-review-2026-11-09.json), [segunda máquina histórica](validation/second-machine-browsers-2026-10-28.json) | Tentativas4 e6 passaram seis navegações, mas reprovaram a guarda de raízes externas. Aceite global e regressão web completa continuam pendentes |
+| Sessão, upgrade sem reboot e recuperação após reboot real | [Aceite atual ec50572](validation/windows-session-ec50572-review-2026-11-09.json) | **8/8 aprovados**, instalação e upgrade sem reboot, novo boot confirmado, watchdog/componente recuperados e remoção/limpeza verificadas |
+| Locais de rede e transições offline | [Aceite atual ec50572](validation/windows-locations-ec50572-review-2026-11-09.json) | **8/8 aprovados**, seleção CIDR/MAC, ACKs/avisos, transições e reinícios offline, DNS/hosts/NRPT restaurados |
+| Painel/API e stores reais; CI entre plataformas | [CI7e84493](validation/windows-ci-7e84493-review-2026-11-09.json), [integração local](validation/catalog-live-integration-2026-11-05.json) | CI, Security e CodeQL aprovados; integração1.246 testes, Windows nativo467 testes, sem skips; cobertura combinada97,28% e gates por módulo aprovados |
+
+Regressão local atual: [1.655 testes Python aprovados](validation/windows-qa-contracts-local-2026-11-09.json), 57 skips próprios do host e quatro casos legados destrutivos desmarcados. O CI hospedado aprovou também256 testes Rust e os contratos Windows/MSI/serviço. O PR13 permanece draft enquanto houver aceites do candidato pendentes. A assinatura de distribuição e o piloto operacional têm critérios próprios; não houve publicação de release nem implantação em produção.
+
+O USB26 terminou sem pendências físicas nem erros de limpeza. Result público e checkpoint privado são iguais byte a byte; todos os ACKs exportados são positivos, incluindo a liberação v9. Serviço/processo/watchdog/journal ausentes, NRPT/firewall próprios0, hosts igual ao baseline anterior à instalação e HID preservado. Os ACKs sanitizados não incluem horários individuais: suas latências não podem ser recalculadas pelo export. A rodada19 permanece falha, com recuperação própria verificada. Não repetir os aceites atuais de catálogo/USB apenas para atualizar a documentação.
+
+Linux continua aguardando aceite operacional em VM e macOS continua parcial em Network Extension/Endpoint Security. F9 permanece excluída. As seções datadas anteriores abaixo registram o estado de cada rodada na época, inclusive pendências posteriormente resolvidas.
+
+## Estado vigente — 06/11/2026. Rodada 18 aprovada na VM
+
+O run `cd0e715e3e1b42238c7b4ee15fb1034b` passou nos oito critérios, confirmados pelo verificador do host. O preflight aqueceu o guest por 5.492 s e observou 316 s estáveis com 485 regras e cinco pacotes do Windows. Nenhum evento de suspensão apareceu nos logs do VMware entre a conexão da ISO e o resultado terminal. [Revisão da rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json).
+
+A rechecagem registrou 3.609,187 s monotônicos, 63 observações da v6, aumento de 3.608 s no diário e recusa WDAC 4551 após a hora. A v7 liberou as duas cópias. A remoção retornou MSI 0, sem artefatos próprios. As 485 regras externas do firewall e os 14 IDs externos de Code Integrity ficaram intactos. As sete atribuições tiveram ACK positivo, nenhum ACK negativo e o log protegido não registrou falha de enforcement no intervalo. A evidência da rodada 18 confirma a correção no laboratório; o aceite USB físico continua pendente.
+
+## Estado vigente — 06/11/2026. Rodada 17 interrompida por suspensão
+
+A verificação inicial confirmou 109 s de firewall estável. A rodada 17 passou nos cinco primeiros critérios e registrou 1.804 s de rechecagem antes de a VM suspender. Após 53min14s em ACPI S1, retomou e encerrou pelo limite total. O relatório final foi exportado. O MSI retornou 0, não restaram artefatos próprios e os 14 IDs externos de Code Integrity permaneceram. A guarda do firewall reprovou pela ausência de duas regras externas, do Fotos e do Feedback Hub. [Revisão da rodada 17](validation/catalog-vm-6e59e44-acceptance-review-2026-11-06.json).
+
+Os ACKs das sete atribuições foram positivos. A coleta registrou um timeout local de reconciliação após a retomada. Os erros de persistência e do parser da rodada 16 ficaram ausentes no intervalo observado. A repetição ainda precisa de uma hora efetiva e de preservação do firewall. Preparar o próximo snapshot com a suspensão automática desativada e os aplicativos do Windows estabilizados.
+
+## Estado vigente — 06/11/2026. Rodada 16 reprovada na preservação do firewall
+
+O exportador do guest parou ao consultar o relatório local. O worker concluiu, e a recuperação exportou o relatório final e o diagnóstico com hash correspondente. Sete critérios passaram, incluindo 3.618,217 s de rechecagem monotônica, recusa WDAC 4551 e liberação v7. A remoção teve MSI 0, nenhum artefato próprio e os 14 IDs externos de Code Integrity preservados. O diff independente confirmou uma regra ausente do Feedback Hub e cinco adições. A guarda de preservação reprovou a rodada. [Revisão da rodada 16](validation/catalog-vm-06c4ccf-acceptance-review-2026-11-06.json).
+
+Os seis ACKs `OSError` correspondem a `endpoint_state:5`. Uma sétima falha dessa etapa ficou apenas no log. Duas falhas locais de leitura/processamento dos eventos WDAC coincidem com um ACK `LocalError`, sem pareamento único. Os três eventos 3077 próprios reproduziram a exceção do parser no acesso a `#text` e usavam o campo `File Name`. O AppX registrou atividade do Feedback Hub perto da captura final. A coleta do firewall não trouxe um evento que identificasse quem removeu a regra. O aceite da rodada 15 mantém seu resultado histórico. [Coleta de eventos](validation/vm-catalog-06c4ccf-event-evidence-2026-11-06.json) [Plano proposto](docs/catalog-guest-observation-plan.md).
+
+## Estado vigente — 05/11/2026. Integração local do catálogo aprovada
+
+Passaram 336 testes com PostgreSQL 16.15 e Redis 7.4.11 descartáveis, incluindo o upgrade da tabela de eventos. Dois workers HTTP usaram os mesmos stores. No Edge headless, o operador de teste publicou v1 no painel sem regra gerada. O inventário de um endpoint sintético recebido pelo outro worker gerou v2 com uma regra de hash opcional. O Redis entregou a atualização a ambos os endpoints. O ACK sintético v2, a entrada de auditoria e a leitura da nova versão no segundo painel passaram. [Evidência](validation/catalog-live-integration-2026-11-05.json).
+
+O ensaio inicial esperava 409 ao repetir o mesmo horário. Corrigido conforme os stores existentes. Inventário estritamente mais antigo recebe 409. Repetições iguais ou mais recentes com as mesmas identidades mantiveram v2 e não geraram nova notificação. Workers e contêineres de teste encerrados.
+
+Os dados de cobertura da suíte Windows e dos contratos com banco real somam 96,94% em 33 módulos app/agent, todos acima dos limiares locais. Os testes com stores reais cobriram 55 dos 57 casos antes pulados; os dois restantes exigem instalação de serviço/MSI. O CI combinado entre plataformas e o USB físico continuam pendentes.
+
+O aceite VMware segue aprovado no escopo da rodada 15. Três OSError e dois LocalError guardam apenas a categoria; as operações de origem continuam desconhecidas. O [plano de diagnóstico](docs/catalog-local-enforcement-diagnostics-plan.md) propõe seis arquivos com TDD para registrar etapas e códigos seguros. Aguardar aprovação explícita antes de alterar código. Os checkpoints abaixo são históricos.
+
+## Estado vigente — 05/11/2026. Aceite do catálogo aprovado no laboratório VMware
+
+A rodada 15, fonte 1bf393a e run 7820bffae47c42e9a2598f81acc88986, passou nos oito critérios. O verificador do host confirmou o recibo e todos os efeitos. App ausente, bloqueio e liberação de rede, encerramento seletivo do processo, recusa WDAC do original e do renomeado, retirada da política quando todas as amostras faltam, hora real, liberação e remoção normal foram observados. [Relatório original](validation/vm-catalog-1bf393a-result-2026-11-05.json) e [revisão independente](validation/catalog-vm-1bf393a-acceptance-review-2026-11-05.json).
+
+A rechecagem levou 3.602,759 s monotônicos e 3.603,433 s UTC. Foram 63 observações da mesma atribuição v6, com avanço de 3.608 s no diário. A cópia renomeada iniciou antes e foi recusada com erro nativo 4551 depois. O ACK v7 confirmou a liberação, com exit 0 nos dois caminhos. Doze sondas foram registradas, com três recusas nativas e nove marcadores no prazo. O maior tempo observado até marcador foi 767 ms. A enumeração de rede levou 202,315 s nesta execução.
+
+MSI 0, serviço/watchdog ausentes, NRPT e firewall próprios zerados, política CI própria e registros de fixtures ausentes. Os 14 IDs CI externos e as 482 regras de firewall originais foram preservados. As duas diferenças foram adições do Microsoft Weather. A rodada finalizou às 16:09:19Z, com zero erros de limpeza. As falhas anteriores continuam registradas em suas próprias revisões.
+
+Os ACKs guardaram três OSError e dois LocalError na v6. Cada OSError foi seguido de ACK positivo da mesma atribuição. Os dois LocalError antecederam a liberação v7 positiva. Os códigos e horários ficam na revisão. Investigar as operações específicas antes de ampliar o piloto. A causa do timeout da rodada 13 continua em aberto.
+
+O escopo aprovado é a expansão real da API em processo e a aplicação pelo serviço Windows via backend local do laboratório. Próximos passos são investigar os erros locais, validar o fluxo com servidor/painel e PostgreSQL/Redis reais, verificar republicação por inventário de frota e repetir o aceite USB físico. Os gates globais de cobertura por módulo ainda estão pendentes. A VM pode ficar no estado final limpo. Os checkpoints abaixo são históricos.
+
+## Estado vigente — 05/11/2026. Rodada 15 preparada
+
+O vermelho de 24f8a47 confirmou 20 falhas esperadas. A implementação 1bf393a aprovou 1.543 testes na mesma suíte permitida, com 57 pulados e quatro controles legados desmarcados. Ruff, pip check e PowerShell 5.1 passaram. Cada sonda registra fase, papel, PID, marcador, criação do processo, observação e encerramento. A enumeração de rede tem medição própria. A leitura terminal após os 10 s fica no diagnóstico. A causa da falha anterior segue em aberto.
+
+A ISO OpenEMS-Catalog-1bf393a-7820bffa.iso, os MSIs 0.4.0/0.4.1, dez arquivos ópticos e o atalho elevado 15 foram conferidos. Fonte 1bf393abfeba3458509c3c82cb912ddfd45d9012, run 7820bffae47c42e9a2598f81acc88986. Restaurar clean-preflight-before-controls com Go To no VMware, montar a ISO com Connected e executar 15 - Catalog acceptance as administrator.lnk em OpenEMSResults com UAC. A rodada aguarda início e mantém os oito critérios, ACK de 90 s, hora real e limpeza. [Recibo](validation/catalog-vm-preparation-1bf393a-2026-11-05.json).
+
+A rodada 13 permanece reprovada. Coleta 14 e limpeza anterior preservadas. As etapas anteriores de aprovação e execução de testes abaixo são históricas.
+
+## Estado vigente — 05/11/2026. Coleta 14 revisada e plano de sondas pendente
+
+Coleta concluída em 69 s, sem erros. Os quatro hashes conferem. Dois marcadores foram criados nas referências e um às 12:58:02Z sob v3. Os eventos filtrados ficaram vazios e o LocalError do agente corresponde ao ACK negativo v2 anterior. Os dados deixam em aberto qual sonda expirou e se o terceiro marcador apareceu após a última leitura. O intervalo ACK v3→marcador inclui a enumeração do firewall. [Coleta original](validation/vm-catalog-b6d4be5-startup-diagnostics-2026-11-05.json) e [revisão](validation/catalog-vm-b6d4be5-startup-failure-review-2026-11-05.json).
+
+Em PowerShell 5.1, um ensaio inerte reproduziu a janela do laço. Uma condição pronta aos 300 ms ficou sem nova amostra depois de uma pausa de 1.150 ms com prazo de 1 s. A causa da rodada real continua desconhecida. A limpeza v2 e as 482 regras externas preservadas permanecem verificadas. O aceite da rodada 13 segue reprovado.
+
+Próximo passo proposto em docs/catalog-fixture-startup-plan.md. Evidência por sonda e regressões em dois arquivos com TDD, janela de 10 s, ACK de 90 s e hora real. Aprovação explícita pendente antes de editar roteiro/testes. Manter a VM no estado atual, com todas as coletas necessárias arquivadas. O pedido do coletor 14 abaixo é histórico.
+
+## Estado vigente — 05/11/2026. Rodada 13 falhou na espera pelo marcador
+
+O VMware restaurou o snapshot 1 às 12:46:46Z e conectou a ISO b6d4be5 às 12:50:05Z. A rodada v2 a6c27d86 encerrou às 13:04:00Z com “The fixture did not reach its sentinel.” As referências HTTPS iniciais e o check de app ausente passaram. Depois do ACK positivo v3 de rede e antes da publicação v4, uma das duas sondas criou um processo sem observar seu encerramento ou marcador na janela de 10 s. A fixture grava o marcador antes de HTTPS. O relatório não distingue qual sonda falhou. Um LocalError v2 antecedeu o ACK v3 positivo; a relação causal continua desconhecida. [Relatório original](validation/vm-catalog-b6d4be5-result-2026-11-05.json) e [revisão](validation/catalog-vm-b6d4be5-startup-failure-review-2026-11-05.json).
+
+O host reavaliou o recibo, app ausente e limpeza. MSI 0, ausência de serviço/watchdog/NRPT/firewall/CI próprios e registros de fixture, mesmas 482 regras externas sem diferenças e mesmos 14 IDs CI externos. A coleta de limpeza v2 funcionou nesta falha. Rede, processo, WDAC e rechecagem de uma hora não concluíram; a rodada permanece reprovada.
+
+Preservar a VM. Coletor 14 solicitado em OpenEMSResults com o atalho 14 - Collect catalog startup diagnostics as administrator.lnk. Ele lê hashes/tempos dos arquivos e marcadores próprios, categorias sanitizadas do agente e eventos delimitados de inicialização. Parser PS5.1, quatro verificações sintéticas de filtros e atalho elevado conferidos. Aguardar catalog-startup-diagnostics-a6c27d86.json. Código e pacote congelados enquanto o diagnóstico está pendente. Os checkpoints anteriores abaixo são históricos.
+
+## Estado vigente — 05/11/2026. Evidências v2 prontas para aceite na VM
+
+O vermelho do commit 3b42cb5 teve 63 falhas esperadas e 1.460 sucessos. A implementação b6d4be5 passou na mesma suíte completa permitida com 1.523 sucessos, 57 skips e quatro casos integrais legados desmarcados. Ruff, pip check e parser PS5.1 passaram. O roteiro grava o baseline antes do MSI, registra diferenças e resultados independentes de limpeza em caso de falha, retém categorias seguras dos ACKs e finaliza o relatório após a coleta. O verificador do host recalcula a preservação. O exportador copia cada versão do checkpoint uma vez.
+
+A ISO OpenEMS-Catalog-b6d4be5-a6c27d86.iso, os dez arquivos ópticos, os MSIs 0.4.0/0.4.1 e o atalho 13 foram conferidos. O agente nativo mantém o SHA-256 f33dfd05…; a nova mídia corresponde à fonte b6d4be52550c59ad7c5e8083bca193229212aa28 e ao run a6c27d86de834dbb85cafe8388c82d70. A rodada real está pendente. [Recibo de preparação](validation/catalog-vm-preparation-b6d4be5-2026-11-05.json).
+
+Próxima ação no VMware. Desbloquear a VM no próprio VMware, usar Go To no snapshot clean-preflight-before-controls, montar a ISO nova e marcar Connected. No guest, abrir OpenEMSResults e executar 13 - Catalog acceptance as administrator.lnk com UAC. Aguardar o aceite integral com 90 s por ACK, uma hora real e limpeza normal. A CLI pede a senha de criptografia para operações de snapshot; não enviar senha pelo chat. A VM estava fora da lista de VMs em execução.
+
+A rodada anterior permanece reprovada, com limpeza confirmada e causas específicas de firewall/OSError/LocalError desconhecidas. A melhoria é de evidências. Integrações vivas, USB físico e cobertura global continuam pendentes. As etapas de aprovação, diagnóstico e suíte em execução abaixo são históricas.
+
+## Estado vigente — 04/11/2026: coleta 12 válida; plano de evidências aguarda aprovação
+
+[Coleta corrigida original](validation/vm-catalog-5e71292-agent-log-diagnostics-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): concluída sem erros de coleta; mesmo log de 654 bytes/hash da coleta 11. Foram identificados OSError às 18:38:00Z e 19:14:07Z, LocalError às 19:35:09Z e 19:35:18Z, todos entre 2,8 e 9,0 segundos antes dos quatro ACKs negativos correspondentes. As categorias confirmam falhas locais, mas não identificam a operação ou subsistema que falhou. O estado da tarefa ainda era Running no instante da exportação; esse campo não comprova um exit code final. O relatório completo de diagnóstico foi recebido.
+
+Todas as coletas solicitadas foram preservadas e revisadas. Limpeza independente, remoção MSI0 e os 14 IDs CI externos permanecem confirmados pela coleta 10. A rodada 09 permanece reprovada; causa da diferença do firewall e das falhas locais ainda desconhecida. Nenhuma nova coleta manual solicitada. Manter a VM no estado atual; não iniciar outra rodada.
+
+[Plano concreto proposto](docs/catalog-cleanup-evidence-plan.md), ainda sem implementação: três arquivos (teste, roteiro, builder), TDD vermelho commitado antes do ajuste, persistência de baseline/diferenças/limpeza mesmo em falha, retenção restrita de categorias de ACK e verificação independente no host. Mantém a guarda e todos os prazos/critérios; não altera produto nativo nem atribui causa sem evidência. Aguarda aprovação explícita conforme a regra do AGENTS.md para duas ou mais alterações de arquivos. Dados/documentação já atualizados; gates locais anteriores não foram repetidos sem mudança de código. As pendências anteriores da coleta 12 abaixo são históricas.
+
+## Atualização vigente — 04/11/2026: filtro do coletor 11 inválido; repetição 12 preparada
+
+[Coleta 11 original preservada](validation/vm-catalog-5e71292-agent-log-diagnostics-invalid-filter-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): execução concluída em 22 segundos, mas a lista vazia de falhas é inválida. O filtro gerado perdeu escapes e rejeita uma linha sintética válida do logger nativo; não concluir ausência de erros pelos dados dessa coleta. O log preservado tem 654 bytes.
+
+Coletor 12 preparado e solicitado: 12 - Collect catalog agent log diagnostics retry as administrator.lnk, saída catalog-agent-log-diagnostics-eb8486c4-retry1.json. Mesmo escopo restrito e somente leitura do 11; filtro corrigido sem depender de escapes, parser e 12 casos sintéticos verificados em Windows PowerShell 5.1, atalho elevado conferido. Preservar guest e aguardar a saída. Limpeza independente da coleta 10 continua confirmada; causa do firewall e quatro erros locais permanecem desconhecidos, e o aceite continua reprovado.
+
+[Plano proposto para evidências completas](docs/catalog-cleanup-evidence-plan.md): persistir baseline/diff/limpeza e categoria restrita de ACK, com TDD em teste/roteiro/builder. Nenhuma implementação iniciada; aguardar diagnóstico 12 e aprovação explícita antes de alterar os três arquivos. Nenhum novo MSI/ISO, controle no host, restauração ou repetição de suítes. As pendências anteriores do 11 abaixo são históricas.
+
+## Atualização vigente — 04/11/2026: coleta 10 confirmou remoção; falha de firewall ainda sem causa
+
+[Coleta 10 original](validation/vm-catalog-5e71292-cleanup-diagnostics-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json): concluída em 53 segundos, sem erros. Log MSI com retornos 0/0; serviço, watchdog e diário de aplicações ausentes; NRPT, firewall próprio e política CI própria zerados; registros das fixtures ausentes. Os mesmos 14 IDs CI externos foram preservados e o ACK de liberação v7 foi conferido. **Limpeza atual confirmada, mas a rodada continua reprovada pela guarda de preservação do firewall.**
+
+As 483 regras atuais têm nomes únicos; nenhum evento dos IDs 2004/2005/2006/2033 foi encontrado no intervalo. Isso não identifica qual regra mudou nem comprova preservação retroativa, pois o baseline não foi persistido. A coleta também revelou quatro ACKs negativos da v6: 18:38:03Z, 19:14:12Z, 19:35:11Z e 19:35:26Z. O runtime envia success=false quando um ciclo local de enforcement retorna erro; o backend da fixture descartou a categoria desse erro. Houve recuperações positivas após os dois primeiros, e liberação v7 positiva após os últimos. Não atribuir esses erros à geração WDAC ou à hora opcional sem evidência; não confundir os sete efeitos observados com uma execução sem falhas locais.
+
+**Preservar guest até ler os logs remanescentes.** Coletor 11 preparado/solicitado em OpenEMSResults: `11 - Collect catalog agent log diagnostics as administrator.lnk`, saída `catalog-agent-log-diagnostics-eb8486c4.json`. Só exporta metadados/hash e horários/categorias permitidas das linhas de falha de enforcement no intervalo da rodada, lendo quatro nomes fixos de logs com tamanho limitado. Não exporta configuração, estado, stderr bruto ou segredos e não aplica controles. Parser PS5.1 e atalho elevado conferidos. Nenhuma nova alteração de produto/roteiro, teste, mídia ou restauração; próximos passos dependem dessa coleta. As pendências anteriores do coletor 10 abaixo são históricas.
+
+## Estado vigente — 04/11/2026: sete critérios passaram; aceite completo falhou na preservação do firewall
+
+[Relatório original](validation/vm-catalog-5e71292-result-2026-11-04.json) e [revisão](validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json), fonte `5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff`, run `eb8486c4e5d940238c9ff17c3336f6d8`: **failed**, encerrado às19:39:28Z. Os sete checks presentes foram reavaliados no host contra o manifesto: app ausente, rede/referência/liberação, processo, WDAC original/renomeado, remoção quando ausentes, hora real e liberação final passaram. Rechecagem3602,795s monotônicos/3602,943s UTC; diário avançou3610s e63 observações mantiveram a mesma atribuição v6/digest. Executável B renomeado iniciou antes e foi recusado depois (erro nativo4551, sem criação de processo). Liberação v7 reconhecida, original/renomeado exit0, sem política própria ou regras de firewall próprias nessa etapa.
+
+**Falha final: `An unrelated firewall rule changed.`** A guarda compara cada regra anterior por Name/Enabled/Direction/Action e também rejeita zero ou múltiplos matches. Não exporta qual regra divergiu e mantém o baseline somente em memória. Lançou antes de construir o check cleanup, portanto estado final do serviço/watchdog/NRPT/CI não foi registrado. Remoção MSI0 é inferida pelo fluxo (não houve erro nessa chamada), ainda sem confirmação independente. Não atribuir a causa ao produto, Windows Update ou duplicidade sem evidência. Nenhum aceite completo; falhas anteriores preservadas.
+
+**Preservar guest; não restaurar nem repetir a rodada.** Coletor10 preparado e solicitado em `\\vmware-host\Shared Folders\OpenEMSResults`: `10 - Collect catalog cleanup diagnostics as administrator.lnk`. Coleta somente leitura de ACKs, resultado MSI, estado dos controles, regras atuais e eventos de firewall no intervalo da rodada; não executa fixtures, reinstala agente, aplica política ou altera permissões. Parser Windows PowerShell5.1 e atalho elevado conferidos. Aguardar `catalog-cleanup-diagnostics-eb8486c4.json`; tentar identificar a alteração e conferir limpeza/14IDs CI externos. Se não houver baseline recuperável, preparar plano TDD para persistir baseline/diff e estado de limpeza antes de nova rodada. Produto/roteiro/prazos congelados, gates locais1454Python/251Rust/154painel já concluídos, sem necessidade de repetir suítes sem mudanças. Integrações vivas, USB físico e gates globais por módulo permanecem pendentes. As seções abaixo são históricas.
+
+## Estado vigente — 04/11/2026: roteiro corrigido e pacote5e71292 pronto
+
+[Recibo de pacote e gates](validation/catalog-vm-preparation-5e71292-2026-11-04.json): **1454 Python,251 Rust e154 painel passaram**, além dos gates estáticos/build. Python teve57skips e quatro casos integrais de controles desmarcados. TDD vermelho baee7c0 com1falha esperada/1453sucessos; correção5e71292 isola ambos os probes HTTPS sob allow já reconhecido, antes do bloqueio de processo absent. Produto/builder/regras e limites originais preservados; agente mantém SHA f33dfd05. Cobertura app/agente88,88%; gates completos por módulo e integrações vivas pendentes.
+
+MSIs0.4.0/0.4.1 sem fault injection/ISO `OpenEMS-Catalog-5e71292-eb8486c4.iso` e atalho09 conferidos. Nova rodada source5e71292/runeb8486c4e5d940238c9ff17c3336f6d8 **não iniciada e sem aceite Windows**. Dados da rodada948608e e coleta08 preservados; liberação e limpeza independente confirmadas,14IDs CI externos mantidos. Pode restaurar snapshot limpo e executar09 somente com a nova ISO conectada. Manter todos os oito critérios, ACK90s,3600s reais e remoção normal. As falhas anteriores permanecem reprovadas; validações locais não substituem enforcement real.
+
+## Diagnóstico — 04/11/2026: referência de rede interfere com bloqueio de processo
+
+[Coleta08 e revisão](validation/catalog-network-order-diagnostic-review-2026-11-04.json) confirmaram liberação/limpeza independente,14IDs CI preservados e HTTPS200 com ambos os EXEs exit0 após remover o agente. A política `absent` v2 ainda bloqueia o nome do processo original quando o roteiro inicia sua referência de rede; o log mostra esse encerramento no intervalo. Regressão isolada reproduziu a falha com as políticas da API real e fronteiras mockadas, sem controles/EXEs no host. [Continuação TDD](docs/catalog-network-baseline-order-plan.md) vai isolar as referências sob a política `allow` já reconhecida. Nenhuma aceitação reclassificada; rede/processo/WDAC/hora real continuam pendentes, e os prazos/critérios não mudam.
+
+## Resultado vigente — 04/11/2026: 948608e reprovado antes do bloqueio de rede
+
+[Rodada original](validation/vm-catalog-948608e-result-2026-11-04.json), run0e93a06a: app ausente passou, mas um ou ambos os executáveis próprios falharam no HTTPS de referência antes de publicar a política de rede. **Rede/processo/WDAC/hora real sem aceite.** [Análise](validation/catalog-vm-948608e-network-baseline-failure-2026-11-04.json) preserva o resultado; limpeza reportou MSI0 e nenhum erro/controle próprio, mantendo14IDs CI externos. Coletor08 solicitado para conferir estado atual, ACK de liberação e distinguir DNS/conexão/HTTPS/execução individual como SYSTEM. Host obteve HTTP200 no mesmo destino. Não restaurar o guest antes dos diagnósticos. Nenhum código, limite ou critério alterado para converter a falha em sucesso.
+
+## Atualização — 04/11/2026: diagnóstico concluído; novo aceite pendente
+
+[Revisão do coletor 06](validation/catalog-vm-d87d059-diagnostic-review-2026-11-04.json) confirmou ACK bruto de liberação v7 e limpeza independente, com preservação dos 14 IDs CI externos. Os seis XMLs próprios exportados conferem por tamanho/hash e reproduzem o contêiner kernel vazio já corrigido na fonte 948608e. A rodada d87d059 continua reprovada; o guest pode agora ser restaurado ao snapshot limpo, pois os dados necessários foram preservados e revisados. Nova rodada 948608e/0e93a06a pelo atalho 07 ainda não iniciada; exigir todos os critérios e 3600 segundos reais. Testes locais e preparação não substituem o aceite Windows.
+
+## Estado vigente — 03/11/2026: 948608e validado localmente; VM pendente
+
+[Validação e pacote](validation/catalog-vm-preparation-948608e-2026-11-03.json): **1452 Python, 251 Rust e 154 painel passaram**, além dos gates estáticos/build/release. Python teve 57 skips e quatro casos integrais de controles desmarcados no host. A tentativa Rust inicial teve uma falha no marcador do filho inerte antes do timeout de cinco segundos; a suíte completa serial passou sem alterar limites/asserts. Cobertura app/agente 88,88%; gates completos por módulo e PostgreSQL/Redis continuam pendentes.
+
+Correção de três linhas omite somente o contêiner kernel vazio que violava o XSD Microsoft; preserva cenário 131, `ProductSigners`, hashes de usuário e validador original. TDD vermelho `5c6e966` com quatro falhas esperadas; implementação `948608e`. MSIs sem fault injection e ISO `OpenEMS-Catalog-948608e-0e93a06a.iso` conferidos. Run novo `0e93a06a306e493b9d1fe4975ce2aaf8`, atalho 07: **não iniciado e sem aceite de enforcement**.
+
+Rodada d87d059/385b1eb0 permanece reprovada e preservada. Coletor 05 deu timeout; coletor 06 com checkpoints solicitado ao operador, ainda sem resultado recebido. Não restaurar o snapshot nem iniciar o 07 antes de conferir liberação/limpeza atuais e diagnósticos. Após revisão, repetir em snapshot limpo todos os oito critérios, ACK 90 s e hora real 3600 s. Escopo continua API real em processo com fixtures sintéticas e serviço Windows por backend local; servidor em rede/painel/PostgreSQL/Redis/frota/USB físico são validações separadas. Nenhum controle ou MSI executado no host.
+
+## Resultado vigente — 03/11/2026: catálogo d87d059 reprovado
+
+[Rodada original](validation/vm-catalog-d87d059-result-2026-11-03.json), run `385b1eb0f9304a6ebb308e0620215c6f`: app ausente e bloqueio/liberação de rede passaram; app presente não obteve ACK de sucesso em 90 s. **Sem aceite de processo, WDAC ou hora real.** [Análise e recibos](validation/catalog-vm-d87d059-failure-analysis-2026-11-03.json) preservam a falha; o validador independente recusou o relatório.
+
+Limpeza reportou MSI 0, nenhum erro ou controle próprio restante e preservação dos 14 IDs CI externos. Coleta 05 pendente para conferir o ACK bruto de liberação, estado atual e causa da rejeição. Não restaurar o snapshot antes de revisar os diagnósticos. Nenhuma alteração de produto, prazo ou critério realizada nesta investigação. As seções seguintes registram estados anteriores.
+
+## Estado vigente — 03/11/2026: correção local verde; aceite Windows pendente
+
+[Pacote novo e evidências](validation/catalog-vm-preparation-d87d059-2026-11-03.json), fonte `d87d059`, run `385b1eb0f9304a6ebb308e0620215c6f`: **1451 Python, 251 Rust e 154 painel passaram**, além de fmt/Clippy/Ruff/lint/tipos/build/release. Python teve 57 skips e quatro casos integrais de controles desmarcados no host. Cobertura app/agente 88,88%; gates completos por módulo e integrações PostgreSQL/Redis continuam pendentes.
+
+Normalização estrita dos dois cenários e transporte privado implementados após testes vermelhos commitados. Validador original preservado. MSIs 0.4.0/0.4.1 sem fault injection; dez arquivos da ISO e vinte arquivos legados conferidos por hash. ISO `OpenEMS-Catalog-d87d059-385b1eb0.iso`; atalho 04 preparado para guest descartável. Nenhum controle ou instalador executado no host.
+
+**Nova rodada não iniciada e sem aceite de enforcement.** Snapshot limpo restaurado e guest no desktop; conectar a ISO nova e executar o atalho 04 manualmente. Manter ACK de 90 s, hora real de 3600 s, processo/rede/WDAC original e renomeado, remoção quando ausente, liberação e remoção normal do MSI com limpeza. Escopo: expansão pela API real em processo com fixtures sintéticas e serviço Windows na VM por backend local. Servidor em rede, painel, PostgreSQL/Redis, republicação por inventário de frota e USB físico são validações separadas. Falha `f15761c` preservada e reprovada; sua liberação e limpeza foram conferidas independentemente. As seções seguintes são históricas.
+
+## TDD iniciado — 03/11/2026: adendo de transporte aguarda aprovação
+
+O plano de normalização foi aprovado. Testes vermelhos commitados em `15d5fe0`: 95 casos no módulo, 29 novos; suíte Python permitida com **3 falhas esperadas, 1446 sucessos, 57 skips e quatro casos integrais de controles desmarcados**, sem falhas adicionais ([registro](validation/wdac-dual-scenario-red-2026-11-03.json)). Nenhum código de produto foi alterado.
+
+A revisão detectou o limite do transporte nativo: o script atual vai por `-Command`, com apenas 1109 unidades UTF-16 livres na linha serializada. Uma sonda inerte acima do limite reproduziu `WinError 206` ([medição](validation/windows-control-transport-boundary-2026-11-03.json)). O teste mockado por `-File` não cobriria esse problema. O [plano recebeu adendo](docs/wdac-dual-scenario-hash-plan.md) para incluir somente `agent-rs/src/windows_control.rs` e seus testes internos: arquivo compilado temporário privado, JSON apenas por stdin, argumentos curtos, criação/handles/limpeza protegidos. Escopo ampliado aguarda aprovação antes de implementar. A falha original e a limpeza confirmada permanecem preservadas.
+
+## Causa reproduzida — 03/11/2026: aprovação da correção pendente
+
+[XML original](validation/vm-catalog-f15761c-owned-hash-policy-2026-11-03.xml), 4148 bytes/SHA-256 `24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b`, e [reprodução isolada](validation/catalog-xml-rejection-reproduction-2026-11-03.json). O XML contém quatro hashes de usuário e quatro hashes kernel equivalentes, com IDs separados e todas as referências válidas. O validador original rejeita esse formato com `OPENEMS_INVALID_HASH_POLICY`; a reprodução usou somente a função extraída por AST, com zero mutações no host.
+
+[Plano concreto aguardando aprovação](docs/wdac-dual-scenario-hash-plan.md): TDD primeiro; normalização somente do formato duplicado conhecido, preservando o escopo de usuário e a validação estrita; casos negativos; suítes completas permitidas; novo MSI/ISO e rodada limpa de uma hora. Altera quatro arquivos de produto/teste, fora do escopo anterior de três arquivos de aceite, e depende de aprovação explícita conforme o AGENTS.md. Nenhum código de produto nem teste novo foi alterado nesta investigação. Liberação v7 e limpeza atual já confirmadas; a rodada original permanece reprovada.
+
+## Diagnóstico confirmado — 03/11/2026, coleta 02
+
+[Coleta original](validation/vm-catalog-f15761c-diagnostics-2026-11-03.json) e [análise](validation/catalog-vm-diagnostic-analysis-2026-11-03.json): seis ACKs negativos da v5, sem erros do backend; liberação v7 com ACK positivo conferido. Estado atual confirma ausência de serviço/watchdog/NRPT/firewall próprio/diário/política própria e preservação dos 14 IDs CI externos. A rodada permanece reprovada.
+
+Sete cópias privadas correspondem à fixture A. Os sete XMLs intermediários têm oito regras Deny e quatro referências UMCI; essa contagem viola a validação atual de hash. Ainda falta o XML exato para identificar a primeira rejeição e planejar a normalização sem aceitar regras ou referências extras. A documentação Microsoft admite oito hashes por cenários distintos, mas isso não comprova a estrutura deste XML local. Atalho `03 - Export owned hash XML as administrator.lnk` preparado: exporta só um arquivo de 4148 bytes com SHA-256 fixado. Preservar o guest até essa coleta. Código de produto e critérios intactos; correção aguarda diagnóstico completo e plano aprovado.
+
+## Catálogo `if_present` — falha real de 03/11/2026
+
+[Relatório original](validation/vm-catalog-f15761c-result-2026-11-03.json), fonte `f15761c`, MSI `7b514947…`: app ausente e bloqueio/liberação de rede passaram; a atribuição app presente v5 não obteve ACK de sucesso em 90 segundos. **Aceite completo reprovado nesta rodada:** processo, WDAC original/renomeado e hora real não foram concluídos. A causa ainda depende dos logs protegidos; não atribuir a timeout interno, ConfigCI ou produto sem evidência.
+
+O relatório de limpeza registra MSI 0 e ausência de serviço/watchdog/NRPT/firewall/política própria/registro das fixtures, sem erros, preservando os 14 IDs CI externos. Coleta complementar preparada para conferir ACK bruto de liberação e estado atual. Preservar o guest até concluir o diagnóstico; nenhum código, prazo de ACK ou política foi alterado para converter o resultado em sucesso.
+
+## Catálogo `if_present` — preparação de 02/11/2026, aceite pendente
+
+[Pacote e validação local](validation/catalog-vm-preparation-f15761c-2026-11-02.json), fonte `f15761c`. MSIs 0.4.0/0.4.1 de produção preparados; dez arquivos da ISO conferidos por hash e atalho elevado validado. Python: 1420 passaram, 57 skips e quatro casos integrais de controles excluídos do host; Rust 237 e painel 154 passaram. Cobertura agregada app/agente 88,88%; gates completos por módulo e PostgreSQL/Redis permanecem pendentes.
+
+**Nenhum aceite novo na VM foi iniciado.** Restaurar `clean-preflight-before-controls` UID 1, montar `OpenEMS-Catalog-f15761c-e667c411.iso` e executar o atalho `01 - Catalog acceptance as administrator.lnk` no guest. Exigir app ausente/presente, encerramento de processo, firewall por executável, recusa WDAC nativa do original/renomeado, remoção quando todas as regras faltam, rechecagem após 3600 segundos reais com atribuição estável, liberação e remoção normal do MSI sem sobras. O relatório ainda não existe; preparação e testes locais não aprovam o enforcement Windows.
+
+A API real expande políticas em processo no host a partir de catálogo/inventário sintéticos de fixtures próprias. O serviço instalado na VM recebe essas políticas por backend local de homologação. Integração de rede com servidor real, painel, PostgreSQL/Redis e republicação por inventário de frota são rodadas separadas. Os resultados antigos abaixo continuam vinculados aos seus próprios bytes.
+
 ## Pendência imediata — 29/10/2026
 
 **Rodada 40 avançou ao bloqueio, mas o roteiro falhou no código Windows:** [registro](validation/windows-controls-vm-959e9de-2026-10-29.json). V4 recebeu ACK; tentativa original native_error 4551/started=false/exit=-1. O SDK define 4551 como violação de política de integridade; Assert-ExecutionDenied só reconhece 577/1260. A falha do classificador é independente do agente. Não reclassificar aceite: rename/editor não chegaram a ser testados e a associação CI específica ainda não foi exportada. Release v5 e remoção normais passaram, serviço/watchdog/processos/NRPT/diários ausentes. [Plano TDD do roteiro](docs/windows-wdac-refusal-code-plan.md) apresentado e pendente de aprovação; nenhum código alterado ainda. Mesmos MSIs 959e9de serão reutilizados, com revisão do roteiro separada e coleta CI automática na próxima rodada completa.

@@ -2,7 +2,7 @@
 
 use crate::api::{ApiClient, platform_name};
 use crate::config::AgentConfig;
-use crate::error::{AgentError, Result};
+use crate::error::{AgentError, Result, Stage};
 use crate::hosts::{apply_hosts, clear_hosts};
 use crate::policy::{Assignment, validate_assignment};
 use crate::processes::{kill_process, list_processes, processes_to_kill};
@@ -144,10 +144,10 @@ pub fn enforce_at(
     log: &Logger,
     when: jiff::Timestamp,
 ) -> Result<Enforcement> {
-    let (_, apps) = assignment.blocked_lists()?;
-    let filter = assignment.web_filter()?;
+    let (_, apps) = assignment.blocked_lists().map_err(|error| error.at(Stage::PolicyValidation))?;
+    let filter = assignment.web_filter().map_err(|error| error.at(Stage::PolicyValidation))?;
     if filter.requires_monitoring() && !cfg.dns_filter {
-        return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()));
+        return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()).at(Stage::PolicyValidation));
     }
     let rules = filter.rules_at(when);
     let sites = rules.blocked().to_vec();
@@ -159,14 +159,20 @@ pub fn enforce_at(
         false
     } else if release || cfg.dns_filter {
         // In DNS mode the resolver enforces the rules; a hosts block would be a second source.
-        clear_hosts(&cfg.hosts_path)?
+        clear_hosts(&cfg.hosts_path).map_err(|error| error.at(Stage::Hosts))?
     } else {
-        apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })?
+        apply_hosts(&rules, &cfg.hosts_path, if cfg.block_page { "127.0.0.1" } else { "0.0.0.0" })
+            .map_err(|error| error.at(Stage::Hosts))?
     };
-    let killed = if apps.is_empty() { Vec::new() } else { processes_to_kill(&list_processes()?, &apps)? };
+    let killed = if apps.is_empty() {
+        Vec::new()
+    } else {
+        let running = list_processes().map_err(|error| error.at(Stage::ProcessEnumerate))?;
+        processes_to_kill(&running, &apps).map_err(|error| error.at(Stage::ProcessSelect))?
+    };
     for name in &killed {
         if !cfg.dry_run {
-            kill_process(name)?;
+            kill_process(name).map_err(|error| error.at(Stage::ProcessTerminate))?;
         }
         log(&format!("{}{name}", if cfg.dry_run { "[dry-run] would terminate " } else { "terminated " }));
     }
@@ -711,12 +717,15 @@ impl Runtime {
         let now = jiff::Timestamp::now();
         let result = assignment
             .web_filter()
+            .map_err(|error| error.at(Stage::PolicyValidation))
             .and_then(|rules| {
                 if rules.requires_monitoring() && !self.cfg.dns_filter {
-                    return Err(AgentError::Policy("web monitoring requires the DNS resolver".into()));
+                    return Err(AgentError::Policy("web monitoring requires the DNS resolver".into())
+                        .at(Stage::PolicyValidation));
                 }
                 if !category_data_ready(&rules, self.blocked_domains.categories()) {
-                    return Err(AgentError::Policy("web action policy requires all referenced category data".into()));
+                    return Err(AgentError::Policy("web action policy requires all referenced category data".into())
+                        .at(Stage::PolicyValidation));
                 }
                 let body = assignment.body.clone().map_or_else(|| json!({}), serde_json::Value::Object);
                 let changed = self.controls.apply(&body, self.cfg.dry_run)?;
@@ -749,7 +758,7 @@ impl Runtime {
                 }
                 inner.hosts_state = current;
                 inner.cached = Some(outside);
-                self.save(&inner)?;
+                self.save(&inner).map_err(|error| error.at(Stage::EndpointState))?;
                 Ok(enforcement)
             });
         if result.is_ok() && self.cfg.dns_filter && !self.cfg.dry_run {
@@ -784,6 +793,7 @@ impl Runtime {
                 true
             }
             Err(error) => {
+                let version = assignment.version;
                 inner.pending = Some(Pending {
                     generation,
                     assignment,
@@ -795,6 +805,13 @@ impl Runtime {
                 self.session.set_protected(false);
                 self.publish_session();
                 (self.log)(&format!("policy enforcement failed ({})", error.kind()));
+                let stages = error.diagnostics().iter().map(ToString::to_string).collect::<Vec<_>>().join(",");
+                if !stages.is_empty() {
+                    (self.log)(&format!(
+                        "policy enforcement diagnostic version={version} category={} stages={stages}",
+                        error.kind()
+                    ));
+                }
                 false
             }
         }
@@ -1073,6 +1090,106 @@ mod tests {
         assert!(!std::fs::read_to_string(dir.path().join("hosts")).unwrap().contains("example.org"));
         let board = crate::session::load(&crate::session::path_for(&runtime.cfg.state_path)).unwrap().unwrap();
         assert!(!board.protected);
+    }
+
+    struct DiagnosticControls(fn() -> crate::controls::ApplyResult);
+
+    impl crate::controls::Backend for DiagnosticControls {
+        fn apply(&self, _: &serde_json::Value, _: &std::path::Path) -> crate::controls::ApplyResult {
+            (self.0)()
+        }
+
+        fn inventory(&self, _: &std::path::Path) -> Result<crate::controls::Inventory> {
+            unreachable!()
+        }
+
+        fn capabilities(&self) -> Vec<String> {
+            Vec::new()
+        }
+    }
+
+    fn observe_failed_enforcement(backend: DiagnosticControls, block_event_write: bool, category: &str) -> String {
+        let (dir, mut runtime) = network_runtime();
+        let logs = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&logs);
+        runtime.log = Arc::new(move |line| captured.lock().unwrap().push(line.to_owned()));
+        runtime.controls = crate::controls::ControlManager::new(&runtime.cfg.state_path, Arc::new(backend)).unwrap();
+        if block_event_write {
+            std::fs::create_dir(dir.path().join("control-pending.json")).unwrap();
+        }
+        assert!(!runtime.enforce_observed(office_observation(), Instant::now()));
+        let inner = runtime.lock();
+        let outcome = &inner.pending.as_ref().unwrap().outcome;
+        assert!(matches!(outcome, Outcome::Failed(message) if message == &format!("enforcement failed: {category}")));
+        assert!(runtime.blocked_domains.contains("example.org"));
+        let logs = logs.lock().unwrap();
+        assert!(logs.iter().any(|line| line == &format!("policy enforcement failed ({category})")));
+        let log =
+            logs.iter().find(|line| line.starts_with("policy enforcement diagnostic ")).expect("safe diagnostic log");
+        assert!(log.contains("version=1"));
+        assert!(log.contains(&format!("category={category}")));
+        assert!(!log.contains("private-marker"));
+        log.clone()
+    }
+
+    #[test]
+    fn native_control_io_error_preserves_its_code_locally_and_keeps_the_ack_category() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| Err(AgentError::Io(std::io::Error::from_raw_os_error(5)).into())),
+            false,
+            "OSError",
+        );
+        assert!(log.contains("control_apply:5"));
+    }
+
+    #[test]
+    fn event_write_error_keeps_precedence_and_locally_identifies_both_failures() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| {
+                Err(crate::controls::ApplyFailure {
+                    error: std::io::Error::from_raw_os_error(5).into(),
+                    events: vec![crate::controls::ControlEvent {
+                        at: "2026-11-05T00:00:00Z".into(),
+                        kind: "usb_block".into(),
+                        target: "private-marker".into(),
+                        rule_id: "policy".into(),
+                    }],
+                })
+            }),
+            true,
+            "OSError",
+        );
+        assert!(log.contains("control_events"));
+        assert!(log.contains("control_apply:5"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn trusted_control_response_adds_only_an_allowlisted_stage_and_native_code() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| {
+                const SCRIPT: &str = r#"[Console]::In.ReadToEnd()|Out-Null; [Console]::Error.WriteLine('private-marker'); '{"error":"restart_required","diagnostic":{"stage":"app_wdac_verify","os_code":5,"ignored":"private-marker"}}'; exit 1"#;
+                crate::windows_control::run(SCRIPT, &json!({})).map(|_| Vec::new()).map_err(Into::into)
+            }),
+            false,
+            "LocalError",
+        );
+        assert!(log.contains("app_wdac_verify:5"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn unknown_control_stage_is_discarded_with_its_numeric_code() {
+        let log = observe_failed_enforcement(
+            DiagnosticControls(|| {
+                const SCRIPT: &str = r#"[Console]::In.ReadToEnd()|Out-Null; '{"error":"private-marker","diagnostic":{"stage":"private-marker","os_code":987654}}'; exit 1"#;
+                crate::windows_control::run(SCRIPT, &json!({})).map(|_| Vec::new()).map_err(Into::into)
+            }),
+            false,
+            "LocalError",
+        );
+        assert!(log.contains("control_response"));
+        assert!(!log.contains("987654"));
     }
     include!("runtime_action_tests.rs");
 }

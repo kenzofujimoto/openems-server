@@ -123,6 +123,14 @@ if (Test-Path -LiteralPath $inputManifestPath) {
         if ($null -eq $entry -or -not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Sha256 $path) -ne $entry.Value.sha256) { throw ('Current acceptance input is missing or modified: ' + $name) }
     }
 }
+function Read-ControlText([string]$Path) {
+    $stream = [IO.File]::Open($Path, 'Open', 'Read', ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+    try {
+        if ($stream.Length -gt 8388608) { throw 'Controls evidence exceeds its bounded read limit.' }
+        $reader = New-Object IO.StreamReader($stream)
+        try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
+    } finally { $stream.Dispose() }
+}
 function Write-Json([string]$Path, $Value, [switch]$SharedFolder) {
     $temporary = $Path + '.tmp'
     try {
@@ -132,6 +140,62 @@ function Write-Json([string]$Path, $Value, [switch]$SharedFolder) {
         else { Move-Item -LiteralPath $temporary -Destination $Path -Force }
     } finally {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
+}
+function Assert-ControlDeadline([DateTime]$Deadline) {
+    if ([DateTime]::UtcNow -ge $Deadline) {
+        throw [TimeoutException]::new('Controls observation deadline expired; preserve the guest and evidence.')
+    }
+}
+function Observe-ControlsResult([string]$ResultPath, [string]$TaskName, [string]$Destination,
+    [DateTime]$Deadline, [string]$ExpectedWorkerId, [string]$ExpectedKind, [string]$ExpectedRevision = '') {
+    $printed = 0
+    while ($true) {
+        if ([DateTime]::UtcNow -ge $Deadline) { throw 'Acceptance timed out; preserve the guest, worker task and partial evidence.' }
+        $text = $null
+        try { $text = Read-ControlText -Path $ResultPath }
+        catch {
+            $cause = $_.Exception.GetBaseException()
+            if ($cause -isnot [IO.FileNotFoundException] -and $cause -isnot [IO.DirectoryNotFoundException]) {
+                throw ('Controls report read failed; category ' + $cause.GetType().Name + '; preserve the worker task.')
+            }
+        }
+        Assert-ControlDeadline $Deadline
+        if ($null -eq $text) { Start-Sleep -Milliseconds 500; continue }
+        $outcome = $text | ConvertFrom-Json
+        if ($outcome.worker_id -cne $ExpectedWorkerId -or $outcome.kind -cne $ExpectedKind -or
+            $outcome.status -cnotin @('running', 'passed', 'failed', 'manual_required')) {
+            throw 'Controls report identity or status is invalid; preserve the worker task.'
+        }
+        if ($ExpectedRevision -and $outcome.package_receipt.source_revision -cne $ExpectedRevision) {
+            throw 'Controls report source receipt is invalid; preserve the worker task.'
+        }
+        $terminal = $outcome.status -cne 'running'
+        if ($terminal) {
+            $finished = [DateTimeOffset]::MinValue
+            $field = $outcome.PSObject.Properties['finished_utc']
+            if (-not $field -or -not [DateTimeOffset]::TryParse([string]$field.Value, [ref]$finished) -or
+                $outcome.passed -isnot [bool] -or $outcome.passed -ne ($outcome.status -ceq 'passed')) {
+                throw 'Controls report has no valid terminal result; preserve the worker task.'
+            }
+        }
+        Write-Json $Destination $outcome -SharedFolder
+        Assert-ControlDeadline $Deadline
+        if (@($outcome.checks).Count -gt $printed) {
+            $outcome.checks | Select-Object -Skip $printed | ForEach-Object { Write-Host ($_.status + ': ' + $_.name) }
+            $printed = @($outcome.checks).Count
+        }
+        if ($terminal) {
+            # A final checkpoint can be published immediately before the worker exits.
+            $taskState = [string](Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop).State
+            Assert-ControlDeadline $Deadline
+            if ($taskState -in @('Ready', 'Disabled')) {
+                Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
+            }
+            Assert-ControlDeadline $Deadline
+            return $outcome
+        }
+        Start-Sleep -Milliseconds 500
     }
 }
 if (-not $SystemPhase) {
@@ -150,42 +214,26 @@ if (-not $SystemPhase) {
     if (Test-Path -LiteralPath $manifestPath) { Copy-Item -LiteralPath $manifestPath -Destination $work }
     New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
     $task = 'OpenemsControls-' + [Guid]::NewGuid().ToString('N')
-    try {
-        $extra = if ($DisposableVm) { ' -DisposableVm' } else { '' }
-        if ($PhysicalDrive) { $extra += ' -PhysicalDrive ' + $PhysicalDrive }
-        $action = New-ScheduledTaskAction -Execute powershell.exe -Argument ('-NoProfile -ExecutionPolicy Bypass -File "' + $script + '" -SystemPhase -Kind ' + $Kind + ' -OutputDirectory "' + $work + '"' + $extra)
-        Register-ScheduledTask -TaskName $task -Action $action -User SYSTEM -RunLevel Highest | Out-Null
-        Start-ScheduledTask -TaskName $task
-        $resultPath = Join-Path $work $reportName
-        $deadline = [DateTime]::UtcNow.AddSeconds($totalTimeout)
-        $printed = 0
-        while ($true) {
-            if ([DateTime]::UtcNow -ge $deadline) { throw ('Acceptance timed out; discard the guest. Partial evidence: ' + $resultPath) }
-            $outcome = $null
-            if (Test-Path -LiteralPath $resultPath) {
-                try { $outcome = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json } catch { }
-            }
-            if ($null -ne $outcome) {
-                Write-Json (Join-Path $OutputDirectory $reportName) $outcome -SharedFolder
-                if (@($outcome.checks).Count -gt $printed) {
-                    $outcome.checks | Select-Object -Skip $printed | ForEach-Object { Write-Host ($_.status + ': ' + $_.name) }
-                    $printed = @($outcome.checks).Count
-                }
-                if ($outcome.status -ne 'running') { break }
-            }
-            Start-Sleep -Milliseconds 500
-        }
-        $outcome | ConvertTo-Json -Depth 24 | Write-Output
-        if ($outcome.passed) { exit 0 }
-        if ($outcome.status -eq 'manual_required') { Write-Host 'Automation finished; manual or hardware acceptance remains. Read pending in the JSON.'; exit 2 }
-        throw 'Controls acceptance failed. Evidence and logs remain in the disposable guest.'
-    } finally { Unregister-ScheduledTask -TaskName $task -Confirm:$false -ErrorAction Continue }
+    $extra = if ($DisposableVm) { ' -DisposableVm' } else { '' }
+    if ($PhysicalDrive) { $extra += ' -PhysicalDrive ' + $PhysicalDrive }
+    $action = New-ScheduledTaskAction -Execute powershell.exe -Argument ('-NoProfile -ExecutionPolicy Bypass -File "' + $script + '" -SystemPhase -Kind ' + $Kind + ' -OutputDirectory "' + $work + '"' + $extra)
+    Register-ScheduledTask -TaskName $task -Action $action -User SYSTEM -RunLevel Highest | Out-Null
+    $deadline = [DateTime]::UtcNow.AddSeconds($totalTimeout)
+    Start-ScheduledTask -TaskName $task
+    $expectedRevision = if ($null -ne $inputManifest) { [string]$inputManifest.source_revision } else { '' }
+    $outcome = Observe-ControlsResult -ResultPath (Join-Path $work $reportName) -TaskName $task `
+        -Destination (Join-Path $OutputDirectory $reportName) -Deadline $deadline `
+        -ExpectedWorkerId (Split-Path -Path $work -Leaf) -ExpectedKind $Kind -ExpectedRevision $expectedRevision
+    $outcome | ConvertTo-Json -Depth 24 | Write-Output
+    if ($outcome.passed) { exit 0 }
+    if ($outcome.status -eq 'manual_required') { Write-Host 'Automation finished; manual or hardware acceptance remains. Read pending in the JSON.'; exit 2 }
+    throw 'Controls acceptance failed. Evidence and logs remain in the disposable guest.'
 }
 if ($identity.User.Value -ne 'S-1-5-18') { throw 'SystemPhase requires SYSTEM.' }
 $work = $PSScriptRoot
 $resultPath = Join-Path $OutputDirectory $reportName
-$result = [ordered]@{ kind=$Kind; passed=$false; automation_passed=$false; physical_acceptance_pending=($Kind -eq 'USB')
-    status='running'; checks=@(); pending=@(); error=$null; cleanup_errors=@(); started_utc=[DateTime]::UtcNow.ToString('o'); package_receipt=$null }
+$result = [ordered]@{ kind=$Kind; worker_id=(Split-Path -Path $work -Leaf); passed=$false; automation_passed=$false; physical_acceptance_pending=($Kind -eq 'USB')
+    status='running'; checks=@(); pending=@(); error=$null; cleanup_errors=@(); fixture_probes=@(); started_utc=[DateTime]::UtcNow.ToString('o'); package_receipt=$null }
 if ($null -ne $inputManifest) {
     $result.package_receipt=@{ source_revision=$inputManifest.source_revision; packages=$inputManifest.packages; checked_at=[DateTime]::UtcNow.ToString('o') }
 }
@@ -205,15 +253,22 @@ function Record-Check([string]$Name) {
 }
 function Wait-Until([scriptblock]$Condition, [int]$Seconds, [string]$Message) {
     $until = [DateTime]::UtcNow.AddSeconds($Seconds)
-    while ([DateTime]::UtcNow -lt $until) { if (& $Condition) { return }; Start-Sleep -Milliseconds 300 }
+    while ([DateTime]::UtcNow -lt $until) {
+        $satisfied = & $Condition
+        # A slow read must not turn a result obtained after the deadline into success.
+        if ([DateTime]::UtcNow -ge $until) { break }
+        if ($satisfied) { return }
+        $remaining=[int][Math]::Floor(($until - [DateTime]::UtcNow).TotalMilliseconds)
+        if ($remaining -le 0) { break }
+        Start-Sleep -Milliseconds ([Math]::Min(300, $remaining))
+    }
     throw $Message
 }
 function Read-Rows([string]$Name) {
     $path = Join-Path $work $Name
     if (-not (Test-Path -LiteralPath $path)) { return @() }
     try {
-        $stream = [IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
-        try { $text = (New-Object IO.StreamReader($stream)).ReadToEnd() } finally { $stream.Dispose() }
+        $text = Read-ControlText -Path $path
         return @($text -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
     } catch { return @() }
 }
@@ -252,11 +307,105 @@ function Invoke-Msi([bool]$Remove) {
         if ($process.ExitCode -ne 0) { throw ('MSI returned ' + $process.ExitCode + '; log ' + $log + '. Reboot-required is not accepted silently.') }
     } finally { $process.Dispose() }
 }
+function Get-BackendValue($Backend, [string]$Name, $Default) {
+    if ($null -eq $Backend) { return $Default }
+    $property = $Backend.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $Default }
+    return $property.Value
+}
+function Write-BackendLifecycle($Backend, [string]$Stage, [string]$ErrorCategory = '') {
+    $clock = Get-BackendValue $Backend 'BackendClock' $null
+    $record = [ordered]@{at_utc=[DateTime]::UtcNow.ToString('o'); stage=$Stage; error_type=$ErrorCategory;
+        attempt_id=(Get-BackendValue $Backend 'BackendAttemptId' $null);
+        job_id=(Get-BackendValue $Backend 'Id' $null); state=[string](Get-BackendValue $Backend 'State' 'NotStarted');
+        readiness_stage=(Get-BackendValue $Backend 'BackendReadinessStage' $null);
+        elapsed_ms=$(if ($null -ne $clock) { [long]$clock.Elapsed.TotalMilliseconds } else { 0 })}
+    $bytes=(New-Object Text.UTF8Encoding($false)).GetBytes(($record | ConvertTo-Json -Compress) + [Environment]::NewLine)
+    $stream=[IO.File]::Open((Join-Path $work 'backend-lifecycle.log'), 'Append', 'Write', ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+    try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
+}
+function Get-BackendRemainingMilliseconds($Backend, [DateTime]$Deadline) {
+    $remaining=($Deadline - [DateTime]::UtcNow).TotalMilliseconds
+    $clock=Get-BackendValue $Backend 'BackendClock' $null
+    if ($null -ne $clock) { $remaining=[Math]::Min($remaining, 120000 - $clock.Elapsed.TotalMilliseconds) }
+    return [int][Math]::Max(0, [Math]::Min([int]::MaxValue, [Math]::Floor($remaining)))
+}
+function Test-BackendReady($Backend, [DateTime]$Deadline) {
+    $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'ready_receipt'
+    if ([DateTime]::UtcNow -ge $Deadline -or $Backend.State -ne 'Running') { return $false }
+    if (-not (Test-Path -LiteralPath $Backend.BackendReadyPath)) { return $false }
+    $receipt = Read-ControlText -Path $Backend.BackendReadyPath | ConvertFrom-Json
+    $processId = 0L
+    if ($receipt.attempt_id -cne $Backend.BackendAttemptId -or
+        -not [long]::TryParse([string]$receipt.pid, [ref]$processId) -or $processId -le 0 -or $processId -gt [int]::MaxValue) { return $false }
+    $expectedProcess = Get-BackendValue $Backend 'BackendProcessId' $null
+    if ($null -ne $expectedProcess -and $processId -ne $expectedProcess) { return $false }
+    $policy = Read-ControlText -Path (Join-Path $work 'policy.json') | ConvertFrom-Json
+    $remaining = Get-BackendRemainingMilliseconds $Backend $Deadline
+    if ($remaining -le 0) { return $false }
+    $request = [Net.HttpWebRequest]::Create($origin + '/fct/api/public/v1/config/assigned/')
+    $request.Proxy=$null; $request.KeepAlive=$false
+    $request.Timeout=[Math]::Min(5000, $remaining); $request.ReadWriteTimeout=$request.Timeout
+    $request.Headers['Authorization']='Bearer sandbox-fixture-only'
+    $request.Headers['X-Openems-Fixture-Probe']=$Backend.BackendAttemptId
+    $response=$null; $reader=$null
+    $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_transport'
+    try {
+        $responseTask=$request.GetResponseAsync()
+        $remaining=Get-BackendRemainingMilliseconds $Backend $Deadline
+        if ($remaining -le 0 -or -not $responseTask.Wait($remaining)) { $request.Abort(); return $false }
+        $response=$responseTask.GetAwaiter().GetResult()
+        $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_identity'
+        if ([int]$response.StatusCode -ne 200 -or $response.Headers['X-Openems-Fixture-Attempt'] -cne $Backend.BackendAttemptId -or
+            $response.ContentLength -lt 0 -or $response.ContentLength -gt 2097152) { return $false }
+        $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_body'
+        $reader=New-Object IO.StreamReader($response.GetResponseStream())
+        $bodyTask=$reader.ReadToEndAsync()
+        $remaining=Get-BackendRemainingMilliseconds $Backend $Deadline
+        if ($remaining -le 0 -or -not $bodyTask.Wait($remaining)) { $request.Abort(); return $false }
+        $observed=$bodyTask.GetAwaiter().GetResult() | ConvertFrom-Json
+        $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'health_assignment'
+        if ($observed.version -ne $policy.version -or $observed.digest -cne $policy.digest -or
+            (Get-BackendRemainingMilliseconds $Backend $Deadline) -le 0) { return $false }
+        $Backend | Add-Member -Force NoteProperty BackendProcessId $processId
+        $Backend | Add-Member -Force NoteProperty BackendReadinessStage 'ready'
+        return $true
+    } catch {
+        $cause=$_.Exception.GetBaseException()
+        if ($cause -is [Net.WebException] -or $cause -is [IO.IOException]) { $request.Abort(); return $false }
+        throw
+    } finally {
+        if ($null -ne $reader) { $reader.Dispose() }
+        if ($null -ne $response) { $response.Dispose() }
+    }
+}
+function Wait-BackendContact($Backend, [ValidateRange(1,360)][int]$Seconds = 360) {
+    $observedAfter=[DateTime]::UtcNow
+    $started=([DateTimeOffset]$Backend.BackendStartedUtc).UtcDateTime
+    Wait-Until {
+        if ($Backend.State -ne 'Running') { throw 'Fixture backend stopped before authenticated reconnect.' }
+        foreach ($event in @(Read-Rows 'backend-events.log')) {
+            if ($event.attempt_id -cne $Backend.BackendAttemptId -or $event.route -cne 'messages/pull' -or
+                $event.authorized -isnot [bool] -or -not $event.authorized -or $event.is_probe -isnot [bool] -or $event.is_probe -or
+                $event.status -ne 200 -or $event.response_written -isnot [bool] -or -not $event.response_written) { continue }
+            $at=[DateTimeOffset]::MinValue
+            if ([DateTimeOffset]::TryParse([string]$event.at_utc, [ref]$at) -and $at.UtcDateTime -ge $started -and
+                $at.UtcDateTime -ge $observedAfter -and $at.UtcDateTime -le [DateTime]::UtcNow) { return $true }
+        }
+        return $false
+    } $Seconds 'The fixture did not observe a current authenticated service reconnect; preserve the guest.'
+}
 function Start-Backend {
-    $ready = Join-Path $work 'backend-ready'
-    Remove-Item -LiteralPath $ready -ErrorAction SilentlyContinue
-    $job = Start-Job -ArgumentList $origin, $work -ScriptBlock {
-        param($Origin, $Work)
+    if ($null -ne $script:backend) { throw 'A fixture job is still owned; stop and remove it before starting another.' }
+    $startupClock=[Diagnostics.Stopwatch]::StartNew()
+    $started=[DateTime]::UtcNow
+    $startupDeadline=$started.AddSeconds(120)
+    $attemptId=[Guid]::NewGuid().ToString('N')
+    $ready = Join-Path $work ('backend-ready-' + $attemptId + '.json')
+    $job=$null
+    try {
+    $job = Start-Job -ArgumentList $origin, $work, $attemptId, $ready -ScriptBlock {
+        param($Origin, $Work, $AttemptId, $ReadyPath)
         $ErrorActionPreference = 'Stop'
         $listener = New-Object Net.HttpListener
         $listener.Prefixes.Add($Origin + '/')
@@ -267,27 +416,35 @@ function Start-Backend {
             $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($Text -replace "`r?`n", ' ') + "`r`n")
             for ($attempt = 1; ; $attempt++) {
                 try {
-                    $stream = [IO.File]::Open((Join-Path $Work $Name), 'Append', 'Write', 'ReadWrite')
+                    $stream = [IO.File]::Open((Join-Path $Work $Name), 'Append', 'Write', ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
                     try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
                     return
                 } catch [IO.IOException] { if ($attempt -ge 40) { throw }; Start-Sleep -Milliseconds 50 }
             }
         }
         try {
-            $listener.Start(); Set-Content -LiteralPath (Join-Path $Work 'backend-ready') -Value ready
+            $listener.Start()
+            $readyBytes=(New-Object Text.UTF8Encoding($false)).GetBytes((@{attempt_id=$AttemptId;pid=$PID}|ConvertTo-Json -Compress))
+            $readyStream=[IO.File]::Open(($ReadyPath+'.tmp'), 'CreateNew', 'Write', 'None')
+            try { $readyStream.Write($readyBytes, 0, $readyBytes.Length) } finally { $readyStream.Dispose() }
+            [IO.File]::Move(($ReadyPath+'.tmp'), $ReadyPath)
             while ($true) {
                 $waiting = $listener.GetContextAsync()
                 while (-not $waiting.Wait(500)) { }
                 $context = $waiting.Result
                 # One aborted or failed request must not stop the fixture; the agent retries on its next sync.
-                $trace = [ordered]@{ at_utc=[DateTime]::UtcNow.ToString('o'); route='other'; status=500; response_written=$false; error_type=$null; trace_write_failures=$traceErrors }
+                $trace = [ordered]@{ at_utc=[DateTime]::UtcNow.ToString('o'); attempt_id=$AttemptId; is_probe=$false; authorized=$false;
+                    route='other'; status=500; response_written=$false; error_type=$null; trace_write_failures=$traceErrors }
                 try {
                     $route = $context.Request.Url.AbsolutePath.Replace('/fct/api/public/v1/', '').Trim('/')
                     if ($route -in $routes) { $trace.route = $route }
+                    $trace.is_probe=$context.Request.Headers['X-Openems-Fixture-Probe'] -ceq $AttemptId
+                    $trace.authorized=$context.Request.Headers['Authorization'] -ceq 'Bearer sandbox-fixture-only'
                     $reader = New-Object IO.StreamReader($context.Request.InputStream, [Text.Encoding]::UTF8)
                     try { $upload = $reader.ReadToEnd() } finally { $reader.Dispose() }
                     $answer = @{}; $context.Response.StatusCode = 200
-                    if ($route -ne 'register' -and $context.Request.Headers['Authorization'] -ne 'Bearer sandbox-fixture-only') {
+                    $context.Response.Headers['X-Openems-Fixture-Attempt']=$AttemptId
+                    if ($route -ne 'register' -and -not $trace.authorized) {
                         $context.Response.StatusCode = 403
                     } else { switch ($route) {
                         'register' { $answer = @{ client_id='sandbox-controls'; device_token='sandbox-fixture-only' } }
@@ -318,21 +475,53 @@ function Start-Backend {
                     catch { $traceErrors++ }
                 }
             }
+        } catch {
+            $failure=$_
+            try {
+                Append-Log 'backend-worker-errors.log' (@{at_utc=[DateTime]::UtcNow.ToString('o');attempt_id=$AttemptId;
+                    error_type=$failure.Exception.GetBaseException().GetType().Name} | ConvertTo-Json -Compress)
+            } catch { }
+            throw $failure
         } finally { $listener.Close() }
     }
-    # Starting a job process in a freshly restored guest can exceed 20 s; this is fixture startup, not a control deadline.
-    try { Wait-Until { if ($job.State -eq 'Failed') { throw 'Fixture backend failed.' }; Test-Path -LiteralPath $ready } 120 'startup' }
-    catch {
-        $reason = @($job.ChildJobs | ForEach-Object { if ($_.JobStateInfo.Reason) { $_.JobStateInfo.Reason.GetType().Name } }) -join ','
-        throw ('Fixture backend did not start; job state ' + $job.State + '; reason ' + $reason)
-    }
+    # Own the handle before any metadata, readiness read or health probe can fail.
+    $script:backend=$job
+    $job | Add-Member -Force NoteProperty BackendAttemptId $attemptId
+    $job | Add-Member -Force NoteProperty BackendStartedUtc $started
+    $job | Add-Member -Force NoteProperty BackendReadyPath $ready
+    $job | Add-Member -Force NoteProperty BackendProcessId $null
+    $job | Add-Member -Force NoteProperty BackendClock $startupClock
+    Write-BackendLifecycle $job 'starting'
+    # A cold guest's job creation, receipt and authenticated health share one startup window.
+    Wait-Until {
+        if ($startupClock.Elapsed.TotalSeconds -ge 120 -or [DateTime]::UtcNow -ge $startupDeadline) { throw [TimeoutException]::new('Fixture startup timed out.') }
+        if ($job.State -ne 'Running' -and $job.State -ne 'NotStarted') { throw 'Fixture backend failed.' }
+        if (-not (Test-BackendReady -Backend $job -Deadline $startupDeadline)) { return $false }
+        Test-Path -LiteralPath $ready } 120 'startup'
+    if ($startupClock.Elapsed.TotalSeconds -ge 120 -or [DateTime]::UtcNow -ge $startupDeadline) { throw [TimeoutException]::new('Fixture startup timed out.') }
+    Write-BackendLifecycle $job 'ready'
+    if ($startupClock.Elapsed.TotalSeconds -ge 120 -or [DateTime]::UtcNow -ge $startupDeadline) { throw [TimeoutException]::new('Fixture startup timed out.') }
     return $job
+    }
+    catch {
+        $category=$_.Exception.GetBaseException().GetType().Name
+        $observedState=[string](Get-BackendValue $job 'State' 'NotStarted')
+        $teardownCategory='none';$diagnosticCategory='none'
+        try { Write-BackendLifecycle $job 'start_failed' $category } catch { $diagnosticCategory=$_.Exception.GetBaseException().GetType().Name }
+        if ($null -ne $script:backend) {
+            try { Stop-Backend } catch { $teardownCategory=$_.Exception.GetBaseException().GetType().Name }
+        }
+        $message=if ($null -ne $job) { 'Fixture backend did not start; job state ' + $job.State } else { 'Fixture backend did not start; job state unavailable' }
+        throw ($message + '; observed ' + $observedState + '; category ' + $category + '; teardown ' + $teardownCategory + '; diagnostics ' + $diagnosticCategory)
+    }
 }
 function Stop-Backend {
     if ($null -ne $script:backend) {
-        Stop-Job $script:backend -ErrorAction Stop
-        Remove-Job $script:backend -Force -ErrorAction Stop
+        $owned=$script:backend
+        Stop-Job -Job $owned -ErrorAction Stop | Out-Null
+        Remove-Job -Job $owned -Force -ErrorAction Stop | Out-Null
         $script:backend = $null
+        Write-BackendLifecycle $owned 'stopped'
     }
 }
 function Hid-Snapshot {
@@ -378,10 +567,13 @@ public static class PLACEHOLDER {
     public static int Main(string[] args) {
         try {
             File.WriteAllText(args[0], "started");
+            File.WriteAllText(args[0] + ".phase", "entry");
             if (args.Length > 1 && args[1] != "-") {
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                 var request = WebRequest.Create(args[1]); request.Timeout = 8000;
+                File.WriteAllText(args[0] + ".phase", "before_network");
                 using (var response = request.GetResponse()) { }
+                File.WriteAllText(args[0] + ".phase", "after_response");
             }
             if (args.Length > 2) Thread.Sleep(Int32.Parse(args[2]));
             return 0;
@@ -391,16 +583,78 @@ public static class PLACEHOLDER {
 '@
     Add-Type -TypeDefinition ($code.Replace('PLACEHOLDER', $typeName)) -OutputAssembly $Path -OutputType ConsoleApplication
 }
-function Invoke-Fixture([string]$Path, [string]$Sentinel, [string]$Url = '-') {
-    Remove-Item -LiteralPath $Sentinel -ErrorAction SilentlyContinue
+function Start-FixtureProcess([string]$Path, [string]$Sentinel, [string]$Url) {
     $start = New-Object Diagnostics.ProcessStartInfo
     $start.FileName=$Path; $start.Arguments='"' + $Sentinel + '" "' + $Url + '"'; $start.UseShellExecute=$false; $start.CreateNoWindow=$true
-    try { $process = [Diagnostics.Process]::Start($start) }
-    catch [ComponentModel.Win32Exception] { return @{ exit=-1; native_error=$_.Exception.NativeErrorCode; started=$false } }
+    return [Diagnostics.Process]::Start($start)
+}
+function Read-FixturePhase([string]$Sentinel) {
+    $path = $Sentinel + '.phase'
+    if (-not (Test-Path -LiteralPath $path)) { return 'unobserved' }
+    $stream = [IO.File]::OpenRead($path)
     try {
-        if (-not $process.WaitForExit(15000)) { $process.Kill(); throw 'Fixture process timed out.' }
+        if ($stream.Length -gt 64) { throw 'Owned fixture phase exceeds its bounded limit.' }
+        $reader = New-Object IO.StreamReader($stream)
+        try { $phase = $reader.ReadToEnd() } finally { $reader.Dispose() }
+    } finally { $stream.Dispose() }
+    if ($phase -cnotin @('entry','before_network','after_response')) { throw 'Unrecognized owned fixture phase.' }
+    return $phase
+}
+function Invoke-Fixture {
+    param([string]$Path, [string]$Sentinel, [string]$Url = '-',
+        [ValidateSet('execution','network_baseline_selected','network_baseline_control','network_block_selected','network_block_control','network_release_selected')][string]$ProbePhase = 'execution')
+    $root = [IO.Path]::GetFullPath($work).TrimEnd('\')
+    foreach ($ownedPath in @($Path,$Sentinel)) {
+        if (-not [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($ownedPath)).Equals($root,[StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Fixture observations require files directly inside the owned workspace.'
+        }
+    }
+    $basename = [IO.Path]::GetFileName($Path)
+    if ($basename -notin @('OpenemsFixture.exe','RenamedFixture.exe','PublisherFixture.exe','PublisherRenamed.exe') -or
+        [IO.Path]::GetFileName($Sentinel) -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' -or $Url -cnotin @('-','https://example.org/')) {
+        throw 'Unrecognized owned fixture invocation.'
+    }
+    if (@($script:result.fixture_probes).Count -ge 32) { throw 'Owned fixture observations exceed their bounded limit.' }
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $receipt = [ordered]@{
+        sequence=(@($script:result.fixture_probes).Count + 1);phase=$ProbePhase;fixture_basename=$basename;sha256=(Get-Sha256 $Path)
+        requested_utc=[DateTime]::UtcNow.ToString('o');start_returned_utc=$null;finished_utc=$null;elapsed_ms=0
+        process_id=$null;started=$false;managed_phase='unobserved';exit=$null;native_error=0;timed_out=$false
+        error_category=$null;observation_error=$null;cleanup_error=$null
+    }
+    $script:result.fixture_probes += @($receipt)
+    $process = $null
+    try {
+        Write-Json $resultPath $script:result
+        foreach ($marker in @($Sentinel,($Sentinel + '.phase'))) {
+            if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force }
+        }
+        try { $process = Start-FixtureProcess $Path $Sentinel $Url }
+        catch [ComponentModel.Win32Exception] {
+            $receipt.native_error = $_.Exception.NativeErrorCode
+            return @{ exit=-1; native_error=$receipt.native_error; started=$false }
+        }
+        $receipt.start_returned_utc = [DateTime]::UtcNow.ToString('o')
+        $receipt.process_id = $process.Id
+        if (-not $process.WaitForExit(15000)) {
+            $receipt.timed_out = $true
+            try { $process.Kill() } catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
+            throw 'Fixture process timed out.'
+        }
+        $receipt.exit = $process.ExitCode
         return @{ exit=$process.ExitCode; native_error=0; started=(Test-Path -LiteralPath $Sentinel) }
-    } finally { $process.Dispose() }
+    }
+    catch { $receipt.error_category = $_.Exception.GetBaseException().GetType().Name; throw }
+    finally {
+        try { $receipt.started = Test-Path -LiteralPath $Sentinel; $receipt.managed_phase = Read-FixturePhase $Sentinel }
+        catch { $receipt.observation_error = $_.Exception.GetBaseException().GetType().Name }
+        try { if ($null -ne $process) { $process.Dispose() } }
+        catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
+        if ($receipt.cleanup_error) { $script:result.cleanup_errors += @('Owned fixture cleanup failed; preserve the guest.') }
+        $watch.Stop(); $receipt.elapsed_ms = $watch.ElapsedMilliseconds; $receipt.finished_utc = [DateTime]::UtcNow.ToString('o')
+        Write-Json $resultPath $script:result
+        if ($receipt.observation_error -or $receipt.cleanup_error) { throw 'Owned fixture evidence or cleanup failed; preserve the guest.' }
+    }
 }
 function Assert-ExecutionDenied([string]$Path) {
     $sentinel = Join-Path $work ([Guid]::NewGuid().ToString('N') + '.started')
@@ -469,6 +723,7 @@ try {
         Assert-HidUnchanged $hidBefore
         Record-Check 'offline restart retained the storage policy and healthy HID devices'
         $backend = Start-Backend
+        Wait-BackendContact -Backend $backend -Seconds 360
         Wait-Ack (Publish-Body (Empty-Body))
         if ($PhysicalDrive) {
             $PhysicalDrive = $PhysicalDrive.ToUpperInvariant()
@@ -512,19 +767,19 @@ try {
         $sentinel = Join-Path $work 'network-started'
         $controlSentinel = Join-Path $work 'control-started'
         $url = 'https://example.org/'
-        $baseline = Invoke-Fixture $fixture $sentinel $url
-        $control = Invoke-Fixture $renamed $controlSentinel $url
+        $baseline = Invoke-Fixture $fixture $sentinel $url -ProbePhase 'network_baseline_selected'
+        $control = Invoke-Fixture $renamed $controlSentinel $url -ProbePhase 'network_baseline_control'
         if ($baseline.exit -ne 0 -or $control.exit -ne 0) { throw 'The external network fixture is not reachable before policy. Retry in a guest with working Internet.' }
         Record-Check 'both independent fixture paths start and reach the external network before policy'
         $body = Empty-Body
         $body.app_control.network_blocked=@($fixture)
         Wait-Ack (Publish-Body $body)
-        $denied = Invoke-Fixture $fixture $sentinel $url
-        $control = Invoke-Fixture $renamed $controlSentinel $url
+        $denied = Invoke-Fixture $fixture $sentinel $url -ProbePhase 'network_block_selected'
+        $control = Invoke-Fixture $renamed $controlSentinel $url -ProbePhase 'network_block_control'
         if (-not $denied.started -or $denied.exit -eq 0 -or $control.exit -ne 0) { throw 'App network policy did not isolate the selected path while preserving process launch and the control copy.' }
         Record-Check 'network block kept the selected app runnable while its connection failed and the control copy connected'
         Wait-Ack (Publish-Body (Empty-Body))
-        if ((Invoke-Fixture $fixture $sentinel $url).exit -ne 0) { throw 'Removing network policy did not restore connectivity.' }
+        if ((Invoke-Fixture $fixture $sentinel $url -ProbePhase 'network_release_selected').exit -ne 0) { throw 'Removing network policy did not restore connectivity.' }
         Record-Check 'network policy release restored the selected app connection'
         if (-not $executionBaseline.available -or @(Get-Module -ListAvailable ConfigCI).Count -eq 0) {
             $result.pending += 'This guest has no supported CiTool/ConfigCI. Repeat execution acceptance on a supported disposable Windows 11 VM; network acceptance alone is not WDAC acceptance.'
@@ -591,6 +846,7 @@ try {
     if ($installed) {
         try {
             if ($null -eq $backend) { $backend=Start-Backend }
+            Wait-BackendContact -Backend $backend -Seconds 360
             Wait-Ack (Publish-Body (Empty-Body))
             Invoke-Msi $true
         } catch { $result.cleanup_errors += $_.Exception.Message }

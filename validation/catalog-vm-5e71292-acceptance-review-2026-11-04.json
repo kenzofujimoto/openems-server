@@ -1,0 +1,405 @@
+{
+  "date": "2026-11-04",
+  "source_revision": "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff",
+  "run_id": "eb8486c4e5d940238c9ff17c3336f6d8",
+  "status": "failed_cleanup_firewall_preservation",
+  "passed": false,
+  "guest_reported_status": "failed",
+  "guest_reported_passed": false,
+  "original_report": {
+    "file": "vm-catalog-5e71292-result-2026-11-04.json",
+    "sha256": "97f313244ef0cab9c8f556625639a35886f0768b7f54984f687ec6467cae6a40",
+    "bytes": 39250
+  },
+  "host_semantic_verification": {
+    "passed": false,
+    "errors": [
+      "report is not completed successfully"
+    ]
+  },
+  "started_utc": "2026-11-04T18:26:45.8255262Z",
+  "finished_utc": "2026-11-04T19:39:28.3143319Z",
+  "package_receipt": {
+    "manifest_sha256": "509e11816273cfef555f53002994193783074f461a8c08d55571c0b3b9e63ae3",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "0da1a3c09fa573627d70e4e846f32817a432ef049370397d6a960619870301ad",
+        "bytes": 8642560
+      },
+      "openems-agent-next.msi": {
+        "sha256": "1f6b637bb5c791d5d109406dadbeeb58177c03c088297552cd54d5cf05b74af3",
+        "bytes": 8642560
+      }
+    },
+    "source_revision": "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff"
+  },
+  "checks": [
+    {
+      "name": "absent",
+      "status": "passed",
+      "at_utc": "2026-11-04T18:28:52.8653609Z"
+    },
+    {
+      "name": "network",
+      "status": "passed",
+      "at_utc": "2026-11-04T18:33:49.3579620Z"
+    },
+    {
+      "name": "process",
+      "status": "passed",
+      "at_utc": "2026-11-04T18:34:41.3490199Z"
+    },
+    {
+      "name": "wdac",
+      "status": "passed",
+      "at_utc": "2026-11-04T18:34:42.5894719Z"
+    },
+    {
+      "name": "all_absent",
+      "status": "passed",
+      "at_utc": "2026-11-04T18:35:23.3582418Z"
+    },
+    {
+      "name": "hourly",
+      "status": "passed",
+      "at_utc": "2026-11-04T19:35:26.6456604Z"
+    },
+    {
+      "name": "release",
+      "status": "passed",
+      "at_utc": "2026-11-04T19:35:58.1889740Z"
+    }
+  ],
+  "network": {
+    "control_has_rule": false,
+    "firewall_paths": [
+      "C:\\openems-catalog-eb8486c4e5d940238c9ff17c3336f6d8\\openems-catalog-a.exe",
+      "C:\\openems-catalog-eb8486c4e5d940238c9ff17c3336f6d8\\openems-catalog-a.exe"
+    ],
+    "before": {
+      "control_exit": 0,
+      "target_exit": 0
+    },
+    "released": {
+      "control_exit": 0,
+      "target_exit": 0
+    },
+    "blocked": {
+      "target_process_created": true,
+      "control_exit": 0,
+      "target_exit": 42
+    }
+  },
+  "process": {
+    "control_pid": 9864,
+    "control_still_running": true,
+    "target_exited": true,
+    "target_pid": 2104,
+    "target_was_running": true
+  },
+  "wdac": {
+    "policy_enforced": true,
+    "original": {
+      "alive_after_sentinel": false,
+      "native_error": 4551,
+      "process_created": false,
+      "started": false,
+      "exit": -1
+    },
+    "renamed": {
+      "alive_after_sentinel": false,
+      "native_error": 4551,
+      "process_created": false,
+      "started": false,
+      "exit": -1
+    }
+  },
+  "hourly": {
+    "monotonic_elapsed_seconds": 3602.7953635,
+    "utc_elapsed_seconds": 3602.942619,
+    "started_utc": "2026-11-04T18:35:23.4016474Z",
+    "finished_utc": "2026-11-04T19:35:26.3442666Z",
+    "optional_checked_at_before": 1793817295,
+    "optional_checked_at_after": 1793820905,
+    "optional_checked_at_delta_seconds": 3610,
+    "assignment_observation_count": 63,
+    "assignment_identities": [
+      [
+        6,
+        "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      ]
+    ],
+    "before_admission": {
+      "process_created": true,
+      "native_error": 0
+    },
+    "after_denial": {
+      "alive_after_sentinel": false,
+      "native_error": 4551,
+      "process_created": false,
+      "started": false,
+      "exit": -1
+    }
+  },
+  "release": {
+    "assignment": {
+      "version": 7,
+      "digest": "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+    },
+    "renamed_exit": 0,
+    "firewall_rule_count": 0,
+    "ack": {
+      "version": 7,
+      "success": true,
+      "digest": "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+    },
+    "original_exit": 0,
+    "own_policy_present": false
+  },
+  "cleanup": null,
+  "cleanup_errors": [
+    "An unrelated firewall rule changed."
+  ],
+  "error": null,
+  "foreign_ci_policy_count_before": null,
+  "foreign_ci_policy_count_after": null,
+  "clean_snapshot": {
+    "uid": 1,
+    "name": "clean-preflight-before-controls",
+    "vmware_checkpoint": "OpenEMS-Win11-Lab-Snapshot1.vmsn",
+    "checkpoint_read_only": true,
+    "restore_at_utc": "2026-11-04T18:01:04.091Z",
+    "exact_iso_connect_at_utc": "2026-11-04T18:24:49.268Z"
+  },
+  "scope": "Real server API expansion in process from synthetic owned fixture inventory/catalog, then actual Windows service/MSI enforcement through a local fixture backend in disposable VMware.",
+  "limitations": [
+    "No live server-network/panel/PostgreSQL/Redis/fleet inventory republication acceptance.",
+    "Physical USB regression and global per-module coverage gates remain separate and pending.",
+    "No production deployment, push, PR or merge."
+  ],
+  "prior_failed_runs_reclassified": false,
+  "partial_checks_host_review": [
+    {
+      "name": "absent",
+      "observed_effects_verified": true
+    },
+    {
+      "name": "network",
+      "observed_effects_verified": true
+    },
+    {
+      "name": "process",
+      "observed_effects_verified": true
+    },
+    {
+      "name": "wdac",
+      "observed_effects_verified": true
+    },
+    {
+      "name": "all_absent",
+      "observed_effects_verified": true
+    },
+    {
+      "name": "hourly",
+      "observed_effects_verified": true
+    },
+    {
+      "name": "release",
+      "observed_effects_verified": true
+    }
+  ],
+  "failure_analysis": {
+    "guard": "Assert-FirewallPreserved",
+    "possible_guard_conditions": [
+      "missing baseline rule",
+      "duplicate Name match",
+      "Enabled/Direction/Action differs"
+    ],
+    "offending_rule_identified": false,
+    "baseline_persisted": false,
+    "msi_exit_zero_inferred_from_control_flow": true,
+    "independent_cleanup_confirmed": true,
+    "reason_cleanup_evidence_missing": "The firewall assertion threw before the cleanup object and check were constructed.",
+    "root_cause": null,
+    "next_step": "All requested diagnostics preserved and reviewed. Await explicit approval of docs/catalog-cleanup-evidence-plan.md before three-file TDD evidence changes. No new run or product fix is justified by category alone.",
+    "msi_exit_zero_independently_confirmed": true
+  },
+  "diagnostic_preparation": {
+    "shortcut": "10 - Collect catalog cleanup diagnostics as administrator.lnk",
+    "script": "10-collect-catalog-cleanup-diagnostics.ps1",
+    "script_sha256": "1c26f953906f52f9b938b230b6cd82fc72eb6867cf20f28b9ba57c228f2f66eb",
+    "output": "catalog-cleanup-diagnostics-eb8486c4.json",
+    "powershell_5_1_parser_passed": true,
+    "elevated_shortcut_and_arguments_verified": true,
+    "scope": "Read-only endpoint/MSI/firewall diagnostics; own staging/task/report writes only; no fixtures executed or controls changed.",
+    "status": "completed_archived_reviewed"
+  },
+  "cleanup_diagnostic_review": {
+    "file": "vm-catalog-5e71292-cleanup-diagnostics-2026-11-04.json",
+    "sha256": "b5288a4bc5351022473cf3bb4844c4eac342977a46807253eaf16865e844b852",
+    "bytes": 277728,
+    "collection_status": "completed",
+    "collection_errors": [],
+    "elapsed_seconds": 53,
+    "cleanup_now": {
+      "code_integrity_policy_ids": [
+        "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+        "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+        "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+        "1678656c-05ef-481f-bc5b-ebd8c991502d",
+        "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+        "2678656c-05ef-481f-bc5b-ebd8c991502d",
+        "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+        "5dac656c-21ad-4a02-ab49-649917162e70",
+        "60fd87f8-4593-44a0-91b0-2e0da022f248",
+        "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+        "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+        "a072029f-588b-4b5e-b7f9-05aad67df687",
+        "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+        "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+      ],
+      "own_code_integrity_count": 0,
+      "nrpt_count": 0,
+      "watchdog_present": false,
+      "application_journal_present": false,
+      "owned_firewall_count": 0,
+      "service_present": false
+    },
+    "msi_removal": [
+      {
+        "main_engine_return_codes": [
+          0,
+          0
+        ],
+        "file": {
+          "modified_utc": "2026-11-04T19:36:09.4234694Z",
+          "sha256": "08f735fa0235c1dd4a5f6fbe765edd92ea43bb1cdcd663eb55a0304112a477e7",
+          "name": "remove.msi.log",
+          "bytes": 92542
+        }
+      }
+    ],
+    "fixture_registrations": [],
+    "foreign_ci_ids_unchanged": true,
+    "foreign_ci_count": 14,
+    "release_ack_verified": true,
+    "current_firewall_rule_count": 483,
+    "current_duplicate_name_count": 0,
+    "firewall_change_event_count": 0,
+    "firewall_change_root_cause_identified": false,
+    "baseline_missing": true,
+    "failed_ack_observations": [
+      {
+        "at_utc": "2026-11-04T18:38:03.9978569Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      },
+      {
+        "at_utc": "2026-11-04T19:14:12.6724344Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      },
+      {
+        "at_utc": "2026-11-04T19:35:11.8198749Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      },
+      {
+        "at_utc": "2026-11-04T19:35:26.9815436Z",
+        "version": 6,
+        "success": false,
+        "digest": "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+      }
+    ],
+    "failed_acks_meaning": "A local enforcement cycle returned Err. Adapter/root cause cannot be inferred from the ACK because the fixture backend omitted its error field.",
+    "run_reclassified": false
+  },
+  "agent_log_diagnostic_preparation": {
+    "script": "11-collect-catalog-agent-log-diagnostics.ps1",
+    "sha256": "4dbc9b5295a5ac99e20dab3dc54232c87b5878c9d584c51f3912dc58db351ead",
+    "shortcut": "11 - Collect catalog agent log diagnostics as administrator.lnk",
+    "output": "catalog-agent-log-diagnostics-eb8486c4.json",
+    "status": "completed_invalid_filter",
+    "scope": "Four fixed log files, bounded sizes, only timestamps and allowlisted enforcement failure categories in the run interval. No raw logs/config/state/secrets.",
+    "powershell_5_1_parser_passed": true,
+    "elevated_shortcut_and_arguments_verified": true
+  },
+  "agent_log_diagnostic_review": {
+    "file": "vm-catalog-5e71292-agent-log-diagnostics-invalid-filter-2026-11-04.json",
+    "sha256": "77c36f8671b6b5ad4b84ef8c82a2f6903fb1b1086d75f7562fb7232a27c0388f",
+    "bytes": 1306,
+    "collection_status": "completed",
+    "diagnostic_valid": false,
+    "reason": "The generated collector regex lost backslash escapes and rejected a known valid enforcement failure line. Empty observations cannot be interpreted as absence of local errors.",
+    "original_filter": "^(d{4}-dd-ddT[0-9:]+Z) policy enforcement failed ((ConfigError|PolicyError|StateError|HTTPError|TransportError|LocalError|OSError))$",
+    "corrected_filter": "^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z) policy enforcement failed [(](ConfigError|PolicyError|StateError|HTTPError|TransportError|LocalError|OSError)[)]$",
+    "known_failure_red_reproduced": true
+  },
+  "agent_log_retry_preparation": {
+    "script": "12-collect-catalog-agent-log-diagnostics-retry1.ps1",
+    "sha256": "1ccd95ea5b46bbc6e3c0ec0906491704ca81d476c2f9e97813aacbc600727ab0",
+    "shortcut": "12 - Collect catalog agent log diagnostics retry as administrator.lnk",
+    "output": "catalog-agent-log-diagnostics-eb8486c4-retry1.json",
+    "status": "completed_archived_reviewed",
+    "scope_unchanged": true,
+    "powershell_5_1_parser_passed": true,
+    "powershell_version": "5.1.26100.9711",
+    "synthetic_cases_passed": 12,
+    "elevated_shortcut_and_arguments_verified": true
+  },
+  "agent_log_retry_review": {
+    "file": "vm-catalog-5e71292-agent-log-diagnostics-2026-11-04.json",
+    "sha256": "1ba7cea99f4e36b3b8c3a7c42e050ebcc9df73633a38dc7343f02d5bba18fb9e",
+    "bytes": 2519,
+    "collection_status": "completed",
+    "collection_errors": [],
+    "diagnostic_valid": true,
+    "elapsed_seconds": 8,
+    "log_metadata_matches_collector11": true,
+    "log_file": {
+      "modified_utc": "2026-11-04T19:36:00.2259763Z",
+      "sha256": "e8c729cb8ab2ec48650f294ad35e8f748157eb212c8abb998a00a21c266b0578",
+      "name": "agent.log",
+      "bytes": 654
+    },
+    "observations_correlated_to_acks": [
+      {
+        "log_at_utc": "2026-11-04T18:38:00Z",
+        "error_kind": "OSError",
+        "ack_at_utc": "2026-11-04T18:38:03.9978569Z",
+        "ack_delay_seconds": 3.997856
+      },
+      {
+        "log_at_utc": "2026-11-04T19:14:07Z",
+        "error_kind": "OSError",
+        "ack_at_utc": "2026-11-04T19:14:12.6724344Z",
+        "ack_delay_seconds": 5.672434
+      },
+      {
+        "log_at_utc": "2026-11-04T19:35:09Z",
+        "error_kind": "LocalError",
+        "ack_at_utc": "2026-11-04T19:35:11.8198749Z",
+        "ack_delay_seconds": 2.819874
+      },
+      {
+        "log_at_utc": "2026-11-04T19:35:18Z",
+        "error_kind": "LocalError",
+        "ack_at_utc": "2026-11-04T19:35:26.9815436Z",
+        "ack_delay_seconds": 8.981543
+      }
+    ],
+    "error_category_counts": {
+      "OSError": 2,
+      "LocalError": 2
+    },
+    "root_cause_identified": false,
+    "interpretation": "OSError denotes I/O failure and LocalError a local operation/control error. Neither records the failing operation or identifies WDAC, firewall, staging or another subsystem as cause.",
+    "worker_state_at_export": "Running",
+    "worker_result_at_export": 267009,
+    "worker_state_note": "The parent exported completed diagnostics while Task Scheduler still reported Running. This snapshot is not proof of the final process exit code.",
+    "run_reclassified": false
+  }
+}

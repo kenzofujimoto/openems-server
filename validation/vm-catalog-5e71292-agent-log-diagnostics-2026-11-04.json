@@ -1,0 +1,42 @@
+﻿{
+    "run_id":  "eb8486c4e5d940238c9ff17c3336f6d8",
+    "source_revision":  "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff",
+    "collected_utc":  "2026-11-04T20:04:03.9284865Z",
+    "collection_errors":  [
+
+                          ],
+    "scope":  "Read-only bounded sanitized enforcement failure lines from preserved agent logs. No configuration, state, raw stderr or secrets. Writes only own staging, temporary task and reports.",
+    "collection_status":  "completed",
+    "current_section":  null,
+    "agent_log_failures":  [
+                               {
+                                   "file":  {
+                                                "modified_utc":  "2026-11-04T19:36:00.2259763Z",
+                                                "sha256":  "e8c729cb8ab2ec48650f294ad35e8f748157eb212c8abb998a00a21c266b0578",
+                                                "name":  "agent.log",
+                                                "bytes":  654
+                                            },
+                                   "observations":  [
+                                                        {
+                                                            "error_kind":  "OSError",
+                                                            "at_utc":  "2026-11-04T18:38:00Z"
+                                                        },
+                                                        {
+                                                            "error_kind":  "OSError",
+                                                            "at_utc":  "2026-11-04T19:14:07Z"
+                                                        },
+                                                        {
+                                                            "error_kind":  "LocalError",
+                                                            "at_utc":  "2026-11-04T19:35:09Z"
+                                                        },
+                                                        {
+                                                            "error_kind":  "LocalError",
+                                                            "at_utc":  "2026-11-04T19:35:18Z"
+                                                        }
+                                                    ]
+                               }
+                           ],
+    "task_state":  "Running",
+    "task_last_result":  267009,
+    "parent_elapsed_seconds":  8
+}

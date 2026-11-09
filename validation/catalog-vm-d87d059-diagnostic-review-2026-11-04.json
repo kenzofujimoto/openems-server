@@ -1,0 +1,113 @@
+{
+  "date": "2026-11-04",
+  "source_revision": "d87d0591f55c77e7c222db82e4b2b812e9866681",
+  "run_id": "385b1eb0f9304a6ebb308e0620215c6f",
+  "status": "failed_run_diagnostics_complete_cleanup_verified",
+  "passed": false,
+  "diagnostics": {
+    "file": "vm-catalog-d87d059-diagnostics-2026-11-04.json",
+    "sha256": "88cebd077c564d74f0ef87a688fad62d30440174e1b0c8519fc74ffa5dd684f9",
+    "bytes": 48502,
+    "collection_status": "completed",
+    "collection_errors": []
+  },
+  "release_ack": {
+    "at_utc": "2026-11-03T19:07:03.0817744Z",
+    "version": 7,
+    "success": true,
+    "digest": "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+  },
+  "backend_errors": [],
+  "independent_cleanup_verified": true,
+  "cleanup_now": {
+    "code_integrity_policy_ids": [
+      "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "1678656c-05ef-481f-bc5b-ebd8c991502d",
+      "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "2678656c-05ef-481f-bc5b-ebd8c991502d",
+      "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+      "5dac656c-21ad-4a02-ab49-649917162e70",
+      "60fd87f8-4593-44a0-91b0-2e0da022f248",
+      "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+      "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+      "a072029f-588b-4b5e-b7f9-05aad67df687",
+      "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+      "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+    ],
+    "own_code_integrity_count": 0,
+    "nrpt_count": 0,
+    "watchdog_present": false,
+    "application_journal_present": false,
+    "owned_firewall_count": 0,
+    "service_present": false
+  },
+  "foreign_ci_ids_preserved": 14,
+  "reported_normal_msi_exit": 0,
+  "owned_xml_files_verified": [
+    {
+      "file": "hash-3899021b832e4b5b8dfbf59c06e262c9.xml",
+      "bytes": 2878,
+      "sha256": "53ac69aad2fa22f923ac30d7d5a2ef9343d0d799afdc5f2f2b3506ab0c3d82a4",
+      "user_denies": 4,
+      "empty_kernel_reference_containers": 1
+    },
+    {
+      "file": "hash-4753ba87d71e4d448c6bdd3c4abf2522.xml",
+      "bytes": 2878,
+      "sha256": "cf02005cd59d56a2027d2a02ef1eef7cc77a86ecad60bd533d5b02b5ec840207",
+      "user_denies": 4,
+      "empty_kernel_reference_containers": 1
+    },
+    {
+      "file": "hash-6d7fb0b60c084b778dea0a8d389e8cbf.xml",
+      "bytes": 2878,
+      "sha256": "581d263181b5de130df1ebaa59188e72102e3e0c56557a20e7340886c056004a",
+      "user_denies": 4,
+      "empty_kernel_reference_containers": 1
+    },
+    {
+      "file": "hash-b4f216e2603b47d882840027ccc71053.xml",
+      "bytes": 2878,
+      "sha256": "e908366e361dfb2b7715e4408ab28aea1e6e040ba231430111bad8c90e520e1d",
+      "user_denies": 4,
+      "empty_kernel_reference_containers": 1
+    },
+    {
+      "file": "hash-d2d317fc082542f2805a0f3c489d90e8.xml",
+      "bytes": 2878,
+      "sha256": "7f9dff558e4c81b8772c6dfac5998b3f440b3603fe89adec85c7e4106d0ae573",
+      "user_denies": 4,
+      "empty_kernel_reference_containers": 1
+    },
+    {
+      "file": "hash-eaf5c20da1bb4d4fa1370c38c9ae4710.xml",
+      "bytes": 2878,
+      "sha256": "10f4d526cf1a2d3819bf97046767affb133320d94bbdd05aeae387956fdb8c6c",
+      "user_denies": 4,
+      "empty_kernel_reference_containers": 1
+    }
+  ],
+  "generated_stage_files": [
+    "hash-3899021b832e4b5b8dfbf59c06e262c9.xml",
+    "hash-4753ba87d71e4d448c6bdd3c4abf2522.xml",
+    "hash-6d7fb0b60c084b778dea0a8d389e8cbf.xml",
+    "hash-b4f216e2603b47d882840027ccc71053.xml",
+    "hash-d2d317fc082542f2805a0f3c489d90e8.xml",
+    "hash-eaf5c20da1bb4d4fa1370c38c9ae4710.xml",
+    "10f689ce52a24146a706e05849592fec.exe",
+    "726932ea6e5f4c269abea470a78cde67.exe",
+    "f340940ab1474dc784aff93720c9f7d8.exe",
+    "768f7a1caf6e4e5686a86887ee389c7a.exe",
+    "eb48f6a933854ef793db0e5c3d0ea942.exe",
+    "457b73e3327140ecbc1429bd3a9d7aa2.exe"
+  ],
+  "interpretation": "All six exported generated hash XMLs have four user denies but an empty kernel FileRulesRef. This is the same schema defect reproduced independently and corrected by948608e. The exact throwing ConfigCI invocation is not exposed by sanitized logs.",
+  "new_package": {
+    "source_revision": "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+    "run_id": "0e93a06a306e493b9d1fe4975ce2aaf8",
+    "acceptance_started": false
+  },
+  "next_step": "Evidence preserved and cleanup verified. Restore clean snapshot before new ISO/shortcut07 acceptance; retain all90s/3600real-second criteria."
+}

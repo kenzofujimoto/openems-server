@@ -1,0 +1,663 @@
+{
+  "date": "2026-11-05",
+  "source_revision": "1bf393abfeba3458509c3c82cb912ddfd45d9012",
+  "run_id": "7820bffae47c42e9a2598f81acc88986",
+  "status": "passed_catalog_vm_scope",
+  "passed": true,
+  "guest_status": "passed",
+  "guest_passed": true,
+  "original_report": {
+    "file": "vm-catalog-1bf393a-result-2026-11-05.json",
+    "sha256": "73a6da27408bfc3d2d6a40a63dd47196d4ecc7e39fb2de3662e97b0727c166aa",
+    "bytes": 894910
+  },
+  "host_semantic_verification": {
+    "passed": true,
+    "errors": [],
+    "local_enforcement_failures": [
+      {
+        "at_utc": "2026-11-05T15:11:45.2259597Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "6df7e2cdcbf4febac12c00184a9eafd0edeeaac218df5c8319b0bafe4815297c"
+      },
+      {
+        "at_utc": "2026-11-05T15:17:05.6591143Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "6df7e2cdcbf4febac12c00184a9eafd0edeeaac218df5c8319b0bafe4815297c"
+      },
+      {
+        "at_utc": "2026-11-05T15:55:06.1881470Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "6df7e2cdcbf4febac12c00184a9eafd0edeeaac218df5c8319b0bafe4815297c"
+      },
+      {
+        "at_utc": "2026-11-05T16:05:46.2184116Z",
+        "error_kind": "LocalError",
+        "version": 6,
+        "success": false,
+        "digest": "6df7e2cdcbf4febac12c00184a9eafd0edeeaac218df5c8319b0bafe4815297c"
+      },
+      {
+        "at_utc": "2026-11-05T16:06:01.4171038Z",
+        "error_kind": "LocalError",
+        "version": 6,
+        "success": false,
+        "digest": "6df7e2cdcbf4febac12c00184a9eafd0edeeaac218df5c8319b0bafe4815297c"
+      }
+    ]
+  },
+  "package_receipt": {
+    "manifest_sha256": "991869857aceeca608650d19cb9da4f832c68d193f4c58e747e51681924ad727",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "733ec8a9ce07b95988be749bbd01f45362c3a0fdc7ab65641c5ebe1adbc7583b",
+        "bytes": 8642560
+      },
+      "openems-agent-next.msi": {
+        "sha256": "66c8cbc28df81b4c3f66101ba3e487d583ce1d91e4f5a127ab25ab3067ca50dd",
+        "bytes": 8642560
+      }
+    },
+    "source_revision": "1bf393abfeba3458509c3c82cb912ddfd45d9012"
+  },
+  "started_utc": "2026-11-05T14:55:32.0637301Z",
+  "finished_utc": "2026-11-05T16:09:19.0429326Z",
+  "verified_effects": [
+    "absent",
+    "network",
+    "process",
+    "wdac",
+    "all_absent",
+    "hourly",
+    "release",
+    "cleanup"
+  ],
+  "effect_errors": {},
+  "checks": [
+    {
+      "name": "absent",
+      "status": "passed",
+      "at_utc": "2026-11-05T14:57:42.1907288Z"
+    },
+    {
+      "name": "network",
+      "status": "passed",
+      "at_utc": "2026-11-05T15:03:57.3920865Z"
+    },
+    {
+      "name": "process",
+      "status": "passed",
+      "at_utc": "2026-11-05T15:05:04.2747633Z"
+    },
+    {
+      "name": "wdac",
+      "status": "passed",
+      "at_utc": "2026-11-05T15:05:13.5358073Z"
+    },
+    {
+      "name": "all_absent",
+      "status": "passed",
+      "at_utc": "2026-11-05T15:05:54.6692100Z"
+    },
+    {
+      "name": "hourly",
+      "status": "passed",
+      "at_utc": "2026-11-05T16:05:58.4273249Z"
+    },
+    {
+      "name": "release",
+      "status": "passed",
+      "at_utc": "2026-11-05T16:06:33.0450336Z"
+    },
+    {
+      "name": "cleanup",
+      "status": "passed",
+      "at_utc": "2026-11-05T16:09:19.0168322Z"
+    }
+  ],
+  "error": null,
+  "cleanup_errors": [],
+  "network_enumeration": {
+    "error_kind": null,
+    "rule_count": 2,
+    "elapsed_ms": 202314.89380000002,
+    "status": "complete",
+    "filter_count": 2,
+    "started_utc": "2026-11-05T14:59:01.1047613Z",
+    "finished_utc": "2026-11-05T15:02:23.4200614Z"
+  },
+  "probe_review": {
+    "count": 12,
+    "expected_order_complete": true,
+    "unique_sentinel_ids": true,
+    "started_in_window_count": 9,
+    "max_marker_observation_ms": 766.8179,
+    "all_observed_starts_strictly_inside_10000ms": true,
+    "native_refusals": [
+      {
+        "phase": "wdac",
+        "role": "original",
+        "native_error": 4551
+      },
+      {
+        "phase": "wdac",
+        "role": "renamed",
+        "native_error": 4551
+      },
+      {
+        "phase": "hourly_after",
+        "role": "renamed",
+        "native_error": 4551
+      }
+    ],
+    "observed": [
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 3008.3642
+        },
+        "marker_created_utc": "2026-11-05T14:57:03.4985348Z",
+        "phase": "network_before",
+        "pid": 9716,
+        "sentinel_id": "395377a504ab40699f8372f63be37149",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 708.8965000000001,
+            "marker_present": true
+          },
+          "elapsed_ms": 708.8965000000001
+        },
+        "launch": {
+          "elapsed_ms": 867.8148,
+          "started_utc": "2026-11-05T14:57:02.3032417Z",
+          "finished_utc": "2026-11-05T14:57:03.2964570Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "target",
+        "native_error": 0
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 3387.6252
+        },
+        "marker_created_utc": "2026-11-05T14:57:08.8816292Z",
+        "phase": "network_before",
+        "pid": 6568,
+        "sentinel_id": "5b590693b84341b787061c1cf9eb9d66",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 677.5495000000001,
+            "marker_present": true
+          },
+          "elapsed_ms": 677.5495000000001
+        },
+        "launch": {
+          "elapsed_ms": 309.5543,
+          "started_utc": "2026-11-05T14:57:08.2155556Z",
+          "finished_utc": "2026-11-05T14:57:08.5252283Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "control",
+        "native_error": 0
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 42,
+          "elapsed_ms": 12166.7582
+        },
+        "marker_created_utc": "2026-11-05T15:02:24.1263603Z",
+        "phase": "network_blocked",
+        "pid": 6224,
+        "sentinel_id": "b105d72bd06c43e98f6b4987daa39ea4",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 766.8179,
+            "marker_present": true
+          },
+          "elapsed_ms": 766.8179
+        },
+        "launch": {
+          "elapsed_ms": 290.7128,
+          "started_utc": "2026-11-05T15:02:23.4200614Z",
+          "finished_utc": "2026-11-05T15:02:23.7121541Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "target",
+        "native_error": 0
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 11528.684500000001
+        },
+        "marker_created_utc": "2026-11-05T15:02:36.7700277Z",
+        "phase": "network_blocked",
+        "pid": 10544,
+        "sentinel_id": "dcfc2363ed5e421fb9895aaf481dcede",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 324.0924,
+            "marker_present": true
+          },
+          "elapsed_ms": 324.0924
+        },
+        "launch": {
+          "elapsed_ms": 17.4805,
+          "started_utc": "2026-11-05T15:02:36.6470264Z",
+          "finished_utc": "2026-11-05T15:02:36.6663406Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "control",
+        "native_error": 0
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 3434.7383
+        },
+        "marker_created_utc": "2026-11-05T15:03:49.1248383Z",
+        "phase": "network_release",
+        "pid": 4300,
+        "sentinel_id": "57da5db6d34748f6b3f0c194ddd40edc",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 356.40790000000004,
+            "marker_present": true
+          },
+          "elapsed_ms": 356.40790000000004
+        },
+        "launch": {
+          "elapsed_ms": 58.8836,
+          "started_utc": "2026-11-05T15:03:48.8404144Z",
+          "finished_utc": "2026-11-05T15:03:48.8985272Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "target",
+        "native_error": 0
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 3825.0264
+        },
+        "marker_created_utc": "2026-11-05T15:03:53.4013251Z",
+        "phase": "network_release",
+        "pid": 10296,
+        "sentinel_id": "a6bf4ff4048b4b4faf149805eb24c18e",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 713.7433000000001,
+            "marker_present": true
+          },
+          "elapsed_ms": 713.7433000000001
+        },
+        "launch": {
+          "elapsed_ms": 66.125,
+          "started_utc": "2026-11-05T15:03:52.7206925Z",
+          "finished_utc": "2026-11-05T15:03:52.7871115Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "control",
+        "native_error": 0
+      },
+      {
+        "exit_wait": null,
+        "marker_created_utc": null,
+        "phase": "wdac",
+        "pid": null,
+        "sentinel_id": "e60d9808cd064ed7908d4303f44cde06",
+        "marker_metadata_error": null,
+        "startup": null,
+        "launch": {
+          "elapsed_ms": 4436.9698,
+          "started_utc": "2026-11-05T15:05:08.6813554Z",
+          "finished_utc": "2026-11-05T15:05:13.1192195Z"
+        },
+        "process_created": false,
+        "status": "native_refused",
+        "role": "original",
+        "native_error": 4551
+      },
+      {
+        "exit_wait": null,
+        "marker_created_utc": null,
+        "phase": "wdac",
+        "pid": null,
+        "sentinel_id": "710aa16062c24c68af1ebf77ad02380e",
+        "marker_metadata_error": null,
+        "startup": null,
+        "launch": {
+          "elapsed_ms": 116.9885,
+          "started_utc": "2026-11-05T15:05:13.1920184Z",
+          "finished_utc": "2026-11-05T15:05:13.3092207Z"
+        },
+        "process_created": false,
+        "status": "native_refused",
+        "role": "renamed",
+        "native_error": 4551
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 2961.3199
+        },
+        "marker_created_utc": "2026-11-05T15:05:56.8969206Z",
+        "phase": "hourly_before",
+        "pid": 1200,
+        "sentinel_id": "c5949887751b4711a54a723257c750ed",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 327.5713,
+            "marker_present": true
+          },
+          "elapsed_ms": 327.5713
+        },
+        "launch": {
+          "elapsed_ms": 149.8689,
+          "started_utc": "2026-11-05T15:05:56.6361056Z",
+          "finished_utc": "2026-11-05T15:05:56.7875682Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "renamed",
+        "native_error": 0
+      },
+      {
+        "exit_wait": null,
+        "marker_created_utc": null,
+        "phase": "hourly_after",
+        "pid": null,
+        "sentinel_id": "f9ca6659dfa44b03b5e294254bf74c24",
+        "marker_metadata_error": null,
+        "startup": null,
+        "launch": {
+          "elapsed_ms": 905.0153,
+          "started_utc": "2026-11-05T16:05:57.2509999Z",
+          "finished_utc": "2026-11-05T16:05:58.1547773Z"
+        },
+        "process_created": false,
+        "status": "native_refused",
+        "role": "renamed",
+        "native_error": 4551
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 2907.1511
+        },
+        "marker_created_utc": "2026-11-05T16:06:17.4912950Z",
+        "phase": "release",
+        "pid": 9812,
+        "sentinel_id": "fe74c7f4047c47fab45b2df32c484943",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 355.0695,
+            "marker_present": true
+          },
+          "elapsed_ms": 355.0695
+        },
+        "launch": {
+          "elapsed_ms": 137.69140000000002,
+          "started_utc": "2026-11-05T16:06:17.1415224Z",
+          "finished_utc": "2026-11-05T16:06:17.2790339Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "original",
+        "native_error": 0
+      },
+      {
+        "exit_wait": {
+          "timed_out": false,
+          "exit_code": 0,
+          "elapsed_ms": 2879.5062000000003
+        },
+        "marker_created_utc": "2026-11-05T16:06:20.7687305Z",
+        "phase": "release",
+        "pid": 3932,
+        "sentinel_id": "b7b86cddaf854839abb27038a7467a98",
+        "marker_metadata_error": null,
+        "startup": {
+          "terminal": null,
+          "status": "started",
+          "last_in_window": {
+            "error_kind": null,
+            "process_exited": false,
+            "at_ms": 319.73060000000004,
+            "marker_present": true
+          },
+          "elapsed_ms": 319.73060000000004
+        },
+        "launch": {
+          "elapsed_ms": 49.4889,
+          "started_utc": "2026-11-05T16:06:20.5474462Z",
+          "finished_utc": "2026-11-05T16:06:20.5963576Z"
+        },
+        "process_created": true,
+        "status": "completed",
+        "role": "renamed",
+        "native_error": 0
+      }
+    ]
+  },
+  "hourly": {
+    "monotonic_elapsed_seconds": 3602.7587924,
+    "utc_elapsed_seconds": 3603.432801,
+    "started_utc": "2026-11-05T15:05:54.7270889Z",
+    "finished_utc": "2026-11-05T16:05:58.1598890Z",
+    "optional_checked_at_delta_seconds": 3608,
+    "assignment_observation_count": 63,
+    "assignment_identities": [
+      [
+        6,
+        "6df7e2cdcbf4febac12c00184a9eafd0edeeaac218df5c8319b0bafe4815297c"
+      ]
+    ],
+    "before_admission": {
+      "process_created": true,
+      "native_error": 0
+    },
+    "after_denial": {
+      "alive_after_sentinel": false,
+      "native_error": 4551,
+      "process_created": false,
+      "started": false,
+      "exit": -1
+    }
+  },
+  "release": {
+    "assignment": {
+      "version": 7,
+      "digest": "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+    },
+    "renamed_exit": 0,
+    "firewall_rule_count": 0,
+    "ack": {
+      "version": 7,
+      "success": true,
+      "digest": "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+    },
+    "original_exit": 0,
+    "own_policy_present": false
+  },
+  "cleanup_verified": true,
+  "cleanup_review_error": null,
+  "cleanup": {
+    "own_policy_present": false,
+    "collection_status": "complete",
+    "watchdog_present": false,
+    "msi_exit": 0,
+    "collection_errors": [],
+    "nrpt_count": 0,
+    "service_present": false,
+    "fixture_registry_present": false,
+    "owned_firewall_rules": 0,
+    "foreign_before": [
+      "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "1678656c-05ef-481f-bc5b-ebd8c991502d",
+      "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "2678656c-05ef-481f-bc5b-ebd8c991502d",
+      "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+      "5dac656c-21ad-4a02-ab49-649917162e70",
+      "60fd87f8-4593-44a0-91b0-2e0da022f248",
+      "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+      "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+      "a072029f-588b-4b5e-b7f9-05aad67df687",
+      "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+      "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+    ],
+    "foreign_after": [
+      "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+      "1678656c-05ef-481f-bc5b-ebd8c991502d",
+      "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+      "2678656c-05ef-481f-bc5b-ebd8c991502d",
+      "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+      "5dac656c-21ad-4a02-ab49-649917162e70",
+      "60fd87f8-4593-44a0-91b0-2e0da022f248",
+      "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+      "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+      "a072029f-588b-4b5e-b7f9-05aad67df687",
+      "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+      "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+    ]
+  },
+  "firewall": {
+    "preserved": true,
+    "differences": [
+      {
+        "name": "Microsoft.BingWeather_8wekyb3d8bbweS-1-5-21-2405747168-275203870-1816255179-1001-In-Allow-ServerCapability",
+        "fields": [],
+        "kind": "added"
+      },
+      {
+        "name": "Microsoft.BingWeather_8wekyb3d8bbweS-1-5-21-2405747168-275203870-1816255179-1001-Out-Allow-AllCapabilities",
+        "fields": [],
+        "kind": "added"
+      }
+    ],
+    "rules_before": 482,
+    "rules_after": 484
+  },
+  "snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": 1,
+    "restore_at_utc": "2026-11-05T14:40:12.152Z",
+    "iso_connected_at_utc": "2026-11-05T14:43:27.249Z"
+  },
+  "prior_run13_reclassified": false,
+  "prior_startup_root_cause_identified": false,
+  "scope": "Real server API expansion in process with owned synthetic catalog fixtures, then installed Windows service via local fixture backend in VMware.",
+  "separate_pending_validation": [
+    "live server and panel integration",
+    "PostgreSQL/Redis and fleet inventory republication",
+    "physical USB regression",
+    "global per-module coverage"
+  ],
+  "negative_ack_review": {
+    "observations": [
+      {
+        "at_utc": "2026-11-05T15:11:45.2259597Z",
+        "version": 6,
+        "error_kind": "OSError",
+        "subsequent_positive_same_assignment_at_utc": "2026-11-05T15:11:56.4837716Z"
+      },
+      {
+        "at_utc": "2026-11-05T15:17:05.6591143Z",
+        "version": 6,
+        "error_kind": "OSError",
+        "subsequent_positive_same_assignment_at_utc": "2026-11-05T15:17:20.9068787Z"
+      },
+      {
+        "at_utc": "2026-11-05T15:55:06.1881470Z",
+        "version": 6,
+        "error_kind": "OSError",
+        "subsequent_positive_same_assignment_at_utc": "2026-11-05T15:55:21.3739568Z"
+      },
+      {
+        "at_utc": "2026-11-05T16:05:46.2184116Z",
+        "version": 6,
+        "error_kind": "LocalError",
+        "subsequent_positive_same_assignment_at_utc": null
+      },
+      {
+        "at_utc": "2026-11-05T16:06:01.4171038Z",
+        "version": 6,
+        "error_kind": "LocalError",
+        "subsequent_positive_same_assignment_at_utc": null
+      }
+    ],
+    "error_category_counts": {
+      "OSError": 3,
+      "LocalError": 2
+    },
+    "same_assignment_positive_after_first_three": true,
+    "final_release_version": 7,
+    "final_release_success": true,
+    "specific_error_causes_identified": false
+  }
+}
