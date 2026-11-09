@@ -233,7 +233,7 @@ if ($identity.User.Value -ne 'S-1-5-18') { throw 'SystemPhase requires SYSTEM.' 
 $work = $PSScriptRoot
 $resultPath = Join-Path $OutputDirectory $reportName
 $result = [ordered]@{ kind=$Kind; worker_id=(Split-Path -Path $work -Leaf); passed=$false; automation_passed=$false; physical_acceptance_pending=($Kind -eq 'USB')
-    status='running'; checks=@(); pending=@(); error=$null; cleanup_errors=@(); started_utc=[DateTime]::UtcNow.ToString('o'); package_receipt=$null }
+    status='running'; checks=@(); pending=@(); error=$null; cleanup_errors=@(); fixture_probes=@(); started_utc=[DateTime]::UtcNow.ToString('o'); package_receipt=$null }
 if ($null -ne $inputManifest) {
     $result.package_receipt=@{ source_revision=$inputManifest.source_revision; packages=$inputManifest.packages; checked_at=[DateTime]::UtcNow.ToString('o') }
 }
@@ -567,10 +567,13 @@ public static class PLACEHOLDER {
     public static int Main(string[] args) {
         try {
             File.WriteAllText(args[0], "started");
+            File.WriteAllText(args[0] + ".phase", "entry");
             if (args.Length > 1 && args[1] != "-") {
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                 var request = WebRequest.Create(args[1]); request.Timeout = 8000;
+                File.WriteAllText(args[0] + ".phase", "before_network");
                 using (var response = request.GetResponse()) { }
+                File.WriteAllText(args[0] + ".phase", "after_response");
             }
             if (args.Length > 2) Thread.Sleep(Int32.Parse(args[2]));
             return 0;
@@ -580,16 +583,78 @@ public static class PLACEHOLDER {
 '@
     Add-Type -TypeDefinition ($code.Replace('PLACEHOLDER', $typeName)) -OutputAssembly $Path -OutputType ConsoleApplication
 }
-function Invoke-Fixture([string]$Path, [string]$Sentinel, [string]$Url = '-') {
-    Remove-Item -LiteralPath $Sentinel -ErrorAction SilentlyContinue
+function Start-FixtureProcess([string]$Path, [string]$Sentinel, [string]$Url) {
     $start = New-Object Diagnostics.ProcessStartInfo
     $start.FileName=$Path; $start.Arguments='"' + $Sentinel + '" "' + $Url + '"'; $start.UseShellExecute=$false; $start.CreateNoWindow=$true
-    try { $process = [Diagnostics.Process]::Start($start) }
-    catch [ComponentModel.Win32Exception] { return @{ exit=-1; native_error=$_.Exception.NativeErrorCode; started=$false } }
+    return [Diagnostics.Process]::Start($start)
+}
+function Read-FixturePhase([string]$Sentinel) {
+    $path = $Sentinel + '.phase'
+    if (-not (Test-Path -LiteralPath $path)) { return 'unobserved' }
+    $stream = [IO.File]::OpenRead($path)
     try {
-        if (-not $process.WaitForExit(15000)) { $process.Kill(); throw 'Fixture process timed out.' }
+        if ($stream.Length -gt 64) { throw 'Owned fixture phase exceeds its bounded limit.' }
+        $reader = New-Object IO.StreamReader($stream)
+        try { $phase = $reader.ReadToEnd() } finally { $reader.Dispose() }
+    } finally { $stream.Dispose() }
+    if ($phase -cnotin @('entry','before_network','after_response')) { throw 'Unrecognized owned fixture phase.' }
+    return $phase
+}
+function Invoke-Fixture {
+    param([string]$Path, [string]$Sentinel, [string]$Url = '-',
+        [ValidateSet('execution','network_baseline_selected','network_baseline_control','network_block_selected','network_block_control','network_release_selected')][string]$ProbePhase = 'execution')
+    $root = [IO.Path]::GetFullPath($work).TrimEnd('\')
+    foreach ($ownedPath in @($Path,$Sentinel)) {
+        if (-not [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($ownedPath)).Equals($root,[StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Fixture observations require files directly inside the owned workspace.'
+        }
+    }
+    $basename = [IO.Path]::GetFileName($Path)
+    if ($basename -notin @('OpenemsFixture.exe','RenamedFixture.exe','PublisherFixture.exe','PublisherRenamed.exe') -or
+        [IO.Path]::GetFileName($Sentinel) -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' -or $Url -cnotin @('-','https://example.org/')) {
+        throw 'Unrecognized owned fixture invocation.'
+    }
+    if (@($script:result.fixture_probes).Count -ge 32) { throw 'Owned fixture observations exceed their bounded limit.' }
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $receipt = [ordered]@{
+        sequence=(@($script:result.fixture_probes).Count + 1);phase=$ProbePhase;fixture_basename=$basename;sha256=(Get-Sha256 $Path)
+        requested_utc=[DateTime]::UtcNow.ToString('o');start_returned_utc=$null;finished_utc=$null;elapsed_ms=0
+        process_id=$null;started=$false;managed_phase='unobserved';exit=$null;native_error=0;timed_out=$false
+        error_category=$null;observation_error=$null;cleanup_error=$null
+    }
+    $script:result.fixture_probes += @($receipt)
+    $process = $null
+    try {
+        Write-Json $resultPath $script:result
+        foreach ($marker in @($Sentinel,($Sentinel + '.phase'))) {
+            if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force }
+        }
+        try { $process = Start-FixtureProcess $Path $Sentinel $Url }
+        catch [ComponentModel.Win32Exception] {
+            $receipt.native_error = $_.Exception.NativeErrorCode
+            return @{ exit=-1; native_error=$receipt.native_error; started=$false }
+        }
+        $receipt.start_returned_utc = [DateTime]::UtcNow.ToString('o')
+        $receipt.process_id = $process.Id
+        if (-not $process.WaitForExit(15000)) {
+            $receipt.timed_out = $true
+            try { $process.Kill() } catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
+            throw 'Fixture process timed out.'
+        }
+        $receipt.exit = $process.ExitCode
         return @{ exit=$process.ExitCode; native_error=0; started=(Test-Path -LiteralPath $Sentinel) }
-    } finally { $process.Dispose() }
+    }
+    catch { $receipt.error_category = $_.Exception.GetBaseException().GetType().Name; throw }
+    finally {
+        try { $receipt.started = Test-Path -LiteralPath $Sentinel; $receipt.managed_phase = Read-FixturePhase $Sentinel }
+        catch { $receipt.observation_error = $_.Exception.GetBaseException().GetType().Name }
+        try { if ($null -ne $process) { $process.Dispose() } }
+        catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
+        if ($receipt.cleanup_error) { $script:result.cleanup_errors += @('Owned fixture cleanup failed; preserve the guest.') }
+        $watch.Stop(); $receipt.elapsed_ms = $watch.ElapsedMilliseconds; $receipt.finished_utc = [DateTime]::UtcNow.ToString('o')
+        Write-Json $resultPath $script:result
+        if ($receipt.observation_error -or $receipt.cleanup_error) { throw 'Owned fixture evidence or cleanup failed; preserve the guest.' }
+    }
 }
 function Assert-ExecutionDenied([string]$Path) {
     $sentinel = Join-Path $work ([Guid]::NewGuid().ToString('N') + '.started')
@@ -702,19 +767,19 @@ try {
         $sentinel = Join-Path $work 'network-started'
         $controlSentinel = Join-Path $work 'control-started'
         $url = 'https://example.org/'
-        $baseline = Invoke-Fixture $fixture $sentinel $url
-        $control = Invoke-Fixture $renamed $controlSentinel $url
+        $baseline = Invoke-Fixture $fixture $sentinel $url -ProbePhase 'network_baseline_selected'
+        $control = Invoke-Fixture $renamed $controlSentinel $url -ProbePhase 'network_baseline_control'
         if ($baseline.exit -ne 0 -or $control.exit -ne 0) { throw 'The external network fixture is not reachable before policy. Retry in a guest with working Internet.' }
         Record-Check 'both independent fixture paths start and reach the external network before policy'
         $body = Empty-Body
         $body.app_control.network_blocked=@($fixture)
         Wait-Ack (Publish-Body $body)
-        $denied = Invoke-Fixture $fixture $sentinel $url
-        $control = Invoke-Fixture $renamed $controlSentinel $url
+        $denied = Invoke-Fixture $fixture $sentinel $url -ProbePhase 'network_block_selected'
+        $control = Invoke-Fixture $renamed $controlSentinel $url -ProbePhase 'network_block_control'
         if (-not $denied.started -or $denied.exit -eq 0 -or $control.exit -ne 0) { throw 'App network policy did not isolate the selected path while preserving process launch and the control copy.' }
         Record-Check 'network block kept the selected app runnable while its connection failed and the control copy connected'
         Wait-Ack (Publish-Body (Empty-Body))
-        if ((Invoke-Fixture $fixture $sentinel $url).exit -ne 0) { throw 'Removing network policy did not restore connectivity.' }
+        if ((Invoke-Fixture $fixture $sentinel $url -ProbePhase 'network_release_selected').exit -ne 0) { throw 'Removing network policy did not restore connectivity.' }
         Record-Check 'network policy release restored the selected app connection'
         if (-not $executionBaseline.available -or @(Get-Module -ListAvailable ConfigCI).Count -eq 0) {
             $result.pending += 'This guest has no supported CiTool/ConfigCI. Repeat execution acceptance on a supported disposable Windows 11 VM; network acceptance alone is not WDAC acceptance.'
