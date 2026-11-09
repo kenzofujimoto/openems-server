@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -66,6 +67,165 @@ def builder(monkeypatch):
             return getattr(self.module, name)
 
     return LazyBuilder()
+
+
+@pytest.fixture
+def trusted_compiler_boundary(monkeypatch, tmp_path):
+    """Exercise the real compiler function with inert native/process/filesystem boundaries."""
+    import ctypes
+
+    spec = importlib.util.spec_from_file_location("catalog_compiler_boundary_under_test", BUILDER)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, spec.name, module)
+    spec.loader.exec_module(module)
+    output = tmp_path / "owned-fixture.exe"
+    source = output.with_suffix(".cs")
+    state = SimpleNamespace(
+        root=r"D:\Trusted Windows", return_count=None, compiler_exists=True,
+        output_exists=False, output_bytes=b"MZ inert mocked output; never executable",
+        process_error=None, api_calls=[], dll_calls=[], processes=[], writes=[], removals=[],
+    )
+
+    class DirectoryApi:
+        argtypes = None
+        restype = None
+
+        def __call__(self, buffer, capacity):
+            state.api_calls.append(capacity)
+            if len(state.root) < capacity:
+                buffer.value = state.root
+            return len(state.root) if state.return_count is None else state.return_count
+
+    directory_api = DirectoryApi()
+
+    def load_kernel(name, **kwargs):
+        state.dll_calls.append((name, kwargs))
+        return SimpleNamespace(GetSystemWindowsDirectoryW=directory_api)
+
+    def is_file(path):
+        if path == output:
+            return state.output_exists
+        if path.name == "csc.exe":
+            return state.compiler_exists
+        raise AssertionError("Unexpected filesystem query at the compiler boundary")
+
+    def write_text(path, contents, **kwargs):
+        assert path == source, "Only the owned inert source may be written"
+        state.writes.append((path, contents, kwargs))
+        return len(contents)
+
+    def unlink(path, **kwargs):
+        assert path == source, "Only the owned inert source may be removed"
+        state.removals.append((path, kwargs))
+
+    def read_bytes(path):
+        assert path == output, "Only the inert compiler output may be inspected"
+        return state.output_bytes
+
+    def run(arguments, **kwargs):
+        state.processes.append((arguments, kwargs))
+        if state.process_error is not None:
+            raise state.process_error
+        state.output_exists = True
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(ctypes, "WinDLL", load_kernel, raising=False)
+    monkeypatch.setattr(ctypes, "get_last_error", lambda: 5, raising=False)
+    monkeypatch.setattr(Path, "is_file", is_file)
+    monkeypatch.setattr(Path, "write_text", write_text)
+    monkeypatch.setattr(Path, "unlink", unlink)
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    monkeypatch.setattr(module.subprocess, "run", run)
+    return SimpleNamespace(module=module, state=state, output=output, source=source, api=directory_api)
+
+
+@pytest.mark.windows_only
+@pytest.mark.skipif(os.name != "nt", reason="Mocked Windows compiler contracts")
+@pytest.mark.parametrize(("root", "expected"), [
+    (r"D:\Trusted Windows", r"D:\Trusted Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"),
+    ("E:\\Windows \u00e7", "E:\\Windows \u00e7\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe"),
+    ("X:", r"X:\Microsoft.NET\Framework64\v4.0.30319\csc.exe"),
+])
+def test_trusted_compiler_ignores_spoofed_environment_and_preserves_windows_root(
+    trusted_compiler_boundary, monkeypatch, root, expected,
+):
+    boundary = trusted_compiler_boundary
+    boundary.state.root = root
+    monkeypatch.setenv("SYSTEMROOT", r"C:\openems-inert-untrusted-root")
+    boundary.module.compile_fixture(boundary.output, "InertFixture")
+    assert len(boundary.state.processes) == 1
+    arguments, options = boundary.state.processes[0]
+    assert Path(arguments[0]) == Path(expected)
+    assert arguments[1:] == ["/nologo", "/target:exe", "/platform:x64",
+                             "/out:" + str(boundary.output), str(boundary.source)]
+    assert options == {"check": True, "capture_output": True, "text": True, "timeout": 90}
+    assert boundary.state.dll_calls == [("kernel32", {"use_last_error": True})]
+    assert len(boundary.state.api_calls) == 1
+    assert boundary.state.removals == [(boundary.source, {"missing_ok": True})]
+
+
+@pytest.mark.windows_only
+@pytest.mark.skipif(os.name != "nt", reason="Mocked Windows compiler contracts")
+@pytest.mark.parametrize(("root", "returned", "error"), [
+    (r"D:\Windows", 0, OSError),
+    (r"D:\Windows", 32768, RuntimeError),
+    (r"D:\Windows", 32769, RuntimeError),
+    (r"D:\Windows", 1, RuntimeError),
+    ("relative-root", None, RuntimeError),
+])
+def test_trusted_compiler_fails_closed_on_untrusted_or_incomplete_api_result(
+    trusted_compiler_boundary, root, returned, error,
+):
+    boundary = trusted_compiler_boundary
+    boundary.state.root = root
+    boundary.state.return_count = returned
+    with pytest.raises(error):
+        boundary.module.compile_fixture(boundary.output, "InertFixture")
+    assert boundary.state.processes == boundary.state.writes == boundary.state.removals == []
+
+
+@pytest.mark.windows_only
+@pytest.mark.skipif(os.name != "nt", reason="Mocked Windows compiler contracts")
+def test_trusted_compiler_refuses_missing_tool_before_source_or_process(trusted_compiler_boundary):
+    boundary = trusted_compiler_boundary
+    boundary.state.compiler_exists = False
+    with pytest.raises(RuntimeError, match="compiler is required"):
+        boundary.module.compile_fixture(boundary.output, "InertFixture")
+    assert boundary.state.processes == boundary.state.writes == boundary.state.removals == []
+
+
+@pytest.mark.windows_only
+@pytest.mark.skipif(os.name != "nt", reason="Mocked Windows compiler contracts")
+@pytest.mark.parametrize("failure", [
+    subprocess.CalledProcessError(1, ["inert-compiler"]),
+    subprocess.TimeoutExpired(["inert-compiler"], 90),
+])
+def test_trusted_compiler_failure_cleans_only_its_source_and_propagates(trusted_compiler_boundary, failure):
+    boundary = trusted_compiler_boundary
+    boundary.state.process_error = failure
+    with pytest.raises(type(failure)) as raised:
+        boundary.module.compile_fixture(boundary.output, "InertFixture")
+    assert raised.value is failure
+    assert len(boundary.state.writes) == len(boundary.state.processes) == 1
+    assert boundary.state.removals == [(boundary.source, {"missing_ok": True})]
+    assert boundary.state.output_exists is False
+
+
+@pytest.mark.windows_only
+@pytest.mark.skipif(os.name != "nt", reason="Mocked Windows compiler contracts")
+@pytest.mark.parametrize(("platform", "type_name"), [
+    ("posix", "InertFixture"), ("nt", "invalid-type"), ("nt", ""),
+])
+def test_trusted_compiler_rejects_unsupported_input_before_native_or_process_io(
+    trusted_compiler_boundary, monkeypatch, platform, type_name,
+):
+    boundary = trusted_compiler_boundary
+    monkeypatch.setattr(boundary.module, "os", SimpleNamespace(name=platform, environ=os.environ))
+    with pytest.raises(ValueError, match="Windows and a valid type name"):
+        boundary.module.compile_fixture(boundary.output, type_name)
+    assert boundary.state.dll_calls == boundary.state.api_calls == []
+    assert boundary.state.processes == boundary.state.writes == boundary.state.removals == []
 
 
 @pytest.fixture
