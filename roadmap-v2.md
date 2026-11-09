@@ -4,7 +4,7 @@ Objetivo: chegar perto do que o FortiClient EMS oferece nas funções que não d
 
 Status: aprovado em 2026-10-22, com o agente em Rust. Andamento de cada fase em `HANDOFF.md`.
 
-## Estado vigente — 08/11/2026
+## Estado vigente — 09/11/2026
 
 O par MSI congelado de `ec50572` passou no [catálogo/WDAC opcional 8/8, rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) e no [USB físico 8/8, rodada 26](validation/usb-vm-5354a16-run26-review-2026-11-08.json). O roteiro USB é da revisão `5354a16`, com os mesmos MSIs de produção `c1e38743…` e próximo `eba1fc2e…`. Instalação, aplicação real, liberação e remoção foram verificadas no escopo dessas rodadas.
 
@@ -12,10 +12,11 @@ O par MSI congelado de `ec50572` passou no [catálogo/WDAC opcional 8/8, rodada 
 |---|---|
 | F3 — catálogo | Regras opcionais, hash/renomeado, rede, processo e rechecagem de uma hora aprovados no par atual |
 | F4 — USB | Hardware físico, exceção VID/PID/serial, bloqueio por instância, somente leitura, evento e limpeza aprovados no par atual |
-| F3 — editor assinado | Applications genérico 10/10 em `675308c` é histórico; repetição com o par atual pendente |
-| F2/F7 — navegadores/painel | Chrome/Firefox físicos passaram em `18cd811`; regressão com os bytes atuais pendente. O painel mantém aceites e testes locais próprios |
-| F5/F6 — sessão, upgrade/reboot e locais | Aceites de `779b483` são históricos; repetição atual pendente |
-| Gates da candidata | CI combinado e critérios de distribuição ainda pendentes |
+| F3 — editor assinado | Rodada28 atual falhou; diagnóstico preservado e mídia30 instrumentada pronta, execução pendente |
+| F2/F7 — navegadores/painel | Tentativas atuais4 e6 passaram seis navegações mas falharam na guarda de raízes externas; aceite global e ações web atuais pendentes. Painel aprovado no CI |
+| F5 — sessão e upgrade/reboot | [8/8 atuais aprovados](validation/windows-session-ec50572-review-2026-11-09.json), novo boot e limpeza verificados |
+| F6 — locais | [8/8 atuais aprovados](validation/windows-locations-ec50572-review-2026-11-09.json), transições e reinícios offline |
+| Gates da candidata | [CI, Security e CodeQL aprovados em7e84493](validation/windows-ci-7e84493-review-2026-11-09.json), cobertura97,28%; distribuição e aceites restantes pendentes |
 | F8/F9 | Linux aguarda aceite operacional em VM; macOS parcial, sem Network Extension/Endpoint Security completos; F9 excluída |
 
 O [plano de fechamento aprovado](windows-release-completion.md) preserva os aceites atuais e prepara as repetições restantes. O hash do próximo MSI em um recibo USB não comprova upgrade. Consulte [ACCEPTANCE](ACCEPTANCE.md) e [HANDOFF](HANDOFF.md) para versões, evidências e limitações.

@@ -2,7 +2,7 @@
 
 Roteiro para o notebook com pendrive, Chrome e Firefox. Ele cobre o que o Windows Sandbox não comprova: o agente num Windows físico com navegadores reais, e USB físico/WDAC numa VM descartável. Os resultados da Sandbox de 27/10 estão em [validation/web-actions-guest-2026-10-27.json](../validation/web-actions-guest-2026-10-27.json) e na rodada 4 do HANDOFF.
 
-## Estado vigente — 08/11/2026
+## Estado vigente — 09/11/2026
 
 Os comandos e o pacote de outubro abaixo ficam preservados como roteiro histórico. A [Parte A no Windows físico](../validation/second-machine-browsers-2026-10-28.json) passou com o MSI `18cd811`; o campo global da antiga Parte B continua refletindo aquela rodada incompleta. Esse relatório não é o aceite dos binários atuais.
 
@@ -10,12 +10,13 @@ Os comandos e o pacote de outubro abaixo ficam preservados como roteiro históri
 |---|---|
 | Catálogo/WDAC opcional | [8/8 aprovados na rodada18](../validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json), fonte nativa `ec50572` |
 | USB físico | [8/8 aprovados na rodada26](../validation/usb-vm-5354a16-run26-review-2026-11-08.json), roteiro `5354a16`, mesmo par MSI `ec50572` |
-| Applications por editor assinado/renomeado | [10/10 históricos em `675308c`](../validation/vm-applications-final-675308c-result-2026-10-29.json); repetição atual pendente |
-| Chrome/Firefox físicos | Parte A histórica em `18cd811`; regressão atual pendente |
-| Sessão, upgrade/reboot e locais | Históricos em `779b483`; repetição atual pendente |
-| CI | Gates combinados da candidata pendentes |
+| Applications por editor assinado/renomeado | [Rodada28 falhou e foi diagnosticada](../validation/applications-vm-f9e963e-run28-diagnostics29-review-2026-11-09.json); [mídia30 instrumentada pronta](../validation/applications-vm-7e84493-preparation-2026-11-09.json), execução pendente |
+| Chrome/Firefox físicos | Parte A histórica em `18cd811`; [tentativas atuais4–8](../validation/browser-ec50572-retries4-8-review-2026-11-09.json) não fecharam o aceite global de navegadores |
+| Sessão e upgrade/reboot | [8/8 atuais aprovados](../validation/windows-session-ec50572-review-2026-11-09.json) com os dois MSIs congelados, reboot real e limpeza verificada |
+| Locais | [8/8 atuais aprovados](../validation/windows-locations-ec50572-review-2026-11-09.json), transições online/offline e limpeza verificadas |
+| CI | [CI, Security e CodeQL aprovados em7e84493](../validation/windows-ci-7e84493-review-2026-11-09.json), cobertura combinada97,28% |
 
-O par atual tem SHA-256 de produção `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a` e próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. O teste USB instalou e removeu o MSI de produção; não executou upgrade. O fechamento usa entradas isoladas com esses bytes e novos recibos, conforme o [plano aprovado](../windows-release-completion.md). Cada nova execução mantém seu relatório original e comprova a limpeza antes de restaurar o guest. Linux precisa de VM própria; macOS segue parcial e F9 permanece excluída.
+O par atual tem SHA-256 de produção `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a` e próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. O USB instalou e removeu o MSI de produção; o teste de sessão verificou o upgrade com o componente aberto e o reboot real. O fechamento usa entradas isoladas com esses bytes e novos recibos, conforme o [plano aprovado](../windows-release-completion.md). Cada nova execução mantém seu relatório original e comprova a limpeza antes de restaurar o guest. Linux precisa de VM própria; macOS segue parcial e F9 permanece excluída.
 
 ## Roteiro histórico de outubro — o que levar
 

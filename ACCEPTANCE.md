@@ -1,6 +1,6 @@
 # Aceite final do roadmap desktop
 
-## Estado vigente — 08/11/2026. Catálogo e USB atuais aprovados; fechamento Windows em andamento
+## Estado vigente — 09/11/2026. CI aprovado; catálogo e USB atuais aprovados; demais aceites Windows pendentes
 
 O plano [windows-release-completion.md](windows-release-completion.md) foi aprovado explicitamente pelo operador em 08/11. O candidato usa o par MSI nativo de `ec50572`: produção SHA-256 `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a` e próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. As fontes nativas, scripts incorporados e dados DoH não mudaram entre essa revisão e o fechamento do aceite USB. Os resultados abaixo pertencem a esses bytes; o histórico permanece preservado.
 
@@ -8,13 +8,13 @@ O plano [windows-release-completion.md](windows-release-completion.md) foi aprov
 |---|---|---|
 | Catálogo, hash WDAC, rede, processo e rechecagem após uma hora | [Rodada18 ec50572](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) | **8/8 aprovados**, 3.609s reais de rechecagem, liberação e limpeza verificadas |
 | USB físico, exceção VID/PID/serial, bloqueio por instância e somente leitura | [Rodada26, harness5354a16](validation/usb-vm-5354a16-run26-review-2026-11-08.json) | **8/8 aprovados**, mesmo parMSI, remoção MSI0 e canário final de leitura/escrita/exclusão |
-| Applications completo, incluindo editor e cópia renomeada | [675308c](validation/vm-applications-final-675308c-result-2026-10-29.json) | Histórico10/10; repetir com o parMSI atual. O catálogo atual não substitui o teste de editor |
-| Chrome/Firefox e ações web no Windows físico | [Segunda máquina](validation/second-machine-browsers-2026-10-28.json) | ParteA histórica aprovada com MSI18cd811; regressão com binário atual pendente |
-| Sessão, upgrade sem reboot e recuperação após reboot real | [Fase1](validation/sandbox-session-phase1-2026-10-26.json), [fase2](validation/sandbox-session-2026-10-26.json) | Histórico779b483; repetir com o parMSI atual. Verificar o hash do próximo MSI não comprova upgrade |
-| Locais de rede e transições offline | [779b483](validation/sandbox-locations-2026-10-26.json) | Histórico8/8; repetir com o binário atual antes de fechar F6 para este candidato |
-| Painel/API e stores reais | [Integração local](validation/catalog-live-integration-2026-11-05.json) | 336 contratos no escopo registrado; gate combinado do CI ainda precisa passar no PR |
+| Applications completo, incluindo editor e cópia renomeada | [Diagnóstico da rodada28](validation/applications-vm-f9e963e-run28-diagnostics29-review-2026-11-09.json) | Rodada atual falhou na sonda; limpeza própria verificada. Instrumentação aprovada e mídia30 pronta para repetição. Histórico675308c não fecha o candidato |
+| Chrome/Firefox e ações web no Windows físico | [Tentativas atuais4–8](validation/browser-ec50572-retries4-8-review-2026-11-09.json), [segunda máquina histórica](validation/second-machine-browsers-2026-10-28.json) | Tentativas4 e6 passaram seis navegações, mas reprovaram a guarda de raízes externas. Aceite global e regressão web completa continuam pendentes |
+| Sessão, upgrade sem reboot e recuperação após reboot real | [Aceite atual ec50572](validation/windows-session-ec50572-review-2026-11-09.json) | **8/8 aprovados**, instalação e upgrade sem reboot, novo boot confirmado, watchdog/componente recuperados e remoção/limpeza verificadas |
+| Locais de rede e transições offline | [Aceite atual ec50572](validation/windows-locations-ec50572-review-2026-11-09.json) | **8/8 aprovados**, seleção CIDR/MAC, ACKs/avisos, transições e reinícios offline, DNS/hosts/NRPT restaurados |
+| Painel/API e stores reais; CI entre plataformas | [CI7e84493](validation/windows-ci-7e84493-review-2026-11-09.json), [integração local](validation/catalog-live-integration-2026-11-05.json) | CI, Security e CodeQL aprovados; integração1.246 testes, Windows nativo467 testes, sem skips; cobertura combinada97,28% e gates por módulo aprovados |
 
-Regressão local da correção de lifecycle: 1.618 testes Python aprovados, 57 skips e quatro casos legados destrutivos desmarcados; 256 Rust e154 do painel. Esses resultados não substituem o CI que combina plataformas, bancos reais e cobertura por módulo. O PR permanece draft enquanto houver gates ou aceites do candidato pendentes. A assinatura de distribuição e o piloto operacional têm critérios próprios; não houve publicação de release nem implantação em produção.
+Regressão local atual: [1.655 testes Python aprovados](validation/windows-qa-contracts-local-2026-11-09.json), 57 skips próprios do host e quatro casos legados destrutivos desmarcados. O CI hospedado aprovou também256 testes Rust e os contratos Windows/MSI/serviço. O PR13 permanece draft enquanto houver aceites do candidato pendentes. A assinatura de distribuição e o piloto operacional têm critérios próprios; não houve publicação de release nem implantação em produção.
 
 O USB26 terminou sem pendências físicas nem erros de limpeza. Result público e checkpoint privado são iguais byte a byte; todos os ACKs exportados são positivos, incluindo a liberação v9. Serviço/processo/watchdog/journal ausentes, NRPT/firewall próprios0, hosts igual ao baseline anterior à instalação e HID preservado. Os ACKs sanitizados não incluem horários individuais: suas latências não podem ser recalculadas pelo export. A rodada19 permanece falha, com recuperação própria verificada. Não repetir os aceites atuais de catálogo/USB apenas para atualizar a documentação.
 

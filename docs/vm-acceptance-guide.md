@@ -2,7 +2,7 @@
 
 Como preparar uma VM Windows descartável e rodar os testes de controles USB/WDAC. A VM de 28–29/10/2026 foi apagada em 30/10; as evidências dessa VM continuam em `validation/vm-*` e `validation/windows-controls-vm-*`. As rodadas de novembro usam uma nova VM e preservam seus próprios recibos.
 
-## Estado vigente — 08/11/2026
+## Estado vigente — 09/11/2026
 
 O par MSI congelado da fonte nativa `ec50572` passou no [catálogo, rodada18](../validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) e no [USB físico, rodada26](../validation/usb-vm-5354a16-run26-review-2026-11-08.json), ambos com **8/8 critérios**. O roteiro USB tem fonte `5354a16`; os bytes dos MSIs são os mesmos usados no catálogo: produção SHA-256 `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a`, próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. A remoção pelo MSI, os controles próprios ausentes e o canário físico pós-remoção foram verificados.
 
@@ -10,12 +10,13 @@ O par MSI congelado da fonte nativa `ec50572` passou no [catálogo, rodada18](..
 |---|---|
 | Catálogo `if_present`, hash/renomeado, rede, processo e hora real | Atual: 8/8, fonte nativa `ec50572`, rodada18 |
 | USB físico: exceção, bloqueio, somente leitura, evento e remoção | Atual: 8/8, mesmo par MSI, rodada26 |
-| Applications genérico, incluindo editor assinado/renomeado | [10/10 em `675308c`](../validation/vm-applications-final-675308c-result-2026-10-29.json); repetição com o par atual pendente |
-| Chrome/Firefox físicos | [Parte A aprovada em `18cd811`](../validation/second-machine-browsers-2026-10-28.json); regressão com os bytes atuais pendente |
-| Sessão, upgrade/reboot e locais de rede | Históricos de `779b483`; repetição com o par atual pendente, conforme [ACCEPTANCE](../ACCEPTANCE.md) |
-| CI e distribuição | CI combinado ainda pendente; assinatura e homologação de produção têm critérios próprios |
+| Applications genérico, incluindo editor assinado/renomeado | [Rodada28 falhou, diagnóstico preservado](../validation/applications-vm-f9e963e-run28-diagnostics29-review-2026-11-09.json); [mídia30 instrumentada pronta](../validation/applications-vm-7e84493-preparation-2026-11-09.json), execução pendente |
+| Chrome/Firefox físicos | [Parte A histórica em `18cd811`](../validation/second-machine-browsers-2026-10-28.json); [tentativas atuais4–8](../validation/browser-ec50572-retries4-8-review-2026-11-09.json) não fecharam o aceite global |
+| Sessão e upgrade/reboot real | [8/8 atuais aprovados](../validation/windows-session-ec50572-review-2026-11-09.json), par congelado e limpeza verificada |
+| Locais de rede | [8/8 atuais aprovados](../validation/windows-locations-ec50572-review-2026-11-09.json), seleção por sinais locais e reinícios offline |
+| CI e distribuição | [CI, Security e CodeQL aprovados em7e84493](../validation/windows-ci-7e84493-review-2026-11-09.json); assinatura e homologação de produção têm critérios próprios |
 
-O catálogo atual comprovou regras por hash; o cenário de editor do roteiro Applications precisa de execução própria. O hash do próximo MSI foi conferido como entrada do USB, mas esse teste não executou upgrade. Os relatórios antigos mantêm seus resultados e versões. O [plano de fechamento](../windows-release-completion.md) organiza as repetições restantes. Linux aguarda aceite operacional em VM; macOS continua parcial, sem as extensões nativas completas. F9 está excluída.
+O catálogo atual comprovou regras por hash; o cenário de editor do roteiro Applications precisa de execução própria. O aceite de sessão comprovou upgrade com o componente aberto e reboot real, além do hash dos dois MSIs. Os relatórios antigos mantêm seus resultados e versões. O [plano de fechamento](../windows-release-completion.md) organiza as repetições restantes. Linux aguarda aceite operacional em VM; macOS continua parcial, sem as extensões nativas completas. F9 está excluída.
 
 ## Por que VM e não o PC físico
 

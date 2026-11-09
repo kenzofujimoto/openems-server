@@ -2,7 +2,7 @@
 
 Goal: consolidate the verified Windows candidate, repeat acceptance still tied to older binaries, and prepare a draft PR with actual CI results. The operator requested this closure on 2026-11-08 ("termine então").
 
-Status: detailed scope explicitly approved on 2026-11-08: "Aprovo o fechamento". Documentation consolidation and isolated acceptance preparation are in progress; hosted CI and the remaining current-package guest acceptances are not yet passed.
+Status: detailed scope explicitly approved on 2026-11-08: "Aprovo o fechamento". Draft PR13 is open. Hosted CI, Security and CodeQL passed at7e84493; current-package catalog, physical USB, session/upgrade/real-reboot and network locations acceptance passed. Applications and complete browser acceptance remain pending. See ACCEPTANCE.md and the dated validation reviews; previous failed attempts remain failed.
 
 ## Steps
 
