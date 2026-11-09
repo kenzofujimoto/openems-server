@@ -14,6 +14,47 @@ def invoke(native, *arguments):
                           encoding="utf-8", timeout=90, check=False)
 
 
+def _mock_timed_native(monkeypatch, duration):
+    calls = []
+
+    def run(command, **options):
+        calls.append((command, options))
+        if duration > options["timeout"]:
+            raise subprocess.TimeoutExpired(command, options["timeout"])
+        return subprocess.CompletedProcess(command, 0, json.dumps({
+            "collected_at": "2026-11-09T00:00:00Z", "applications": [], "usb_devices": [],
+        }), "")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    return calls
+
+
+def test_inventory_accepts_existing_background_budget_without_running_native(monkeypatch, tmp_path):
+    calls = _mock_timed_native(monkeypatch, duration=121)
+    test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals(
+        "mock-native", tmp_path, lambda *_: None,
+    )
+    assert calls[0][1]["timeout"] == 2 * 600 + 60
+
+
+def test_short_native_commands_keep_their_ninety_second_limit(monkeypatch):
+    calls = _mock_timed_native(monkeypatch, duration=91)
+    with pytest.raises(subprocess.TimeoutExpired) as error:
+        invoke("mock-native", "controls-plan")
+    assert error.value.timeout == 90
+    assert calls[0][1]["timeout"] == 90
+
+
+def test_inventory_still_fails_after_its_bounded_background_budget(monkeypatch, tmp_path):
+    calls = _mock_timed_native(monkeypatch, duration=1261)
+    with pytest.raises(subprocess.TimeoutExpired) as error:
+        test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals(
+            "mock-native", tmp_path, lambda *_: None,
+        )
+    assert error.value.timeout == 2 * 600 + 60
+    assert calls[0][1]["timeout"] == 2 * 600 + 60
+
+
 def test_native_control_plan_keeps_hid_and_boot_disks_allowed_without_system_changes(native, tmp_path):
     policy = tmp_path / "policy.json"
     inventory = tmp_path / "inventory.json"
@@ -52,7 +93,7 @@ def test_native_control_plan_rejects_unverified_publisher_samples(native, tmp_pa
 
 @pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="native Windows inventory")
-def test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals(native, tmp_path):
+def test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals(native, tmp_path, record_property):
     result = invoke(native, "inventory", "--state-path", tmp_path / "state.json")
     assert result.returncode == 0, result.stderr
     snapshot = json.loads(result.stdout)
