@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 
 import pytest
 
 
-def invoke(native, *arguments):
+def invoke(native, *arguments, timeout=90):
     return subprocess.run([str(native), *map(str, arguments)], capture_output=True, text=True,
-                          encoding="utf-8", timeout=90, check=False)
+                          encoding="utf-8", timeout=timeout, check=False)
 
 
 def _mock_timed_native(monkeypatch, duration):
@@ -94,7 +95,14 @@ def test_native_control_plan_rejects_unverified_publisher_samples(native, tmp_pa
 @pytest.mark.windows_only
 @pytest.mark.skipif(os.name != "nt", reason="native Windows inventory")
 def test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals(native, tmp_path, record_property):
-    result = invoke(native, "inventory", "--state-path", tmp_path / "state.json")
+    # Applications and USB inventory each have an existing 600-second background budget.
+    timeout = 2 * 600 + 60
+    started = time.monotonic()
+    try:
+        result = invoke(native, "inventory", "--state-path", tmp_path / "state.json", timeout=timeout)
+    finally:
+        record_property("native_inventory_elapsed_seconds", round(time.monotonic() - started, 3))
+        record_property("native_inventory_timeout_seconds", timeout)
     assert result.returncode == 0, result.stderr
     snapshot = json.loads(result.stdout)
     assert set(snapshot) == {"collected_at", "applications", "usb_devices"}
