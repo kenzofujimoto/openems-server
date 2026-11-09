@@ -1,5 +1,25 @@
 # Aceite final do roadmap desktop
 
+## Estado vigente — 08/11/2026. Catálogo e USB atuais aprovados; fechamento Windows em andamento
+
+O plano [windows-release-completion.md](windows-release-completion.md) foi aprovado explicitamente pelo operador em 08/11. O candidato usa o par MSI nativo de `ec50572`: produção SHA-256 `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a` e próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. As fontes nativas, scripts incorporados e dados DoH não mudaram entre essa revisão e o fechamento do aceite USB. Os resultados abaixo pertencem a esses bytes; o histórico permanece preservado.
+
+| Área | Evidência mais recente | Alcance para o candidato |
+|---|---|---|
+| Catálogo, hash WDAC, rede, processo e rechecagem após uma hora | [Rodada18 ec50572](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) | **8/8 aprovados**, 3.609s reais de rechecagem, liberação e limpeza verificadas |
+| USB físico, exceção VID/PID/serial, bloqueio por instância e somente leitura | [Rodada26, harness5354a16](validation/usb-vm-5354a16-run26-review-2026-11-08.json) | **8/8 aprovados**, mesmo parMSI, remoção MSI0 e canário final de leitura/escrita/exclusão |
+| Applications completo, incluindo editor e cópia renomeada | [675308c](validation/vm-applications-final-675308c-result-2026-10-29.json) | Histórico10/10; repetir com o parMSI atual. O catálogo atual não substitui o teste de editor |
+| Chrome/Firefox e ações web no Windows físico | [Segunda máquina](validation/second-machine-browsers-2026-10-28.json) | ParteA histórica aprovada com MSI18cd811; regressão com binário atual pendente |
+| Sessão, upgrade sem reboot e recuperação após reboot real | [Fase1](validation/sandbox-session-phase1-2026-10-26.json), [fase2](validation/sandbox-session-2026-10-26.json) | Histórico779b483; repetir com o parMSI atual. Verificar o hash do próximo MSI não comprova upgrade |
+| Locais de rede e transições offline | [779b483](validation/sandbox-locations-2026-10-26.json) | Histórico8/8; repetir com o binário atual antes de fechar F6 para este candidato |
+| Painel/API e stores reais | [Integração local](validation/catalog-live-integration-2026-11-05.json) | 336 contratos no escopo registrado; gate combinado do CI ainda precisa passar no PR |
+
+Regressão local da correção de lifecycle: 1.618 testes Python aprovados, 57 skips e quatro casos legados destrutivos desmarcados; 256 Rust e154 do painel. Esses resultados não substituem o CI que combina plataformas, bancos reais e cobertura por módulo. O PR permanece draft enquanto houver gates ou aceites do candidato pendentes. A assinatura de distribuição e o piloto operacional têm critérios próprios; não houve publicação de release nem implantação em produção.
+
+O USB26 terminou sem pendências físicas nem erros de limpeza. Result público e checkpoint privado são iguais byte a byte; todos os ACKs exportados são positivos, incluindo a liberação v9. Serviço/processo/watchdog/journal ausentes, NRPT/firewall próprios0, hosts igual ao baseline anterior à instalação e HID preservado. Os ACKs sanitizados não incluem horários individuais: suas latências não podem ser recalculadas pelo export. A rodada19 permanece falha, com recuperação própria verificada. Não repetir os aceites atuais de catálogo/USB apenas para atualizar a documentação.
+
+Linux continua aguardando aceite operacional em VM e macOS continua parcial em Network Extension/Endpoint Security. F9 permanece excluída. As seções datadas anteriores abaixo registram o estado de cada rodada na época, inclusive pendências posteriormente resolvidas.
+
 ## Estado vigente — 06/11/2026. Rodada 18 aprovada na VM
 
 O run `cd0e715e3e1b42238c7b4ee15fb1034b` passou nos oito critérios, confirmados pelo verificador do host. O preflight aqueceu o guest por 5.492 s e observou 316 s estáveis com 485 regras e cinco pacotes do Windows. Nenhum evento de suspensão apareceu nos logs do VMware entre a conexão da ISO e o resultado terminal. [Revisão da rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json).
