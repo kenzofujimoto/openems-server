@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "checks": [
+    "outside policy blocks through system DNS after production installation",
+    "real CIDR and gateway MAC select the inside policy and permit the domain",
+    "ACK identifies the inside policy and location; the session notice announces entry",
+    "same CIDR with a different gateway MAC selects outside within one synchronization cycle",
+    "ACK identifies the outside policy and an empty location; the session notice announces departure",
+    "offline service restart preserves the outside policy and cached definitions",
+    "matching definitions select inside again and offline restart still uses local signals",
+    "removal restores hosts and unrelated NRPT rules and leaves working upstream DNS"
+  ],
+  "durations": [
+    "/i: 124 s",
+    "/x: 18 s"
+  ],
+  "transitions": [
+    {
+      "limit_seconds": 25,
+      "direction": "inside",
+      "elapsed_seconds": 13.9681128
+    },
+    {
+      "limit_seconds": 25,
+      "direction": "outside",
+      "elapsed_seconds": 14.9439891
+    }
+  ],
+  "signals": {
+    "redacted": true,
+    "scope": "Disposable guest adapter and gateway metadata; original retained in hashed private archive."
+  },
+  "error": null,
+  "package_receipt": {
+    "checked_at": "2026-11-09T20:17:37.7232650Z",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+        "bytes": 8667136
+      },
+      "openems-agent-next.msi": {
+        "sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+        "bytes": 8667136
+      }
+    },
+    "source_revision": "3a080964ec63ff4ea199603f035af01e68321cd4"
+  }
+}
