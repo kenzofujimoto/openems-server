@@ -113,11 +113,36 @@ def _source_receipt(source: Path) -> tuple[str, dict[str, Any]]:
     return current, packages
 
 
+def _framework_compiler() -> Path:
+    """Locate the installed Windows compiler without trusting process environment paths."""
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    windows_directory = kernel.GetSystemWindowsDirectoryW
+    windows_directory.argtypes = [wintypes.LPWSTR, wintypes.UINT]
+    windows_directory.restype = wintypes.UINT
+    buffer = ctypes.create_unicode_buffer(32768)
+    length = windows_directory(buffer, len(buffer))
+    if length == 0:
+        raise ctypes.WinError(ctypes.get_last_error())
+    root = buffer.value
+    if length >= len(buffer) or length != len(root.encode("utf-16-le", errors="surrogatepass")) // 2:
+        raise RuntimeError("the trusted Windows directory result is incomplete")
+    # Windows documents a drive-only result when installed at the volume root.
+    if re.fullmatch(r"[A-Za-z]:", root):
+        root += "\\"
+    directory = Path(root)
+    if not directory.is_absolute():
+        raise RuntimeError("the trusted Windows directory must be absolute")
+    return directory / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
+
+
 def compile_fixture(path: Path, type_name: str) -> None:
     """Compile a small .NET Framework PE; deliberately never start the output."""
     if os.name != "nt" or re.fullmatch(r"[A-Za-z][A-Za-z0-9]+", type_name) is None:
         raise ValueError("fixture compilation requires Windows and a valid type name")
-    compiler = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
+    compiler = _framework_compiler()
     if not compiler.is_file():
         raise RuntimeError("the Windows .NET Framework C# compiler is required")
     source = path.with_suffix(".cs")
