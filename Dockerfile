@@ -8,24 +8,24 @@ COPY web ./
 RUN npm run build
 
 # This base includes fixed APT; pin the remaining Debian zlib security update explicitly.
-FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS python-base
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS builder
 RUN apt-get update \
     && apt-get install -y --no-install-recommends --only-upgrade zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Runtime dependencies come only from the hashed lock, installed into a venv copied below.
-FROM python-base AS builder
+FROM builder AS dependencies
 ENV PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 COPY requirements.txt /tmp/requirements.txt
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --require-hashes --no-deps -r /tmp/requirements.txt \
     && /opt/venv/bin/pip uninstall -y pip
 
-FROM python-base
+FROM builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/opt/venv/bin:$PATH
 WORKDIR /srv
-COPY --from=builder /opt/venv /opt/venv
+COPY --from=dependencies /opt/venv /opt/venv
 COPY app ./app
 # Checksummed upgrades for existing databases: python -m app.migrations
 COPY migrations ./migrations
