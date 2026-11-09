@@ -547,3 +547,91 @@ def test_usb_restart_and_fallback_cleanup_observe_reconnect_before_release_publi
     cleanup = source.rsplit("if ($installed)", 1)[1]
     for block in (restarted, cleanup):
         assert block.index("Wait-BackendContact") < block.index("Publish-Body (Empty-Body)")
+
+
+PROBE_OBSERVATION_DRIVER = r"""
+$invoke=$tree.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-Fixture'},$true)[0]
+$boundary=@($invoke.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq 'Start-FixtureProcess'},$true))
+$staticLaunch=@($invoke.FindAll({param($node) $node -is [Management.Automation.Language.InvokeMemberExpressionAst] -and $node.Static -and $node.Member.Value -eq 'Start'},$true))
+# Refuse to exercise the legacy static process launcher on the development host.
+if($boundary.Count -ne 1 -or $staticLaunch.Count -ne 0) { @{boundary_ready=$false}|ConvertTo-Json -Compress; return }
+$script:result=[ordered]@{fixture_probes=@();cleanup_errors=@()}
+$resultPath=Join-Path $work 'inert-result.json'
+$script:waits=@();$script:killed=$false;$script:disposed=$false;$script:starts=0
+$sentinel=Join-Path $work 'network-started'
+$fixture=Join-Path $work 'OpenemsFixture.exe'
+[IO.File]::WriteAllText($fixture,'inert fixture bytes; never execute')
+function Get-Sha256 {param($Path) return ('ab'*32)}
+function Start-FixtureProcess {
+    param($Path,$Sentinel,$Url)
+    $script:starts++
+    if($Case -eq 'native_refusal') { throw [ComponentModel.Win32Exception]::new(577) }
+    if($Case -ne 'timeout_before_main') {
+        [IO.File]::WriteAllText($Sentinel,'started')
+        $phase=if($Case -eq 'bad_phase') {'untrusted-value'} elseif($Case -eq 'oversized_phase') {'x'*65} else {'before_network'}
+        [IO.File]::WriteAllText(($Sentinel+'.phase'),$phase)
+    }
+    $process=[pscustomobject]@{Id=77;ExitCode=$(if($Case -eq 'network_error'){31}else{0})}
+    $process|Add-Member ScriptMethod WaitForExit {param($Milliseconds) $script:waits+=@($Milliseconds);return ($Case -notin @('timeout','timeout_before_main','kill_failure'))}
+    $process|Add-Member ScriptMethod Kill {$script:killed=$true;if($Case -eq 'kill_failure'){throw [IO.IOException]::new('owned cleanup failed')}}
+    $process|Add-Member ScriptMethod Dispose {$script:disposed=$true}
+    return $process
+}
+if($Case -eq 'export_failure') { function Write-Json {param($Path,$Value) throw [IO.IOException]::new('export failed')} }
+if($Case -eq 'overflow') { $script:result.fixture_probes=@(1..32 | ForEach-Object {@{sequence=$_}}) }
+$observed=$null;$errorCategory=$null
+try {$observed=Invoke-Fixture $fixture $sentinel 'https://example.org/' -ProbePhase 'network_block_selected'}
+catch {$errorCategory=$_.Exception.GetBaseException().GetType().Name}
+@{boundary_ready=$true;observed=$observed;error_category=$errorCategory;receipts=@($script:result.fixture_probes);waits=$script:waits;killed=$script:killed;disposed=$script:disposed;starts=$script:starts;cleanup_errors=$script:result.cleanup_errors}|ConvertTo-Json -Depth 8 -Compress
+"""
+
+
+@pytest.mark.parametrize("case", ["success", "network_error", "native_refusal", "timeout", "timeout_before_main", "kill_failure", "bad_phase", "oversized_phase", "export_failure", "overflow"])
+def test_owned_probe_observations_preserve_identity_deadlines_and_failures(tmp_path, case):
+    result = _run_functions(tmp_path, PROBE_OBSERVATION_DRIVER, case)
+    assert result["boundary_ready"] is True, "mockable process-start boundary required before host test invocation"
+    if case == "overflow":
+        assert result["starts"] == 0 and result["error_category"]
+        assert len(result["receipts"]) == 32
+        return
+    assert result["starts"] == (0 if case == "export_failure" else 1)
+    assert len(result["receipts"]) == 1
+    receipt = result["receipts"][0]
+    assert receipt["phase"] == "network_block_selected"
+    assert receipt["fixture_basename"] == "OpenemsFixture.exe"
+    assert receipt["sha256"] == "ab" * 32
+    assert "url" not in receipt and "arguments" not in receipt and "stdout" not in receipt
+    assert receipt["requested_utc"]
+    if case not in {"export_failure", "native_refusal"}:
+        assert result["waits"] == [15000]
+        assert result["disposed"] is True
+        assert receipt["start_returned_utc"] and receipt["finished_utc"]
+        assert receipt["elapsed_ms"] >= 0
+    if case in {"success", "network_error"}:
+        assert result["error_category"] is None
+        assert result["observed"]["exit"] == (31 if case == "network_error" else 0)
+        assert receipt["started"] is True and receipt["managed_phase"] == "before_network"
+    elif case == "native_refusal":
+        assert result["observed"]["native_error"] == 577
+        assert receipt["native_error"] == 577 and receipt["started"] is False
+    else:
+        assert result["error_category"]
+    if case in {"timeout", "timeout_before_main", "kill_failure"}:
+        assert receipt["timed_out"] is True and result["killed"] is True
+    if case == "timeout_before_main":
+        assert receipt["started"] is False and receipt["managed_phase"] == "unobserved"
+    if case == "kill_failure":
+        assert receipt["cleanup_error"] and result["cleanup_errors"]
+    if case in {"bad_phase", "oversized_phase"}:
+        assert receipt["observation_error"]
+
+
+def test_owned_fixture_phase_markers_preserve_the_existing_request_contract():
+    source = (ROOT / "deploy/test-controls-sandbox.ps1").read_text(encoding="utf-8-sig")
+    fixture = source.split("function New-Fixture", 1)[1].split("function Start-FixtureProcess", 1)[0]
+    assert 'File.WriteAllText(args[0] + ".phase", "entry")' in fixture
+    assert fixture.index('"before_network"') < fixture.index("request.GetResponse()") < fixture.index('"after_response"')
+    assert "request.Timeout = 8000" in fixture
+    assert "SecurityProtocolType.Tls12" in fixture
+    for phase in ("network_baseline_selected", "network_baseline_control", "network_block_selected", "network_block_control", "network_release_selected"):
+        assert f"-ProbePhase '{phase}'" in source
