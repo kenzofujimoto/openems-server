@@ -1,7 +1,7 @@
 # Development, test and lint tools. Never installed in the production image.
 # Starts from the unhashed input: hash-checking mode would reject the unhashed tools below.
 -r requirements.in
-pytest==9.1.1
+pytest==9.2.0
 httpx==0.28.1        # for FastAPI TestClient-based integration tests
 pytest-cov==7.1.0
 ruff==0.17.3
