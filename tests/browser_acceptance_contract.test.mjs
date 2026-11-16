@@ -44,8 +44,32 @@ test('blocked documents retain title, logo and domain checks', () => {
   }
 });
 
+for (const [name, text] of Object.entries({
+  'missing body': undefined,
+  'null body': null,
+  'numeric body': 42,
+  'array body': ['example.com'],
+  'longer hostname': 'Acesso bloqueado\nexample.com.br\nRSM Brasil',
+  'subdomain': 'Acesso bloqueado\ndocs.example.com\nRSM Brasil',
+  'domain mention in a sentence': 'Acesso bloqueado\nDomain mentioned: example.com\nRSM Brasil',
+})) {
+  test(`blocked document rejects ${name}`, () => {
+    const result = classify({...blocked, text});
+    assert.equal(result.passed, false);
+    assert.deepEqual(result.failures, ['RSM block page absent']);
+  });
+}
+
+test('blocked documents accept the hostname on its own trimmed line with LF or CRLF', () => {
+  for (const lineEnding of ['\n', '\r\n']) {
+    const text = ['Acesso bloqueado', '  example.com\t', 'RSM Brasil'].join(lineEnding);
+    assert.equal(classify({...blocked, text}).passed, true);
+  }
+});
+
 test('HTTP upgrade is distinguished from a direct HTTP response', () => {
-  const upgraded = classify({...blocked, case: 'blocked_http', target_url: 'http://example.com/'});
+  const upgraded = classify({...blocked, case: 'blocked_http', target_url: 'http://example.com/',
+    text: 'Acesso bloqueado\nexample.com\nRSM Brasil'});
   assert.equal(upgraded.passed, true);
   assert.equal(upgraded.http_navigation_upgraded, true);
   assert.equal(upgraded.direct_http_validated, false);
