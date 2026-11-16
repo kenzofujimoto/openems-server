@@ -1,5 +1,13 @@
 # Handoff — roadmap v2
 
+## Applications round 30 — 2026-11-16
+
+Applications run `680d7eb36b4744fb9b9a24944534c78e` ended at 09:11:45 São Paulo time with 3 of 10 checks passed. Both baseline probes reached `after_response`. After the successful network-policy ACK, `Process.Start` returned PID 10768 for the selected executable. The probe timed out, with the managed-entry marker absent and no observed exit. The 44,075 ms receipt covers the entire probe including cleanup. The blocked-phase control probe and hash and publisher assertions were not reached. The cause remains open.
+
+The manifest and both frozen MSI receipts were verified. The private worker checkpoint and public result match byte for byte. Cleanup of owned controls was verified against the supplement: release v3 ACK, MSI removal success, restored hosts hash, no service, watchdog, application journal or agent process, and zero managed NRPT and firewall rules. The failed branch did not reach the final assertions about foreign firewall, HID and Code Integrity state. The five exported originals were preserved with SHA-256 receipts in `applications-680d7eb3-evidence` under this conversation's workspace. Draft PR 13 records the failure and cleanup.
+
+The named VMware guest is preserved. A staged PowerShell 5.1 collector, `31-read-app30-launch-events.ps1`, reads existing events for the failed launch window and exports `applications-680d7eb3\applications-launch-events.json`. The guest operator action is pending. A channel with no matching records cannot rule out a cause. Docker Desktop was already active with the same 29 IDs and states (13 active, 16 stopped). `docker-restoration-app30-20261116.json` records the comparison and the November 11 checkpoint now has `restore_required=false`.
+
 ## Current checkpoint — 2026-11-11
 
 **Docker restoration is verified.** Docker Desktop resumed while the VMware run was awaiting the operator. `docker-restoration3.json` confirms all 29 container IDs and states matched the checkpoint, with 13 active and 16 stopped. `docker-state-before-pause3.json` has `restore_required=false`. Earlier pause notes are historical. Check available memory when the operator is ready and use a new checkpoint for any temporary Docker stop.
