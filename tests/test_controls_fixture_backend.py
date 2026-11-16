@@ -745,6 +745,33 @@ def test_unconfirmed_trace_cleanup_aborts_the_next_probe(tmp_path):
     assert result["error_message"]
 
 
+@pytest.mark.parametrize(
+    "case,terminated,kill_calls",
+    [("already_exited", True, 0), ("exits_after_kill", True, 1), ("still_running", False, 1), ("kill_error", False, 1)],
+)
+def test_tracer_transport_checks_termination_of_its_owned_process(tmp_path, case, terminated, kill_calls):
+    result = _run_functions(tmp_path, r"""
+$script:killCalls=0
+$process=[pscustomobject]@{HasExited=($Case -ceq 'already_exited')}
+$process|Add-Member ScriptMethod Kill {
+    $script:killCalls++
+    if($Case -ceq 'kill_error'){throw [IO.IOException]::new('simulated kill failure')}
+}
+$process|Add-Member ScriptMethod WaitForExit {
+    param($Milliseconds)
+    if($Milliseconds -ne 1000){throw 'Unexpected transport termination bound.'}
+    return ($Case -ceq 'exits_after_kill')
+}
+if(-not (Get-Command Confirm-FixtureTraceToolExit -CommandType Function -ErrorAction SilentlyContinue)) {
+    @{terminated=$null;kill_calls=$script:killCalls}|ConvertTo-Json -Compress
+    return
+}
+$terminated=Confirm-FixtureTraceToolExit $process
+@{terminated=$terminated;kill_calls=$script:killCalls}|ConvertTo-Json -Compress
+""", case)
+    assert result == {"terminated": terminated, "kill_calls": kill_calls}
+
+
 TRACE_OWNERSHIP_DRIVER = r"""
 $start=@($tree.FindAll({
     param($node)
