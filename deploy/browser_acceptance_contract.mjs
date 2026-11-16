@@ -15,15 +15,17 @@ export function classify(observation) {
   try { document = new URL(value.document_uri); } catch { failures.push('Invalid document URI'); }
   if (!expected || value.target_url !== expected) failures.push('Unknown case or target');
   const upgraded = value.case === 'blocked_http' && actual?.protocol === 'https:';
-  const origin = expected && new URL(upgraded ? targets.blocked_https : expected).origin;
-  if (!actual || actual.origin !== origin || actual.username || actual.password) failures.push('Origin mismatch');
+  const expectedUrl = expected && new URL(upgraded ? targets.blocked_https : expected);
+  if (!actual || actual.origin !== expectedUrl?.origin || actual.username || actual.password) failures.push('Origin mismatch');
   if (!document || document.origin !== actual?.origin || !['http:', 'https:'].includes(document.protocol)) {
     failures.push('Internal browser error or document origin mismatch');
   }
   if (value.status !== 200) failures.push('Main document is not HTTP 200');
   if (actual?.protocol === 'https:' && value.is_secure_context !== true) failures.push('Insecure TLS context');
   if (value.case === 'blocked_http' || value.case === 'blocked_https') {
-    if (value.title !== 'Acesso bloqueado' || value.logo !== true || !value.text?.includes('example.com')) {
+    const hasHostnameLine = typeof value.text === 'string' &&
+      value.text.split(/\r?\n/).some(line => line.trim() === expectedUrl.hostname);
+    if (value.title !== 'Acesso bloqueado' || value.logo !== true || !hasHostnameLine) {
       failures.push('RSM block page absent');
     }
   } else if (value.case === 'allowed_https') {
