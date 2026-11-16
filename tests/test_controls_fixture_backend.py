@@ -796,3 +796,22 @@ def test_fixture_trace_profile_uses_bounded_kernel_buffers_without_stacks():
     assert keywords == {"ProcessThread", "Loader", "CSwitch"}
     assert not root.findall(".//Stack")
     assert not root.findall(".//EventProvider")
+
+
+@pytest.mark.parametrize(
+    "stamp,expected",
+    [
+        ("2026-11-16T14:21:45.839592000-03:00", "2026-11-16T17:21:45.8395920Z"),
+        ("2026-11-17T00:51:45.839592000+05:30", "2026-11-16T19:21:45.8395920Z"),
+        ("2026-11-16T17:21:45.839592000Z", "2026-11-16T17:21:45.8395920Z"),
+        ("2026-11-16T17:21:45.839592000", None),
+    ],
+)
+def test_tracerpt_timestamp_preserves_the_instant_across_explicit_offsets(tmp_path, stamp, expected):
+    result = _run_functions(tmp_path, r"""
+$timestamp=$null
+try { $timestamp=(Read-LaunchTraceUtc $Case).ToString('o') }
+catch { $timestamp=$null }
+@{timestamp=$timestamp}|ConvertTo-Json -Compress
+""", stamp)
+    assert result["timestamp"] == expected
