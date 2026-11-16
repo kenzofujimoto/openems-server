@@ -576,6 +576,7 @@ function Stop-FixtureLaunchTrace($State,$Receipt) {
     $script:traceCalls+=@('stop')
     if(-not $State.owned -or $Receipt.process_id -ne 77){throw 'Unexpected trace ownership or PID.'}
     if($Case -eq 'trace_stop_failure'){return @{status='stop_failed';event_count=0}}
+    if($Case -eq 'trace_cleanup_unconfirmed'){return @{status='stop_failed';cleanup_error='stop_cleanup_unconfirmed'}}
     return @{status='captured';event_count=3}
 }
 function Get-Sha256 {param($Path) return ('ab'*32)}
@@ -592,7 +593,8 @@ function Start-FixtureProcess {
     $process|Add-Member ScriptMethod WaitForExit {
         param($Milliseconds)
         $script:waits+=@($Milliseconds)
-        $this.HasExited=$Case -notin @('timeout','timeout_before_main','kill_failure','kill_unconfirmed','trace_timeout','trace_stop_failure')
+        $this.HasExited=$Case -notin @(
+            'timeout','timeout_before_main','kill_failure','kill_unconfirmed','trace_timeout','trace_stop_failure','timeout_export_failure')
         return $this.HasExited
     }
     $process|Add-Member ScriptMethod Kill {
@@ -604,6 +606,14 @@ function Start-FixtureProcess {
     return $process
 }
 if($Case -eq 'export_failure') { function Write-Json {param($Path,$Value) throw [IO.IOException]::new('export failed')} }
+if($Case -eq 'timeout_export_failure') {
+    $script:writes=0
+    function Write-Json {
+        param($Path,$Value)
+        $script:writes++
+        if($script:writes -gt 1){throw [IO.IOException]::new('final checkpoint failed')}
+    }
+}
 if($Case -eq 'overflow') { $script:result.fixture_probes=@(1..32 | ForEach-Object {@{sequence=$_}}) }
 $observed=$null;$errorCategory=$null;$errorMessage=$null
 try {$observed=Invoke-Fixture $fixture $sentinel 'https://example.org/' -ProbePhase $probePhase}
@@ -717,6 +727,22 @@ def test_fixture_launch_trace_belongs_only_to_selected_applications_probe(tmp_pa
         assert result["error_message"] == "Fixture process timed out."
     else:
         assert result["observed"]["exit"] == 0
+
+
+def test_fixture_timeout_survives_a_secondary_checkpoint_error(tmp_path):
+    result = _run_functions(tmp_path, PROBE_OBSERVATION_DRIVER, "timeout_export_failure")
+    assert result["boundary_ready"] is True and result["receipts"][0]["timed_out"]
+    assert result["cleanup_errors"]
+    assert result["error_message"] == "Fixture process timed out."
+
+
+def test_unconfirmed_trace_cleanup_aborts_the_next_probe(tmp_path):
+    result = _run_functions(tmp_path, PROBE_OBSERVATION_DRIVER, "trace_cleanup_unconfirmed")
+    assert result["boundary_ready"] is True and result["trace_calls"] == ["start", "stop"]
+    assert result["receipts"][0]["launch_trace"]["cleanup_error"] == "stop_cleanup_unconfirmed"
+    assert result["cleanup_errors"]
+    assert result["observed"] is None
+    assert result["error_message"]
 
 
 TRACE_OWNERSHIP_DRIVER = r"""
