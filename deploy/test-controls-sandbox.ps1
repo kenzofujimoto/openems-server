@@ -112,10 +112,18 @@ $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Acceptance requires Administrator rights inside the disposable guest.' }
 $inputManifestPath=Join-Path $PSScriptRoot 'acceptance-manifest.json'
 $inputManifest=$null
+$launchTraceProfile=''
 if (Test-Path -LiteralPath $inputManifestPath) {
     $inputManifest=Get-Content -LiteralPath $inputManifestPath -Raw | ConvertFrom-Json
     if ($inputManifest.phase -ne $Kind.ToLowerInvariant()) { throw 'This manifest belongs to a different controls phase.' }
-    $names=if ($SystemPhase) { @($package, 'test-controls-sandbox.ps1') } else { @($inputManifest.files.PSObject.Properties | ForEach-Object Name) }
+    $profileName='applications-launch-diagnostic.wprp'
+    if ($Kind -eq 'Applications' -and $attestedVm -and $inputManifest.files.PSObject.Properties[$profileName]) {
+        $launchTraceProfile=Join-Path $PSScriptRoot $profileName
+    }
+    $names=if ($SystemPhase) {
+        @($package, 'test-controls-sandbox.ps1')
+        if ($launchTraceProfile) { $profileName }
+    } else { @($inputManifest.files.PSObject.Properties | ForEach-Object Name) }
     foreach ($name in $names) {
         if ([IO.Path]::GetFileName($name) -ne $name) { throw 'Manifest entries must be plain file names.' }
         $entry=$inputManifest.files.PSObject.Properties[$name]
@@ -210,6 +218,7 @@ if (-not $SystemPhase) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $package) -Destination $work
     $script = Join-Path $work 'test-controls-sandbox.ps1'
     Copy-Item -LiteralPath $PSCommandPath -Destination $script
+    if ($launchTraceProfile) { Copy-Item -LiteralPath $launchTraceProfile -Destination $work }
     $manifestPath = Join-Path $PSScriptRoot 'acceptance-manifest.json'
     if (Test-Path -LiteralPath $manifestPath) { Copy-Item -LiteralPath $manifestPath -Destination $work }
     New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
@@ -600,6 +609,496 @@ function Read-FixturePhase([string]$Sentinel) {
     if ($phase -cnotin @('entry','before_network','after_response')) { throw 'Unrecognized owned fixture phase.' }
     return $phase
 }
+function Confirm-FixtureTraceToolExit($Process) {
+    try {
+        if ($Process.HasExited) { return $true }
+        $Process.Kill()
+        return [bool]$Process.WaitForExit(1000)
+    } catch {
+        try { return [bool]$Process.HasExited }
+        catch { return $false }
+    }
+}
+function Invoke-FixtureTraceTool([string]$Tool, [string[]]$Arguments, [ValidateRange(1,30000)][int]$TimeoutMs, [string]$BoundedOutputPath='') {
+    $name = switch -CaseSensitive ($Tool) {
+        'wpr.exe' { 'wpr.exe' }
+        'tracerpt.exe' { 'tracerpt.exe' }
+        'powershell.exe' { 'WindowsPowerShell\v1.0\powershell.exe' }
+        default { throw 'Unrecognized launch diagnostic tool.' }
+    }
+    $path = Join-Path ([Environment]::SystemDirectory) $name
+    if (-not [IO.File]::Exists($path)) { return @{kind='missing_tool';exit_code=$null;output=''} }
+    $start = [Diagnostics.ProcessStartInfo]::new()
+    $start.FileName = $path
+    $start.Arguments = ($Arguments | ForEach-Object {
+        if ($_ -match '["\r\n\x00]' -or $_.EndsWith('\')) { throw 'Invalid launch diagnostic argument.' }
+        '"' + $_ + '"'
+    }) -join ' '
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $process = $null
+    try {
+        $process = [Diagnostics.Process]::Start($start)
+        $stdout = [char[]]::new(4096)
+        $stderr = [char[]]::new(4096)
+        $readOut = $process.StandardOutput.ReadAsync($stdout, 0, $stdout.Length)
+        $readError = $process.StandardError.ReadAsync($stderr, 0, $stderr.Length)
+        $clock = [Diagnostics.Stopwatch]::StartNew()
+        while ($true) {
+            $remaining = $TimeoutMs - $clock.ElapsedMilliseconds
+            if ($remaining -le 0) {
+                $kind = if (Confirm-FixtureTraceToolExit $process) { 'timed_out' } else { 'termination_unconfirmed' }
+                return @{kind=$kind;exit_code=$null;output=''}
+            }
+            $budget = if ($BoundedOutputPath) { [int][Math]::Min(250,$remaining) } else { [int]$remaining }
+            $exited = $process.WaitForExit($budget)
+            if ($BoundedOutputPath) {
+                $outputFile = [IO.FileInfo]::new($BoundedOutputPath)
+                if ($outputFile.Exists -and $outputFile.Length -gt 96MB) {
+                    $kind = if ($exited -or (Confirm-FixtureTraceToolExit $process)) { 'output_limit' } else { 'termination_unconfirmed' }
+                    return @{kind=$kind;exit_code=$null;output=''}
+                }
+            }
+            if ($exited) { break }
+        }
+        $out = if ($readOut.Wait(200)) { [string]::new($stdout, 0, $readOut.Result) } else { '' }
+        $err = if ($readError.Wait(200)) { [string]::new($stderr, 0, $readError.Result) } else { '' }
+        return @{kind='exited';exit_code=$process.ExitCode;stdout=$out;output=($out + [Environment]::NewLine + $err)}
+    } catch {
+        $kind = if ($null -eq $process -or (Confirm-FixtureTraceToolExit $process)) { 'failed' } else { 'termination_unconfirmed' }
+        return @{kind=$kind;exit_code=$null;output=''}
+    } finally {
+        if ($null -ne $process) { $process.Dispose() }
+    }
+}
+function Test-FixtureRecorderIdle($Outcome) {
+    if ($Outcome.kind -cne 'exited') { return $false }
+    return ($Outcome.exit_code -eq -984076288 -or $Outcome.output -match '\b0xc5583000\b' -or
+        ($Outcome.exit_code -eq 0 -and $Outcome.output -match 'WPR is not recording|There are no trace profiles running'))
+}
+function Start-FixtureLaunchTrace([string]$ProfilePath, [string]$WorkDirectory) {
+    $result = @{status='recorder_status_unknown';owned=$false;cleanup_error=$null}
+    # The unqualified query covers the default recorder. Every mutating command targets the unique owned name.
+    $status = Invoke-FixtureTraceTool 'wpr.exe' @('-status') 3000
+    if ($status.kind -ceq 'missing_tool') { $result.status='missing_recorder'; return $result }
+    if ($status.kind -ceq 'termination_unconfirmed') { $result.cleanup_error='status_cleanup_unconfirmed'; return $result }
+    if (-not (Test-FixtureRecorderIdle $status)) {
+        if ($status.kind -ceq 'exited' -and $status.exit_code -eq 0 -and
+            $status.output -match 'recording is in progress|WPR is recording') { $result.status='active_recording' }
+        return $result
+    }
+    $etl = Join-Path $WorkDirectory 'applications-launch.etl'
+    $volume = [IO.DriveInfo]::new([IO.Path]::GetPathRoot([IO.Path]::GetFullPath($WorkDirectory)))
+    if ($volume.AvailableFreeSpace -lt 256MB) { $result.status='insufficient_storage'; return $result }
+    if (Test-Path -LiteralPath $etl) { $result.status='trace_file_exists'; return $result }
+    $instance = 'OpenemsApplications' + [Guid]::NewGuid().ToString('N')
+    $start = Invoke-FixtureTraceTool 'wpr.exe' @('-start', ($ProfilePath + '!OpenemsApplicationsLaunch.Light'), '-instancename', $instance) 5000
+    if ($start.kind -ceq 'exited' -and $start.exit_code -eq 0) {
+        return @{status='recording';owned=$true;cleanup_error=$null;instance=$instance;etl=$etl}
+    }
+    $result.status='start_failed'
+    if ($start.kind -ceq 'termination_unconfirmed') { $result.cleanup_error='start_cleanup_unconfirmed' }
+    # A timed-out start may already have created this uniquely named session.
+    $named = Invoke-FixtureTraceTool 'wpr.exe' @('-status', '-instancename', $instance) 3000
+    if (-not (Test-FixtureRecorderIdle $named)) {
+        $cancel = Invoke-FixtureTraceTool 'wpr.exe' @('-cancel', '-instancename', $instance) 3000
+        if (-not (Test-FixtureRecorderIdle $cancel) -and ($cancel.kind -cne 'exited' -or $cancel.exit_code -ne 0)) {
+            $result.cleanup_error='start_cleanup_unconfirmed'
+        }
+    }
+    return $result
+}
+function Read-FixtureLaunchTrace {
+    param([string]$TracePath, [uint32]$ProcessId, $RequestedUtc, $FinishedUtc,
+        [string]$WorkerName, [string]$FixtureBasename)
+
+    function Read-LaunchTraceUtc($Value) {
+        if ($Value -is [DateTimeOffset]) { return $Value.UtcDateTime }
+        if ($Value -is [DateTime] -and $Value.Kind -eq [DateTimeKind]::Utc) { return $Value }
+        if ($Value -isnot [string] -or $Value -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$') {
+            throw 'Expected a trace timestamp with an explicit offset.'
+        }
+        $stamp = ($Value -creplace 'Z$', '+00:00') -replace '(\.\d{7})\d{1,2}(?=[+-]\d{2}:\d{2}$)', '${1}'
+        $formats = [string[]]@("yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz")
+        return [DateTimeOffset]::ParseExact($stamp, $formats,
+            [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None).UtcDateTime
+    }
+
+    function Read-LaunchTraceId($Value) {
+        if ($Value -cmatch '^0[xX]0{0,8}[0-9A-Fa-f]{1,8}$') {
+            return [uint32]::Parse($Value.Substring(2).TrimStart('0').PadLeft(1,'0'),
+                [Globalization.NumberStyles]::AllowHexSpecifier, [Globalization.CultureInfo]::InvariantCulture)
+        }
+        if ($Value -cmatch '^[0-9]{1,10}$') {
+            return [uint32]::Parse($Value, [Globalization.NumberStyles]::None, [Globalization.CultureInfo]::InvariantCulture)
+        }
+        throw 'Expected a trace numeric value.'
+    }
+
+    function Get-LaunchTraceImageIdentity([string]$Image) {
+        if ($Image.Equals($FixtureBasename, [StringComparison]::OrdinalIgnoreCase)) { return 'basename' }
+        $relative = [regex]::Escape($WorkerName + '\' + $FixtureBasename)
+        if ($Image -match ('^(?:(?:\\\?\\|\\\?\?\\)?C:\\|\\Device\\HarddiskVolume[0-9]+\\)' + $relative + '$')) {
+            return 'owned_path'
+        }
+        return 'other'
+    }
+
+    $summary = [ordered]@{
+        status='decode_failed'; identity_status='unobserved'; loss_status='unknown'
+        context_switch_status='unknown'; schema_status='unknown'; events_scanned=0
+        parse_errors=0; parse_error_stages=@{}; limit_reached=$false; failure_stage='input'; read_error=$null
+        process_start_utc=$null; process_end_utc=$null; first_thread_start_utc=$null
+        first_thread_scheduled_utc=$null; thread_starts=0; thread_ends=0; fixture_image_load_utc=$null
+    }
+    try {
+        if ($ProcessId -eq 0 -or $WorkerName -cnotmatch '^openems-controls-[0-9a-f]{32}$' -or
+            $FixtureBasename -cnotin @('OpenemsFixture.exe','RenamedFixture.exe','PublisherFixture.exe','PublisherRenamed.exe')) {
+            return $summary
+        }
+        $expectedPath = 'C:\' + $WorkerName + '\applications-launch-events.xml'
+        if (-not [IO.Path]::IsPathRooted($TracePath) -or -not [IO.Path]::GetFullPath($TracePath).Equals($expectedPath, [StringComparison]::OrdinalIgnoreCase)) {
+            return $summary
+        }
+        $trace = Get-Item -LiteralPath $expectedPath -Force -ErrorAction Stop
+        $directory = Get-Item -LiteralPath ([IO.Path]::GetDirectoryName($expectedPath)) -Force -ErrorAction Stop
+        if ($trace.PSIsContainer -or -not $directory.PSIsContainer -or
+            (($trace.Attributes -bor $directory.Attributes) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { return $summary }
+        if ($trace.Length -le 0 -or $trace.Length -gt 96MB) {
+            $summary.limit_reached = $trace.Length -gt 96MB
+            return $summary
+        }
+        $from = Read-LaunchTraceUtc $RequestedUtc
+        $until = Read-LaunchTraceUtc $FinishedUtc
+        if ($until -lt $from -or ($until-$from).TotalMinutes -gt 5) { return $summary }
+    } catch {
+        $summary.read_error=$_.Exception.GetBaseException().GetType().Name
+        return $summary
+    }
+
+    $processGuid = [guid]'3d6fa8d0-fe05-11d0-9dda-00c04fd7ba7c'
+    $threadGuid = [guid]'3d6fa8d1-fe05-11d0-9dda-00c04fd7ba7c'
+    $imageGuid = [guid]'2cb15d1d-5fc1-11d2-abe1-00a0c911f518'
+    $kernelGuid = [guid]'9e814aad-3204-11d2-9a82-006008a86939'
+    $headerGuid = [guid]'68fdd900-4a3e-11d1-84f4-0000f80464e3'
+    $lossGuid = [guid]'6a399ae0-4bc6-4de9-870b-3657f8947e7e'
+    $knownGuids = @($processGuid,$threadGuid,$imageGuid,$kernelGuid,$headerGuid,$lossGuid)
+    $maxEvents = 100000
+    $maxOwnedRows = 512
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    $activeThreads = @{}
+    $clockAndCoverage = @{loss_header=$false;loss=$false;switch_decode_seen=$false;switch_found=$false;ambiguous_thread_lifetime=$false;known_schema=$false;stage='xml'}
+    $xmlSettings = New-Object System.Xml.XmlReaderSettings
+    $xmlSettings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+    $xmlSettings.XmlResolver = $null
+    $xmlSettings.MaxCharactersInDocument = 96MB
+
+    function Read-LaunchTraceRow([Xml.XmlDocument]$Document) {
+        $clockAndCoverage.stage='system'
+        $eventNode = $document.DocumentElement
+        if ($eventNode.LocalName -cne 'Event' -or $eventNode.NamespaceURI -cne 'http://schemas.microsoft.com/win/2004/08/events/event') {
+            throw 'Unsupported trace event XML.'
+        }
+        $ns = [Xml.XmlNamespaceManager]::new($document.NameTable)
+        $ns.AddNamespace('e', $eventNode.NamespaceURI)
+        $provider = $eventNode.SelectSingleNode('e:System/e:Provider', $ns)
+        if ($null -eq $provider) { throw 'Missing trace event provider.' }
+        $classGuid = [guid]::Empty
+        if (-not [guid]::TryParse($provider.GetAttribute('Guid'), [ref]$classGuid)) { return }
+        if ($classGuid -eq $kernelGuid) {
+            # Classic trace XML can name the session provider and carry the class GUID separately.
+            $extended = $eventNode.SelectSingleNode("*[local-name()='ExtendedTracingInfo']/*[local-name()='EventGuid']")
+            if ($null -ne $extended) {
+                $parsedGuid = [guid]::Empty
+                if ([guid]::TryParse($extended.InnerText, [ref]$parsedGuid)) { $classGuid=$parsedGuid }
+            }
+        }
+        if ($classGuid -notin $knownGuids) { return }
+        if ($classGuid -eq $lossGuid) { $clockAndCoverage.loss = $true; return }
+        $opcodeNode = $eventNode.SelectSingleNode('e:System/e:Opcode', $ns)
+        if ($null -eq $opcodeNode) { throw 'Missing trace event opcode.' }
+        $opcode = Read-LaunchTraceId $opcodeNode.InnerText
+        if ($opcode -notin @(0,1,2,10,36) -or
+            ($opcode -eq 36 -and ($activeThreads.Count -eq 0 -or $clockAndCoverage.switch_found))) { return }
+        $time = $null
+        if ($opcode -ne 0) {
+            $clockAndCoverage.stage='time'
+            $timeNode = $eventNode.SelectSingleNode('e:System/e:TimeCreated', $ns)
+            if ($null -eq $timeNode) { throw 'Missing trace event timestamp.' }
+            $time = Read-LaunchTraceUtc $timeNode.GetAttribute('SystemTime')
+            if ($time -lt $from -or $time -gt $until) { return }
+        }
+        $fields = @{}
+        $clockAndCoverage.stage='payload'
+        $allowedFields = @('ProcessId','TThreadId','ThreadId','NewThreadId','OldThreadId','ImageFileName','FileName','ImageBase',
+            'ImageSize','UniqueProcessKey','EventsLost','BuffersLost')
+        foreach ($node in $eventNode.SelectNodes('e:EventData/e:Data', $ns)) {
+            $name = $node.GetAttribute('Name')
+            if ($name -notin $allowedFields) { continue }
+            if ($fields.ContainsKey($name)) { throw 'Duplicate trace payload field.' }
+            $fields[$name] = $node.InnerText.Trim()
+        }
+        if ($classGuid -eq $kernelGuid) {
+            # Some tracerpt versions omit the class GUID. Use named MOF payload signatures from the one kernel provider.
+            if ($opcode -in @(1,2) -and $fields.ContainsKey('ProcessId') -and $fields.ContainsKey('ImageFileName') -and
+                $fields.ContainsKey('UniqueProcessKey')) { $classGuid=$processGuid }
+            elseif ($opcode -in @(1,2) -and $fields.ContainsKey('ProcessId') -and $fields.ContainsKey('TThreadId')) { $classGuid=$threadGuid }
+            elseif ($opcode -eq 36 -and $fields.ContainsKey('NewThreadId') -and $fields.ContainsKey('OldThreadId')) { $classGuid=$threadGuid }
+            elseif ($opcode -eq 10 -and $fields.ContainsKey('ProcessId') -and $fields.ContainsKey('FileName') -and
+                $fields.ContainsKey('ImageBase') -and $fields.ContainsKey('ImageSize')) { $classGuid=$imageGuid }
+            elseif ($opcode -eq 0 -and ($fields.ContainsKey('EventsLost') -or $fields.ContainsKey('BuffersLost'))) { $classGuid=$headerGuid }
+            else { return }
+        }
+        if (($classGuid -eq $processGuid -and $opcode -notin @(1,2)) -or
+            ($classGuid -eq $threadGuid -and $opcode -notin @(1,2,36)) -or
+            ($classGuid -eq $imageGuid -and $opcode -ne 10) -or
+            ($classGuid -eq $headerGuid -and $opcode -ne 0)) { return }
+        $clockAndCoverage.known_schema = $true
+        if ($classGuid -eq $headerGuid) {
+            $eventLoss = if ($fields.ContainsKey('EventsLost')) { Read-LaunchTraceId $fields.EventsLost } else { $null }
+            $bufferLoss = if ($fields.ContainsKey('BuffersLost')) { Read-LaunchTraceId $fields.BuffersLost } else { $null }
+            if ($eventLoss -gt 0 -or $bufferLoss -gt 0) { $clockAndCoverage.loss = $true }
+            if ($null -ne $eventLoss -and $null -ne $bufferLoss) { $clockAndCoverage.loss_header = $true }
+            return
+        }
+        if ($classGuid -eq $threadGuid -and $opcode -eq 36) {
+            $clockAndCoverage.stage='switch'
+            $newThreadId = Read-LaunchTraceId $fields.NewThreadId
+            $clockAndCoverage.switch_decode_seen = $true
+            $active = $activeThreads[$newThreadId]
+            if ($null -ne $active -and $time -ge $active.time -and ($null -eq $active.switch_time -or $time -lt $active.switch_time)) {
+                $active.switch_time = $time
+                $clockAndCoverage.switch_found = $true
+            }
+            return
+        }
+        $clockAndCoverage.stage='subject_pid'
+        $subjectProcessId = Read-LaunchTraceId $fields.ProcessId
+        if ($classGuid -eq $threadGuid) {
+            $clockAndCoverage.stage='thread'
+            $threadId = if ($fields.ContainsKey('TThreadId')) { Read-LaunchTraceId $fields.TThreadId } else { Read-LaunchTraceId $fields.ThreadId }
+            if ($fields.ContainsKey('ThreadId') -and $threadId -ne (Read-LaunchTraceId $fields.ThreadId)) { throw 'Conflicting trace thread IDs.' }
+            $active = $activeThreads[$threadId]
+            if ($subjectProcessId -ne $ProcessId) {
+                if ($null -ne $active) {
+                    $clockAndCoverage.ambiguous_thread_lifetime = $true
+                    $active.switch_time = $null
+                    $activeThreads.Remove($threadId)
+                }
+                return
+            }
+            if ($opcode -eq 1) {
+                if ($null -ne $active) {
+                    $clockAndCoverage.ambiguous_thread_lifetime = $true
+                    $active.switch_time = $null
+                }
+                $row = @{kind='thread_start';time=$time;thread=$threadId;switch_time=$null}
+                $activeThreads[$threadId] = $row
+                return $row
+            }
+            if ($null -ne $active) {
+                if ($time -lt $active.time) {
+                    $clockAndCoverage.ambiguous_thread_lifetime = $true
+                    $active.switch_time = $null
+                } elseif ($null -ne $active.switch_time -and $active.switch_time -gt $time) {
+                    $clockAndCoverage.ambiguous_thread_lifetime = $true
+                    $active.switch_time = $null
+                }
+                $activeThreads.Remove($threadId)
+            }
+            return @{kind='thread_end';time=$time;thread=$threadId}
+        }
+        if ($subjectProcessId -ne $ProcessId) { return }
+        if ($classGuid -eq $imageGuid) {
+            if (-not $fields.ContainsKey('FileName')) { throw 'Missing image payload name.' }
+            $identity = Get-LaunchTraceImageIdentity $fields.FileName
+            if ($identity -ne 'other') { return @{kind='image_load';time=$time;identity=$identity} }
+            if ([IO.Path]::GetFileName($fields.FileName).Equals($FixtureBasename, [StringComparison]::OrdinalIgnoreCase)) {
+                return @{kind='foreign_fixture_image';time=$time}
+            }
+            return
+        }
+        $key = $null
+        $clockAndCoverage.stage='process_key'
+        if ($fields.ContainsKey('UniqueProcessKey')) {
+            $keyText = [string]$fields.UniqueProcessKey
+            if ($keyText -match '^0x[0-9a-f]{1,16}$') {
+                $key = [uint64]::Parse($keyText.Substring(2), [Globalization.NumberStyles]::AllowHexSpecifier, [Globalization.CultureInfo]::InvariantCulture)
+            } elseif ($keyText -cmatch '^[0-9]{1,20}$') {
+                $key = [uint64]::Parse($keyText, [Globalization.NumberStyles]::None, [Globalization.CultureInfo]::InvariantCulture)
+            } else { throw 'Invalid process key.' }
+        }
+        if ($opcode -eq 1) {
+            if (-not $fields.ContainsKey('ImageFileName')) { throw 'Missing process payload image name.' }
+            return @{kind='process_start';time=$time;identity=(Get-LaunchTraceImageIdentity $fields.ImageFileName);key=$key}
+        }
+        return @{kind='process_end';time=$time;key=$key}
+    }
+
+    $summary.failure_stage='query'
+    $reader = $null
+    try {
+        $reader = [Xml.XmlReader]::Create($expectedPath,$xmlSettings)
+        while ($reader.ReadToFollowing('Event','http://schemas.microsoft.com/win/2004/08/events/event')) {
+            $subtree = $reader.ReadSubtree()
+            try {
+                $clockAndCoverage.stage='xml'
+                $summary.events_scanned++
+                if ($summary.events_scanned -gt $maxEvents -or $rows.Count -ge $maxOwnedRows) {
+                    $summary.limit_reached = $true
+                    break
+                }
+                $document = [Xml.XmlDocument]::new()
+                $document.XmlResolver = $null
+                $document.Load($subtree)
+                $row = Read-LaunchTraceRow $document
+                if ($null -ne $row) { $rows.Add($row) }
+            } catch {
+                $summary.parse_errors++
+                $summary.parse_error_stages[$clockAndCoverage.stage] += 1
+            } finally {
+                $subtree.Dispose()
+            }
+        }
+    } catch {
+        $summary.read_error=$_.Exception.GetBaseException().GetType().Name
+        return $summary
+    } finally { if ($null -ne $reader) { $reader.Dispose() } }
+    $summary.status = 'incomplete'
+    $summary.failure_stage='correlation'
+    if ($summary.parse_errors -gt 0) { $summary.schema_status = 'partial' }
+    elseif ($clockAndCoverage.known_schema) { $summary.schema_status = 'supported' }
+    if ($clockAndCoverage.loss) { $summary.loss_status = 'loss_observed' }
+    elseif ($clockAndCoverage.loss_header -and -not $summary.limit_reached -and $summary.parse_errors -eq 0) { $summary.loss_status = 'none_reported' }
+
+    $starts = @($rows | Where-Object kind -EQ 'process_start')
+    if ($starts.Count -ne 1 -or $starts[0].identity -eq 'other') {
+        if ($starts.Count -gt 0) { $summary.identity_status = 'ambiguous' }
+        return $summary
+    }
+    $start = $starts[0]
+    $ends = @($rows | Where-Object { $_.kind -eq 'process_end' -and $_.time -ge $start.time })
+    if ($ends.Count -gt 1 -or ($ends.Count -eq 1 -and $start.key -gt 0 -and $ends[0].key -gt 0 -and $start.key -ne $ends[0].key)) {
+        $summary.identity_status = 'ambiguous'
+        return $summary
+    }
+    $last = if ($ends.Count -eq 1) { $ends[0].time } else { $until }
+    $during = @($rows | Where-Object { $_.time -ge $start.time -and $_.time -le $last })
+    if (@($during | Where-Object kind -EQ 'foreign_fixture_image').Count -gt 0) {
+        $summary.identity_status = 'ambiguous'
+        return $summary
+    }
+    $summary.identity_status = if ($start.identity -eq 'owned_path' -or @($during | Where-Object { $_.kind -eq 'image_load' -and $_.identity -eq 'owned_path' }).Count -gt 0) { 'owned_path' } else { 'unique_pid_basename' }
+    $summary.process_start_utc = $start.time.ToString('o')
+    if ($ends.Count -eq 1) { $summary.process_end_utc = $last.ToString('o') }
+    $ownedImages = @($during | Where-Object kind -EQ 'image_load' | Sort-Object { $_.time })
+    if ($ownedImages.Count -gt 0) { $summary.fixture_image_load_utc = $ownedImages[0].time.ToString('o') }
+    $threads = @($during | Where-Object kind -EQ 'thread_start' | Sort-Object { $_.time })
+    $summary.thread_starts = $threads.Count
+    $summary.thread_ends = @($during | Where-Object kind -EQ 'thread_end').Count
+    if ($threads.Count -eq 0) { return $summary }
+    $summary.first_thread_start_utc = $threads[0].time.ToString('o')
+    if (-not $clockAndCoverage.ambiguous_thread_lifetime -and -not $clockAndCoverage.loss -and -not $summary.limit_reached -and $summary.parse_errors -eq 0) {
+        $scheduled = @($threads | Where-Object { $null -ne $_.switch_time -and $_.switch_time -le $last } | Sort-Object { $_.switch_time })
+        if ($scheduled.Count -gt 0) {
+            $summary.first_thread_scheduled_utc = $scheduled[0].switch_time.ToString('o')
+            $summary.context_switch_status = 'observed'
+        } elseif ($clockAndCoverage.switch_decode_seen -and $summary.loss_status -eq 'none_reported' -and $summary.schema_status -eq 'supported') {
+            $summary.context_switch_status = 'not_observed'
+        }
+        $summary.status = 'captured'
+        $summary.failure_stage=$null
+    }
+    return $summary
+}
+function Stop-FixtureLaunchTrace($Trace, $Receipt) {
+    if (-not $Trace.owned -or $Trace.instance -cnotmatch '^OpenemsApplications[0-9a-f]{32}$') {
+        throw 'Launch trace ownership is missing.'
+    }
+    $outcome = [ordered]@{
+        status='stop_failed';cleanup_error=$null;loss_reported=$null;conversion_status=$null
+        decode_status=$null;decode_exit_code=$null;events=$null
+    }
+    $status = Invoke-FixtureTraceTool 'wpr.exe' @('-status', 'collectors', '-instancename', $Trace.instance) 3000
+    if ($status.kind -ceq 'termination_unconfirmed') { $outcome.cleanup_error='status_cleanup_unconfirmed' }
+    if ($status.kind -ceq 'exited' -and $status.exit_code -eq 0) {
+        $statistics = [regex]::Matches($status.output, '(?im)^\s*(?:Dropped event|Events Lost)\s*:\s*([0-9]+)\s*$')
+        if ($statistics.Count -gt 0) {
+            $outcome.loss_reported = @($statistics | Where-Object { $_.Groups[1].Value -match '[1-9]' }).Count -gt 0
+        }
+    }
+    $stop = Invoke-FixtureTraceTool 'wpr.exe' @('-stop', $Trace.etl, 'OpenEMS Applications launch', '-skipPdbGen', '-instancename', $Trace.instance) 20000
+    if ($stop.kind -cne 'exited' -or $stop.exit_code -ne 0) {
+        if ($stop.kind -ceq 'termination_unconfirmed') { $outcome.cleanup_error='stop_cleanup_unconfirmed' }
+        $cancel = Invoke-FixtureTraceTool 'wpr.exe' @('-cancel', '-instancename', $Trace.instance) 3000
+        if (-not (Test-FixtureRecorderIdle $cancel) -and ($cancel.kind -cne 'exited' -or $cancel.exit_code -ne 0)) {
+            $outcome.cleanup_error='stop_cleanup_unconfirmed'
+        }
+        return $outcome
+    }
+    $file = [IO.FileInfo]::new($Trace.etl)
+    if (-not $file.Exists -or $file.Length -le 0 -or $file.Length -gt 64MB -or
+        ($file.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        $outcome.status='trace_unavailable'
+        return $outcome
+    }
+    if ($null -eq $Receipt.process_id) { $outcome.status='no_owned_process'; return $outcome }
+    $xmlPath = Join-Path $file.DirectoryName 'applications-launch-events.xml'
+    if (Test-Path -LiteralPath $xmlPath) { throw 'Private trace XML already exists.' }
+    # tracerpt decodes the classic MOF payloads that Event Log exposes as ProcessingErrorData.
+    $xml = Invoke-FixtureTraceTool 'tracerpt.exe' @($file.FullName,'-of','XML','-o',$xmlPath,'-lr','-y') 20000 $xmlPath
+    $outcome.conversion_status=$xml.kind
+    if ($xml.kind -ceq 'termination_unconfirmed') { $outcome.cleanup_error='conversion_cleanup_unconfirmed' }
+    if ($xml.kind -cne 'exited' -or $xml.exit_code -ne 0) { $outcome.status='conversion_failed'; return $outcome }
+    $summaryPath = Join-Path $file.DirectoryName 'applications-launch-trace-summary.json'
+    $arguments = @{
+        path=$xmlPath; process_id=$Receipt.process_id; start=$Receipt.process_start_utc
+        end=$Receipt.finished_utc; worker=$file.Directory.Name; fixture=$Receipt.fixture_basename; output=$summaryPath
+    } | ConvertTo-Json -Compress
+    $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($arguments))
+    # Isolate ETL decoding from the worker and enforce a hard transport bound.
+    $decoder = @'
+$ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
+Set-StrictMode -Version Latest
+function Read-FixtureLaunchTrace {
+__READER__
+}
+$parameters=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__INPUT__')) | ConvertFrom-Json
+$summary=Read-FixtureLaunchTrace $parameters.path $parameters.process_id $parameters.start $parameters.end $parameters.worker $parameters.fixture
+$encodedSummary=[Text.Encoding]::UTF8.GetBytes(($summary | ConvertTo-Json -Depth 6 -Compress))
+if ($encodedSummary.Length -gt 4096) { throw 'Trace summary exceeded its output limit.' }
+$output=[IO.File]::Open($parameters.output,'CreateNew','Write','None')
+try { $output.Write($encodedSummary,0,$encodedSummary.Length) } finally { $output.Dispose() }
+'@
+    $definition = (Get-Command -Name Read-FixtureLaunchTrace -CommandType Function -ErrorAction Stop).Definition
+    $decoder = $decoder.Replace('__INPUT__', $payload).Replace('__READER__', $definition)
+    $decoderPath = Join-Path $file.DirectoryName 'read-applications-launch-trace.ps1'
+    $stream = [IO.File]::Open($decoderPath,'CreateNew','Write','None')
+    try {
+        $bytes = [Text.Encoding]::ASCII.GetBytes($decoder)
+        $stream.Write($bytes, 0, $bytes.Length)
+    } finally { $stream.Dispose() }
+    $decode = Invoke-FixtureTraceTool 'powershell.exe' @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',$decoderPath) 30000
+    $outcome.decode_status=$decode.kind
+    $outcome.decode_exit_code=$decode.exit_code
+    if ($decode.kind -ceq 'termination_unconfirmed') { $outcome.cleanup_error='decode_cleanup_unconfirmed' }
+    $outcome.status='decode_failed'
+    if ($decode.kind -ceq 'exited' -and $decode.exit_code -eq 0) {
+        try {
+            $summaryFile = [IO.FileInfo]::new($summaryPath)
+            if (-not $summaryFile.Exists -or $summaryFile.Length -le 0 -or $summaryFile.Length -gt 4096 -or
+                ($summaryFile.Attributes -band [IO.FileAttributes]::ReparsePoint)) { return $outcome }
+            $events = [IO.File]::ReadAllText($summaryPath) | ConvertFrom-Json
+            if ($events.status -cnotin @('captured','incomplete','decode_failed')) { return $outcome }
+            $outcome.events=$events
+            $outcome.status=if ($events.status -ceq 'captured' -and $outcome.loss_reported -eq $true) { 'incomplete' } else { $events.status }
+        } catch { $outcome.status='decode_failed' }
+    }
+    return $outcome
+}
 function Invoke-Fixture {
     param([string]$Path, [string]$Sentinel, [string]$Url = '-',
         [ValidateSet('execution','network_baseline_selected','network_baseline_control','network_block_selected','network_block_control','network_release_selected')][string]$ProbePhase = 'execution')
@@ -616,45 +1115,110 @@ function Invoke-Fixture {
     }
     if (@($script:result.fixture_probes).Count -ge 32) { throw 'Owned fixture observations exceed their bounded limit.' }
     $watch = [Diagnostics.Stopwatch]::StartNew()
+    $stages = [ordered]@{process_start=$null;wait_for_exit=$null;kill=$null;marker_read=$null;dispose=$null}
     $receipt = [ordered]@{
         sequence=(@($script:result.fixture_probes).Count + 1);phase=$ProbePhase;fixture_basename=$basename;sha256=(Get-Sha256 $Path)
-        requested_utc=[DateTime]::UtcNow.ToString('o');start_returned_utc=$null;finished_utc=$null;elapsed_ms=0
-        process_id=$null;started=$false;managed_phase='unobserved';exit=$null;native_error=0;timed_out=$false
-        error_category=$null;observation_error=$null;cleanup_error=$null
+        requested_utc=[DateTime]::UtcNow.ToString('o');process_start_utc=$null;start_returned_utc=$null;exit_observed_utc=$null;finished_utc=$null;elapsed_ms=0
+        process_id=$null;started=$false;managed_phase='unobserved';exit=$null;exit_confirmed=$null;native_error=0;timed_out=$false
+        stage_timings_ms=$stages;launch_trace=$null
+        error_category=$null;observation_error=$null;cleanup_error=$null;evidence_export_error=$null
     }
     $script:result.fixture_probes += @($receipt)
     $process = $null
+    $trace = $null
+    $traceStartElapsed = $null
     try {
         Write-Json $resultPath $script:result
         foreach ($marker in @($Sentinel,($Sentinel + '.phase'))) {
             if (Test-Path -LiteralPath $marker) { Remove-Item -LiteralPath $marker -Force }
         }
+        if ($Kind -eq 'Applications' -and $ProbePhase -ceq 'network_block_selected' -and $launchTraceProfile) {
+            $stageStarted = $watch.ElapsedMilliseconds
+            try { $trace = Start-FixtureLaunchTrace $launchTraceProfile $work }
+            catch { $trace = @{status='start_failed';owned=$false;cleanup_error=$null} }
+            finally { $traceStartElapsed = $watch.ElapsedMilliseconds - $stageStarted }
+        }
+        $receipt.process_start_utc = [DateTime]::UtcNow.ToString('o')
+        $stageStarted = $watch.ElapsedMilliseconds
         try { $process = Start-FixtureProcess $Path $Sentinel $Url }
         catch [ComponentModel.Win32Exception] {
             $receipt.native_error = $_.Exception.NativeErrorCode
             return @{ exit=-1; native_error=$receipt.native_error; started=$false }
         }
+        finally { $stages.process_start = $watch.ElapsedMilliseconds - $stageStarted }
         $receipt.start_returned_utc = [DateTime]::UtcNow.ToString('o')
         $receipt.process_id = $process.Id
-        if (-not $process.WaitForExit(15000)) {
+        $receipt.exit_confirmed = $false
+        $stageStarted = $watch.ElapsedMilliseconds
+        try { $receipt.exit_confirmed = $process.WaitForExit(15000) }
+        finally { $stages.wait_for_exit = $watch.ElapsedMilliseconds - $stageStarted }
+        if (-not $receipt.exit_confirmed) {
             $receipt.timed_out = $true
-            try { $process.Kill() } catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
             throw 'Fixture process timed out.'
         }
+        $receipt.exit_observed_utc = [DateTime]::UtcNow.ToString('o')
         $receipt.exit = $process.ExitCode
-        return @{ exit=$process.ExitCode; native_error=0; started=(Test-Path -LiteralPath $Sentinel) }
     }
     catch { $receipt.error_category = $_.Exception.GetBaseException().GetType().Name; throw }
     finally {
+        if ($null -ne $process -and -not $receipt.exit_confirmed) {
+            $stageStarted = $watch.ElapsedMilliseconds
+            try { $process.Kill() }
+            catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
+            finally { $stages.kill = $watch.ElapsedMilliseconds - $stageStarted }
+        }
+        $stageStarted = $watch.ElapsedMilliseconds
         try { $receipt.started = Test-Path -LiteralPath $Sentinel; $receipt.managed_phase = Read-FixturePhase $Sentinel }
         catch { $receipt.observation_error = $_.Exception.GetBaseException().GetType().Name }
-        try { if ($null -ne $process) { $process.Dispose() } }
-        catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
+        finally { $stages.marker_read = $watch.ElapsedMilliseconds - $stageStarted }
+        if ($null -ne $process) {
+            try {
+                if (-not $receipt.exit_confirmed) {
+                    $receipt.exit_confirmed = [bool]$process.HasExited
+                    if ($receipt.exit_confirmed) {
+                        $receipt.exit_observed_utc = [DateTime]::UtcNow.ToString('o')
+                    } elseif (-not $receipt.cleanup_error) {
+                        $receipt.cleanup_error = 'exit_unconfirmed'
+                    }
+                }
+            } catch {
+                $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name
+            } finally {
+                $stageStarted = $watch.ElapsedMilliseconds
+                try { $process.Dispose() }
+                catch { $receipt.cleanup_error = $_.Exception.GetBaseException().GetType().Name }
+                finally { $stages.dispose = $watch.ElapsedMilliseconds - $stageStarted }
+            }
+        }
         if ($receipt.cleanup_error) { $script:result.cleanup_errors += @('Owned fixture cleanup failed; preserve the guest.') }
         $watch.Stop(); $receipt.elapsed_ms = $watch.ElapsedMilliseconds; $receipt.finished_utc = [DateTime]::UtcNow.ToString('o')
-        Write-Json $resultPath $script:result
-        if ($receipt.observation_error -or $receipt.cleanup_error) { throw 'Owned fixture evidence or cleanup failed; preserve the guest.' }
+        $traceCleanupFailed = $false
+        if ($null -ne $trace) {
+            $traceStopClock = [Diagnostics.Stopwatch]::StartNew()
+            if ($trace.owned) {
+                try { $receipt.launch_trace = Stop-FixtureLaunchTrace $trace $receipt }
+                catch { $receipt.launch_trace = @{status='stop_failed';cleanup_error='stop_cleanup_unconfirmed'} }
+            } else {
+                $receipt.launch_trace = @{status=$trace.status;cleanup_error=$trace.cleanup_error}
+            }
+            $receipt.launch_trace['start_elapsed_ms'] = $traceStartElapsed
+            $receipt.launch_trace['stop_decode_elapsed_ms'] = $traceStopClock.ElapsedMilliseconds
+            if ($receipt.launch_trace.cleanup_error) {
+                $traceCleanupFailed = $true
+                $script:result.cleanup_errors += @('Owned launch trace teardown failed; preserve the guest.')
+            }
+        }
+        try { Write-Json $resultPath $script:result }
+        catch {
+            $receipt.evidence_export_error = $_.Exception.GetBaseException().GetType().Name
+            $script:result.cleanup_errors += @('Owned probe checkpoint export failed; preserve the guest.')
+            if (-not $receipt.error_category) { throw }
+        }
+        if (-not $receipt.error_category -and ($receipt.observation_error -or $receipt.cleanup_error -or $traceCleanupFailed)) {
+            throw 'Owned fixture evidence or cleanup failed; preserve the guest.'
+        }
     }
+    return @{ exit=$receipt.exit; native_error=0; started=$receipt.started }
 }
 function Assert-ExecutionDenied([string]$Path) {
     $sentinel = Join-Path $work ([Guid]::NewGuid().ToString('N') + '.started')
