@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import threading
 
 import pytest
+from defusedxml import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
 POWERSHELL = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32/WindowsPowerShell/v1.0/powershell.exe"
@@ -558,9 +559,25 @@ if($boundary.Count -ne 1 -or $staticLaunch.Count -ne 0) { @{boundary_ready=$fals
 $script:result=[ordered]@{fixture_probes=@();cleanup_errors=@()}
 $resultPath=Join-Path $work 'inert-result.json'
 $script:waits=@();$script:killed=$false;$script:disposed=$false;$script:starts=0
+$script:traceCalls=@()
+$launchTraceProfile=if($Case.StartsWith('trace_') -and $Case -ne 'trace_no_profile'){Join-Path $work 'mock-profile.wprp'}else{$null}
+$Kind=if($Case -eq 'trace_usb'){'USB'}else{'Applications'}
+$probePhase=if($Case -eq 'trace_baseline'){'network_baseline_selected'}else{'network_block_selected'}
 $sentinel=Join-Path $work 'network-started'
 $fixture=Join-Path $work 'OpenemsFixture.exe'
 [IO.File]::WriteAllText($fixture,'inert fixture bytes; never execute')
+function Start-FixtureLaunchTrace($ProfilePath,$WorkDirectory) {
+    $script:traceCalls+=@('start')
+    if($ProfilePath -ne $launchTraceProfile -or $WorkDirectory -ne $work){throw 'Unexpected trace boundary.'}
+    if($Case -eq 'trace_unavailable'){return @{status='unavailable';owned=$false}}
+    return @{status='recording';owned=$true}
+}
+function Stop-FixtureLaunchTrace($State,$Receipt) {
+    $script:traceCalls+=@('stop')
+    if(-not $State.owned -or $Receipt.process_id -ne 77){throw 'Unexpected trace ownership or PID.'}
+    if($Case -eq 'trace_stop_failure'){return @{status='stop_failed';event_count=0}}
+    return @{status='captured';event_count=3}
+}
 function Get-Sha256 {param($Path) return ('ab'*32)}
 function Start-FixtureProcess {
     param($Path,$Sentinel,$Url)
@@ -571,18 +588,27 @@ function Start-FixtureProcess {
         $phase=if($Case -eq 'bad_phase') {'untrusted-value'} elseif($Case -eq 'oversized_phase') {'x'*65} else {'before_network'}
         [IO.File]::WriteAllText(($Sentinel+'.phase'),$phase)
     }
-    $process=[pscustomobject]@{Id=77;ExitCode=$(if($Case -eq 'network_error'){31}else{0})}
-    $process|Add-Member ScriptMethod WaitForExit {param($Milliseconds) $script:waits+=@($Milliseconds);return ($Case -notin @('timeout','timeout_before_main','kill_failure'))}
-    $process|Add-Member ScriptMethod Kill {$script:killed=$true;if($Case -eq 'kill_failure'){throw [IO.IOException]::new('owned cleanup failed')}}
+    $process=[pscustomobject]@{Id=77;ExitCode=$(if($Case -eq 'network_error'){31}else{0});HasExited=$false}
+    $process|Add-Member ScriptMethod WaitForExit {
+        param($Milliseconds)
+        $script:waits+=@($Milliseconds)
+        $this.HasExited=$Case -notin @('timeout','timeout_before_main','kill_failure','kill_unconfirmed','trace_timeout','trace_stop_failure')
+        return $this.HasExited
+    }
+    $process|Add-Member ScriptMethod Kill {
+        $script:killed=$true
+        if($Case -eq 'kill_failure'){throw [IO.IOException]::new('owned cleanup failed')}
+        $this.HasExited=$Case -ne 'kill_unconfirmed'
+    }
     $process|Add-Member ScriptMethod Dispose {$script:disposed=$true}
     return $process
 }
 if($Case -eq 'export_failure') { function Write-Json {param($Path,$Value) throw [IO.IOException]::new('export failed')} }
 if($Case -eq 'overflow') { $script:result.fixture_probes=@(1..32 | ForEach-Object {@{sequence=$_}}) }
-$observed=$null;$errorCategory=$null
-try {$observed=Invoke-Fixture $fixture $sentinel 'https://example.org/' -ProbePhase 'network_block_selected'}
-catch {$errorCategory=$_.Exception.GetBaseException().GetType().Name}
-@{boundary_ready=$true;observed=$observed;error_category=$errorCategory;receipts=@($script:result.fixture_probes);waits=$script:waits;killed=$script:killed;disposed=$script:disposed;starts=$script:starts;cleanup_errors=$script:result.cleanup_errors}|ConvertTo-Json -Depth 8 -Compress
+$observed=$null;$errorCategory=$null;$errorMessage=$null
+try {$observed=Invoke-Fixture $fixture $sentinel 'https://example.org/' -ProbePhase $probePhase}
+catch {$errorCategory=$_.Exception.GetBaseException().GetType().Name;$errorMessage=$_.Exception.Message}
+@{boundary_ready=$true;observed=$observed;error_category=$errorCategory;error_message=$errorMessage;receipts=@($script:result.fixture_probes);waits=$script:waits;killed=$script:killed;disposed=$script:disposed;starts=$script:starts;cleanup_errors=$script:result.cleanup_errors;trace_calls=$script:traceCalls}|ConvertTo-Json -Depth 8 -Compress
 """
 
 
@@ -635,3 +661,138 @@ def test_owned_fixture_phase_markers_preserve_the_existing_request_contract():
     assert "SecurityProtocolType.Tls12" in fixture
     for phase in ("network_baseline_selected", "network_baseline_control", "network_block_selected", "network_block_control", "network_release_selected"):
         assert f"-ProbePhase '{phase}'" in source
+
+
+@pytest.mark.parametrize(
+    "case,entered,confirmed",
+    [
+        ("success", {"process_start", "wait_for_exit", "marker_read", "dispose"}, True),
+        ("timeout_before_main", {"process_start", "wait_for_exit", "kill", "marker_read", "dispose"}, True),
+        ("kill_failure", {"process_start", "wait_for_exit", "kill", "marker_read", "dispose"}, False),
+        ("kill_unconfirmed", {"process_start", "wait_for_exit", "kill", "marker_read", "dispose"}, False),
+        ("native_refusal", {"process_start", "marker_read"}, None),
+        ("export_failure", {"marker_read"}, None),
+    ],
+)
+def test_fixture_launch_times_distinguish_wait_cleanup_and_early_failures(tmp_path, case, entered, confirmed):
+    result = _run_functions(tmp_path, PROBE_OBSERVATION_DRIVER, case)
+    assert result["boundary_ready"] is True
+    receipt, = result["receipts"]
+    stages = receipt["stage_timings_ms"]
+    assert set(stages) == {"process_start", "wait_for_exit", "kill", "marker_read", "dispose"}
+    assert {name for name, duration in stages.items() if duration is not None} == entered
+    assert all(0 <= stages[name] <= receipt["elapsed_ms"] for name in entered)
+    assert receipt["exit_confirmed"] is confirmed
+    assert result["waits"] == ([15000] if "wait_for_exit" in entered else [])
+    if case in {"kill_failure", "kill_unconfirmed"}:
+        assert result["cleanup_errors"]
+    if case in {"timeout_before_main", "kill_unconfirmed"}:
+        assert receipt["timed_out"] is True and receipt["exit"] is None
+
+
+@pytest.mark.parametrize(
+    "case,status,calls",
+    [
+        ("trace_success", "captured", ["start", "stop"]),
+        ("trace_timeout", "captured", ["start", "stop"]),
+        ("trace_stop_failure", "stop_failed", ["start", "stop"]),
+        ("trace_unavailable", "unavailable", ["start"]),
+        ("trace_baseline", None, []),
+        ("trace_no_profile", None, []),
+        ("trace_usb", None, []),
+    ],
+)
+def test_fixture_launch_trace_belongs_only_to_selected_applications_probe(tmp_path, case, status, calls):
+    result = _run_functions(tmp_path, PROBE_OBSERVATION_DRIVER, case)
+    assert result["boundary_ready"] is True
+    receipt, = result["receipts"]
+    assert result["trace_calls"] == calls
+    trace = receipt.get("launch_trace")
+    if status:
+        assert trace["status"] == status
+    else:
+        assert trace is None
+    if case in {"trace_timeout", "trace_stop_failure"}:
+        assert receipt["timed_out"] is True
+        assert result["error_message"] == "Fixture process timed out."
+    else:
+        assert result["observed"]["exit"] == 0
+
+
+TRACE_OWNERSHIP_DRIVER = r"""
+$start=@($tree.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Start-FixtureLaunchTrace'
+},$true))
+if($start.Count -ne 1){@{boundary_ready=$false}|ConvertTo-Json -Compress;return}
+$commands=@($start[0].FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))
+$direct=@($start[0].FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.InvokeMemberExpressionAst] -and $node.Static -and $node.Member.Value -eq 'Start'
+},$true))
+if($direct.Count -gt 0 -or @($commands|Where-Object {$_.GetCommandName() -in @($null,'wpr','wpr.exe','Start-Process')}).Count -gt 0 -or
+   @($commands|Where-Object {$_.GetCommandName() -eq 'Invoke-FixtureTraceTool'}).Count -eq 0) {
+    @{boundary_ready=$false}|ConvertTo-Json -Compress;return
+}
+$script:toolCalls=@()
+$profile=Join-Path $work 'applications-launch-diagnostic.wprp'
+[IO.File]::WriteAllText($profile,'inert profile; actual recorder is mocked')
+function Invoke-FixtureTraceTool([string]$Tool,[string[]]$Arguments,[int]$TimeoutMs) {
+    $script:toolCalls+=@(@{tool=$Tool;arguments=$Arguments;timeout_ms=$TimeoutMs})
+    if($Arguments[0] -ceq '-status') {
+        switch($Case) {
+            'missing' { return @{kind='missing_tool';exit_code=$null;output=''} }
+            'active' { return @{kind='exited';exit_code=0;output='WPR is recording trace.'} }
+            'unknown' { return @{kind='exited';exit_code=1;output='unrecognized status'} }
+            'idle' { return @{kind='exited';exit_code=-984076288;output='0xc5583000'} }
+        }
+    }
+    if($Arguments[0] -ceq '-start'){return @{kind='exited';exit_code=0;output='recording started'}}
+    throw 'Unexpected recorder operation.'
+}
+$state=Start-FixtureLaunchTrace $profile $work
+@{boundary_ready=$true;status=$state.status;owned=$state.owned;calls=$script:toolCalls}|ConvertTo-Json -Depth 6 -Compress
+"""
+
+
+@pytest.mark.parametrize(
+    "case,status,owned",
+    [
+        ("missing", "missing_recorder", False),
+        ("active", "active_recording", False),
+        ("unknown", "recorder_status_unknown", False),
+        ("idle", "recording", True),
+    ],
+)
+def test_fixture_trace_takes_ownership_only_after_verified_idle_status(tmp_path, case, status, owned):
+    result = _run_functions(tmp_path, TRACE_OWNERSHIP_DRIVER, case)
+    assert result["boundary_ready"] is True, "test requires a mocked recorder command boundary"
+    assert result["status"] == status and result["owned"] is owned
+    calls = result["calls"]
+    assert [call["arguments"][0] for call in calls] == (["-status", "-start"] if owned else ["-status"])
+    assert calls[0]["arguments"] == ["-status"]
+    assert all(call["tool"] == "wpr.exe" and 0 < call["timeout_ms"] <= 30000 for call in calls)
+    if owned:
+        args = calls[1]["arguments"]
+        assert args[1].endswith("applications-launch-diagnostic.wprp!OpenemsApplicationsLaunch.Light")
+        assert "-filemode" not in args
+        assert args[2] == "-instancename" and args[3]
+
+
+def test_fixture_trace_profile_uses_bounded_kernel_buffers_without_stacks():
+    profile_path = ROOT / "deploy/applications-launch-diagnostic.wprp"
+    assert profile_path.is_file()
+    root = ElementTree.parse(profile_path).getroot()
+    profiles = [profile for profile in root.findall("./Profiles/Profile") if profile.get("LoggingMode") == "Memory"]
+    assert len(profiles) == 1
+    collector_refs = profiles[0].findall("./Collectors/SystemCollectorId")
+    assert len(collector_refs) == 1
+    collector = root.find(f"./Profiles/SystemCollector[@Id='{collector_refs[0].get('Value')}']")
+    assert collector is not None
+    buffer_size = int(collector.find("BufferSize").get("Value"))
+    buffer_count = int(collector.find("Buffers").get("Value"))
+    assert 0 < buffer_size * buffer_count <= 64 * 1024
+    keywords = {node.get("Value") for node in root.findall("./Profiles/SystemProvider/Keywords/Keyword")}
+    assert keywords == {"ProcessThread", "Loader", "CSwitch"}
+    assert not root.findall(".//Stack")
+    assert not root.findall(".//EventProvider")
