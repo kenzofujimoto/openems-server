@@ -108,6 +108,15 @@ $one.ProviderName='Microsoft-Windows-CAPI2'
 $one.Xml='<!DOCTYPE Event [<!ENTITY local "not allowed">]><Event>&local;</Event>'
 Assert-Rejected { Select-BrowserRootCapi2Events -Events @($one) -WindowStart $start -WindowEnd $end -Thumbprints @($a) } 'XML'
 """, id="rejects-truncated-unscoped-capi2-exports"),
+    pytest.param(r"""
+$one=New-Event $start.UtcDateTime 10 1870 ('<Chain Thumbprint="' + $a + '" />')
+$one.ProcessId=$null
+$one.ThreadId=$null
+$result=Select-BrowserRootCapi2Events -Events @($one) -WindowStart $start -WindowEnd $end -Thumbprints @($a)
+Assert-Equal @($a) @($result.events[0].matched_thumbprints)
+Assert-Equal $null $result.events[0].pid
+Assert-Equal $null $result.events[0].thread_id
+""", id="preserves-capi2-evidence-without-optional-execution-metadata"),
 ])
 def test_root_trace_contract(tmp_path, case):
     assert TRACE_HELPER.is_file(), "diagnostic parsing helper is required"
