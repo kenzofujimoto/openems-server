@@ -1,6 +1,27 @@
 # Aceite final do roadmap desktop
 
-## Estado vigente — 09/11/2026. CI aprovado; catálogo e USB atuais aprovados; demais aceites Windows pendentes
+## Estado vigente — 17/11/2026
+
+O candidato Windows usa os dois MSIs de `ec50572` registrados no [recibo de validação](validation/windows-release-checkpoint-2026-11-17.json). O aceite de aplicativos fechou. O aceite de Chrome e Firefox ainda depende da comparação exata dos certificados raiz após a remoção.
+
+| Área | Resultado | Evidência |
+|---|---|---|
+| Catálogo | **8/8**, rechecagem real de 3.609 s e limpeza verificada | [Rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) |
+| USB físico | **8/8**, liberação, remoção e canário físico verificados | [Rodada 26](validation/usb-vm-5354a16-run26-review-2026-11-08.json) |
+| Aplicativos | **10/10**, rede por caminho, WDAC por hash e editor, cópias renomeadas e remoção MSI com código 0 | [Rodada 34](validation/windows-release-checkpoint-2026-11-17.json) |
+| Sessão, upgrade e reboot real | **8/8**, recuperação e remoção verificadas | [Sessão e upgrade](validation/windows-session-ec50572-review-2026-11-09.json) |
+| Locais de rede | **8/8**, transições offline e limpeza verificadas | [Locais de rede](validation/windows-locations-ec50572-review-2026-11-09.json) |
+| Chrome e Firefox | **Pendente**. As tentativas 4 e 6 aprovaram as seis navegações e reprovaram a comparação final de certificados | [Tentativas 4–8](validation/browser-ec50572-retries4-8-review-2026-11-09.json) |
+
+A rodada 34 chegou ao resultado terminal apesar da interrupção do observador. A recuperação confirmou o ACK de liberação v8, o hash original do `hosts`, zero regras gerenciadas de firewall e NRPT e a remoção do serviço. Um log independente confirmou o código de remoção do MSI. O WPR reportou `recorder_status_unknown`. [Recibo de validação](validation/windows-release-checkpoint-2026-11-17.json)
+
+Em um Windows Sandbox sem o agente, Chrome e Firefox receberam HTTP 200 com TLS normal. Surgiram DigiCert Assured ID Root CA após o Chrome e ISRG Root X1 após o Firefox. A origem das raízes GlobalSign e IdenTrust observadas na tentativa 6 segue em aberto. O próximo teste precisa registrar os certificados após cada navegador e antes e depois da remoção, mantendo a comparação final estrita. [Controle sem agente](validation/windows-release-checkpoint-2026-11-17.json)
+
+Na revisão de código `98e5295`, os 20 checks do PR passaram. O CI executou 495 casos Windows e atingiu 97,28% de cobertura combinada. A suíte Python local aprovou 1.683 testes, com 57 skips e quatro casos desselecionados no host. O PR segue em rascunho. [CI](https://github.com/kenzofujimoto/openems-server/actions/runs/43928213466) · [Security](https://github.com/kenzofujimoto/openems-server/actions/runs/43928213461) · [CodeQL](https://github.com/kenzofujimoto/openems-server/actions/runs/43928213488) · [PR #13](https://github.com/kenzofujimoto/openems-server/pull/13)
+
+A regressão web completa, a assinatura de distribuição e o piloto operacional têm aceites próprios. O Linux ainda precisa de aceite operacional em VM. O macOS segue parcial em Network Extension e Endpoint Security.
+
+## Histórico — 09/11/2026
 
 O plano [windows-release-completion.md](windows-release-completion.md) foi aprovado explicitamente pelo operador em 08/11. O candidato usa o par MSI nativo de `ec50572`: produção SHA-256 `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a` e próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. As fontes nativas, scripts incorporados e dados DoH não mudaram entre essa revisão e o fechamento do aceite USB. Os resultados abaixo pertencem a esses bytes; o histórico permanece preservado.
 

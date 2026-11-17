@@ -1,6 +1,18 @@
 # Handoff — roadmap v2
 
-## Applications launch trace checkpoint — 2026-11-16
+## Retomada — 17/11/2026
+
+Comece pelo [estado vigente do aceite](ACCEPTANCE.md) e pelo [recibo de validação](validation/windows-release-checkpoint-2026-11-17.json). A revisão de código validada no GitHub é `98e52958b523891332354836bfcd4e17c5d099cd`. Os 20 checks passaram, com 495 casos Windows e cobertura combinada de 97,28%. O PR está em rascunho. [PR #13](https://github.com/kenzofujimoto/openems-server/pull/13)
+
+**Aceite de aplicativos concluído.** A rodada 34 (`a371572d`) passou 10/10 com os MSIs congelados de `ec50572`. O observador recebeu `UnauthorizedAccessException` e o lançador recebeu `FileNotFoundException` ao ler o mesmo checkpoint. A tarefa SYSTEM continuou e o relatório final foi recuperado. A prova independente registrou remoção MSI com código 0, ACK de liberação v8 e limpeza preservada. O WPR registrou `recorder_status_unknown`. A causa do erro de leitura do observador ainda está em aberto. As rodadas 30 e 32 permanecem no histórico de falhas. [Evidência da rodada 34](validation/windows-release-checkpoint-2026-11-17.json)
+
+**Próxima etapa.** Em um Windows descartável, execute o cenário de Chrome e Firefox com o agente e os mesmos binários congelados. Verifique a sessão interativa antes da preparação. Registre as raízes em `LocalMachine\Root` e `CurrentUser\Root` no baseline, quando o agente estiver pronto, depois de cada navegador e antes e depois da remoção. Compare o resultado final com o baseline e confirme a ausência da raiz do OpenEMS. Preserve a guarda estrita, TLS normal e os prazos de aceite. Se precisar mudar o roteiro ou os prazos, escreva o plano TDD antes de editar.
+
+No controle sem agente (`32047b88`), as sondas completas de Chrome e Firefox retornaram HTTP 200 e duraram 33,426 s e 20,127 s, respectivamente. A raiz DigiCert Assured ID apareceu após a sonda do Chrome e a ISRG Root X1 após a do Firefox. As duas durações superaram a janela externa de 15 s do roteiro anterior de preparação. As raízes GlobalSign e IdenTrust da tentativa 6 continuam sem origem confirmada. O controle serve para localizar mudanças nas raízes. O aceite com o agente segue pendente. [Histórico das tentativas de navegador](validation/browser-ec50572-retries4-8-review-2026-11-09.json) · [Controle e hashes](validation/windows-release-checkpoint-2026-11-17.json)
+
+O VMware está desligado e os Sandboxes criados para o controle foram encerrados. A rodada 34 não tem coletas pendentes. Os originais locais estão no diretório da conversa em `~/.codex/visualizations/2026/11/02/01a19c5c-83cd-7ed3-9c5a-ef35524a3830/`, nas pastas `applications-retry-a371572d/recovered-worker` e `browser-trust-probes-32047b88`. O próximo teste pode começar no Sandbox, com um guest por vez. Os checkpoints datados abaixo descrevem estados históricos.
+
+## Historical Applications launch trace checkpoint — 2026-11-16
 
 The approved three-file trace plan has failing test commits `5d86979`, `6e11bf4`, `a2a36b5` and `ff37d2a`. The working implementation adds stage timings, bounded and uniquely named memory recording on the selected Applications network probe, sanitized ETL summaries, and confirmed owned-process cleanup. The final isolated, agent-free Windows Sandbox calibration `c4eab8a7-47bb-448b-b25f-d2e4a99ea5e7` matched harness SHA-256 `655aaf25932ac982600ce34d82474d69ba958a04f2742e89c8d957af9d6bf480` and profile SHA-256 `a7248dced62a305b5bccc5b8fab338f80c43a4fbee30c59cabc8e441f4b008fb`. It verified the process, first thread and image in 24.664 s with zero parser errors. Scheduling and the kernel exit event remain unobserved in this calibration. The Sandbox was stopped. Failed calibrations remain in their own local folders.
 

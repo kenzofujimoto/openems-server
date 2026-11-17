@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-17",
+  "status": "applications_passed_browser_acceptance_pending",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "frozen_msi_sha256": {
+    "production": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+    "next": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112"
+  },
+  "applications": {
+    "round": 34,
+    "run_id": "a371572ddcc64a47b646302f34d36d21",
+    "harness_revision": "1452c0e96c4fe1ed8375c134189f5f5ff08d4d70",
+    "status": "passed",
+    "checks_total": 10,
+    "checks_passed": 10,
+    "cleanup_errors": 0,
+    "final_policy_version": 8,
+    "release_acknowledged": true,
+    "msi_removal_code": 0,
+    "owned_service_process_watchdog_and_journal_absent": true,
+    "owned_firewall_rules": 0,
+    "owned_nrpt_rules": 0,
+    "hosts_preserved": true,
+    "unrelated_firewall_hid_and_code_integrity_preserved": true,
+    "terminal_report_recovered": true,
+    "observer_error": "UnauthorizedAccessException",
+    "launcher_checkpoint_error": "FileNotFoundException",
+    "wpr_status": "recorder_status_unknown",
+    "previous_round_32_status": "failed_before_network_policy",
+    "evidence_sha256": {
+      "applications-recovered-checkpoint.json": "4581c4db16b3a9a9ba575d6fd0f2e4d4dedfbd0646a8ea580710df113cde3429",
+      "applications-recovery-diagnostics.json": "39f2a36eb1ee99d1585d4b02a4126c55bc1b83943f6e583cf4f2380f614b8ab6",
+      "applications-removal-proof.json": "0f1f4a77a98202d2f43a700337d86dad2d49a00d411fa90a858c776160d173eb"
+    }
+  },
+  "browsers": {
+    "status": "candidate_acceptance_pending",
+    "previous_browser_navigation_passes": 6,
+    "previous_strict_root_comparison": "failed",
+    "previous_roots_without_confirmed_origin": ["GlobalSign", "IdenTrust"],
+    "agent_free_control": {
+      "run_id": "32047b88-d159-455f-9f1c-366e5f850cca",
+      "memory_mb": 3072,
+      "guest_stopped": true,
+      "root_views": ["LocalMachine/Root", "CurrentUser/Root"],
+      "roots_removed": 0,
+      "strict_candidate_gate_executed": false,
+      "probes": [
+        {
+          "browser": "chrome",
+          "http_status": 200,
+          "normal_tls": true,
+          "elapsed_ms": 33426,
+          "root_observed_after_probe": "DigiCert Assured ID Root CA",
+          "root_thumbprint": "0563B8630D62D75ABBC8AB1E4BDFB5A899B24D43"
+        },
+        {
+          "browser": "firefox",
+          "http_status": 200,
+          "normal_tls": true,
+          "elapsed_ms": 20127,
+          "root_observed_after_probe": "ISRG Root X1",
+          "root_thumbprint": "CABD2A79A1076A31F21D253635CB039D4329A5E8"
+        }
+      ],
+      "previous_attempt_6_roots_seen": 0,
+      "private_review_sha256": "c0e76124f03fe4fc0335eca53d8c4905a76fd3bc40cb633fd9438681334facc8"
+    }
+  },
+  "verified_code_revision": "98e52958b523891332354836bfcd4e17c5d099cd",
+  "github": {
+    "draft_pr": 13,
+    "successful_checks": 20,
+    "ci_run": 43928213466,
+    "security_run": 43928213461,
+    "codeql_run": 43928213488,
+    "windows_cases_passed": 495,
+    "combined_coverage_percent": 97.28,
+    "codeql_alert_124": "fixed"
+  },
+  "local_validation": {
+    "pytest_passed": 1683,
+    "pytest_skipped": 57,
+    "pytest_deselected": 4,
+    "rust_passed": 256,
+    "node_contract_passed": 39
+  }
+}

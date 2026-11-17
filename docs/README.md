@@ -1,6 +1,6 @@
 # Documentação do OpenEMS
 
-Referência de aceites atualizada em 09/11/2026. Os documentos de planejamento na raiz preservam decisões e evidências históricas; não são uma declaração de paridade com FortiGate/FortiGuard.
+Referência de aceites atualizada em 17/11/2026. Os documentos de planejamento na raiz preservam as decisões, as evidências históricas e o alcance da comparação com FortiGate e FortiGuard.
 
 | Necessidade | Documento atual |
 |---|---|
@@ -25,7 +25,7 @@ Referência de aceites atualizada em 09/11/2026. Os documentos de planejamento n
 
 ## Estado atual
 
-- Windows: agente Rust e MSI, filtro web, componente de sessão, proteção do serviço, locais de rede, USB e controles de aplicativos implementados. O par MSI `ec50572` passou no [catálogo8/8](../validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json), [USB físico8/8](../validation/usb-vm-5354a16-run26-review-2026-11-08.json), [sessão/upgrade/reboot8/8](../validation/windows-session-ec50572-review-2026-11-09.json) e [locais8/8](../validation/windows-locations-ec50572-review-2026-11-09.json), com limpeza verificada. [CI, Security e CodeQL passaram em7e84493](../validation/windows-ci-7e84493-review-2026-11-09.json). Applications por editor e aceite global dos navegadores continuam pendentes; alcance e falhas preservadas em HANDOFF/ACCEPTANCE.
+- **Windows.** O par MSI `ec50572` passou nos aceites de catálogo, USB físico, aplicativos, sessão, upgrade, reboot e locais de rede, com limpeza verificada. O aceite de Chrome e Firefox segue pendente na comparação dos certificados raiz. Os 20 checks do GitHub passaram na revisão `98e5295`. [Matriz de aceite](../ACCEPTANCE.md) · [Recibo](../validation/windows-release-checkpoint-2026-11-17.json)
 - Painel: React com políticas, categorias, exceções por domínio, horários, SafeSearch, inventários, eventos, grupos/regras e administração.
 - Categorias: 27 IDs UT1, dependentes da publicação das listas no servidor, com estado de saúde. Sem uso da base ou dos IDs proprietários FortiGuard.
 - Eventos web: bloqueios e monitoramentos DNS separados, agregados por máquina/domínio/hora, com deduplicação de lotes e descartes separados. Não representam histórico completo de páginas visitadas.
