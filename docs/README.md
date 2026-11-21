@@ -7,6 +7,7 @@
 | Quero… | Onde consultar |
 | --- | --- |
 | Executar o servidor e abrir o painel | [README do projeto](../README.md) |
+| Preparar um piloto nesta máquina Windows | [Piloto local](local-windows-pilot.md) |
 | Testar USB e WDAC em uma VM Windows descartável | [Guia de VM](vm-acceptance-guide.md) |
 | Repetir os testes de USB e navegadores em outra máquina | [Aceite na segunda máquina](second-machine-acceptance.md) |
 | Instalar o agente nativo em Linux | [Suporte Linux](../deploy/linux/SUPPORT.md) |
