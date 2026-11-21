@@ -1,36 +1,35 @@
 # Documentação do OpenEMS
 
-Referência de aceites atualizada em 17/11/2026. Os documentos de planejamento na raiz preservam as decisões, as evidências históricas e o alcance da comparação com FortiGate e FortiGuard.
+[Início rápido](../README.md) · [Contribuição](../CONTRIBUTING.md) · [Política de segurança](../SECURITY.md)
 
-| Necessidade | Documento atual |
-|---|---|
-| Executar o servidor e o painel | [README](../README.md) |
-| Estado implementado e pendências | [HANDOFF](../HANDOFF.md) |
-| Testar em homologação, Sandbox e VMs | [ACCEPTANCE](../ACCEPTANCE.md) |
-| Fechar os gates da candidata Windows | [Plano de fechamento](../windows-release-completion.md) |
-| Reproduzir controles em VM descartável | [Guia de VM](vm-acceptance-guide.md) |
-| Categorias, exceções e comparação FortiGuard | [Filtro web e compatibilidade](web-filter-compatibility.md) |
-| Permitir/Bloquear/Monitorar e lacunas | [Plano das ações de filtro web](web-filter-actions-plan.md) |
-| Matriz de testes das novas ações | [Aceite das ações web](web-filter-actions-acceptance.md) |
-| Roteiro do notebook com pendrive, Chrome e Firefox | [Aceite na segunda máquina](second-machine-acceptance.md) |
-| Revisão de segurança e scanners | [Revisão de 27/10/2026](security-review-2026-10-27.md) |
-| Contrato de política, capacidades e eventos | [Web action contract](web-filter-actions-contract.md) |
-| Fontes, licença e limites das categorias | [Auditoria de fontes](category-source-audit.md) |
-| Extensão opcional e integração pendente | [Browser visibility](../browser-extension/README.md) |
-| Objetivos e limites por fase | [Roadmap desktop](../roadmap-v2.md) |
-| Suporte Linux e geração de pacotes | [Linux](../deploy/linux/SUPPORT.md) |
-| Limites e pré-requisitos macOS | [macOS](../deploy/macos/SUPPORT.md) |
-| Contrato de interoperabilidade | [SPEC-INTEROP](../SPEC-INTEROP.md) |
-| Agente Python de referência | [Agente de referência](../agent/README.md) |
+## Instalar e homologar
 
-## Estado atual
+| Quero… | Onde consultar |
+| --- | --- |
+| Executar o servidor e abrir o painel | [README do projeto](../README.md) |
+| Testar USB e WDAC em uma VM Windows descartável | [Guia de VM](vm-acceptance-guide.md) |
+| Repetir os testes de USB e navegadores em outra máquina | [Aceite na segunda máquina](second-machine-acceptance.md) |
+| Instalar o agente nativo em Linux | [Suporte Linux](../deploy/linux/SUPPORT.md) |
+| Preparar o pacote e revisar os requisitos no macOS | [Suporte macOS](../deploy/macos/SUPPORT.md) |
 
-- **Windows.** O par MSI `ec50572` passou nos aceites de catálogo, USB físico, aplicativos, sessão, upgrade, reboot e locais de rede, com limpeza verificada. O aceite de Chrome e Firefox segue pendente na comparação dos certificados raiz. Os 20 checks do GitHub passaram na revisão `98e5295`. [Matriz de aceite](../ACCEPTANCE.md) · [Recibo](../validation/windows-release-checkpoint-2026-11-17.json)
-- Painel: React com políticas, categorias, exceções por domínio, horários, SafeSearch, inventários, eventos, grupos/regras e administração.
-- Categorias: 27 IDs UT1, dependentes da publicação das listas no servidor, com estado de saúde. Sem uso da base ou dos IDs proprietários FortiGuard.
-- Eventos web: bloqueios e monitoramentos DNS separados, agregados por máquina/domínio/hora, com deduplicação de lotes e descartes separados. Não representam histórico completo de páginas visitadas.
-- Permitir/Bloquear/Monitorar: implementado com seletor acessível e compatibilidade explícita de agentes. Aceites históricos em Sandbox e Chrome/Firefox físicos com MSI `18cd811` estão no [roteiro da segunda máquina](second-machine-acceptance.md). A regressão da candidata `ec50572` continua pendente.
-- Extensão Chrome/Firefox: pacotes separados e testes de contrato; broker nativo e aceite real pendentes. Inativa sem pareamento, coleta desligada por padrão.
-- Linux: implementação/pacotes aguardam aceite em VM. macOS permanece incompleto em Network Extension/Endpoint Security. F9 excluída.
+## Entender políticas e componentes
 
-Na transferência entre máquinas, arquivos ignorados (`.env`, `.venv`, builds, certificados e estado local) não acompanham o clone. Não transferir CA privada nem credenciais de um endpoint para outro.
+| Quero… | Onde consultar |
+| --- | --- |
+| Entender o filtro web e a compatibilidade com FortiGuard | [Filtro web e compatibilidade](web-filter-compatibility.md) |
+| Definir precedência entre regras de domínio | [Regras ordenadas de domínio](ordered-domain-rules.md) |
+| Aplicar e testar Permitir, Bloquear e Monitorar | [Contrato das ações web](web-filter-actions-contract.md) · [Roteiro de aceite](web-filter-actions-acceptance.md) |
+| Conferir a origem, as licenças e a cobertura de categorias | [Auditoria de fontes](category-source-audit.md) |
+| Desenvolver a extensão opcional para Chrome e Firefox | [Extensão e integração com o agente](../browser-extension/README.md) |
+| Ler as interfaces observadas no protocolo EMS | [Especificação de interoperabilidade](../SPEC-INTEROP.md) |
+| Consultar o agente Python de referência | [Agente de referência](../agent/README.md) |
+
+## Acompanhar validação e mudanças
+
+- [Roadmap desktop](../roadmap-v2.md) reúne as fases e o escopo do projeto.
+- [Matriz de aceite](../ACCEPTANCE.md) e [handoff técnico](../HANDOFF.md) registram o histórico. Acompanhe a validação do candidato Windows no [PR #13](https://github.com/kenzofujimoto/openems-server/pull/13).
+- [Ferramentas e gates de segurança](security-tooling.md) explica as verificações locais e no CI.
+
+## Homologação Windows atual
+
+O par MSI ec50572 passou nos aceites de catálogo, USB físico, aplicativos, sessão, upgrade, reboot e locais. A comparação final de raízes dos navegadores segue em investigação. A matriz reúne o alcance e os hashes de cada rodada. [Matriz atual](../ACCEPTANCE.md) · [Plano de fechamento](../windows-release-completion.md)
