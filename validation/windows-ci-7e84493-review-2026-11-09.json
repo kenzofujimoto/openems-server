@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-11-09T20:03:01Z",
+  "source_revision": "7e84493c8bd133fd465c1609413470ba8763b448",
+  "status": "hosted_ci_passed_guest_release_acceptance_pending",
+  "pull_request": "https://github.com/kenzofujimoto/openems-server/pull/13",
+  "workflows": [
+    {
+      "id": 42674845590,
+      "conclusion": "success",
+      "url": "https://github.com/kenzofujimoto/openems-server/actions/runs/42674845590",
+      "jobs": [
+        {
+          "id": 129353329612,
+          "name": "integration",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353329637,
+          "name": "panel",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353329698,
+          "name": "windows-service",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353329832,
+          "name": "native-agent",
+          "conclusion": "success"
+        },
+        {
+          "id": 129356043454,
+          "name": "coverage",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 42674846062,
+      "conclusion": "success",
+      "url": "https://github.com/kenzofujimoto/openems-server/actions/runs/42674846062",
+      "jobs": [
+        {
+          "id": 129353338457,
+          "name": "workflows",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353338899,
+          "name": "dependencies",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353339145,
+          "name": "sast",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353339194,
+          "name": "container",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353339318,
+          "name": "dependency-review",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353339383,
+          "name": "dast",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353339514,
+          "name": "secrets",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 42674845932,
+      "conclusion": "success",
+      "url": "https://github.com/kenzofujimoto/openems-server/actions/runs/42674845932",
+      "jobs": [
+        {
+          "id": 129353338113,
+          "name": "analyze (javascript-typescript)",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353338591,
+          "name": "analyze (python)",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353338972,
+          "name": "analyze (rust)",
+          "conclusion": "success"
+        },
+        {
+          "id": 129353339013,
+          "name": "analyze (actions)",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "integration": {
+      "passed": 1246,
+      "deselected_windows": 470,
+      "skipped": 0,
+      "seconds": 111.39
+    },
+    "native": {
+      "rust_passed": 256,
+      "contract_passed": 11,
+      "contract_seconds": 6.74,
+      "windows_passed": 467,
+      "deselected_other_platforms": 1140,
+      "skipped": 0,
+      "windows_seconds": 342.39,
+      "inventory_assertions_passed": true,
+      "inventory_budget_seconds": 1260,
+      "inventory_individual_elapsed_seconds": null,
+      "inventory_elapsed_limitation": "JUnit properties were generated on the runner but XML was not uploaded in the native artifact; no exact individual duration is claimed."
+    },
+    "combined_coverage": {
+      "percent": 97.28,
+      "statements": 4405,
+      "missed": 120,
+      "no_skip_and_per_module_gates": "passed"
+    }
+  },
+  "artifact": {
+    "id": 13700531765,
+    "sha256": "957541ad9c65e0e3bfb07374ed7846c73c9a32a05c7cee4ebd745691c75f22be",
+    "bytes": 8264407,
+    "xml_included": false,
+    "used_to_replace_frozen_candidate": false
+  },
+  "candidate": {
+    "native_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+    "production_msi_sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+    "next_msi_sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112"
+  },
+  "limitations": [
+    "Hosted CI success does not close current physical/guest application, browser, session/upgrade or location acceptance.",
+    "Previous failed runs remain failed and preserved.",
+    "No merge or release was performed."
+  ]
+}

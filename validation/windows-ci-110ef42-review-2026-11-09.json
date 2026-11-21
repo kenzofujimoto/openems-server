@@ -1,0 +1,43 @@
+{
+  "source_revision": "110ef42349ed3b9b2b818e9ed8b6ee1df9c8617f",
+  "pull_request": "https://github.com/kenzofujimoto/openems-server/pull/13",
+  "draft": true,
+  "overall_passed": false,
+  "runs": {
+    "security": {"id": 42661726648, "conclusion": "success", "jobs_passed": 7},
+    "codeql": {"id": 42661726690, "conclusion": "success", "jobs_passed": 4},
+    "ci": {
+      "id": 42661726659,
+      "conclusion": "failure",
+      "passed_jobs": ["integration", "windows-service", "panel", "coverage"],
+      "failed_job": "native-agent",
+      "failed_job_id": 129314747553,
+      "windows_group": {"passed": 448, "failed": 1, "deselected": 1135},
+      "failure": "test_native_inventory_reports_bounded_read_only_snapshot_without_control_journals: subprocess.TimeoutExpired after the test's 90-second outer limit",
+      "interpretation": "This reproduces the same outer-budget failure from run42609462979. The existing product permits two sequential background collectors with up to600seconds each. Matching the outer test budget requires successful bounded output; it cannot turn an internal product timeout/error into a pass."
+    }
+  },
+  "runtime_sbom": {
+    "artifact_id": 13694377319,
+    "artifact_name": "sbom",
+    "zip_sha256": "4e9bf432d57663ec29654ada9ee0b7358f9756705ae16401c32f44abf7888a29",
+    "json_sha256": "d9d22467bf491c40ef5397301776382f23f60a4bcd84415beae72347194b7a5c",
+    "verified_packages": {
+      "apt": "3.0.4",
+      "libapt-pkg7.0": "3.0.4",
+      "zlib1g": "1:1.3.dfsg+really1.3.1-1+deb13u1"
+    }
+  },
+  "docker_restoration": {
+    "verified_utc": "2026-11-09T17:21:42.0412440Z",
+    "restore_required": false,
+    "original_container_ids_and_states_match": true,
+    "container_count": 29,
+    "active_count": 13,
+    "inactive_count": 16,
+    "containers_or_volumes_recreated": false
+  },
+  "unchanged_native_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "remaining_acceptance": ["applications", "browsers", "session-upgrade-reboot", "locations"],
+  "release_or_merge_performed": false
+}

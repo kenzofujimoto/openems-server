@@ -1,0 +1,232 @@
+{
+  "source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "run_id": "cd0e715e3e1b42238c7b4ee15fb1034b",
+  "passed": true,
+  "guest_status": "passed",
+  "started_utc": "2026-11-06T18:32:02.6814281Z",
+  "finished_utc": "2026-11-06T19:39:18.7832426Z",
+  "original_report": {
+    "sha256": "99932249b6291f418c4a26df861fcb48e8add6e71c6c7ab8e856f713b004e19a",
+    "bytes": 894501
+  },
+  "shared_source": "catalog-result.json",
+  "host_semantic_verification": {
+    "passed": true,
+    "errors": [],
+    "local_enforcement_failures": []
+  },
+  "package_receipt": {
+    "manifest_sha256": "6f2bf4a5f9698c7b9cc41b2ca5acbc03c5043c6e7517afa353d1fc43fd76c2d5",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+        "bytes": 8667136
+      },
+      "openems-agent-next.msi": {
+        "sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+        "bytes": 8667136
+      }
+    },
+    "source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e"
+  },
+  "snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": 1,
+    "restore_at_utc": "2026-11-06T16:34:14.590Z",
+    "iso_connected_at_utc": "2026-11-06T16:52:48.821Z"
+  },
+  "power_observation": {
+    "from_utc": "2026-11-06T16:52:48.821Z",
+    "through_utc": "2026-11-06T19:39:18.7832426Z",
+    "vmware_log_files": [
+      "vmware.log",
+      "vmware-0.log",
+      "vmware-1.log",
+      "vmware-2.log"
+    ],
+    "events": []
+  },
+  "checks": [
+    {
+      "name": "absent",
+      "status": "passed"
+    },
+    {
+      "name": "network",
+      "status": "passed"
+    },
+    {
+      "name": "process",
+      "status": "passed"
+    },
+    {
+      "name": "wdac",
+      "status": "passed"
+    },
+    {
+      "name": "all_absent",
+      "status": "passed"
+    },
+    {
+      "name": "hourly",
+      "status": "passed"
+    },
+    {
+      "name": "release",
+      "status": "passed"
+    },
+    {
+      "name": "cleanup",
+      "status": "passed"
+    }
+  ],
+  "verified_effects": [
+    "absent",
+    "network",
+    "process",
+    "wdac",
+    "all_absent",
+    "hourly",
+    "release",
+    "cleanup"
+  ],
+  "effect_errors": {},
+  "owned_cleanup_verified": true,
+  "owned_cleanup_error": null,
+  "owned_cleanup": {
+    "msi_exit": 0,
+    "service_present": false,
+    "watchdog_present": false,
+    "nrpt_count": 0,
+    "owned_firewall_rules": 0,
+    "own_policy_present": false,
+    "fixture_registry_present": false,
+    "collection_status": "complete",
+    "collection_errors": []
+  },
+  "foreign_ci_count_before": 14,
+  "foreign_ci_count_after": 14,
+  "foreign_ci_preserved": true,
+  "cleanup_errors": [],
+  "guest_error": null,
+  "firewall": {
+    "preserved": true,
+    "before_utc": "2026-11-06T18:32:04.0271814Z",
+    "after_utc": "2026-11-06T19:39:13.2131284Z",
+    "rules_before": 485,
+    "rules_after": 485,
+    "differences_verified": true,
+    "differences": []
+  },
+  "hourly": {
+    "monotonic_elapsed_seconds": 3609.1869963,
+    "utc_elapsed_seconds": 3609.228151,
+    "optional_checked_at_delta_seconds": 3608,
+    "assignment_observation_count": 63,
+    "assignment_versions": [
+      6
+    ],
+    "before_admission": {
+      "process_created": true,
+      "native_error": 0
+    },
+    "after_denial": {
+      "native_error": 4551,
+      "process_created": false
+    }
+  },
+  "ack_failure_categories": {},
+  "diagnostics": {
+    "status": "complete",
+    "sha256": "87dc058aaf74d752f8f19b56cc6361c44264dc240645876030fb50c12ad1f628",
+    "bytes": 772,
+    "guest_report_matches_shared_bytes": true,
+    "log_count": 1,
+    "observation_count": 0,
+    "stage_counts": {},
+    "ack_correlations": [],
+    "unmatched_acks": [],
+    "unmatched_diagnostics": [],
+    "correlation_method": "Same assignment version and error category, within -1 to 20 seconds, with unique matching on both sides."
+  },
+  "preflight": {
+    "run_id": "cd0e715e3e1b42238c7b4ee15fb1034b",
+    "source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+    "manifest_sha256": "6f2bf4a5f9698c7b9cc41b2ca5acbc03c5043c6e7517afa353d1fc43fd76c2d5",
+    "status": "passed",
+    "elapsed_seconds": 5492,
+    "temporary_power_request": true,
+    "observations": [
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5176,
+        "changed_from_previous": true,
+        "stable_seconds": 0
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5211,
+        "changed_from_previous": false,
+        "stable_seconds": 35
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5246,
+        "changed_from_previous": false,
+        "stable_seconds": 70
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5284,
+        "changed_from_previous": false,
+        "stable_seconds": 108
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5319,
+        "changed_from_previous": false,
+        "stable_seconds": 143
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5354,
+        "changed_from_previous": false,
+        "stable_seconds": 178
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5389,
+        "changed_from_previous": false,
+        "stable_seconds": 213
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5423,
+        "changed_from_previous": false,
+        "stable_seconds": 247
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5458,
+        "changed_from_previous": false,
+        "stable_seconds": 282
+      },
+      {
+        "watched_package_count": 5,
+        "rule_count": 485,
+        "elapsed_seconds": 5492,
+        "changed_from_previous": false,
+        "stable_seconds": 316
+      }
+    ]
+  }
+}

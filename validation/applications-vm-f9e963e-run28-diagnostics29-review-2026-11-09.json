@@ -1,0 +1,35 @@
+{
+  "run_id": "ff650fb5de4d4c0fa97b8b5efb3a1df8",
+  "status": "failed_acceptance_preserved",
+  "diagnostic_identity_verified": true,
+  "diagnostic_errors": [],
+  "diagnostic": {
+    "name": "applications-probe-diagnostics-ff650fb5.json",
+    "sha256": "6f52f47b78985d2bf2aac0a967ba12e600fcafb213e509e6637db934960d2d64",
+    "bytes": 3563
+  },
+  "original_terminal_report_sha256": "dd0a9c2366384be974a06117ca560c6e5c2705406869bd2a88d0c90dc6267db0",
+  "positive_network_ack_utc": "2026-11-09T12:07:52.4392818Z",
+  "control_marker_modified_utc": "2026-11-09T12:07:00.6690088Z",
+  "selected_network_marker_absent": true,
+  "interpretation": "The unchanged control marker predates the positive network ACK. The selected probe is invoked first after that ACK and removes its previous marker before starting. Its marker is absent at collection. This localizes the interrupted branch to the selected post-policy invocation, before a successful marker write was observed; it does not establish why process startup or execution stalled.",
+  "limitations": [
+    "No independent per-invocation start/end/process timeline was exported by the legacy harness.",
+    "DNS, .NET startup, code verification, scheduling and endpoint filtering are hypotheses; none is proven by marker timestamps.",
+    "Pre-policy HTTPS and a positive network ACK do not establish successful post-policy isolation or publisher/hash enforcement.",
+    "Owned cleanup is independently corroborated; the failed run did not reach all foreign firewall/HID/CI final assertions."
+  ],
+  "owned_cleanup_reconfirmed": {
+    "managed_nrpt_count": 0,
+    "application_journal_absent": true,
+    "hosts_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085",
+    "watchdog_count": 0,
+    "managed_firewall_count": 0,
+    "fixture_process_count": 0,
+    "agent_process_absent": true,
+    "service_absent": true
+  },
+  "read_only_collection": true,
+  "host_controls_executed": false,
+  "required_next_evidence": "A bounded per-probe lifecycle (start, first instruction, exit/timeout) is needed before changing the fixture or attributing the timeout to product enforcement. Preserve 15-second probe and 90-second ACK budgets."
+}

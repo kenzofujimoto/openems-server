@@ -29,3 +29,7 @@
 - [Roadmap desktop](../roadmap-v2.md) reúne as fases e o escopo do projeto.
 - [Matriz de aceite](../ACCEPTANCE.md) e [handoff técnico](../HANDOFF.md) registram o histórico. Acompanhe a validação do candidato Windows no [PR #13](https://github.com/kenzofujimoto/openems-server/pull/13).
 - [Ferramentas e gates de segurança](security-tooling.md) explica as verificações locais e no CI.
+
+## Homologação Windows atual
+
+O par MSI ec50572 passou nos aceites de catálogo, USB físico, aplicativos, sessão, upgrade, reboot e locais. A comparação final de raízes dos navegadores segue em investigação. A matriz reúne o alcance e os hashes de cada rodada. [Matriz atual](../ACCEPTANCE.md) · [Plano de fechamento](../windows-release-completion.md)

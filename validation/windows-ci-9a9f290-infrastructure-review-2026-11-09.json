@@ -1,0 +1,56 @@
+{
+  "source_revision": "9a9f29056e97fd6695ef37711539686a6d93d9e3",
+  "status": "not_validated_infrastructure_failure",
+  "overall_passed": false,
+  "native_inventory_job_executed": false,
+  "runs": [
+    {
+      "name": "CI",
+      "id": 42672204808,
+      "attempt": 1,
+      "conclusion": "failure",
+      "executed_jobs_passed": ["panel"],
+      "jobs_without_created_job_records": ["integration", "windows-service", "native-agent", "coverage"],
+      "workflow_annotation": "Internal server error.",
+      "correlation_id": "78656df3-9504-4a22-8e9b-aec39700d91a",
+      "source": "https://github.com/kenzofujimoto/openems-server/actions/runs/42672204808"
+    },
+    {
+      "name": "CodeQL",
+      "id": 42672204794,
+      "attempt": 1,
+      "conclusion": "failure",
+      "executed_jobs_passed": ["analyze (javascript-typescript)", "analyze (python)"],
+      "jobs_without_created_job_records": ["analyze (actions)", "analyze (rust)"],
+      "workflow_annotation": "Internal server error.",
+      "correlation_id": "76a37bb0-de55-4620-837b-2ea3975d2a76",
+      "source": "https://github.com/kenzofujimoto/openems-server/actions/runs/42672204794"
+    },
+    {
+      "name": "Security",
+      "id": 42672205283,
+      "attempt": 1,
+      "conclusion": "failure",
+      "executed_jobs_passed": ["secrets", "sast", "dependencies", "dependency-review", "container", "workflows"],
+      "jobs_without_created_job_records": ["dast"],
+      "workflow_annotation": "Internal server error.",
+      "correlation_id": "e93f2a49-5f48-42c5-990e-0dc7d26de80b",
+      "source": "https://github.com/kenzofujimoto/openems-server/actions/runs/42672205283"
+    }
+  ],
+  "failed_job_retry": {
+    "requested_for_each_run": true,
+    "http_status": 403,
+    "message": "This workflow run cannot be retried",
+    "next_step": "A new validated QA commit will trigger fresh workflows. Preserve these failures and require successful hosted inventory output."
+  },
+  "local_actual_inventory": {
+    "source": ".venv/windows-ci-remediation/qa-full-red.xml",
+    "passed": true,
+    "elapsed_seconds": 44.774,
+    "outer_timeout_seconds": 1260,
+    "return_shape_caps_and_control_journal_assertions_preserved": true,
+    "limitations": "A local result does not establish hosted performance or close the missing hosted job."
+  },
+  "release_or_merge_performed": false
+}

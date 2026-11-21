@@ -2,7 +2,23 @@
 
 Roteiro para o notebook com pendrive, Chrome e Firefox. Ele cobre o que o Windows Sandbox não comprova: o agente num Windows físico com navegadores reais, e USB físico/WDAC numa VM descartável. Os resultados da Sandbox de 27/10 estão em [validation/web-actions-guest-2026-10-27.json](../validation/web-actions-guest-2026-10-27.json) e na rodada 4 do HANDOFF.
 
-## O que levar
+## Estado vigente — 17/11/2026
+
+Os comandos e o pacote de outubro abaixo ficam preservados como roteiro histórico. A [Parte A no Windows físico](../validation/second-machine-browsers-2026-10-28.json) passou com o MSI `18cd811`; o campo global da antiga Parte B continua refletindo aquela rodada incompleta. Esse relatório não é o aceite dos binários atuais.
+
+| Área | Situação da versão candidata |
+|---|---|
+| Catálogo/WDAC opcional | [8/8 aprovados na rodada18](../validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json), fonte nativa `ec50572` |
+| USB físico | [8/8 aprovados na rodada26](../validation/usb-vm-5354a16-run26-review-2026-11-08.json), roteiro `5354a16`, mesmo par MSI `ec50572` |
+| Aplicativos por editor assinado e cópia renomeada | **10/10** na rodada 34, com remoção MSI verificada pelo código 0. [Recibo](../validation/windows-release-checkpoint-2026-11-17.json) |
+| Chrome/Firefox | Parte A física aprovada em `18cd811`. Na candidata atual, as tentativas 4 e 6 passaram nas seis navegações e reprovaram a comparação de raízes. [Histórico](../validation/browser-ec50572-retries4-8-review-2026-11-09.json) |
+| Sessão e upgrade/reboot | [8/8 atuais aprovados](../validation/windows-session-ec50572-review-2026-11-09.json) com os dois MSIs congelados, reboot real e limpeza verificada |
+| Locais | [8/8 atuais aprovados](../validation/windows-locations-ec50572-review-2026-11-09.json), transições online/offline e limpeza verificadas |
+| CI | 20 checks aprovados em `98e5295`, com cobertura combinada de 97,28%. [Recibo](../validation/windows-release-checkpoint-2026-11-17.json) |
+
+O par atual tem SHA-256 de produção `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a` e próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. O USB instalou e removeu o MSI de produção; o teste de sessão verificou o upgrade com o componente aberto e o reboot real. O fechamento usa entradas isoladas com esses bytes e novos recibos, conforme o [plano aprovado](../windows-release-completion.md). Cada nova execução mantém seu relatório original e comprova a limpeza antes de restaurar o guest. Linux precisa de VM própria; macOS segue parcial e F9 permanece excluída.
+
+## Roteiro histórico de outubro — o que levar
 
 1. Clone a `main`: `git clone https://github.com/kenzofujimoto/openems-server.git`.
 2. Copie o pacote `openems-second-machine-2026-10-27-v2.zip` (pendrive ou nuvem). Antes de usar, confira o SHA-256 informado no HANDOFF:

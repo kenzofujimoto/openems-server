@@ -1,0 +1,263 @@
+{
+  "source_revision": "6e59e44fb27e04f3920cad6b0c158c2060d3f8ba",
+  "run_id": "13cc77634d414d2da5ca440143e3f4b0",
+  "passed": false,
+  "guest_status": "failed",
+  "started_utc": "2026-11-06T14:52:55.2232040Z",
+  "finished_utc": "2026-11-06T16:27:06.3344938Z",
+  "original_report": {
+    "sha256": "83e703a3f9ea7817be57832dfb59ec59d17e7f29da7a760fbfb3c22c55c1cc3c",
+    "bytes": 861797
+  },
+  "shared_source": "catalog-result.json",
+  "host_semantic_verification": {
+    "passed": false,
+    "errors": [
+      "an unrelated firewall rule changed"
+    ],
+    "local_enforcement_failures": []
+  },
+  "package_receipt": {
+    "manifest_sha256": "20d201aa1468bc0514f2cfcd1bec00bf5033f2e3ceac054af2b6dcc4994e25b7",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "3d1bfb10f9aa06b4ad07d3ed46ff1b940f6904e21daffe62fc6d76be73482775",
+        "bytes": 8667136
+      },
+      "openems-agent-next.msi": {
+        "sha256": "8bd930f3b16b289458f992dee84b477e92e78873f515584ef6e9f3638ab8a245",
+        "bytes": 8667136
+      }
+    },
+    "source_revision": "6e59e44fb27e04f3920cad6b0c158c2060d3f8ba"
+  },
+  "snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": 1,
+    "restore_at_utc": "2026-11-06T14:21:46.951Z",
+    "iso_connected_at_utc": "2026-11-06T14:24:57.009Z"
+  },
+  "checks": [
+    {
+      "name": "absent",
+      "status": "passed"
+    },
+    {
+      "name": "network",
+      "status": "passed"
+    },
+    {
+      "name": "process",
+      "status": "passed"
+    },
+    {
+      "name": "wdac",
+      "status": "passed"
+    },
+    {
+      "name": "all_absent",
+      "status": "passed"
+    },
+    {
+      "name": "cleanup",
+      "status": "failed"
+    }
+  ],
+  "verified_effects": [
+    "absent",
+    "network",
+    "process",
+    "wdac",
+    "all_absent"
+  ],
+  "effect_errors": {},
+  "owned_cleanup_verified": true,
+  "owned_cleanup_error": null,
+  "owned_cleanup": {
+    "msi_exit": 0,
+    "service_present": false,
+    "watchdog_present": false,
+    "nrpt_count": 0,
+    "owned_firewall_rules": 0,
+    "own_policy_present": false,
+    "fixture_registry_present": false,
+    "collection_status": "complete",
+    "collection_errors": []
+  },
+  "foreign_ci_count_before": 14,
+  "foreign_ci_count_after": 14,
+  "foreign_ci_preserved": true,
+  "cleanup_errors": [
+    "An unrelated firewall rule changed or its snapshot is incomplete."
+  ],
+  "guest_error": "Catalog acceptance reached its total time limit.",
+  "firewall": {
+    "preserved": false,
+    "before_utc": "2026-11-06T14:52:57.4470523Z",
+    "after_utc": "2026-11-06T16:27:00.9412061Z",
+    "rules_before": 482,
+    "rules_after": 485,
+    "differences_verified": true,
+    "differences": [
+      {
+        "name": "Microsoft.BingWeather_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.BingWeather_8wekyb3d8bbwe<lab-user-sid>-Out-Allow-AllCapabilities",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.Windows.Photos_8wekyb3d8bbwe<lab-user-sid>-Out-Allow-AllCapabilities",
+        "kind": "missing",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsCamera_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsFeedbackHub_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "missing",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsStore_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsStore_8wekyb3d8bbwe<lab-user-sid>-Out-Allow-AllCapabilities",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      }
+    ]
+  },
+  "hourly": null,
+  "ack_failure_categories": {},
+  "diagnostics": {
+    "status": "complete",
+    "sha256": "87a6a84921fc463917a55b0b3c55e67352aa97d1dc59c4ebcaff25eef84fd857",
+    "bytes": 1564,
+    "guest_report_matches_shared_bytes": true,
+    "log_count": 1,
+    "observation_count": 1,
+    "stage_counts": {
+      "control_timeout": 1,
+      "app_reconcile": 1
+    },
+    "ack_correlations": [],
+    "unmatched_acks": [],
+    "unmatched_diagnostics": [
+      {
+        "utc": "2026-11-06T16:22:49.0000000+00:00",
+        "version": 6,
+        "stages": [
+          {
+            "os_code": null,
+            "stage": "control_timeout"
+          },
+          {
+            "os_code": null,
+            "stage": "app_reconcile"
+          }
+        ],
+        "category": "LocalError"
+      }
+    ],
+    "correlation_method": "Same assignment version and error category, within -1 to 20 seconds, with unique matching on both sides."
+  },
+  "preflight": {
+    "run_id": "13cc77634d414d2da5ca440143e3f4b0",
+    "source_revision": "6e59e44fb27e04f3920cad6b0c158c2060d3f8ba",
+    "manifest_sha256": "20d201aa1468bc0514f2cfcd1bec00bf5033f2e3ceac054af2b6dcc4994e25b7",
+    "status": "passed",
+    "stable_seconds": 109,
+    "observations": [
+      {
+        "appx": {
+          "status": "observed",
+          "age_seconds": 224
+        },
+        "rule_count": 482,
+        "elapsed_seconds": 12,
+        "changed_from_previous": true,
+        "stable_seconds": 0
+      },
+      {
+        "appx": {
+          "status": "observed",
+          "age_seconds": 261
+        },
+        "rule_count": 482,
+        "elapsed_seconds": 49,
+        "changed_from_previous": false,
+        "stable_seconds": 37
+      },
+      {
+        "appx": {
+          "status": "observed",
+          "age_seconds": 298
+        },
+        "rule_count": 482,
+        "elapsed_seconds": 85,
+        "changed_from_previous": false,
+        "stable_seconds": 73
+      },
+      {
+        "appx": {
+          "status": "observed",
+          "age_seconds": 334
+        },
+        "rule_count": 482,
+        "elapsed_seconds": 122,
+        "changed_from_previous": false,
+        "stable_seconds": 109
+      }
+    ]
+  },
+  "suspension": {
+    "guest_acpi_s1_started_utc": "2026-11-06T15:29:25.397Z",
+    "guest_resumed_utc": "2026-11-06T16:22:39.791Z",
+    "interval_seconds": 3194.394,
+    "last_hourly_progress_seconds": 1804,
+    "active_hour_proven": false
+  },
+  "power_diagnostics": {
+    "events": [
+      {
+        "provider": "Microsoft-Windows-Power-Troubleshooter",
+        "utc": "2026-11-06T16:22:49.9979311Z",
+        "id": 1
+      },
+      {
+        "provider": "Microsoft-Windows-Kernel-Power",
+        "utc": "2026-11-06T15:29:22.8462874Z",
+        "id": 42
+      }
+    ],
+    "sleep": {
+      "dc_timeout_seconds": 600,
+      "ac_timeout_seconds": 900,
+      "collection_status": "complete"
+    },
+    "source_revision": "6e59e44fb27e04f3920cad6b0c158c2060d3f8ba",
+    "event_collection_status": "complete",
+    "guest_report_sha256": "83e703a3f9ea7817be57832dfb59ec59d17e7f29da7a760fbfb3c22c55c1cc3c",
+    "run_id": "13cc77634d414d2da5ca440143e3f4b0",
+    "collector_sha256": "e9c44787f2e7da15c4bcabae87ff754017c404c325e780820ef3225f71c850da"
+  },
+  "export_recovery": {
+    "shared_source": "catalog-result.json"
+  }
+}

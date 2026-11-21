@@ -1,0 +1,368 @@
+﻿{
+    "run_id":  "385b1eb0f9304a6ebb308e0620215c6f",
+    "source_revision":  "d87d0591f55c77e7c222db82e4b2b812e9866681",
+    "collected_utc":  "2026-11-03T20:06:38.6132500Z",
+    "collection_errors":  [
+
+                          ],
+    "scope":  "Read-only endpoint diagnostics; only collector staging, temporary task and report files are written.",
+    "collection_status":  "completed",
+    "current_section":  null,
+    "acks":  [
+                 {
+                     "at_utc":  "2026-11-03T19:02:27.6612841Z",
+                     "version":  1,
+                     "success":  true,
+                     "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:02:58.4125632Z",
+                     "version":  2,
+                     "success":  true,
+                     "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:03:59.4665454Z",
+                     "version":  3,
+                     "success":  true,
+                     "digest":  "98e37c03fec838f21a05231d843a7337bb7a061b4fa491d504839c69dbae446d"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:05:00.8801075Z",
+                     "version":  4,
+                     "success":  true,
+                     "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:05:31.7051373Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:05:46.8490870Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:06:05.9423713Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:06:32.6293844Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:06:48.0181885Z",
+                     "version":  5,
+                     "success":  false,
+                     "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                 },
+                 {
+                     "at_utc":  "2026-11-03T19:07:03.0817744Z",
+                     "version":  7,
+                     "success":  true,
+                     "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                 }
+             ],
+    "backend_errors":  [
+
+                       ],
+    "agent_log_observations":  [
+                                   {
+                                       "file":  {
+                                                    "modified_utc":  "2026-11-03T19:07:04.6446086Z",
+                                                    "sha256":  "341ba529bce798008e5d8df5cc4e03f828c862fa0018139009887c4df18794db",
+                                                    "name":  "agent.log",
+                                                    "bytes":  635
+                                                },
+                                       "observations":  [
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T19:05:29Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T19:05:45Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T19:06:00Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T19:06:18Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T19:06:32Z"
+                                                            },
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "code":  "policy_enforcement_failed",
+                                                                "at_utc":  "2026-11-03T19:06:47Z"
+                                                            }
+                                                        ]
+                                   }
+                               ],
+    "fixture_files":  [
+                          {
+                              "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                              "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257",
+                              "name":  "openems-catalog-a.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          },
+                          {
+                              "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                              "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257",
+                              "name":  "openems-catalog-a-renamed.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          },
+                          {
+                              "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                              "sha256":  "4c2e8769229038455c2143edc693307993bbc46e7433b95eff3696eaa8f79e3e",
+                              "name":  "openems-catalog-b.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          },
+                          {
+                              "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                              "sha256":  "4c2e8769229038455c2143edc693307993bbc46e7433b95eff3696eaa8f79e3e",
+                              "name":  "openems-catalog-b-renamed.exe",
+                              "bytes":  4096,
+                              "matches_input":  true
+                          }
+                      ],
+    "control_artifacts":  [
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  4,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  2878,
+                                  "xml_base64":  "77u/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjxTaVBvbGljeSB4bWxucz0idXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpzaXBvbGljeSIgUG9saWN5VHlwZT0iQmFzZSBQb2xpY3kiPg0KICA8VmVyc2lvbkV4PjEwLjAuMC4wPC9WZXJzaW9uRXg+DQogIDxQbGF0Zm9ybUlEPnsyRTA3RjdFNC0xOTRDLTREMjAtQjdDOS02RjQ0QTZDNUEyMzR9PC9QbGF0Zm9ybUlEPg0KICA8UnVsZXM+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VW5zaWduZWQgU3lzdGVtIEludGVncml0eSBQb2xpY3k8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6QXVkaXQgTW9kZTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RW5hYmxlZDpBZHZhbmNlZCBCb290IE9wdGlvbnMgTWVudTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+UmVxdWlyZWQ6RW5mb3JjZSBTdG9yZSBBcHBsaWNhdGlvbnM8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VU1DSTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RGlzYWJsZWQ6U2NyaXB0IEVuZm9yY2VtZW50PC9PcHRpb24+DQogICAgPC9SdWxlPg0KICA8L1J1bGVzPg0KICA8IS0tRUtVUy0tPg0KICA8RUtVcyAvPg0KICA8IS0tRmlsZSBSdWxlcy0tPg0KICA8RmlsZVJ1bGVzPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNSIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWIzZTg5YWMwMmJlYTQ3Yjk5ZWQxYjJmZGNhYzZiYTJiXDcyNjkzMmVhNmU1ZjRjMjY5YWJlYTQ3MGE3OGNkZTY3LmV4ZSBIYXNoIFNoYTEiIEhhc2g9Ijg3QkJENTU5NjdERTc1MDlBNTMwNDUwMzJEQzA1M0VFRjZDRjNEQjkiIC8+DQogICAgPERlbnkgSUQ9IklEX0RFTllfRF82IiBGcmllbmRseU5hbWU9IkM6XFByb2dyYW1EYXRhXG9wZW5lbXNcYXBwLWNvbnRyb2wtMDk5YmIxNDQtZWIyMS00MTU5LWI4N2QtYmNjMmFiOGM5ODI5XHNhbXBsZXMtYjNlODlhYzAyYmVhNDdiOTllZDFiMmZkY2FjNmJhMmJcNzI2OTMyZWE2ZTVmNGMyNjlhYmVhNDcwYTc4Y2RlNjcuZXhlIEhhc2ggU2hhMjU2IiBIYXNoPSIwQzlGQjU2OUYyNDUyQjdCRTcwMDdGM0Q2QjgyRkUzMTQyMUUxOTAzOUYxOTQzNkY2M0EwMjY1MTg5QkYxQzk1IiAvPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNyIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWIzZTg5YWMwMmJlYTQ3Yjk5ZWQxYjJmZGNhYzZiYTJiXDcyNjkzMmVhNmU1ZjRjMjY5YWJlYTQ3MGE3OGNkZTY3LmV4ZSBIYXNoIFBhZ2UgU2hhMSIgSGFzaD0iNzk3NzlGOTRCQ0I3MkE5MDk5MDRCOTE3RkE4NUI5NDBFRTI5NDM1QyIgLz4NCiAgICA8RGVueSBJRD0iSURfREVOWV9EXzgiIEZyaWVuZGx5TmFtZT0iQzpcUHJvZ3JhbURhdGFcb3BlbmVtc1xhcHAtY29udHJvbC0wOTliYjE0NC1lYjIxLTQxNTktYjg3ZC1iY2MyYWI4Yzk4Mjlcc2FtcGxlcy1iM2U4OWFjMDJiZWE0N2I5OWVkMWIyZmRjYWM2YmEyYlw3MjY5MzJlYTZlNWY0YzI2OWFiZWE0NzBhNzhjZGU2Ny5leGUgSGFzaCBQYWdlIFNoYTI1NiIgSGFzaD0iNkUyMEUwMTUxQTA4N0UyQjdDRTI3Q0U5ODA4RjcyMjM2RENCNjI3RDY0MzQwOEQzQjI4MTFEODQxRTFDOThGMiIgLz4NCiAgPC9GaWxlUnVsZXM+DQogIDwhLS1TaWduZXJzLS0+DQogIDxTaWduZXJzIC8+DQogIDwhLS1Ecml2ZXIgU2lnbmluZyBTY2VuYXJpb3MtLT4NCiAgPFNpZ25pbmdTY2VuYXJpb3M+DQogICAgPFNpZ25pbmdTY2VuYXJpbyBWYWx1ZT0iMTMxIiBJRD0iSURfU0lHTklOR1NDRU5BUklPX0RSSVZFUlNfMSIgRnJpZW5kbHlOYW1lPSJBdXRvIGdlbmVyYXRlZCBwb2xpY3kgb24gMTEtMDMtMjAyNiI+DQogICAgICA8UHJvZHVjdFNpZ25lcnM+DQogICAgICAgIDxGaWxlUnVsZXNSZWY+DQogICAgICAgIDwvRmlsZVJ1bGVzUmVmPg0KICAgICAgPC9Qcm9kdWN0U2lnbmVycz4NCiAgICA8L1NpZ25pbmdTY2VuYXJpbz4NCiAgICA8U2lnbmluZ1NjZW5hcmlvIFZhbHVlPSIxMiIgSUQ9IklEX1NJR05JTkdTQ0VOQVJJT19XSU5ET1dTIiBGcmllbmRseU5hbWU9IkF1dG8gZ2VuZXJhdGVkIHBvbGljeSBvbiAxMS0wMy0yMDI2Ij4NCiAgICAgIDxQcm9kdWN0U2lnbmVycz4NCiAgICAgICAgPEZpbGVSdWxlc1JlZj4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNSIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNiIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNyIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfOCIgLz4NCiAgICAgICAgPC9GaWxlUnVsZXNSZWY+DQogICAgICA8L1Byb2R1Y3RTaWduZXJzPg0KICAgIDwvU2lnbmluZ1NjZW5hcmlvPg0KICA8L1NpZ25pbmdTY2VuYXJpb3M+DQogIDxVcGRhdGVQb2xpY3lTaWduZXJzIC8+DQogIDxDaVNpZ25lcnMgLz4NCiAgPEh2Y2lPcHRpb25zPjA8L0h2Y2lPcHRpb25zPg0KICA8QmFzZVBvbGljeUlEPntDM0RDMzA3OC05OEYzLTQ2MzktQkM2RC0yQkJCMUQ4QjZCQkN9PC9CYXNlUG9saWN5SUQ+DQogIDxQb2xpY3lJRD57QzNEQzMwNzgtOThGMy00NjM5LUJDNkQtMkJCQjFEOEI2QkJDfTwvUG9saWN5SUQ+DQo8L1NpUG9saWN5Pg==",
+                                  "name":  "hash-3899021b832e4b5b8dfbf59c06e262c9.xml",
+                                  "modified_utc":  "2026-11-03T19:05:44.5624721Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\hash-3899021b832e4b5b8dfbf59c06e262c9.xml",
+                                  "sha256":  "53ac69aad2fa22f923ac30d7d5a2ef9343d0d799afdc5f2f2b3506ab0c3d82a4"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  4,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  2878,
+                                  "xml_base64":  "77u/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjxTaVBvbGljeSB4bWxucz0idXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpzaXBvbGljeSIgUG9saWN5VHlwZT0iQmFzZSBQb2xpY3kiPg0KICA8VmVyc2lvbkV4PjEwLjAuMC4wPC9WZXJzaW9uRXg+DQogIDxQbGF0Zm9ybUlEPnsyRTA3RjdFNC0xOTRDLTREMjAtQjdDOS02RjQ0QTZDNUEyMzR9PC9QbGF0Zm9ybUlEPg0KICA8UnVsZXM+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VW5zaWduZWQgU3lzdGVtIEludGVncml0eSBQb2xpY3k8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6QXVkaXQgTW9kZTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RW5hYmxlZDpBZHZhbmNlZCBCb290IE9wdGlvbnMgTWVudTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+UmVxdWlyZWQ6RW5mb3JjZSBTdG9yZSBBcHBsaWNhdGlvbnM8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VU1DSTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RGlzYWJsZWQ6U2NyaXB0IEVuZm9yY2VtZW50PC9PcHRpb24+DQogICAgPC9SdWxlPg0KICA8L1J1bGVzPg0KICA8IS0tRUtVUy0tPg0KICA8RUtVcyAvPg0KICA8IS0tRmlsZSBSdWxlcy0tPg0KICA8RmlsZVJ1bGVzPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNSIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWM5ZTgwYTllOGMzMzRkYWFhMzg2MGMzZGQxOGNhMTUwXGViNDhmNmE5MzM4NTRlZjc5M2RiMGU1YzNkMGVhOTQyLmV4ZSBIYXNoIFNoYTEiIEhhc2g9Ijg3QkJENTU5NjdERTc1MDlBNTMwNDUwMzJEQzA1M0VFRjZDRjNEQjkiIC8+DQogICAgPERlbnkgSUQ9IklEX0RFTllfRF82IiBGcmllbmRseU5hbWU9IkM6XFByb2dyYW1EYXRhXG9wZW5lbXNcYXBwLWNvbnRyb2wtMDk5YmIxNDQtZWIyMS00MTU5LWI4N2QtYmNjMmFiOGM5ODI5XHNhbXBsZXMtYzllODBhOWU4YzMzNGRhYWEzODYwYzNkZDE4Y2ExNTBcZWI0OGY2YTkzMzg1NGVmNzkzZGIwZTVjM2QwZWE5NDIuZXhlIEhhc2ggU2hhMjU2IiBIYXNoPSIwQzlGQjU2OUYyNDUyQjdCRTcwMDdGM0Q2QjgyRkUzMTQyMUUxOTAzOUYxOTQzNkY2M0EwMjY1MTg5QkYxQzk1IiAvPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNyIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWM5ZTgwYTllOGMzMzRkYWFhMzg2MGMzZGQxOGNhMTUwXGViNDhmNmE5MzM4NTRlZjc5M2RiMGU1YzNkMGVhOTQyLmV4ZSBIYXNoIFBhZ2UgU2hhMSIgSGFzaD0iNzk3NzlGOTRCQ0I3MkE5MDk5MDRCOTE3RkE4NUI5NDBFRTI5NDM1QyIgLz4NCiAgICA8RGVueSBJRD0iSURfREVOWV9EXzgiIEZyaWVuZGx5TmFtZT0iQzpcUHJvZ3JhbURhdGFcb3BlbmVtc1xhcHAtY29udHJvbC0wOTliYjE0NC1lYjIxLTQxNTktYjg3ZC1iY2MyYWI4Yzk4Mjlcc2FtcGxlcy1jOWU4MGE5ZThjMzM0ZGFhYTM4NjBjM2RkMThjYTE1MFxlYjQ4ZjZhOTMzODU0ZWY3OTNkYjBlNWMzZDBlYTk0Mi5leGUgSGFzaCBQYWdlIFNoYTI1NiIgSGFzaD0iNkUyMEUwMTUxQTA4N0UyQjdDRTI3Q0U5ODA4RjcyMjM2RENCNjI3RDY0MzQwOEQzQjI4MTFEODQxRTFDOThGMiIgLz4NCiAgPC9GaWxlUnVsZXM+DQogIDwhLS1TaWduZXJzLS0+DQogIDxTaWduZXJzIC8+DQogIDwhLS1Ecml2ZXIgU2lnbmluZyBTY2VuYXJpb3MtLT4NCiAgPFNpZ25pbmdTY2VuYXJpb3M+DQogICAgPFNpZ25pbmdTY2VuYXJpbyBWYWx1ZT0iMTMxIiBJRD0iSURfU0lHTklOR1NDRU5BUklPX0RSSVZFUlNfMSIgRnJpZW5kbHlOYW1lPSJBdXRvIGdlbmVyYXRlZCBwb2xpY3kgb24gMTEtMDMtMjAyNiI+DQogICAgICA8UHJvZHVjdFNpZ25lcnM+DQogICAgICAgIDxGaWxlUnVsZXNSZWY+DQogICAgICAgIDwvRmlsZVJ1bGVzUmVmPg0KICAgICAgPC9Qcm9kdWN0U2lnbmVycz4NCiAgICA8L1NpZ25pbmdTY2VuYXJpbz4NCiAgICA8U2lnbmluZ1NjZW5hcmlvIFZhbHVlPSIxMiIgSUQ9IklEX1NJR05JTkdTQ0VOQVJJT19XSU5ET1dTIiBGcmllbmRseU5hbWU9IkF1dG8gZ2VuZXJhdGVkIHBvbGljeSBvbiAxMS0wMy0yMDI2Ij4NCiAgICAgIDxQcm9kdWN0U2lnbmVycz4NCiAgICAgICAgPEZpbGVSdWxlc1JlZj4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNSIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNiIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNyIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfOCIgLz4NCiAgICAgICAgPC9GaWxlUnVsZXNSZWY+DQogICAgICA8L1Byb2R1Y3RTaWduZXJzPg0KICAgIDwvU2lnbmluZ1NjZW5hcmlvPg0KICA8L1NpZ25pbmdTY2VuYXJpb3M+DQogIDxVcGRhdGVQb2xpY3lTaWduZXJzIC8+DQogIDxDaVNpZ25lcnMgLz4NCiAgPEh2Y2lPcHRpb25zPjA8L0h2Y2lPcHRpb25zPg0KICA8QmFzZVBvbGljeUlEPns1MzI4QTlDNy1FQ0NFLTRERkYtQTA1OS1EM0IxNjA1MzcxODJ9PC9CYXNlUG9saWN5SUQ+DQogIDxQb2xpY3lJRD57NTMyOEE5QzctRUNDRS00REZGLUEwNTktRDNCMTYwNTM3MTgyfTwvUG9saWN5SUQ+DQo8L1NpUG9saWN5Pg==",
+                                  "name":  "hash-4753ba87d71e4d448c6bdd3c4abf2522.xml",
+                                  "modified_utc":  "2026-11-03T19:06:32.3331395Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\hash-4753ba87d71e4d448c6bdd3c4abf2522.xml",
+                                  "sha256":  "cf02005cd59d56a2027d2a02ef1eef7cc77a86ecad60bd533d5b02b5ec840207"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  4,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  2878,
+                                  "xml_base64":  "77u/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjxTaVBvbGljeSB4bWxucz0idXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpzaXBvbGljeSIgUG9saWN5VHlwZT0iQmFzZSBQb2xpY3kiPg0KICA8VmVyc2lvbkV4PjEwLjAuMC4wPC9WZXJzaW9uRXg+DQogIDxQbGF0Zm9ybUlEPnsyRTA3RjdFNC0xOTRDLTREMjAtQjdDOS02RjQ0QTZDNUEyMzR9PC9QbGF0Zm9ybUlEPg0KICA8UnVsZXM+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VW5zaWduZWQgU3lzdGVtIEludGVncml0eSBQb2xpY3k8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6QXVkaXQgTW9kZTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RW5hYmxlZDpBZHZhbmNlZCBCb290IE9wdGlvbnMgTWVudTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+UmVxdWlyZWQ6RW5mb3JjZSBTdG9yZSBBcHBsaWNhdGlvbnM8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VU1DSTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RGlzYWJsZWQ6U2NyaXB0IEVuZm9yY2VtZW50PC9PcHRpb24+DQogICAgPC9SdWxlPg0KICA8L1J1bGVzPg0KICA8IS0tRUtVUy0tPg0KICA8RUtVcyAvPg0KICA8IS0tRmlsZSBSdWxlcy0tPg0KICA8RmlsZVJ1bGVzPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNSIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWI3OWMxYWY2M2I0MTQwNjVhODhiOGFhODIyNTQzNTk0XDc2OGY3YTFjYWY2ZTRlNTY4NmE4Njg4N2VlMzg5YzdhLmV4ZSBIYXNoIFNoYTEiIEhhc2g9Ijg3QkJENTU5NjdERTc1MDlBNTMwNDUwMzJEQzA1M0VFRjZDRjNEQjkiIC8+DQogICAgPERlbnkgSUQ9IklEX0RFTllfRF82IiBGcmllbmRseU5hbWU9IkM6XFByb2dyYW1EYXRhXG9wZW5lbXNcYXBwLWNvbnRyb2wtMDk5YmIxNDQtZWIyMS00MTU5LWI4N2QtYmNjMmFiOGM5ODI5XHNhbXBsZXMtYjc5YzFhZjYzYjQxNDA2NWE4OGI4YWE4MjI1NDM1OTRcNzY4ZjdhMWNhZjZlNGU1Njg2YTg2ODg3ZWUzODljN2EuZXhlIEhhc2ggU2hhMjU2IiBIYXNoPSIwQzlGQjU2OUYyNDUyQjdCRTcwMDdGM0Q2QjgyRkUzMTQyMUUxOTAzOUYxOTQzNkY2M0EwMjY1MTg5QkYxQzk1IiAvPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNyIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWI3OWMxYWY2M2I0MTQwNjVhODhiOGFhODIyNTQzNTk0XDc2OGY3YTFjYWY2ZTRlNTY4NmE4Njg4N2VlMzg5YzdhLmV4ZSBIYXNoIFBhZ2UgU2hhMSIgSGFzaD0iNzk3NzlGOTRCQ0I3MkE5MDk5MDRCOTE3RkE4NUI5NDBFRTI5NDM1QyIgLz4NCiAgICA8RGVueSBJRD0iSURfREVOWV9EXzgiIEZyaWVuZGx5TmFtZT0iQzpcUHJvZ3JhbURhdGFcb3BlbmVtc1xhcHAtY29udHJvbC0wOTliYjE0NC1lYjIxLTQxNTktYjg3ZC1iY2MyYWI4Yzk4Mjlcc2FtcGxlcy1iNzljMWFmNjNiNDE0MDY1YTg4YjhhYTgyMjU0MzU5NFw3NjhmN2ExY2FmNmU0ZTU2ODZhODY4ODdlZTM4OWM3YS5leGUgSGFzaCBQYWdlIFNoYTI1NiIgSGFzaD0iNkUyMEUwMTUxQTA4N0UyQjdDRTI3Q0U5ODA4RjcyMjM2RENCNjI3RDY0MzQwOEQzQjI4MTFEODQxRTFDOThGMiIgLz4NCiAgPC9GaWxlUnVsZXM+DQogIDwhLS1TaWduZXJzLS0+DQogIDxTaWduZXJzIC8+DQogIDwhLS1Ecml2ZXIgU2lnbmluZyBTY2VuYXJpb3MtLT4NCiAgPFNpZ25pbmdTY2VuYXJpb3M+DQogICAgPFNpZ25pbmdTY2VuYXJpbyBWYWx1ZT0iMTMxIiBJRD0iSURfU0lHTklOR1NDRU5BUklPX0RSSVZFUlNfMSIgRnJpZW5kbHlOYW1lPSJBdXRvIGdlbmVyYXRlZCBwb2xpY3kgb24gMTEtMDMtMjAyNiI+DQogICAgICA8UHJvZHVjdFNpZ25lcnM+DQogICAgICAgIDxGaWxlUnVsZXNSZWY+DQogICAgICAgIDwvRmlsZVJ1bGVzUmVmPg0KICAgICAgPC9Qcm9kdWN0U2lnbmVycz4NCiAgICA8L1NpZ25pbmdTY2VuYXJpbz4NCiAgICA8U2lnbmluZ1NjZW5hcmlvIFZhbHVlPSIxMiIgSUQ9IklEX1NJR05JTkdTQ0VOQVJJT19XSU5ET1dTIiBGcmllbmRseU5hbWU9IkF1dG8gZ2VuZXJhdGVkIHBvbGljeSBvbiAxMS0wMy0yMDI2Ij4NCiAgICAgIDxQcm9kdWN0U2lnbmVycz4NCiAgICAgICAgPEZpbGVSdWxlc1JlZj4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNSIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNiIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNyIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfOCIgLz4NCiAgICAgICAgPC9GaWxlUnVsZXNSZWY+DQogICAgICA8L1Byb2R1Y3RTaWduZXJzPg0KICAgIDwvU2lnbmluZ1NjZW5hcmlvPg0KICA8L1NpZ25pbmdTY2VuYXJpb3M+DQogIDxVcGRhdGVQb2xpY3lTaWduZXJzIC8+DQogIDxDaVNpZ25lcnMgLz4NCiAgPEh2Y2lPcHRpb25zPjA8L0h2Y2lPcHRpb25zPg0KICA8QmFzZVBvbGljeUlEPnswMzdFMDZCMC1BRTc2LTQ5OTctQTI3MC1FNjZCQzEzNjlGMDF9PC9CYXNlUG9saWN5SUQ+DQogIDxQb2xpY3lJRD57MDM3RTA2QjAtQUU3Ni00OTk3LUEyNzAtRTY2QkMxMzY5RjAxfTwvUG9saWN5SUQ+DQo8L1NpUG9saWN5Pg==",
+                                  "name":  "hash-6d7fb0b60c084b778dea0a8d389e8cbf.xml",
+                                  "modified_utc":  "2026-11-03T19:06:00.3788207Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\hash-6d7fb0b60c084b778dea0a8d389e8cbf.xml",
+                                  "sha256":  "581d263181b5de130df1ebaa59188e72102e3e0c56557a20e7340886c056004a"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  4,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  2878,
+                                  "xml_base64":  "77u/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjxTaVBvbGljeSB4bWxucz0idXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpzaXBvbGljeSIgUG9saWN5VHlwZT0iQmFzZSBQb2xpY3kiPg0KICA8VmVyc2lvbkV4PjEwLjAuMC4wPC9WZXJzaW9uRXg+DQogIDxQbGF0Zm9ybUlEPnsyRTA3RjdFNC0xOTRDLTREMjAtQjdDOS02RjQ0QTZDNUEyMzR9PC9QbGF0Zm9ybUlEPg0KICA8UnVsZXM+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VW5zaWduZWQgU3lzdGVtIEludGVncml0eSBQb2xpY3k8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6QXVkaXQgTW9kZTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RW5hYmxlZDpBZHZhbmNlZCBCb290IE9wdGlvbnMgTWVudTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+UmVxdWlyZWQ6RW5mb3JjZSBTdG9yZSBBcHBsaWNhdGlvbnM8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VU1DSTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RGlzYWJsZWQ6U2NyaXB0IEVuZm9yY2VtZW50PC9PcHRpb24+DQogICAgPC9SdWxlPg0KICA8L1J1bGVzPg0KICA8IS0tRUtVUy0tPg0KICA8RUtVcyAvPg0KICA8IS0tRmlsZSBSdWxlcy0tPg0KICA8RmlsZVJ1bGVzPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNSIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLTVhNjcxMmE0ZGI1NTQ4ODc5MGRmYjI5ODlmZjMxNWNjXDEwZjY4OWNlNTJhMjQxNDZhNzA2ZTA1ODQ5NTkyZmVjLmV4ZSBIYXNoIFNoYTEiIEhhc2g9Ijg3QkJENTU5NjdERTc1MDlBNTMwNDUwMzJEQzA1M0VFRjZDRjNEQjkiIC8+DQogICAgPERlbnkgSUQ9IklEX0RFTllfRF82IiBGcmllbmRseU5hbWU9IkM6XFByb2dyYW1EYXRhXG9wZW5lbXNcYXBwLWNvbnRyb2wtMDk5YmIxNDQtZWIyMS00MTU5LWI4N2QtYmNjMmFiOGM5ODI5XHNhbXBsZXMtNWE2NzEyYTRkYjU1NDg4NzkwZGZiMjk4OWZmMzE1Y2NcMTBmNjg5Y2U1MmEyNDE0NmE3MDZlMDU4NDk1OTJmZWMuZXhlIEhhc2ggU2hhMjU2IiBIYXNoPSIwQzlGQjU2OUYyNDUyQjdCRTcwMDdGM0Q2QjgyRkUzMTQyMUUxOTAzOUYxOTQzNkY2M0EwMjY1MTg5QkYxQzk1IiAvPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNyIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLTVhNjcxMmE0ZGI1NTQ4ODc5MGRmYjI5ODlmZjMxNWNjXDEwZjY4OWNlNTJhMjQxNDZhNzA2ZTA1ODQ5NTkyZmVjLmV4ZSBIYXNoIFBhZ2UgU2hhMSIgSGFzaD0iNzk3NzlGOTRCQ0I3MkE5MDk5MDRCOTE3RkE4NUI5NDBFRTI5NDM1QyIgLz4NCiAgICA8RGVueSBJRD0iSURfREVOWV9EXzgiIEZyaWVuZGx5TmFtZT0iQzpcUHJvZ3JhbURhdGFcb3BlbmVtc1xhcHAtY29udHJvbC0wOTliYjE0NC1lYjIxLTQxNTktYjg3ZC1iY2MyYWI4Yzk4Mjlcc2FtcGxlcy01YTY3MTJhNGRiNTU0ODg3OTBkZmIyOTg5ZmYzMTVjY1wxMGY2ODljZTUyYTI0MTQ2YTcwNmUwNTg0OTU5MmZlYy5leGUgSGFzaCBQYWdlIFNoYTI1NiIgSGFzaD0iNkUyMEUwMTUxQTA4N0UyQjdDRTI3Q0U5ODA4RjcyMjM2RENCNjI3RDY0MzQwOEQzQjI4MTFEODQxRTFDOThGMiIgLz4NCiAgPC9GaWxlUnVsZXM+DQogIDwhLS1TaWduZXJzLS0+DQogIDxTaWduZXJzIC8+DQogIDwhLS1Ecml2ZXIgU2lnbmluZyBTY2VuYXJpb3MtLT4NCiAgPFNpZ25pbmdTY2VuYXJpb3M+DQogICAgPFNpZ25pbmdTY2VuYXJpbyBWYWx1ZT0iMTMxIiBJRD0iSURfU0lHTklOR1NDRU5BUklPX0RSSVZFUlNfMSIgRnJpZW5kbHlOYW1lPSJBdXRvIGdlbmVyYXRlZCBwb2xpY3kgb24gMTEtMDMtMjAyNiI+DQogICAgICA8UHJvZHVjdFNpZ25lcnM+DQogICAgICAgIDxGaWxlUnVsZXNSZWY+DQogICAgICAgIDwvRmlsZVJ1bGVzUmVmPg0KICAgICAgPC9Qcm9kdWN0U2lnbmVycz4NCiAgICA8L1NpZ25pbmdTY2VuYXJpbz4NCiAgICA8U2lnbmluZ1NjZW5hcmlvIFZhbHVlPSIxMiIgSUQ9IklEX1NJR05JTkdTQ0VOQVJJT19XSU5ET1dTIiBGcmllbmRseU5hbWU9IkF1dG8gZ2VuZXJhdGVkIHBvbGljeSBvbiAxMS0wMy0yMDI2Ij4NCiAgICAgIDxQcm9kdWN0U2lnbmVycz4NCiAgICAgICAgPEZpbGVSdWxlc1JlZj4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNSIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNiIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNyIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfOCIgLz4NCiAgICAgICAgPC9GaWxlUnVsZXNSZWY+DQogICAgICA8L1Byb2R1Y3RTaWduZXJzPg0KICAgIDwvU2lnbmluZ1NjZW5hcmlvPg0KICA8L1NpZ25pbmdTY2VuYXJpb3M+DQogIDxVcGRhdGVQb2xpY3lTaWduZXJzIC8+DQogIDxDaVNpZ25lcnMgLz4NCiAgPEh2Y2lPcHRpb25zPjA8L0h2Y2lPcHRpb25zPg0KICA8QmFzZVBvbGljeUlEPntCQTk0RkEzRC0wRTNGLTQyRUYtOTBERi1FM0JEQTYzRTYxMTR9PC9CYXNlUG9saWN5SUQ+DQogIDxQb2xpY3lJRD57QkE5NEZBM0QtMEUzRi00MkVGLTkwREYtRTNCREE2M0U2MTE0fTwvUG9saWN5SUQ+DQo8L1NpUG9saWN5Pg==",
+                                  "name":  "hash-b4f216e2603b47d882840027ccc71053.xml",
+                                  "modified_utc":  "2026-11-03T19:06:18.5708279Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\hash-b4f216e2603b47d882840027ccc71053.xml",
+                                  "sha256":  "e908366e361dfb2b7715e4408ab28aea1e6e040ba231430111bad8c90e520e1d"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  4,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  2878,
+                                  "xml_base64":  "77u/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjxTaVBvbGljeSB4bWxucz0idXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpzaXBvbGljeSIgUG9saWN5VHlwZT0iQmFzZSBQb2xpY3kiPg0KICA8VmVyc2lvbkV4PjEwLjAuMC4wPC9WZXJzaW9uRXg+DQogIDxQbGF0Zm9ybUlEPnsyRTA3RjdFNC0xOTRDLTREMjAtQjdDOS02RjQ0QTZDNUEyMzR9PC9QbGF0Zm9ybUlEPg0KICA8UnVsZXM+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VW5zaWduZWQgU3lzdGVtIEludGVncml0eSBQb2xpY3k8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6QXVkaXQgTW9kZTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RW5hYmxlZDpBZHZhbmNlZCBCb290IE9wdGlvbnMgTWVudTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+UmVxdWlyZWQ6RW5mb3JjZSBTdG9yZSBBcHBsaWNhdGlvbnM8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VU1DSTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RGlzYWJsZWQ6U2NyaXB0IEVuZm9yY2VtZW50PC9PcHRpb24+DQogICAgPC9SdWxlPg0KICA8L1J1bGVzPg0KICA8IS0tRUtVUy0tPg0KICA8RUtVcyAvPg0KICA8IS0tRmlsZSBSdWxlcy0tPg0KICA8RmlsZVJ1bGVzPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNSIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWZkNzY1MmYwY2FiMTRhMTI5OWY1MzYwYWI4YTMxMzUzXDQ1N2I3M2UzMzI3MTQwZWNiYzE0MjliZDNhOWQ3YWEyLmV4ZSBIYXNoIFNoYTEiIEhhc2g9Ijg3QkJENTU5NjdERTc1MDlBNTMwNDUwMzJEQzA1M0VFRjZDRjNEQjkiIC8+DQogICAgPERlbnkgSUQ9IklEX0RFTllfRF82IiBGcmllbmRseU5hbWU9IkM6XFByb2dyYW1EYXRhXG9wZW5lbXNcYXBwLWNvbnRyb2wtMDk5YmIxNDQtZWIyMS00MTU5LWI4N2QtYmNjMmFiOGM5ODI5XHNhbXBsZXMtZmQ3NjUyZjBjYWIxNGExMjk5ZjUzNjBhYjhhMzEzNTNcNDU3YjczZTMzMjcxNDBlY2JjMTQyOWJkM2E5ZDdhYTIuZXhlIEhhc2ggU2hhMjU2IiBIYXNoPSIwQzlGQjU2OUYyNDUyQjdCRTcwMDdGM0Q2QjgyRkUzMTQyMUUxOTAzOUYxOTQzNkY2M0EwMjY1MTg5QkYxQzk1IiAvPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNyIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWZkNzY1MmYwY2FiMTRhMTI5OWY1MzYwYWI4YTMxMzUzXDQ1N2I3M2UzMzI3MTQwZWNiYzE0MjliZDNhOWQ3YWEyLmV4ZSBIYXNoIFBhZ2UgU2hhMSIgSGFzaD0iNzk3NzlGOTRCQ0I3MkE5MDk5MDRCOTE3RkE4NUI5NDBFRTI5NDM1QyIgLz4NCiAgICA8RGVueSBJRD0iSURfREVOWV9EXzgiIEZyaWVuZGx5TmFtZT0iQzpcUHJvZ3JhbURhdGFcb3BlbmVtc1xhcHAtY29udHJvbC0wOTliYjE0NC1lYjIxLTQxNTktYjg3ZC1iY2MyYWI4Yzk4Mjlcc2FtcGxlcy1mZDc2NTJmMGNhYjE0YTEyOTlmNTM2MGFiOGEzMTM1M1w0NTdiNzNlMzMyNzE0MGVjYmMxNDI5YmQzYTlkN2FhMi5leGUgSGFzaCBQYWdlIFNoYTI1NiIgSGFzaD0iNkUyMEUwMTUxQTA4N0UyQjdDRTI3Q0U5ODA4RjcyMjM2RENCNjI3RDY0MzQwOEQzQjI4MTFEODQxRTFDOThGMiIgLz4NCiAgPC9GaWxlUnVsZXM+DQogIDwhLS1TaWduZXJzLS0+DQogIDxTaWduZXJzIC8+DQogIDwhLS1Ecml2ZXIgU2lnbmluZyBTY2VuYXJpb3MtLT4NCiAgPFNpZ25pbmdTY2VuYXJpb3M+DQogICAgPFNpZ25pbmdTY2VuYXJpbyBWYWx1ZT0iMTMxIiBJRD0iSURfU0lHTklOR1NDRU5BUklPX0RSSVZFUlNfMSIgRnJpZW5kbHlOYW1lPSJBdXRvIGdlbmVyYXRlZCBwb2xpY3kgb24gMTEtMDMtMjAyNiI+DQogICAgICA8UHJvZHVjdFNpZ25lcnM+DQogICAgICAgIDxGaWxlUnVsZXNSZWY+DQogICAgICAgIDwvRmlsZVJ1bGVzUmVmPg0KICAgICAgPC9Qcm9kdWN0U2lnbmVycz4NCiAgICA8L1NpZ25pbmdTY2VuYXJpbz4NCiAgICA8U2lnbmluZ1NjZW5hcmlvIFZhbHVlPSIxMiIgSUQ9IklEX1NJR05JTkdTQ0VOQVJJT19XSU5ET1dTIiBGcmllbmRseU5hbWU9IkF1dG8gZ2VuZXJhdGVkIHBvbGljeSBvbiAxMS0wMy0yMDI2Ij4NCiAgICAgIDxQcm9kdWN0U2lnbmVycz4NCiAgICAgICAgPEZpbGVSdWxlc1JlZj4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNSIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNiIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNyIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfOCIgLz4NCiAgICAgICAgPC9GaWxlUnVsZXNSZWY+DQogICAgICA8L1Byb2R1Y3RTaWduZXJzPg0KICAgIDwvU2lnbmluZ1NjZW5hcmlvPg0KICA8L1NpZ25pbmdTY2VuYXJpb3M+DQogIDxVcGRhdGVQb2xpY3lTaWduZXJzIC8+DQogIDxDaVNpZ25lcnMgLz4NCiAgPEh2Y2lPcHRpb25zPjA8L0h2Y2lPcHRpb25zPg0KICA8QmFzZVBvbGljeUlEPns5OEMzMERGMS02NjRGLTQ5MzEtQjY0NS04MjZFMUFDMDFBOEN9PC9CYXNlUG9saWN5SUQ+DQogIDxQb2xpY3lJRD57OThDMzBERjEtNjY0Ri00OTMxLUI2NDUtODI2RTFBQzAxQThDfTwvUG9saWN5SUQ+DQo8L1NpUG9saWN5Pg==",
+                                  "name":  "hash-d2d317fc082542f2805a0f3c489d90e8.xml",
+                                  "modified_utc":  "2026-11-03T19:05:29.2087033Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\hash-d2d317fc082542f2805a0f3c489d90e8.xml",
+                                  "sha256":  "7f9dff558e4c81b8772c6dfac5998b3f440b3603fe89adec85c7e4106d0ae573"
+                              },
+                              {
+                                  "xml_summary":  {
+                                                      "deny_rules":  4,
+                                                      "allow_rules":  0,
+                                                      "options":  [
+                                                                      "Enabled:Unsigned System Integrity Policy",
+                                                                      "Enabled:Audit Mode",
+                                                                      "Enabled:Advanced Boot Options Menu",
+                                                                      "Required:Enforce Store Applications",
+                                                                      "Enabled:UMCI",
+                                                                      "Disabled:Script Enforcement"
+                                                                  ],
+                                                      "signers":  0,
+                                                      "user_mode_references":  4
+                                                  },
+                                  "bytes":  2878,
+                                  "xml_base64":  "77u/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjxTaVBvbGljeSB4bWxucz0idXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpzaXBvbGljeSIgUG9saWN5VHlwZT0iQmFzZSBQb2xpY3kiPg0KICA8VmVyc2lvbkV4PjEwLjAuMC4wPC9WZXJzaW9uRXg+DQogIDxQbGF0Zm9ybUlEPnsyRTA3RjdFNC0xOTRDLTREMjAtQjdDOS02RjQ0QTZDNUEyMzR9PC9QbGF0Zm9ybUlEPg0KICA8UnVsZXM+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VW5zaWduZWQgU3lzdGVtIEludGVncml0eSBQb2xpY3k8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6QXVkaXQgTW9kZTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RW5hYmxlZDpBZHZhbmNlZCBCb290IE9wdGlvbnMgTWVudTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+UmVxdWlyZWQ6RW5mb3JjZSBTdG9yZSBBcHBsaWNhdGlvbnM8L09wdGlvbj4NCiAgICA8L1J1bGU+DQogICAgPFJ1bGU+DQogICAgICA8T3B0aW9uPkVuYWJsZWQ6VU1DSTwvT3B0aW9uPg0KICAgIDwvUnVsZT4NCiAgICA8UnVsZT4NCiAgICAgIDxPcHRpb24+RGlzYWJsZWQ6U2NyaXB0IEVuZm9yY2VtZW50PC9PcHRpb24+DQogICAgPC9SdWxlPg0KICA8L1J1bGVzPg0KICA8IS0tRUtVUy0tPg0KICA8RUtVcyAvPg0KICA8IS0tRmlsZSBSdWxlcy0tPg0KICA8RmlsZVJ1bGVzPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNSIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWI0NDdhZWE1MGVkMTQzZDNiOWFiNThmOTQ5NGZhNGExXGYzNDA5NDBhYjE0NzRkYzc4NGFmZjkzNzIwYzlmN2Q4LmV4ZSBIYXNoIFNoYTEiIEhhc2g9Ijg3QkJENTU5NjdERTc1MDlBNTMwNDUwMzJEQzA1M0VFRjZDRjNEQjkiIC8+DQogICAgPERlbnkgSUQ9IklEX0RFTllfRF82IiBGcmllbmRseU5hbWU9IkM6XFByb2dyYW1EYXRhXG9wZW5lbXNcYXBwLWNvbnRyb2wtMDk5YmIxNDQtZWIyMS00MTU5LWI4N2QtYmNjMmFiOGM5ODI5XHNhbXBsZXMtYjQ0N2FlYTUwZWQxNDNkM2I5YWI1OGY5NDk0ZmE0YTFcZjM0MDk0MGFiMTQ3NGRjNzg0YWZmOTM3MjBjOWY3ZDguZXhlIEhhc2ggU2hhMjU2IiBIYXNoPSIwQzlGQjU2OUYyNDUyQjdCRTcwMDdGM0Q2QjgyRkUzMTQyMUUxOTAzOUYxOTQzNkY2M0EwMjY1MTg5QkYxQzk1IiAvPg0KICAgIDxEZW55IElEPSJJRF9ERU5ZX0RfNyIgRnJpZW5kbHlOYW1lPSJDOlxQcm9ncmFtRGF0YVxvcGVuZW1zXGFwcC1jb250cm9sLTA5OWJiMTQ0LWViMjEtNDE1OS1iODdkLWJjYzJhYjhjOTgyOVxzYW1wbGVzLWI0NDdhZWE1MGVkMTQzZDNiOWFiNThmOTQ5NGZhNGExXGYzNDA5NDBhYjE0NzRkYzc4NGFmZjkzNzIwYzlmN2Q4LmV4ZSBIYXNoIFBhZ2UgU2hhMSIgSGFzaD0iNzk3NzlGOTRCQ0I3MkE5MDk5MDRCOTE3RkE4NUI5NDBFRTI5NDM1QyIgLz4NCiAgICA8RGVueSBJRD0iSURfREVOWV9EXzgiIEZyaWVuZGx5TmFtZT0iQzpcUHJvZ3JhbURhdGFcb3BlbmVtc1xhcHAtY29udHJvbC0wOTliYjE0NC1lYjIxLTQxNTktYjg3ZC1iY2MyYWI4Yzk4Mjlcc2FtcGxlcy1iNDQ3YWVhNTBlZDE0M2QzYjlhYjU4Zjk0OTRmYTRhMVxmMzQwOTQwYWIxNDc0ZGM3ODRhZmY5MzcyMGM5ZjdkOC5leGUgSGFzaCBQYWdlIFNoYTI1NiIgSGFzaD0iNkUyMEUwMTUxQTA4N0UyQjdDRTI3Q0U5ODA4RjcyMjM2RENCNjI3RDY0MzQwOEQzQjI4MTFEODQxRTFDOThGMiIgLz4NCiAgPC9GaWxlUnVsZXM+DQogIDwhLS1TaWduZXJzLS0+DQogIDxTaWduZXJzIC8+DQogIDwhLS1Ecml2ZXIgU2lnbmluZyBTY2VuYXJpb3MtLT4NCiAgPFNpZ25pbmdTY2VuYXJpb3M+DQogICAgPFNpZ25pbmdTY2VuYXJpbyBWYWx1ZT0iMTMxIiBJRD0iSURfU0lHTklOR1NDRU5BUklPX0RSSVZFUlNfMSIgRnJpZW5kbHlOYW1lPSJBdXRvIGdlbmVyYXRlZCBwb2xpY3kgb24gMTEtMDMtMjAyNiI+DQogICAgICA8UHJvZHVjdFNpZ25lcnM+DQogICAgICAgIDxGaWxlUnVsZXNSZWY+DQogICAgICAgIDwvRmlsZVJ1bGVzUmVmPg0KICAgICAgPC9Qcm9kdWN0U2lnbmVycz4NCiAgICA8L1NpZ25pbmdTY2VuYXJpbz4NCiAgICA8U2lnbmluZ1NjZW5hcmlvIFZhbHVlPSIxMiIgSUQ9IklEX1NJR05JTkdTQ0VOQVJJT19XSU5ET1dTIiBGcmllbmRseU5hbWU9IkF1dG8gZ2VuZXJhdGVkIHBvbGljeSBvbiAxMS0wMy0yMDI2Ij4NCiAgICAgIDxQcm9kdWN0U2lnbmVycz4NCiAgICAgICAgPEZpbGVSdWxlc1JlZj4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNSIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNiIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfNyIgLz4NCiAgICAgICAgICA8RmlsZVJ1bGVSZWYgUnVsZUlEPSJJRF9ERU5ZX0RfOCIgLz4NCiAgICAgICAgPC9GaWxlUnVsZXNSZWY+DQogICAgICA8L1Byb2R1Y3RTaWduZXJzPg0KICAgIDwvU2lnbmluZ1NjZW5hcmlvPg0KICA8L1NpZ25pbmdTY2VuYXJpb3M+DQogIDxVcGRhdGVQb2xpY3lTaWduZXJzIC8+DQogIDxDaVNpZ25lcnMgLz4NCiAgPEh2Y2lPcHRpb25zPjA8L0h2Y2lPcHRpb25zPg0KICA8QmFzZVBvbGljeUlEPns3RTA3Mzk4NS0wOTU5LTQ3NjUtOUU2My1DMDk0RUJCMzVCRkZ9PC9CYXNlUG9saWN5SUQ+DQogIDxQb2xpY3lJRD57N0UwNzM5ODUtMDk1OS00NzY1LTlFNjMtQzA5NEVCQjM1QkZGfTwvUG9saWN5SUQ+DQo8L1NpUG9saWN5Pg==",
+                                  "name":  "hash-eaf5c20da1bb4d4fa1370c38c9ae4710.xml",
+                                  "modified_utc":  "2026-11-03T19:06:46.9563772Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\hash-eaf5c20da1bb4d4fa1370c38c9ae4710.xml",
+                                  "sha256":  "10f4d526cf1a2d3819bf97046767affb133320d94bbdd05aeae387956fdb8c6c"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "10f689ce52a24146a706e05849592fec.exe",
+                                  "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\samples-5a6712a4db55488790dfb2989ff315cc\\10f689ce52a24146a706e05849592fec.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "726932ea6e5f4c269abea470a78cde67.exe",
+                                  "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\samples-b3e89ac02bea47b99ed1b2fdcac6ba2b\\726932ea6e5f4c269abea470a78cde67.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "f340940ab1474dc784aff93720c9f7d8.exe",
+                                  "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\samples-b447aea50ed143d3b9ab58f9494fa4a1\\f340940ab1474dc784aff93720c9f7d8.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "768f7a1caf6e4e5686a86887ee389c7a.exe",
+                                  "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\samples-b79c1af63b414065a88b8aa822543594\\768f7a1caf6e4e5686a86887ee389c7a.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "eb48f6a933854ef793db0e5c3d0ea942.exe",
+                                  "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\samples-c9e80a9e8c334daaa3860c3dd18ca150\\eb48f6a933854ef793db0e5c3d0ea942.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257"
+                              },
+                              {
+                                  "matches_fixture_b":  false,
+                                  "bytes":  4096,
+                                  "name":  "457b73e3327140ecbc1429bd3a9d7aa2.exe",
+                                  "modified_utc":  "2026-11-03T18:50:03.0000000Z",
+                                  "relative_path":  "app-control-099bb144-eb21-4159-b87d-bcc2ab8c9829\\samples-fd7652f0cab14a1299f5360ab8a31353\\457b73e3327140ecbc1429bd3a9d7aa2.exe",
+                                  "matches_fixture_a":  true,
+                                  "sha256":  "fe53c27e3dd9b982710b8b7809e423cfc59947449d9b188596dee367d89dc257"
+                              }
+                          ],
+    "cleanup_now":  [
+                        {
+                            "code_integrity_policy_ids":  [
+                                                              "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                              "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                              "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                              "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                              "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                              "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                              "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                              "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                          ],
+                            "own_code_integrity_count":  0,
+                            "nrpt_count":  0,
+                            "watchdog_present":  false,
+                            "application_journal_present":  false,
+                            "owned_firewall_count":  0,
+                            "service_present":  false
+                        }
+                    ],
+    "code_integrity_events":  [
+
+                              ],
+    "task_state":  "Running",
+    "task_last_result":  267009,
+    "parent_elapsed_seconds":  71
+}

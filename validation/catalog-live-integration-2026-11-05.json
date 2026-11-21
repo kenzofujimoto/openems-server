@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-05",
+  "validated_commit": "c0a2a33",
+  "status": "passed_local_live_catalog_scope",
+  "source_changes": false,
+  "windows_vm_acceptance": "validation/catalog-vm-1bf393a-acceptance-review-2026-11-05.json",
+  "storage_contracts": {
+    "passed": 336,
+    "skipped": 0,
+    "postgres": "16.15 (Debian 16.15-1.pgdg13+2)",
+    "redis": "7.4.11",
+    "selected_files": [
+      "test_admin_sessions.py",
+      "test_audit.py",
+      "test_block_events.py",
+      "test_control_persistence.py",
+      "test_enrollment_contract.py",
+      "test_http_security.py",
+      "test_migrations.py",
+      "test_network_locations.py",
+      "test_profile_store_contract.py",
+      "test_queue_contract.py",
+      "test_rule_admin_store_contract.py",
+      "test_saml_security.py",
+      "test_store_contract.py",
+      "test_tamper_events.py",
+      "test_uninstall_server.py",
+      "test_app_catalog_api.py"
+    ],
+    "additional_upgrade": "test_web_event_actions.py::test_postgres_actions_batches_and_upgrade"
+  },
+  "live_browser_api": {
+    "status": "passed",
+    "stage": "complete",
+    "cleanup": [
+      {
+        "resource": "http_worker",
+        "pid": 25632,
+        "stopped": true
+      },
+      {
+        "resource": "http_worker",
+        "pid": 4764,
+        "stopped": true
+      },
+      {
+        "resource": "container",
+        "id": "7bdc0134d0e0",
+        "stopped": true
+      },
+      {
+        "resource": "container",
+        "id": "60d18c4c7838",
+        "stopped": true
+      }
+    ],
+    "browser_page_errors": 0,
+    "published_by_panel": {
+      "version": 1,
+      "generated_rules_before_inventory": 0
+    },
+    "step": "panel_replication",
+    "observed_version": 2,
+    "generated_rule_count": 1,
+    "version_after_identical_inventory": 2,
+    "republication": {
+      "version": 2,
+      "present_only_hash_rules": 1,
+      "redis_notified_endpoints": 2,
+      "ack_version": 2,
+      "stale_inventory_refused": true,
+      "equal_timestamp_retry_accepted": true,
+      "same_inventory_idempotent": true,
+      "catalog_refresh_audit_entries": 1
+    },
+    "live_http_workers": 2,
+    "browser": "Edge headless",
+    "inventory_fixture_scope": "synthetic",
+    "browser_observed_published_version": 2
+  },
+  "initial_smoke_correction": {
+    "incorrect_assertion": "The temporary smoke expected an equal inventory timestamp to be rejected.",
+    "contract_observed": "Strictly older snapshots return 409. Equal timestamps are accepted and the same inventory keeps the same policy version.",
+    "original_attempts_preserved": [
+      "live-panel-catalog-summary.json",
+      "diagnostic-retry/live-panel-catalog-summary.json"
+    ]
+  },
+  "coverage": {
+    "platform": "Windows full permitted run plus selected storage contracts",
+    "measured_app_agent_modules": 33,
+    "combined_percent": 96.93530079455165,
+    "local_measured_module_thresholds_passed": true,
+    "official_cross_platform_ci_ran": false,
+    "windows_skip_cases_recovered_by_real_stores": 55,
+    "remaining_native_service_installation_cases": [
+      [
+        "tests.test_native_msi",
+        "test_msi_installs_a_recovering_service_without_python_and_uninstalls_cleanly"
+      ],
+      [
+        "tests.test_native_service",
+        "test_service_installs_enforces_restarts_on_failure_and_uninstalls"
+      ]
+    ],
+    "coverage_json_sha256": "735e81a65c3340ef526c3dcc5cfa32f3fe7ea9f6d68a485616bd58a6f9859217"
+  },
+  "next_step": "Await approval of the six-file local enforcement diagnostics plan. Physical USB remains pending.",
+  "artifacts": {
+    "storage-contracts-summary.json": "a739d424a3e1396a4d1e18586472e2fe08f004e396830e0d76b244b85645b535",
+    "storage-contracts.junit.xml": "f511226e3e466127263acf23b91f76bc6807554a962b728e0b4ba204c2444627",
+    "coverage-contracts/storage-contracts.junit.xml": "2f91e9639feca0b89b9551b93a7df4d00f631738118817982fed8d3c840c4c02",
+    "contract-aligned/live-panel-catalog-summary.json": "687dcd22ae477ef59377cc7456b79eb073f6625b01826c17ec5af1c062027a24",
+    "events-upgrade/storage-contracts.junit.xml": "2a0e044b482a885c65f783f35f79a86396e5e007fd281150dea15f2369cbe769"
+  }
+}

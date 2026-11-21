@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WindowsPerformanceRecorder Version="1.0">
+  <Profiles>
+    <SystemCollector Id="OpenemsApplicationsKernelCollector" Name="NT Kernel Logger">
+      <BufferSize Value="128"/>
+      <Buffers Value="256"/>
+    </SystemCollector>
+    <SystemProvider Id="OpenemsApplicationsLaunchEvents">
+      <Keywords>
+        <Keyword Value="ProcessThread"/>
+        <Keyword Value="Loader"/>
+        <Keyword Value="CSwitch"/>
+      </Keywords>
+    </SystemProvider>
+    <Profile Id="OpenemsApplicationsLaunch.Light.Memory" Name="OpenemsApplicationsLaunch"
+             Description="Kernel timeline for the selected OpenEMS applications probe"
+             DetailLevel="Light" LoggingMode="Memory">
+      <Collectors>
+        <SystemCollectorId Value="OpenemsApplicationsKernelCollector">
+          <SystemProviderId Value="OpenemsApplicationsLaunchEvents"/>
+        </SystemCollectorId>
+      </Collectors>
+    </Profile>
+    <!-- WPR custom profiles pair memory and file variants. The harness selects memory. -->
+    <Profile Id="OpenemsApplicationsLaunch.Light.File" Name="OpenemsApplicationsLaunch"
+             Description="Kernel timeline for the selected OpenEMS applications probe"
+             DetailLevel="Light" LoggingMode="File">
+      <Collectors>
+        <SystemCollectorId Value="OpenemsApplicationsKernelCollector">
+          <MaximumFileSize Value="32" FileMode="Circular"/>
+          <SystemProviderId Value="OpenemsApplicationsLaunchEvents"/>
+        </SystemCollectorId>
+      </Collectors>
+    </Profile>
+  </Profiles>
+</WindowsPerformanceRecorder>

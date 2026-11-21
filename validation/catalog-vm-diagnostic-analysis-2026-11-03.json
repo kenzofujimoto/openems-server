@@ -1,0 +1,18 @@
+{
+  "run_id": "e667c411feb14967bcb4b5fa85d0354a",
+  "source_revision": "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+  "diagnostic_sha256": "5b88cf3896dd7e71403a4beb011d6b16a0865f0112e49fff2ddaccf30edaef70",
+  "negative_v5_acks": 6,
+  "release_v7_ack_verified": true,
+  "current_cleanup_verified": true,
+  "foreign_ci_ids_preserved": 14,
+  "private_fixture_a_copies_verified": 7,
+  "intermediate_hash_xml_files": 7,
+  "deny_rules_per_xml": 8,
+  "user_mode_references_per_xml": 4,
+  "inference": "These counts violate the existing UMCI-reference cardinality guard. Exact first rejection and safe normalization require original XML; do not assume the remaining rules are KMCI.",
+  "root_cause_status": "XML validator incompatibility isolated; exact original XML pending",
+  "reference": "https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/design/select-types-of-rules-to-create#why-does-scan-create-eight-hash-rules-for-certain-files",
+  "source_changes": false,
+  "acceptance_passed": false
+}

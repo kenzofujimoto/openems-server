@@ -1,0 +1,98 @@
+{
+  "run_id": "91a579649d9444f4bb9ff8b3914d1ecf",
+  "source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "manifest_sha256": "9b4e571af5cf762ec885d3f96849155507732dadc58b43b6299e3d2a0b95328b",
+  "review_status": "acceptance_failed_cleanup_verified",
+  "acceptance_status": "failed",
+  "checks_passed": 3,
+  "checks_required": 8,
+  "physical_acceptance_complete": false,
+  "passed_check_names": [
+    "production MSI installed and an authenticated inventory was uploaded",
+    "storage block applied without disabling healthy keyboard, mouse or HID devices",
+    "offline restart retained the storage policy and healthy HID devices"
+  ],
+  "original_startup_failure_cause": "not established; job ownership and shared readiness defects identified by code inspection",
+  "recovery_rejection_context": "Authorized physical USB absent from guest and observed on host; release succeeded after reconnection.",
+  "release": {
+    "version": 5,
+    "digest": "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+    "positive_ack_count": 1,
+    "ack_seconds": 15.2931587,
+    "cache_and_journal_verified_before_msi": true
+  },
+  "cleanup": {
+    "msi_exit_code": 0,
+    "service_absent": true,
+    "agent_process_absent": true,
+    "watchdog_absent": true,
+    "usb_journal_absent": true,
+    "managed_nrpt_count": 0,
+    "managed_firewall_count": 0,
+    "hosts_matches_preinstallation_backup": true,
+    "hosts_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085",
+    "hosts_backup_created_utc": "2026-11-07T18:20:20.6075094Z",
+    "hosts_managed_marker_count": 0,
+    "healthy_hid_preserved_at_removal": true,
+    "post_removal_usb_read_write_delete_verified": true,
+    "device": {
+      "drive": "E:",
+      "vid": "058F",
+      "size": 4026531840,
+      "pid": "6387"
+    }
+  },
+  "recovery24_raw_status": "failed",
+  "recovery24_verification_limitation": "Hosts comparison used active-agent bytes including its managed block; independent verification25 matched the original preinstallation backup exactly.",
+  "unrelated_firewall_baseline_preservation": "not established for the incomplete original run",
+  "raw_reports_preserved": [
+    {
+      "name": "usb-preflight.json",
+      "bytes": 589,
+      "sha256": "2200ab83af2f697e6500ccec8d1253029bc8cdc2bab40b7103ca0832ebb2b1ea"
+    },
+    {
+      "name": "usb-result.json",
+      "bytes": 2511,
+      "sha256": "aadea17335960c749b6d71c7f93d5de9ddcae83e192d1de31aca32f2c7927cd9"
+    },
+    {
+      "name": "usb-supplement.json",
+      "bytes": 1457,
+      "sha256": "fa423b5461ee2f04299299e347b61001b973ef92f42c82a35116341b52cc2f60"
+    },
+    {
+      "name": "usb-diagnostics-91a57964.json",
+      "bytes": 24345,
+      "sha256": "1e319faa35cc7a683dc401ca9396e5191f1ccedbaee27cf1eef1e77edda46007"
+    },
+    {
+      "name": "usb-recovery-91a57964.json",
+      "bytes": 1523,
+      "sha256": "7500f567f2b6bfdb94bfd6cb534cec266bda776998a9ca7f958549c72e52cd7d"
+    },
+    {
+      "name": "usb-recovery-91a57964-retry1.json",
+      "bytes": 2404,
+      "sha256": "4975f2821d65ecaf71fd5effe89a4c990e7301bb1dcb421912d85382b0772655"
+    },
+    {
+      "name": "usb-release-diagnostics-91a57964.json",
+      "bytes": 34185,
+      "sha256": "7c8742fbfa760a557fd1721d0120c9b6a5b070b0afcc3aaf4b53f1e75ffdbe09"
+    },
+    {
+      "name": "usb-recovery-91a57964-reconnected.json",
+      "bytes": 2977,
+      "sha256": "7acbcdf754b82052f3d9e3fb215d3de617686d715e98f0d52dbbaac56e303bd5"
+    },
+    {
+      "name": "usb-post-removal-91a57964.json",
+      "bytes": 2178,
+      "sha256": "d9ea75bb4ebdd138b3fcabb679152e06871b95591d17c9e7f6d0414782d18a66"
+    }
+  ],
+  "local_archive": ".venv/usb-acceptance-ec50572-91a57964/final-evidence/",
+  "product_or_harness_modified": false,
+  "next_step": "Approve the proposed backend lifecycle plan, then perform TDD and a fresh full physical USB acceptance from the clean snapshot."
+}

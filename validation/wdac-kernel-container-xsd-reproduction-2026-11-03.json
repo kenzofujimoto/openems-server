@@ -1,0 +1,22 @@
+﻿{
+    "original_sha256":  "24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b",
+    "schema_sha256":  "55ccd60a37d01ad37bdad59dc30953e1a8069bc93950511c07f110354da1232f",
+    "original_schema_errors":  [
+
+                               ],
+    "normalizer_strict_assert_passed":  true,
+    "normalized_schema_errors":  [
+                                     {
+                                         "line":  0,
+                                         "message":  "O elemento \u0027FileRulesRef\u0027 no espaço para nome \u0027urn:schemas-microsoft-com:sipolicy\u0027 apresenta conteúdo incompleto. Lista de possíveis elementos esperados: \u0027FileRuleRef\u0027 no espaço para nome \u0027urn:schemas-microsoft-com:sipolicy\u0027.",
+                                         "position":  0,
+                                         "severity":  "Error"
+                                     }
+                                 ],
+    "empty_kernel_reference_containers":  1,
+    "comparison_schema_errors":  [
+
+                                 ],
+    "comparison_strict_assert_passed":  true,
+    "scope":  "XML helpers extracted by AST and Microsoft XSD validation only. No adapter top-level, ConfigCI, executable fixture, MSI or endpoint controls executed."
+}

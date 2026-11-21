@@ -1,0 +1,37 @@
+{
+  "status": "failed_as_expected",
+  "source_revision": "2231ef999509785d89e466bbbccf26cf256a2d8c",
+  "hosted_job": "https://github.com/kenzofujimoto/openems-server/actions/runs/43922811900/job/133494273559",
+  "inputs_sha256": {
+    "requirements.txt": "4beccc7218a4728fe39f6f3ad857bb5d14caf88e6cd8cae1cea598ed86d9d806",
+    "agent-rs/Cargo.lock": "a570caa6e740be198e56d627b21d699f6749c7dc595598fdfda429d9c643426c"
+  },
+  "isolated_reproduction": {
+    "pip-audit": {
+      "version": "2.10.1",
+      "exit_code": 1,
+      "report_sha256": "5966a708c95c6b365f042b979a696a6587ea5d3c13d60a73bc33b3712cf5ada1",
+      "findings": ["CVE-2026-126360"]
+    },
+    "osv-scanner": {
+      "version": "2.7.0",
+      "exit_code": 1,
+      "report_sha256": "baf9db7e4e6c8a30400c276c672b5ac2a340f0cd633aec4827628fc70eb3f9f9",
+      "findings": ["GHSA-mf5v-w3w3-f6cg", "RUSTSEC-2026-0486"]
+    }
+  },
+  "affected_dependencies": [
+    {
+      "name": "opentelemetry-api",
+      "detected_version": "1.45.1",
+      "fixed_version": "1.45.2"
+    },
+    {
+      "name": "rustix",
+      "detected_version": "1.1.5",
+      "fixed_version": "1.1.6",
+      "linux_normal_build_graph": "gethostname dependency",
+      "windows_normal_build_graph": "absent"
+    }
+  ]
+}

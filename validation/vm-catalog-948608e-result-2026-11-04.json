@@ -1,0 +1,92 @@
+﻿{
+    "run_id":  "0e93a06a306e493b9d1fe4975ce2aaf8",
+    "source_revision":  "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+    "status":  "failed",
+    "passed":  false,
+    "error":  "Both fixture paths must reach the external network before firewall acceptance.",
+    "cleanup_errors":  [
+
+                       ],
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "own_policy_present":  false,
+                                        "assignment":  {
+                                                           "version":  2,
+                                                           "digest":  "d76daabacc7155bd64084cfe33278daf8e14c4f0a0c946affa0e2d6138703d6a"
+                                                       },
+                                        "ack":  {
+                                                    "version":  2,
+                                                    "success":  true,
+                                                    "digest":  "d76daabacc7155bd64084cfe33278daf8e14c4f0a0c946affa0e2d6138703d6a"
+                                                }
+                                    },
+                       "name":  "absent",
+                       "at_utc":  "2026-11-04T14:26:05.2565424Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "foreign_after":  [
+                                                              "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                              "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                              "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                              "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                              "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                              "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                              "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                              "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                          ],
+                                        "foreign_before":  [
+                                                               "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                               "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                               "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                               "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                               "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                               "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                               "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                               "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                               "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                               "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                               "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                               "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                               "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                               "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                           ],
+                                        "nrpt_count":  0,
+                                        "service_present":  false,
+                                        "owned_firewall_rules":  0,
+                                        "msi_exit":  0,
+                                        "fixture_registry_present":  false,
+                                        "own_policy_present":  false,
+                                        "watchdog_present":  false
+                                    },
+                       "name":  "cleanup",
+                       "at_utc":  "2026-11-04T14:30:08.4736640Z"
+                   }
+               ],
+    "started_utc":  "2026-11-04T14:24:02.2875192Z",
+    "finished_utc":  "2026-11-04T14:30:08.5139999Z",
+    "scope":  "real host catalog API expansion; local fixture transport; installed Windows service",
+    "package_receipt":  {
+                            "manifest_sha256":  "136999640a0ccf71b9e96c6f5723f582ae8e8520e0490eb2948ca6c3fdb03969",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "57164306ca419e6bf2bcaed253d5bd3a11b0fce11ee5c18d3bf5059c7d65ec30",
+                                                                       "bytes":  8642560
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "0713929a49a9b24cb3da40209449ccdf9d743d8ff9197829e0fcb146aa83de95",
+                                                                            "bytes":  8642560
+                                                                        }
+                                         },
+                            "source_revision":  "948608ea46e91aff3ac128b05f8c18dd4acfce9a"
+                        }
+}

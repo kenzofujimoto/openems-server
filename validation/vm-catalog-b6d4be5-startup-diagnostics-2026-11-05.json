@@ -1,0 +1,149 @@
+﻿{
+    "run_id":  "a6c27d86de834dbb85cafe8388c82d70",
+    "source_revision":  "b6d4be52550c59ad7c5e8083bca193229212aa28",
+    "collected_utc":  "2026-11-05T13:15:58.0050278Z",
+    "collection_errors":  [
+
+                          ],
+    "scope":  "Read-only metadata for owned fixtures and sentinels, bounded sanitized agent and event observations, and clock/runtime context. Writes only own staging, temporary task and reports.",
+    "collection_status":  "completed",
+    "current_section":  null,
+    "guest_report_sha256":  "faf2c30babff89365f10b83b9132d423473840369c62d606b6afb08a05196249",
+    "fixture_files":  [
+                          {
+                              "matches_input":  true,
+                              "name":  "openems-catalog-a.exe",
+                              "modified_utc":  "2026-11-05T12:40:10.0000000Z",
+                              "bytes":  4096,
+                              "creation_utc":  "2026-11-05T12:50:38.3302481Z",
+                              "sha256":  "4ed1f556e6b24929acc3964ace14dbd853fc6b89712077e4f3b284bcdcf2fcfd"
+                          },
+                          {
+                              "matches_input":  true,
+                              "name":  "openems-catalog-a-renamed.exe",
+                              "modified_utc":  "2026-11-05T12:40:10.0000000Z",
+                              "bytes":  4096,
+                              "creation_utc":  "2026-11-05T12:50:38.3250726Z",
+                              "sha256":  "4ed1f556e6b24929acc3964ace14dbd853fc6b89712077e4f3b284bcdcf2fcfd"
+                          },
+                          {
+                              "matches_input":  true,
+                              "name":  "openems-catalog-b.exe",
+                              "modified_utc":  "2026-11-05T12:40:11.0000000Z",
+                              "bytes":  4096,
+                              "creation_utc":  "2026-11-05T12:50:38.3436729Z",
+                              "sha256":  "b9b0bd8b933cfa2f6ba2e3bc69b870991818433d6f0efc3098f19df7cccd81a5"
+                          },
+                          {
+                              "matches_input":  true,
+                              "name":  "openems-catalog-b-renamed.exe",
+                              "modified_utc":  "2026-11-05T12:40:11.0000000Z",
+                              "bytes":  4096,
+                              "creation_utc":  "2026-11-05T12:50:38.3384399Z",
+                              "sha256":  "b9b0bd8b933cfa2f6ba2e3bc69b870991818433d6f0efc3098f19df7cccd81a5"
+                          }
+                      ],
+    "sentinels":  [
+                      {
+                          "modified_utc":  "2026-11-05T12:52:39.5317933Z",
+                          "sha256":  "03494afd4248c42f5fa1237bf2eeebe751ab8d9c977d55405fcb17469dbd91f8",
+                          "name":  "8701da3955b54a07b803c60ebddddaee.started",
+                          "bytes":  7,
+                          "creation_utc":  "2026-11-05T12:52:39.5293040Z"
+                      },
+                      {
+                          "modified_utc":  "2026-11-05T12:52:44.5615484Z",
+                          "sha256":  "03494afd4248c42f5fa1237bf2eeebe751ab8d9c977d55405fcb17469dbd91f8",
+                          "name":  "719b1405cb1340e29a24858f26a39f03.started",
+                          "bytes":  7,
+                          "creation_utc":  "2026-11-05T12:52:44.5615484Z"
+                      },
+                      {
+                          "modified_utc":  "2026-11-05T12:58:02.4098028Z",
+                          "sha256":  "03494afd4248c42f5fa1237bf2eeebe751ab8d9c977d55405fcb17469dbd91f8",
+                          "name":  "acce8e459b264402a24b90290e312047.started",
+                          "bytes":  7,
+                          "creation_utc":  "2026-11-05T12:58:02.4098028Z"
+                      }
+                  ],
+    "agent_log_observations":  [
+                                   {
+                                       "file":  {
+                                                    "modified_utc":  "2026-11-05T12:59:43.9450930Z",
+                                                    "sha256":  "1565bf8133e0bfa5552a98f91e14d5d4a5705f5ed8bfc5fce1ac30fb10009f27",
+                                                    "name":  "agent.log",
+                                                    "bytes":  614
+                                                },
+                                       "observations":  [
+                                                            {
+                                                                "error_kind":  "LocalError",
+                                                                "at_utc":  "2026-11-05T12:53:34Z",
+                                                                "kind":  "enforcement_failed"
+                                                            }
+                                                        ]
+                                   }
+                               ],
+    "runtime_context":  [
+                            {
+                                "last_boot_utc":  "2026-11-02T16:04:09.5000000Z",
+                                "guest_memory_bytes":  4293677056,
+                                "guest_vcpu":  2,
+                                "collected_utc":  "2026-11-05T13:16:13.7001588Z",
+                                "windows_build":  "26300",
+                                "guest_free_memory_kib":  1027248
+                            }
+                        ],
+    "application_events":  [
+                               {
+                                   "matching":  [
+
+                                                ],
+                                   "channel":  "Application",
+                                   "possibly_truncated":  false,
+                                   "scanned":  0
+                               }
+                           ],
+    "code_integrity_events":  [
+                                  {
+                                      "matching":  [
+
+                                                   ],
+                                      "channel":  "Microsoft-Windows-CodeIntegrity/Operational",
+                                      "possibly_truncated":  false,
+                                      "scanned":  0
+                                  }
+                              ],
+    "defender_events":  [
+                            {
+                                "matching":  [
+
+                                             ],
+                                "channel":  "Microsoft-Windows-Windows Defender/Operational",
+                                "possibly_truncated":  false,
+                                "scanned":  0
+                            }
+                        ],
+    "system_storage_events":  [
+                                  {
+                                      "matching":  [
+
+                                                   ],
+                                      "channel":  "System",
+                                      "possibly_truncated":  false,
+                                      "scanned":  0
+                                  }
+                              ],
+    "process_audit_events":  [
+                                 {
+                                     "matching":  [
+
+                                                  ],
+                                     "channel":  "Security",
+                                     "possibly_truncated":  false,
+                                     "scanned":  0
+                                 }
+                             ],
+    "task_state":  "Ready",
+    "task_last_result":  0,
+    "parent_elapsed_seconds":  69
+}
