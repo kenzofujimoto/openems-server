@@ -1,139 +1,80 @@
-# openems-server
+# OpenEMS
 
-[![CI](https://github.com/kenzofujimoto/openems-server/actions/workflows/ci.yml/badge.svg)](https://github.com/kenzofujimoto/openems-server/actions/workflows/ci.yml)
+**Servidor e agente de código aberto para gerenciar endpoints e aplicar políticas de rede, aplicativos e USB.**
 
-A **clean-room, open-source** endpoint-management server that aims to be
-*protocol-compatible* with FortiClient-style endpoint agents, so endpoints can
-register, send posture/telemetry, and be managed by a free server.
+[![CI da main](https://github.com/kenzofujimoto/openems-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kenzofujimoto/openems-server/actions/workflows/ci.yml)
+[![Security da main](https://github.com/kenzofujimoto/openems-server/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/kenzofujimoto/openems-server/actions/workflows/security.yml)
+[![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-26725D)](LICENSE)
 
-> **Provenance / legal.** This project is written **only** from the behavioural
-> interoperability specification in [`SPEC-INTEROP.md`](SPEC-INTEROP.md),
-> which documents an *observed interface* (endpoints, fields, sequences). No
-> proprietary Fortinet code, binary, or asset is copied here, and the names
-> "Fortinet"/"FortiClient" are not used as product branding. Reverse engineering
-> for interoperability is treated differently across jurisdictions and EULAs —
-> validate with a lawyer before distributing. Not affiliated with Fortinet.
+[Começar](#comece-pelo-painel) · [Arquitetura](#arquitetura) · [Estado do projeto](#estado-do-projeto) · [Documentação](docs/README.md) · [Contribuir](CONTRIBUTING.md)
 
-## What works today
+![Painel de demonstração do OpenEMS com métricas de aplicação de políticas e gráfico de bloqueios por dia](docs/assets/panel-overview-demo.png)
 
-Current desktop implementation and acceptance status (2026-10-27):
+*Visão geral do painel em modo de demonstração, com dados fictícios.*
 
-- **Native Windows agent:** Rust/MSI, local DNS and HTTP/HTTPS block pages, 27 UT1 category IDs, domain exceptions, schedules, SafeSearch, anti-bypass, session UI, tamper protection, network locations, USB and application controls. Hardware and WDAC acceptance remain separate.
-- **React panel:** policies, web category selection, inventories, events, groups/rules and administration, served at `/panel/`.
-- **Platform limits:** Linux packages await real VM acceptance; macOS Network Extension/Endpoint Security remain incomplete. Mobile/F9 is out of scope.
-- **Web visibility:** Allow/Block/Monitor actions, optional DNS monitoring, separate event counts, publication health and batch deduplication are implemented. DNS observations are not complete browsing history. New MSI packages have their own receipts and still require [guest and browser acceptance](docs/web-filter-actions-acceptance.md); prior receipts do not cover these changes. Optional browser extension packages remain inactive without the pending native broker.
+## O que o OpenEMS faz
 
-See the [documentation index](docs/README.md), [web category/FortiGuard comparison](docs/web-filter-compatibility.md), [current handoff](HANDOFF.md) and [acceptance guide](ACCEPTANCE.md).
+- **Administração centralizada.** Cadastro e inventário de endpoints, atribuição por grupo, publicação de políticas, confirmação de aplicação pelo agente e auditoria.
+- **Controles no Windows.** Agente em Rust distribuído como MSI. Aplica filtro DNS, exibe páginas de bloqueio, e controla aplicativos e armazenamento USB.
+- **Política web.** Regras por domínio, categoria e horário, exceções, SafeSearch e modos Permitir, Bloquear e Monitorar. Os eventos DNS registram domínios observados.
 
-- `EmsService` core (no web deps): register / refresh / update_client_id,
-  host-tag ingestion, endpoint listing — fully unit-tested.
-- Storage: `InMemoryStore` (default) and `PostgresStore` (psycopg 3), both held to
-  one contract test suite. The Postgres contract tests run when `OPENEMS_TEST_DSN`
-  points at a database (otherwise skipped).
-- Queue: `InMemoryQueue` (default) and `RedisQueue` (redis-py), same contract-test
-  pattern (`OPENEMS_TEST_REDIS`). Used for config/profile push notifications.
-- **Config/profile push:** an admin publishes a per-vdom profile; the service bumps
-  a version and enqueues a `config_update` per endpoint in that vdom; the endpoint
-  drains its queue, fetches the config, and acks the applied version. Profiles are
-  held by a `ProfileStore` — `InMemoryProfileStore` or `PostgresProfileStore`
-  (same contract test pattern as the endpoint store).
-- **Reference endpoint agent** (`agent/`): enforces server-defined blocks
-  **locally, on any network, with no VPN** — web filtering via the OS hosts file
-  and app control by terminating blocked processes. Policy rides in the profile
-  `body` (`web_filter.blocked`, `app_control.blocked`) and is delivered through
-  the config push + assignment rules. See [`agent/README.md`](agent/README.md).
-- **SAML 2.0 SP** (`app/saml.py`, clean-room implementation of the OASIS standard):
-  SP metadata, AuthnRequest (HTTP-Redirect), SAMLResponse parsing at the ACS
-  (HTTP-POST), multi-tenant IdP registry keyed by URL prefix.
-- **SAML signature verification** (`app/saml_signatures.py`, signxml): with
-  `SamlSp(require_signature=True)` the ACS verifies the response's enveloped
-  XML-DSig against the registered IdP certificate and fails closed. Tested
-  end-to-end (valid → accept, tampered → reject, wrong cert → reject).
-- **SAML assertion conditions + replay protection**: the ACS enforces the
-  `NotBefore`/`NotOnOrAfter` window (with clock-skew tolerance) and the
-  `AudienceRestriction`, and rejects a reused assertion ID via a `ReplayCache`
-  (`app/replay.py`: `InMemoryReplayCache`, or `RedisReplayCache` using
-  `SET NX EX`).
-- **Group assignment rules** (`app/rules.py`): priority-ordered rules with
-  conditions (`os`/`hostname`/`fctver`/`vdom`/`host_tag`, ops
-  `equals`/`contains`/`in`/`has_tag`, all AND-ed) decide an endpoint's effective
-  vdom/profile. Config push targets each endpoint by its *effective* vdom, so a
-  rule can move an endpoint to a different policy than it registered under.
-  Endpoint fetches its assigned config by client_id.
-- **Traffic recorder** (`app/recording.py`): an ASGI middleware that tees every
-  endpoint-channel request body to a JSONL file (enable with `record_path=` or
-  `OPENEMS_RECORD=`), replaying it downstream so routes still work and redacting
-  sensitive headers. Point a lab endpoint at the server and capture its real wire
-  format in cleartext — no TLS interception. `tools/analyze_capture.py` summarizes
-  the capture (paths, JSON keys, sample bodies). See
-  [`LAB-CAPTURE.md`](LAB-CAPTURE.md).
-- **Admin authentication** (`app/auth.py`): PBKDF2-SHA256 password hashing and
-  stateless HMAC-signed bearer tokens. A middleware gates every `/api/v1/*` route
-  (except `/api/v1/auth/login`) once any admin exists — until then it runs in open
-  *setup mode*. The endpoint channel (`/fct/api/*`) keeps its own device auth and
-  is never gated. The React panel uses an HttpOnly session cookie and CSRF tokens
-  for writes; credentials are not stored in `localStorage`. Bootstrap an admin with
-  `OPENEMS_ADMIN=user:pass`.
-- **Audit log** (`app/audit.py`): every mutating admin action (profile.publish,
-  rule.add, rule.remove) is recorded with the acting admin (from the verified
-  token), timestamp, target and metadata — `InMemoryAuditLog` or
-  `PostgresAuditLog`. Served at `GET /api/v1/audit` and shown in the React panel.
-- **Everything persists**: endpoints, profiles, **assignment rules**, **admins**
-  and the **audit log** each have an `InMemory*` and a `Postgres*` store/log behind
-  one contract test; the queue and replay cache have Redis backends. With a live
-  Postgres + Redis the full backend contract suite exercises persistent stores.
-  Destructive endpoint acceptance is separate; see [ACCEPTANCE.md](ACCEPTANCE.md).
-- FastAPI HTTP layer exposing:
-  - endpoint channel: `POST /fct/api/public/v1/register|refresh|update_client_id/`,
-    `POST /fct/api/public/v1/messages/pull/`, `GET /fct/api/public/v1/config/`,
-    `POST /fct/api/public/v1/config/ack/`
-    plus `GET /fct/api/public/v1/config/assigned/?client_id=...`
-  - management: `GET /api/v1/endpoints/index|count`,
-    `GET /api/v1/report/fct/host_tags?devid=...`, `POST /api/v1/profiles/{vdom}`,
-    `POST|GET /api/v1/assignment_rules`
-  - SAML: `GET /fct_saml/{prefix}/metadata`, `GET /fct_saml/login`,
-    `POST /fct_saml/{prefix}/acs`, `POST /fct_saml/parse_remote_metadata`
+## Comece pelo painel
 
-## Not done yet (needs real traffic capture)
-The **exact payloads** of the endpoint channel (serialization, keepalive cadence,
-avatar chunking, the 8013 auth/TLS handshake) are marked `[a capturar]` in the
-spec. Close them by capturing traffic against a lab EMS you are entitled to run,
-then tighten the request/response models here. Until then the bodies above use a
-pragmatic JSON shape.
+### Demonstração local
 
-## Run
+Com Node.js 24 e npm, rode o painel com a API simulada. Abra o endereço exibido pelo Vite em `/panel/`. Na tela de login, use `labadmin` e `mock-demo-password`.
 
-Full stack (server + PostgreSQL + Redis) with Docker:
 ```bash
-docker compose up --build
-# panel at http://localhost:8013/panel/; use the administrator configured in your .env
+cd web
+npm ci
+npm run dev:mock
 ```
 
-Or just the server (in-memory backends, no infra):
-```bash
-python -m venv .venv && . .venv/Scripts/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
-uvicorn --factory app.api:build --port 8013
-```
-Wire real backends via env: `OPENEMS_DATABASE_URL` (Postgres),
-`OPENEMS_REDIS_URL` (Redis), `OPENEMS_ADMIN=user:pass` (bootstrap admin).
+### Laboratório com Docker
 
-## Test
-```bash
-python -m pytest -q -m "not windows_only"  # native contracts require a built agent; optional infrastructure tests need their services
+Na raiz do clone, com Docker Compose e PowerShell disponíveis, gere as credenciais do laboratório e inicie servidor, PostgreSQL e Redis.
 
-# also exercise the PostgreSQL store:
-docker run --rm -e POSTGRES_PASSWORD=pw -p 5432:5432 postgres:16
-OPENEMS_TEST_DSN=postgresql://postgres:pw@localhost:5432/postgres python -m pytest -q
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\new-env.ps1
+docker compose up -d --build
+docker compose ps
 ```
 
-## Roadmap
-1. Capture lab traffic → fix endpoint-channel payloads.
-2. ~~Postgres store~~ ✓ · ~~Redis queue~~ ✓ · ~~config/profile push~~ ✓ · ~~SAML SP + signature + conditions/replay~~ ✓ · ~~persist profiles~~ ✓ · ~~assignment rules~~ ✓
-3. ~~Web console~~ ✓ · ~~traffic recorder~~ ✓ · ~~admin auth~~ ✓ · ~~audit log~~ ✓ · ~~persist rules + admins + audit~~ ✓
-4. Capture real lab traffic (see LAB-CAPTURE.md) → replace the `[a capturar]`
-   payloads with precise Pydantic models; add keepalive/avatar routes.
-5. SubjectConfirmationData (Recipient/InResponseTo) checks; AuthnRequest↔Response correlation.
+Abra [localhost:8013/panel/](http://localhost:8013/panel/) e use o administrador gerado pelo script. Guarde a saída em local seguro e mantenha o `.env` fora do Git. Para parar o laboratório, use `docker compose stop`.
 
-## License
-MIT (see `LICENSE`). Contributions welcome.
+## Arquitetura
+
+```mermaid
+flowchart LR
+    P[Painel React] -->|Administra políticas| S[Servidor FastAPI]
+    A[Agente Rust] -->|Busca políticas e envia confirmações| S
+    S -->|Persiste estado e auditoria| D[(PostgreSQL)]
+    S -->|Entrega notificações| Q[(Redis)]
+```
+
+| Diretório | Responsabilidade |
+| --- | --- |
+| `app/` | API de gerenciamento e canal dos endpoints |
+| `agent-rs/` | Agente nativo e integração com o sistema operacional |
+| `web/` | Painel React servido em `/panel/` |
+| `deploy/` | Instaladores, pacotes e roteiros de homologação |
+| `agent/` | Implementação Python de referência |
+
+## Estado do projeto
+
+| Plataforma ou integração | Situação |
+| --- | --- |
+| Windows | Candidato em homologação. A matriz registra o resultado por cenário e por versão do MSI. |
+| Linux | Agente e empacotamento disponíveis para avaliação. Aceite operacional em VM pendente. |
+| macOS | Implementação parcial. Network Extension e Endpoint Security em aberto. |
+| Extensão de navegador | Integração opcional com o agente em desenvolvimento. Depende do broker nativo. |
+
+Veja a [matriz de aceite](ACCEPTANCE.md), o [roadmap desktop](roadmap-v2.md) e o [PR de homologação Windows](https://github.com/kenzofujimoto/openems-server/pull/13) para acompanhar evidências, pendências e o alcance de cada teste.
+
+## Documentação e contribuição
+
+- [Índice por tarefa](docs/README.md) para guias de desenvolvimento, homologação e operação.
+- [Como contribuir](CONTRIBUTING.md) e [como reportar uma vulnerabilidade](SECURITY.md).
+- [Especificação de interoperabilidade](SPEC-INTEROP.md) para os endpoints, fluxos e limites da compatibilidade.
+
+O OpenEMS é um projeto clean-room independente, sem afiliação com a Fortinet. A compatibilidade se baseia na interface documentada na especificação. Distribuído sob a [licença MIT](LICENSE).
