@@ -1,34 +1,31 @@
 # Documentação do OpenEMS
 
-Referência atualizada em 27/10/2026. Os documentos de planejamento na raiz preservam decisões e evidências históricas; não são uma declaração de paridade com FortiGate/FortiGuard.
+[Início rápido](../README.md) · [Contribuição](../CONTRIBUTING.md) · [Política de segurança](../SECURITY.md)
 
-| Necessidade | Documento atual |
-|---|---|
-| Executar o servidor e o painel | [README](../README.md) |
-| Estado implementado e pendências | [HANDOFF](../HANDOFF.md) |
-| Testar em homologação, Sandbox e VMs | [ACCEPTANCE](../ACCEPTANCE.md) |
-| Categorias, exceções e comparação FortiGuard | [Filtro web e compatibilidade](web-filter-compatibility.md) |
-| Permitir/Bloquear/Monitorar e lacunas | [Plano das ações de filtro web](web-filter-actions-plan.md) |
-| Matriz de testes das novas ações | [Aceite das ações web](web-filter-actions-acceptance.md) |
-| Roteiro do notebook com pendrive, Chrome e Firefox | [Aceite na segunda máquina](second-machine-acceptance.md) |
-| Revisão de segurança e scanners | [Revisão de 27/10/2026](security-review-2026-10-27.md) |
-| Contrato de política, capacidades e eventos | [Web action contract](web-filter-actions-contract.md) |
-| Fontes, licença e limites das categorias | [Auditoria de fontes](category-source-audit.md) |
-| Extensão opcional e integração pendente | [Browser visibility](../browser-extension/README.md) |
-| Objetivos e limites por fase | [Roadmap desktop](../roadmap-v2.md) |
-| Suporte Linux e geração de pacotes | [Linux](../deploy/linux/SUPPORT.md) |
-| Limites e pré-requisitos macOS | [macOS](../deploy/macos/SUPPORT.md) |
-| Contrato de interoperabilidade | [SPEC-INTEROP](../SPEC-INTEROP.md) |
-| Agente Python de referência | [Agente de referência](../agent/README.md) |
+## Instalar e homologar
 
-## Estado atual
+| Quero… | Onde consultar |
+| --- | --- |
+| Executar o servidor e abrir o painel | [README do projeto](../README.md) |
+| Testar USB e WDAC em uma VM Windows descartável | [Guia de VM](vm-acceptance-guide.md) |
+| Repetir os testes de USB e navegadores em outra máquina | [Aceite na segunda máquina](second-machine-acceptance.md) |
+| Instalar o agente nativo em Linux | [Suporte Linux](../deploy/linux/SUPPORT.md) |
+| Preparar o pacote e revisar os requisitos no macOS | [Suporte macOS](../deploy/macos/SUPPORT.md) |
 
-- Windows: agente Rust e MSI, filtro web, componente de sessão, proteção do serviço, locais de rede, USB e controles de aplicativos implementados. O alcance de cada aceite está em HANDOFF/ACCEPTANCE.
-- Painel: React com políticas, categorias, exceções por domínio, horários, SafeSearch, inventários, eventos, grupos/regras e administração.
-- Categorias: 27 IDs UT1, dependentes da publicação das listas no servidor, com estado de saúde. Sem uso da base ou dos IDs proprietários FortiGuard.
-- Eventos web: bloqueios e monitoramentos DNS separados, agregados por máquina/domínio/hora, com deduplicação de lotes e descartes separados. Não representam histórico completo de páginas visitadas.
-- Permitir/Bloquear/Monitorar: implementado com seletor acessível e compatibilidade explícita de agentes. Aceito no Windows Sandbox com Chrome/Firefox (27/10, ver HANDOFF). Pendente: Windows físico ([segunda máquina](second-machine-acceptance.md)).
-- Extensão Chrome/Firefox: pacotes separados e testes de contrato; broker nativo e aceite real pendentes. Inativa sem pareamento, coleta desligada por padrão.
-- Linux: implementação/pacotes aguardam aceite em VM. macOS permanece incompleto em Network Extension/Endpoint Security. F9 excluída.
+## Entender políticas e componentes
 
-Na transferência entre máquinas, arquivos ignorados (`.env`, `.venv`, builds, certificados e estado local) não acompanham o clone. Não transferir CA privada nem credenciais de um endpoint para outro.
+| Quero… | Onde consultar |
+| --- | --- |
+| Entender o filtro web e a compatibilidade com FortiGuard | [Filtro web e compatibilidade](web-filter-compatibility.md) |
+| Definir precedência entre regras de domínio | [Regras ordenadas de domínio](ordered-domain-rules.md) |
+| Aplicar e testar Permitir, Bloquear e Monitorar | [Contrato das ações web](web-filter-actions-contract.md) · [Roteiro de aceite](web-filter-actions-acceptance.md) |
+| Conferir a origem, as licenças e a cobertura de categorias | [Auditoria de fontes](category-source-audit.md) |
+| Desenvolver a extensão opcional para Chrome e Firefox | [Extensão e integração com o agente](../browser-extension/README.md) |
+| Ler as interfaces observadas no protocolo EMS | [Especificação de interoperabilidade](../SPEC-INTEROP.md) |
+| Consultar o agente Python de referência | [Agente de referência](../agent/README.md) |
+
+## Acompanhar validação e mudanças
+
+- [Roadmap desktop](../roadmap-v2.md) reúne as fases e o escopo do projeto.
+- [Matriz de aceite](../ACCEPTANCE.md) e [handoff técnico](../HANDOFF.md) registram o histórico. Acompanhe a validação do candidato Windows no [PR #13](https://github.com/kenzofujimoto/openems-server/pull/13).
+- [Ferramentas e gates de segurança](security-tooling.md) explica as verificações locais e no CI.
