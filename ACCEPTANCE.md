@@ -1,8 +1,8 @@
 # Aceite final do roadmap desktop
 
-## Estado vigente — 17/11/2026
+## Estado vigente — 21/11/2026
 
-O candidato Windows usa os dois MSIs de `ec50572` registrados no [recibo de validação](validation/windows-release-checkpoint-2026-11-17.json). O aceite de aplicativos fechou. A rodada de Chrome e Firefox passou nas seis navegações e reprovou a comparação exata dos certificados raiz após a remoção.
+O candidato Windows usa os dois MSIs congelados de ec50572. Os aceites de aplicativos e de Chrome e Firefox foram concluídos. A rodada final dos navegadores passou nas seis navegações com TLS normal e na comparação exata dos dois repositórios de raízes. [Recibo dos MSIs](validation/windows-release-checkpoint-2026-11-17.json) · [Aceite final dos navegadores](validation/browser-trust-ec50572-final-2026-11-21.json)
 
 | Área | Resultado | Evidência |
 |---|---|---|
@@ -11,11 +11,13 @@ O candidato Windows usa os dois MSIs de `ec50572` registrados no [recibo de vali
 | Aplicativos | **10/10**, rede por caminho, WDAC por hash e editor, cópias renomeadas e remoção MSI com código 0 | [Rodada 34](validation/windows-release-checkpoint-2026-11-17.json) |
 | Sessão, upgrade e reboot real | **8/8**, recuperação e remoção verificadas | [Sessão e upgrade](validation/windows-session-ec50572-review-2026-11-09.json) |
 | Locais de rede | **8/8**, transições offline e limpeza verificadas | [Locais de rede](validation/windows-locations-ec50572-review-2026-11-09.json) |
-| Chrome e Firefox | **6/6 navegações, guarda de raízes reprovada**. Duas raízes externas permaneceram após a remoção | [Rodada a8cdb690](validation/browser-trust-ec50572-2026-11-17.json) |
+| Chrome e Firefox | **6/6**, TLS normal, comparação final exata e remoção da raiz do OpenEMS nos dois repositórios | [Rodada 79ac2a77](validation/browser-trust-ec50572-final-2026-11-21.json) |
 
 A rodada 34 chegou ao resultado terminal apesar da interrupção do observador. A recuperação confirmou o ACK de liberação v8, o hash original do `hosts`, zero regras gerenciadas de firewall e NRPT e a remoção do serviço. Um log independente confirmou o código de remoção do MSI. O WPR reportou `recorder_status_unknown`. [Recibo de validação](validation/windows-release-checkpoint-2026-11-17.json)
 
-No Windows Sandbox com o agente extraído do MSI de produção, a mesma sessão interativa registrou seis coletas de `LocalMachine\Root` e `CurrentUser\Root`. Ambas as leituras tinham 20 raízes no baseline. A raiz do OpenEMS apareceu na prontidão e foi removida no encerramento. As mesmas raízes GlobalSign e IdenTrust da tentativa 6 apareceram entre as coletas após Chrome e após Firefox. As duas permaneciam visíveis nas leituras finais, com 22 raízes em cada uma. O processo que as adicionou segue em aberto. A rodada confirmou a limpeza do agente e preservou o `hosts`. [Rodada a8cdb690](validation/browser-trust-ec50572-2026-11-17.json) · [Tentativas 4–8](validation/browser-ec50572-retries4-8-review-2026-11-09.json)
+Na rodada final, a preparação TLS acessou as páginas válidas de teste das duas autoridades enquanto o agente estava ausente. O Windows materializou GlobalSign R1 e IdenTrust Commercial Root CA 1 antes do baseline. A mesma sessão interativa registrou 22 raízes em cada repositório no baseline, 23 na prontidão com a raiz do OpenEMS e exatamente 22 após sua remoção. Os 75 artefatos e os manifests foram conferidos, o hosts foi preservado e os dois guests foram encerrados. [Rodada 79ac2a77](validation/browser-trust-ec50572-final-2026-11-21.json)
+
+As rodadas anteriores continuam reprovadas. O diagnóstico 3a57c952 identificou o CryptSvc criando as duas raízes em AuthRoot e o PowerShell da sonda verifyReady regravando IdenTrust. A captura CAPI2 não trouxe eventos que confirmassem o gatilho original. [Atribuição das gravações](validation/browser-root-attribution-2026-11-21.json) · [Rodada a8cdb690](validation/browser-trust-ec50572-2026-11-17.json)
 
 No controle sem agente, Chrome e Firefox receberam HTTP 200 com TLS normal. Surgiram DigiCert Assured ID Root CA após o Chrome e ISRG Root X1 após o Firefox. [Controle sem agente](validation/windows-release-checkpoint-2026-11-17.json)
 

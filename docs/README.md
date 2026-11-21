@@ -33,4 +33,4 @@
 
 ## Homologação Windows atual
 
-O par MSI ec50572 passou nos aceites de catálogo, USB físico, aplicativos, sessão, upgrade, reboot e locais. A comparação final de raízes dos navegadores segue em investigação. A matriz reúne o alcance e os hashes de cada rodada. [Matriz atual](../ACCEPTANCE.md) · [Plano de fechamento](../windows-release-completion.md)
+O candidato ec50572 passou nos aceites de catálogo, USB físico, aplicativos, sessão, upgrade, reboot, locais e Chrome/Firefox. A rodada dos navegadores passou 6/6 com TLS normal e comparação final exata das raízes. A regressão das ações web está em andamento. A matriz reúne o alcance e os hashes de cada rodada. [Matriz atual](../ACCEPTANCE.md) · [Plano de fechamento](../windows-release-completion.md)

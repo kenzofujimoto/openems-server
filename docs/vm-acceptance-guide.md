@@ -2,7 +2,7 @@
 
 Como preparar uma VM Windows descartável e rodar os testes de controles USB/WDAC. A VM de 28–29/10/2026 foi apagada em 30/10; as evidências dessa VM continuam em `validation/vm-*` e `validation/windows-controls-vm-*`. As rodadas de novembro usam uma nova VM e preservam seus próprios recibos.
 
-## Estado vigente — 17/11/2026
+## Estado vigente — 21/11/2026
 
 O par MSI congelado da fonte nativa `ec50572` passou no [catálogo, rodada18](../validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) e no [USB físico, rodada26](../validation/usb-vm-5354a16-run26-review-2026-11-08.json), ambos com **8/8 critérios**. O roteiro USB tem fonte `5354a16`; os bytes dos MSIs são os mesmos usados no catálogo: produção SHA-256 `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a`, próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. A remoção pelo MSI, os controles próprios ausentes e o canário físico pós-remoção foram verificados.
 
@@ -11,12 +11,20 @@ O par MSI congelado da fonte nativa `ec50572` passou no [catálogo, rodada18](..
 | Catálogo `if_present`, hash/renomeado, rede, processo e hora real | Atual: 8/8, fonte nativa `ec50572`, rodada18 |
 | USB físico: exceção, bloqueio, somente leitura, evento e remoção | Atual: 8/8, mesmo par MSI, rodada26 |
 | Aplicativos, incluindo editor assinado e cópia renomeada | **10/10** na rodada 34, com remoção MSI verificada pelo código 0. [Recibo](../validation/windows-release-checkpoint-2026-11-17.json) |
-| Chrome/Firefox físicos | [Parte A histórica em `18cd811`](../validation/second-machine-browsers-2026-10-28.json); [tentativas atuais4–8](../validation/browser-ec50572-retries4-8-review-2026-11-09.json) não fecharam o aceite global |
+| Chrome/Firefox em Sandbox | **6/6**, TLS normal e comparação final exata das raízes. Executável extraído do MSI congelado, com política em loopback. [Rodada 79ac2a77](../validation/browser-trust-ec50572-final-2026-11-21.json) |
 | Sessão e upgrade/reboot real | [8/8 atuais aprovados](../validation/windows-session-ec50572-review-2026-11-09.json), par congelado e limpeza verificada |
 | Locais de rede | [8/8 atuais aprovados](../validation/windows-locations-ec50572-review-2026-11-09.json), seleção por sinais locais e reinícios offline |
 | CI e distribuição | 20 checks aprovados em `98e5295`. Assinatura e homologação de produção têm critérios próprios. [Recibo](../validation/windows-release-checkpoint-2026-11-17.json) |
 
-O catálogo comprovou regras por hash e a rodada 34 comprovou as regras por editor. O aceite de sessão confirmou o upgrade com o componente aberto e reboot real, além do hash dos dois MSIs. O aceite dos navegadores ainda exige a comparação final das raízes após a remoção. Os relatórios antigos mantêm seus resultados e versões. Linux aguarda aceite operacional em VM. O macOS continua parcial e F9 está excluída. [Plano de fechamento](../windows-release-completion.md)
+O catálogo comprovou regras por hash e a rodada 34 comprovou as regras por editor. O aceite de sessão confirmou o upgrade com o componente aberto e reboot real, além do hash dos dois MSIs. Os navegadores passaram na guarda final de raízes. Os relatórios antigos mantêm seus resultados e versões. Linux aguarda aceite operacional em VM. O macOS continua parcial e F9 está excluída. [Plano de fechamento](../windows-release-completion.md)
+
+## Reproduzir o baseline TLS dos navegadores
+
+Na rodada 79ac2a77, os guests de controle e candidato fizeram requisições HTTPS normais a `https://valid.r1.roots.globalsign.com/` e `https://identrust-commercial-ov-valid.identrustssl.com/`, antes de iniciar o agente e registrar o baseline. O Windows materializou GlobalSign R1 e IdenTrust Commercial Root CA 1, passando de 20 para 22 raízes. Essa preparação não importa certificados nem desabilita a validação TLS.
+
+Registre LocalMachine e CurrentUser na mesma conta e sessão interativa nas fases baseline, ready, after_chrome, after_firefox, before_removal e after_removal. A prontidão deve identificar a raiz própria; após sua remoção, os dois conjuntos precisam ser exatamente iguais aos respectivos baselines. Na rodada final foram 22 → 23 → 22. As duas leituras podem refletir raízes herdadas da máquina; elas não provam gravações independentes em cada repositório.
+
+Preserve as rodadas reprovadas e seus diagnósticos. A atribuição anterior identificou gravações do CryptSvc e da sonda PowerShell, mas a captura CAPI2 não confirmou o gatilho original. A rodada de navegador usa o executável extraído com fixture de política; instalação e remoção MSI têm evidências próprias nos outros aceites.
 
 ## Por que VM e não o PC físico
 

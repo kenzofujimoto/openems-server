@@ -4,7 +4,7 @@ Objetivo: chegar perto do que o FortiClient EMS oferece nas funções que não d
 
 Status: aprovado em 2026-10-22, com o agente em Rust. Andamento de cada fase em `HANDOFF.md`.
 
-## Estado vigente — 17/11/2026
+## Estado vigente — 21/11/2026
 
 O par MSI congelado de `ec50572` passou no [catálogo/WDAC opcional 8/8, rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) e no [USB físico 8/8, rodada 26](validation/usb-vm-5354a16-run26-review-2026-11-08.json). O roteiro USB é da revisão `5354a16`, com os mesmos MSIs de produção `c1e38743…` e próximo `eba1fc2e…`. Instalação, aplicação real, liberação e remoção foram verificadas no escopo dessas rodadas.
 
@@ -13,7 +13,7 @@ O par MSI congelado de `ec50572` passou no [catálogo/WDAC opcional 8/8, rodada 
 | F3 — catálogo | Regras opcionais, hash/renomeado, rede, processo e rechecagem de uma hora aprovados no par atual |
 | F4 — USB | Hardware físico, exceção VID/PID/serial, bloqueio por instância, somente leitura, evento e limpeza aprovados no par atual |
 | F3 — editor assinado | **10/10** na rodada 34, incluindo editor e cópia renomeada. Remoção MSI com código 0 verificada. [Recibo](validation/windows-release-checkpoint-2026-11-17.json) |
-| F2/F7 — navegadores/painel | As tentativas 4 e 6 aprovaram as seis navegações e reprovaram a comparação final de raízes. Aceite global e regressão das ações web pendentes. Painel aprovado no CI |
+| F2/F7 — navegadores/painel | Chrome e Firefox passaram 6/6 com TLS normal e comparação final exata das raízes na rodada 79ac2a77. A regressão das ações web está em andamento. [Recibo](validation/browser-trust-ec50572-final-2026-11-21.json) |
 | F5 — sessão e upgrade/reboot | [8/8 atuais aprovados](validation/windows-session-ec50572-review-2026-11-09.json), novo boot e limpeza verificados |
 | F6 — locais | [8/8 atuais aprovados](validation/windows-locations-ec50572-review-2026-11-09.json), transições e reinícios offline |
 | Gates da candidata | 20 checks aprovados em `98e5295`, cobertura de 97,28%. Distribuição e aceites restantes pendentes. [Recibo](validation/windows-release-checkpoint-2026-11-17.json) |

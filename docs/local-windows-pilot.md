@@ -12,6 +12,8 @@ O alvo deste piloto é a máquina de desenvolvimento. O pacote de laboratório u
 
 O MSI de produção tem SHA-256 c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a. O MSI seguinte usado no teste de upgrade tem SHA-256 eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112.
 
+Se a máquina já tiver um agente, registre sua versão, hash, servidor e estado antes de instalar. Preserve a configuração e obtenha a liberação pela administração existente quando necessária. O ensaio passa a incluir atualização de uma instalação anterior; o aceite de upgrade entre os dois MSIs congelados não comprova automaticamente a migração de qualquer versão antiga. Após atualizar, confirme o novo hash, o cadastro e a política vazia antes de aplicar controles.
+
 ## Executar o piloto
 
 Faça a instalação elevada com o MSI conferido, o endereço do servidor de laboratório e o convite de uso único. O instalador aceita SERVER, INVITATION, VDOM e DEVID. Os parâmetros e as condições estão na [definição do MSI](../agent-rs/installer/openems-agent.wxs).

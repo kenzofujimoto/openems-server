@@ -1,0 +1,453 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-21",
+  "pair": "79ac2a77",
+  "status": "candidate_browser_acceptance_passed",
+  "passed": true,
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "agent_sha256": "51de0a4ef1436fc5d7013533e57ad77cbaf254a0ff2e2ea200d4b1ab1f5f358f",
+  "msi_provenance_sha256": {
+    "production": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+    "next": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112"
+  },
+  "execution_scope": "Production MSI executable payload with loopback policy fixture in a disposable Windows Sandbox. No MSI installation or removal was run in this pair.",
+  "preparation_change": {
+    "performed_before_baseline_and_agent_start": true,
+    "mechanism": "Normal HTTPS requests to public certificate-authority test pages, with Windows TLS validation enabled.",
+    "normal_tls_public_requests_materialized_expected_roots_in_both_guests": true,
+    "root_counts_before_and_after_requests": [
+      20,
+      21,
+      22
+    ],
+    "explicit_ca_import_commands_present": false,
+    "tls_validation_bypass_present": false,
+    "same_preparation_script_in_control_and_candidate": true,
+    "prior_strict_failure_preserved": "browser-root-attribution-2026-11-21.json"
+  },
+  "guards": {
+    "exact_root_comparison_unchanged": true,
+    "two_certificate_store_views": [
+      "LocalMachine",
+      "CurrentUser"
+    ],
+    "six_actual_candidate_navigation_cases_unchanged": true,
+    "candidate_chrome_firefox_node_and_agent_payloads_unchanged": true,
+    "controller_readiness_and_browser_acceptance_deadlines_changed": false,
+    "per_browser_preparation_seconds": 180,
+    "guest_memory_mib": 3072
+  },
+  "control": {
+    "input_manifest": {
+      "sha256": "b5afd3e80f21da3d789dd20eda5ba2467e8e4f0441aec6edccf5d23abb849a81",
+      "bytes": 59175
+    },
+    "input_files_verified": 361,
+    "frozen_runtime_files_verified": 341,
+    "original_results_verified": 31,
+    "results_receipt_sha256": "4e0cb385b1661b34626bd7565b4ce81931710c1175a8e98c612c10cfffb2b408",
+    "browsers": {
+      "chrome": {
+        "passed": true,
+        "cases": 1,
+        "normal_tls": true,
+        "exit_code": 0,
+        "started_at": "2026-11-21T22:17:14.568Z",
+        "finished_at": "2026-11-21T22:17:21.557Z",
+        "result_sha256": "20a4afe003725d7066acf1b47f2fc1f0bfc6bd5ce03785c232c3f274990b1206"
+      },
+      "firefox": {
+        "passed": true,
+        "cases": 1,
+        "normal_tls": true,
+        "exit_code": 0,
+        "started_at": "2026-11-21T22:17:45.401Z",
+        "finished_at": "2026-11-21T22:17:56.003Z",
+        "result_sha256": "065d08bd908afcbd8a5a095086726852f6195b0f51538248ec4ae9bffd7e70ad"
+      }
+    },
+    "public_tls_preparation": [
+      {
+        "url": "https://valid.r1.roots.globalsign.com/",
+        "expected_root": "B1BC968BD4F49D622AA89A81F2150152A41D829C",
+        "normal_tls": true,
+        "http_status": 200,
+        "elapsed_ms": 933,
+        "machine_before": 20,
+        "machine_after": 21,
+        "current_user_after": 21,
+        "added_root": "B1BC968BD4F49D622AA89A81F2150152A41D829C"
+      },
+      {
+        "url": "https://identrust-commercial-ov-valid.identrustssl.com/",
+        "expected_root": "DF717EAA4AD94EC9558499602D48DE5FBCF03A25",
+        "normal_tls": true,
+        "http_status": 200,
+        "elapsed_ms": 693,
+        "machine_before": 21,
+        "machine_after": 22,
+        "current_user_after": 22,
+        "added_root": "DF717EAA4AD94EC9558499602D48DE5FBCF03A25"
+      }
+    ],
+    "tls_preparation_script_sha256": "64f4e280891dd7fd800c3b3a5581267127148e873f9c303efaa278435f7fc624",
+    "tls_preparation_report_sha256": "fc641c8d15d99032faaad2db4c56365f9cada205252907a7590ba65de35d60c2",
+    "same_active_interactive_session_through_all_checkpoints": true,
+    "trust_checkpoints": [
+      {
+        "phase": "baseline",
+        "at_utc": "2026-11-21T22:17:00.7879802Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      },
+      {
+        "phase": "ready",
+        "at_utc": "2026-11-21T22:17:05.9312236Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      },
+      {
+        "phase": "after_chrome",
+        "at_utc": "2026-11-21T22:17:36.2470152Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      },
+      {
+        "phase": "after_firefox",
+        "at_utc": "2026-11-21T22:18:00.4500018Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      },
+      {
+        "phase": "before_removal",
+        "at_utc": "2026-11-21T22:18:05.4468504Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      },
+      {
+        "phase": "after_removal",
+        "at_utc": "2026-11-21T22:18:10.5706394Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      }
+    ],
+    "final_exact_store_equality": {
+      "LocalMachine": true,
+      "CurrentUser": true
+    },
+    "owned_root_observed_while_agent_running": false,
+    "owned_root_absent_after_removal": true,
+    "hosts_preserved": true,
+    "no_agent_browser_listeners_or_owned_roots_after_cleanup": true,
+    "guest_stopped": true,
+    "state_sha256": "1dd045589d8e211cb0cd8976ee3e5c0a31c56e500434af0fc2e272e76f8ff679",
+    "timeline_sha256": "6cc48f73b56f7d99935d08da5437255d30c18421d4a9b6fab7c25e59e2ba1014",
+    "cleanup_sha256": "bb41d92a33341c9a1577c1cac209b67ba60a0eae67b12e639a9ec5a7813076c4"
+  },
+  "candidate": {
+    "input_manifest": {
+      "sha256": "b5afd3e80f21da3d789dd20eda5ba2467e8e4f0441aec6edccf5d23abb849a81",
+      "bytes": 59175
+    },
+    "input_files_verified": 361,
+    "frozen_runtime_files_verified": 341,
+    "original_results_verified": 44,
+    "results_receipt_sha256": "6db406340bc2123c552f17b24528b0d8cd7cf8b8fd3af591ab92766e19376b03",
+    "browsers": {
+      "chrome": {
+        "passed": true,
+        "cases": 3,
+        "normal_tls": true,
+        "exit_code": 0,
+        "started_at": "2026-11-21T22:20:54.132Z",
+        "finished_at": "2026-11-21T22:21:39.331Z",
+        "result_sha256": "6d023dbf20332bfc95ad7ab6a9471716a31e7a6c7dd68f24ee3b59a0207521a9"
+      },
+      "firefox": {
+        "passed": true,
+        "cases": 3,
+        "normal_tls": true,
+        "exit_code": 0,
+        "started_at": "2026-11-21T22:22:01.110Z",
+        "finished_at": "2026-11-21T22:22:49.105Z",
+        "result_sha256": "fd0d9b90fd57eb152da12c6b9fe3dd55d62078deecd89aa5aa41ca07f5d272c8"
+      }
+    },
+    "public_tls_preparation": [
+      {
+        "url": "https://valid.r1.roots.globalsign.com/",
+        "expected_root": "B1BC968BD4F49D622AA89A81F2150152A41D829C",
+        "normal_tls": true,
+        "http_status": 200,
+        "elapsed_ms": 1144,
+        "machine_before": 20,
+        "machine_after": 21,
+        "current_user_after": 21,
+        "added_root": "B1BC968BD4F49D622AA89A81F2150152A41D829C"
+      },
+      {
+        "url": "https://identrust-commercial-ov-valid.identrustssl.com/",
+        "expected_root": "DF717EAA4AD94EC9558499602D48DE5FBCF03A25",
+        "normal_tls": true,
+        "http_status": 200,
+        "elapsed_ms": 687,
+        "machine_before": 21,
+        "machine_after": 22,
+        "current_user_after": 22,
+        "added_root": "DF717EAA4AD94EC9558499602D48DE5FBCF03A25"
+      }
+    ],
+    "tls_preparation_script_sha256": "64f4e280891dd7fd800c3b3a5581267127148e873f9c303efaa278435f7fc624",
+    "tls_preparation_report_sha256": "93125241e5018b80b08307f208faf0c026eafe4b76715de6cb42f02af579d62e",
+    "same_active_interactive_session_through_all_checkpoints": true,
+    "trust_checkpoints": [
+      {
+        "phase": "baseline",
+        "at_utc": "2026-11-21T22:20:29.3907557Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      },
+      {
+        "phase": "ready",
+        "at_utc": "2026-11-21T22:20:48.0560593Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          },
+          "CurrentUser": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          }
+        },
+        "owned_root_present": true
+      },
+      {
+        "phase": "after_chrome",
+        "at_utc": "2026-11-21T22:21:54.1569033Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          },
+          "CurrentUser": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          }
+        },
+        "owned_root_present": true
+      },
+      {
+        "phase": "after_firefox",
+        "at_utc": "2026-11-21T22:22:53.7052050Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          },
+          "CurrentUser": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          }
+        },
+        "owned_root_present": true
+      },
+      {
+        "phase": "before_removal",
+        "at_utc": "2026-11-21T22:22:58.9821787Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          },
+          "CurrentUser": {
+            "root_count": 23,
+            "added_since_baseline": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ],
+            "removed_since_baseline": [],
+            "owned_roots": [
+              "A9C336331CC1B034A96945062E2989F025B113A3"
+            ]
+          }
+        },
+        "owned_root_present": true
+      },
+      {
+        "phase": "after_removal",
+        "at_utc": "2026-11-21T22:23:06.0230944Z",
+        "stores": {
+          "LocalMachine": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          },
+          "CurrentUser": {
+            "root_count": 22,
+            "added_since_baseline": [],
+            "removed_since_baseline": [],
+            "owned_roots": []
+          }
+        },
+        "owned_root_present": false
+      }
+    ],
+    "final_exact_store_equality": {
+      "LocalMachine": true,
+      "CurrentUser": true
+    },
+    "owned_root_observed_while_agent_running": true,
+    "owned_root_absent_after_removal": true,
+    "hosts_preserved": true,
+    "no_agent_browser_listeners_or_owned_roots_after_cleanup": true,
+    "guest_stopped": true,
+    "state_sha256": "43e1a554eb07069adfb965d4d5a96e97650ff22ac5c2c378f1637e32abfa9c0f",
+    "timeline_sha256": "0d694bab033708d394b9a06cbb3283655aba90ab73562f4f21f3efad26231e99",
+    "cleanup_sha256": "bb41d92a33341c9a1577c1cac209b67ba60a0eae67b12e639a9ec5a7813076c4"
+  },
+  "cleanup": {
+    "both_guests_stopped": true,
+    "docker_container_states_restored": 29,
+    "docker_restoration_sha256": "2bada23b81d8d1c41bf73efedc70a5ffb44e9db50123c56a804cca24c023092f"
+  },
+  "limitations": [
+    "This receipt covers the frozen executable payload, six browser navigation cases and certificate/hosts/process cleanup under a loopback policy fixture.",
+    "Full web-action/category regression, distribution signing and the operational pilot have separate acceptance requirements.",
+    "The earlier trace identified CryptSvc writes. The exact original trigger remains unproven. This pair establishes that normal pre-agent TLS materializes the same roots and leaves an exact final baseline comparison.",
+    "Procmon tracing was disabled for this acceptance pair; the prior diagnostic pair remains available separately."
+  ]
+}

@@ -2,7 +2,7 @@
 
 Goal: consolidate the verified Windows candidate, repeat acceptance still tied to older binaries, and prepare a draft PR with actual CI results. The operator requested this closure on 2026-11-08 ("termine então").
 
-The operator approved this scope on 2026-11-08. As of 2026-11-17, current-package catalog, physical USB, Applications, session, upgrade, real reboot, and network locations acceptance have passed. Chrome and Firefox acceptance remains pending on the exact root comparison. The draft PR has 20 successful checks at code revision `98e5295`. [Current acceptance matrix](ACCEPTANCE.md) · [Validation receipt](validation/windows-release-checkpoint-2026-11-17.json)
+The operator approved this scope on 2026-11-08. As of 2026-11-21, current-package catalog, physical USB, Applications, session, upgrade, real reboot, network locations, and Chrome/Firefox acceptance have passed. Browser run 79ac2a77 passed six normal-TLS navigations and the exact final root comparison. The real web-action regression is in progress. The draft PR has 20 successful check conclusions at revision `8f20223`. [Current acceptance matrix](ACCEPTANCE.md) · [Package receipt](validation/windows-release-checkpoint-2026-11-17.json) · [Final browser receipt](validation/browser-trust-ec50572-final-2026-11-21.json)
 
 ## Steps
 
