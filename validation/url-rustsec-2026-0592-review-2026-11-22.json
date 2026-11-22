@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-22",
+  "scope": "source_lockfile_security_update",
+  "status": "source_lockfile_updated_local_osv_passed",
+  "advisory": {
+    "id": "RUSTSEC-2026-0592",
+    "alias": "GHSA-hrj5-67jp-wqp9",
+    "source": "https://rustsec.org/advisories/RUSTSEC-2026-0592.html",
+    "osv": "https://osv.dev/vulnerability/RUSTSEC-2026-0592",
+    "affected": "url <= 2.5.8",
+    "fixed": "url >= 2.5.9",
+    "affected_functions": [
+      "url::Url::origin",
+      "url::quirks::origin"
+    ]
+  },
+  "red": {
+    "head": "10951c0ca3c20b859001ee052c190326ddd2aa7a",
+    "job": "https://github.com/kenzofujimoto/openems-server/actions/runs/45071922155/job/137360562033",
+    "finding": "url 2.5.8: RUSTSEC-2026-0592",
+    "log_sha256": "58d6acc50443462ba359f75d48533876bfa8c54999a62c5a759836e668eeb43e"
+  },
+  "lockfile": {
+    "before_sha256": "8bc8939307ffb7585f85f517535a36b8b5d2df552292a4b9660f38727c9acede",
+    "after_sha256": "9ca130ddf189e69455a104ccd292314718145f4c4b1576d897bb04cd7f898723",
+    "changes": [
+      {
+        "package": "form_urlencoded",
+        "before": "1.2.2",
+        "after": "1.2.3",
+        "registry_checksum": "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e"
+      },
+      {
+        "package": "url",
+        "before": "2.5.8",
+        "after": "2.5.9",
+        "registry_checksum": "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a"
+      }
+    ],
+    "packages_added": [],
+    "packages_removed": [],
+    "form_urlencoded_update_required_by_url": "^1.2.3"
+  },
+  "static_impact_review": {
+    "normal_windows_and_linux_dependency_chain": [
+      "openems-agent",
+      "hickory-proto 0.26.3",
+      "url 2.5.8"
+    ],
+    "reachable_affected_function_found": false,
+    "hickory_caa_read_stores_iodef_as_raw_bytes": true,
+    "optional_iodef_getter_calls_parse_only": true,
+    "agent_uses_optional_iodef_getter": false,
+    "agent_and_hickory_call_origin_or_quirks_origin": false,
+    "url_display_debug_hash_and_equality_call_origin": false,
+    "source": "https://github.com/hickory-dns/hickory-dns/blob/bd37cafbdd86112a6da32878f8c9bab22e14377e/crates/proto/src/rr/rdata/caa.rs#L712",
+    "limit": "Static source review, not a proof of absence of every possible runtime path."
+  },
+  "local_validation": {
+    "scanner": "osv-scanner 2.7.0",
+    "scanner_sha256": "9964ed64ec9a387391eb4cc006ad5c531154821aef29b793e02c448de4686438",
+    "package_counts_source": "OSV source scan extraction output",
+    "packages_by_ecosystem": {
+      "python": 28,
+      "npm": 436,
+      "cargo": 180
+    },
+    "packages_scanned": 644,
+    "unaccepted_findings": 0,
+    "scan_exit_code": 0,
+    "report_sha256": "54345d5194d238b6017d0f3181f392109ce35023cc6b4bdfa8c134943dcb578e",
+    "new_per_advisory_suppressions": false
+  },
+  "frozen_artifacts": {
+    "source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+    "url_version": "2.5.8",
+    "rebuilt": false,
+    "claimed_dependency_patched": false,
+    "acceptance_receipts_apply_to_original_bytes": true,
+    "production_msi_sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+    "next_msi_sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+    "next_source_build_requires_new_artifact_identity_and_acceptance_scope_review": true
+  }
+}
