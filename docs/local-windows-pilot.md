@@ -2,6 +2,10 @@
 
 O alvo deste piloto é a máquina de desenvolvimento. O pacote de laboratório usa os MSIs congelados de ec50572 e pode ser avaliado com as ferramentas gratuitas já usadas na homologação.
 
+## Revisão de segurança do pacote — 22/11/2026
+
+O alerta RUSTSEC-2026-0592 foi corrigido no lockfile para próximos builds. Os MSIs ec50572 deste pacote continuam com url 2.5.8 e seus hashes originais. A análise estática não encontrou caminho para a função afetada, mas esses MSIs não são um pacote com a dependência corrigida. A distribuição de um novo build precisa de novo recibo e revisão dos aceites aplicáveis. [Revisão completa](../validation/url-rustsec-2026-0592-review-2026-11-22.json)
+
 ## Preparar a instalação
 
 1. Confira o resultado atual na [matriz de aceite](../ACCEPTANCE.md), incluindo a comparação final das raízes e a regressão das ações web. Registre a revisão do servidor e o hash do instalador escolhido.

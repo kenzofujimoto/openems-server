@@ -4,6 +4,8 @@
 
 O candidato Windows usa os dois MSIs congelados de ec50572. Os aceites de aplicativos e de Chrome e Firefox foram concluídos. A rodada final dos navegadores passou nas seis navegações com TLS normal e na comparação exata dos dois repositórios de raízes. [Recibo dos MSIs](validation/windows-release-checkpoint-2026-11-17.json) · [Aceite final dos navegadores](validation/browser-trust-ec50572-final-2026-11-21.json)
 
+A publicação de 22/11 encontrou o novo alerta RUSTSEC-2026-0592 em url 2.5.8. O lockfile foi corrigido para url 2.5.9 e form_urlencoded 1.2.3; o OSV local passou nos 644 pacotes. A análise estática não encontrou chamadas à função afetada no agente ou no Hickory. Os MSIs congelados continuam com a dependência anterior e não foram reclassificados como corrigidos. Um novo build terá identidade e revisão de alcance dos aceites próprias. [Revisão de segurança](validation/url-rustsec-2026-0592-review-2026-11-22.json)
+
 | Área | Resultado | Evidência |
 |---|---|---|
 | Catálogo | **8/8**, rechecagem real de 3.609 s e limpeza verificada | [Rodada 18](validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) |
