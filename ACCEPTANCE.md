@@ -1,6 +1,6 @@
 # Aceite final do roadmap desktop
 
-## Estado vigente — 21/11/2026
+## Estado vigente — 22/11/2026
 
 O candidato Windows usa os dois MSIs congelados de ec50572. Os aceites de aplicativos e de Chrome e Firefox foram concluídos. A rodada final dos navegadores passou nas seis navegações com TLS normal e na comparação exata dos dois repositórios de raízes. [Recibo dos MSIs](validation/windows-release-checkpoint-2026-11-17.json) · [Aceite final dos navegadores](validation/browser-trust-ec50572-final-2026-11-21.json)
 
@@ -12,6 +12,8 @@ O candidato Windows usa os dois MSIs congelados de ec50572. Os aceites de aplica
 | Sessão, upgrade e reboot real | **8/8**, recuperação e remoção verificadas | [Sessão e upgrade](validation/windows-session-ec50572-review-2026-11-09.json) |
 | Locais de rede | **8/8**, transições offline e limpeza verificadas | [Locais de rede](validation/windows-locations-ec50572-review-2026-11-09.json) |
 | Chrome e Firefox | **6/6**, TLS normal, comparação final exata e remoção da raiz do OpenEMS nos dois repositórios | [Rodada 79ac2a77](validation/browser-trust-ec50572-final-2026-11-21.json) |
+| Ações web com API, painel e stores reais | **11/11** cenários DNS, **6/6** navegações e eventos conferidos | [Matriz web](validation/windows-web-actions-ec50572-review-2026-11-21.json) |
+| Recuperação das ações web | **5/5**, caches offline, reenvio sem duplicação, fila saturada e novo enrollment; remoção MSI **0** nas duas fases | [Recuperação](validation/windows-web-actions-ec50572-review-2026-11-21.json) |
 
 A rodada 34 chegou ao resultado terminal apesar da interrupção do observador. A recuperação confirmou o ACK de liberação v8, o hash original do `hosts`, zero regras gerenciadas de firewall e NRPT e a remoção do serviço. Um log independente confirmou o código de remoção do MSI. O WPR reportou `recorder_status_unknown`. [Recibo de validação](validation/windows-release-checkpoint-2026-11-17.json)
 
@@ -19,11 +21,13 @@ Na rodada final, a preparação TLS acessou as páginas válidas de teste das du
 
 As rodadas anteriores continuam reprovadas. O diagnóstico 3a57c952 identificou o CryptSvc criando as duas raízes em AuthRoot e o PowerShell da sonda verifyReady regravando IdenTrust. A captura CAPI2 não trouxe eventos que confirmassem o gatilho original. [Atribuição das gravações](validation/browser-root-attribution-2026-11-21.json) · [Rodada a8cdb690](validation/browser-trust-ec50572-2026-11-17.json)
 
-No controle sem agente, Chrome e Firefox receberam HTTP 200 com TLS normal. Surgiram DigiCert Assured ID Root CA após o Chrome e ISRG Root X1 após o Firefox. [Controle sem agente](validation/windows-release-checkpoint-2026-11-17.json)
+No controle histórico sem agente de 17/11, Chrome e Firefox receberam HTTP 200 com TLS normal. Surgiram DigiCert Assured ID Root CA após o Chrome e ISRG Root X1 após o Firefox. [Controle sem agente](validation/windows-release-checkpoint-2026-11-17.json)
 
 Na revisão de código `98e5295`, os 20 checks do PR passaram. O CI executou 495 casos Windows e atingiu 97,28% de cobertura combinada. A suíte Python local aprovou 1.683 testes, com 57 skips e quatro casos desselecionados no host. O PR segue em rascunho. [CI](https://github.com/kenzofujimoto/openems-server/actions/runs/43928213466) · [Security](https://github.com/kenzofujimoto/openems-server/actions/runs/43928213461) · [CodeQL](https://github.com/kenzofujimoto/openems-server/actions/runs/43928213488) · [PR #13](https://github.com/kenzofujimoto/openems-server/pull/13)
 
-A regressão web completa, a assinatura de distribuição e o piloto operacional têm aceites próprios. O Linux ainda precisa de aceite operacional em VM. O macOS segue parcial em Network Extension e Endpoint Security.
+A rodada de ações web e recuperação passou com servidor, painel e stores reais. O lote reenviado teve duas tentativas e um evento armazenado. Das 5.600 consultas da saturação, 5.000 observações foram armazenadas e 600 descartes contabilizados separadamente. As duas VMs foram encerradas, a API e os stores de teste foram parados e os 29 contêineres originais voltaram aos mesmos estados. [Recibo web](validation/windows-web-actions-ec50572-review-2026-11-21.json)
+
+Regras ordenadas, SafeSearch e antiburla ainda precisam de aceite real com o candidato ec50572; os contratos automatizados e os sucessos de MSIs anteriores não fecham esses cenários. A assinatura de distribuição e o piloto operacional têm critérios próprios. O Linux ainda precisa de aceite operacional em VM. O macOS segue parcial em Network Extension e Endpoint Security.
 
 ## Histórico — 09/11/2026
 

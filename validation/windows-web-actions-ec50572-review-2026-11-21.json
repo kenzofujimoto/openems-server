@@ -1,0 +1,519 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-21",
+  "status": "passed",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "server_and_panel_repository_revision": "c53ee6557257c84af86d578b9f96ad6a0cab5590",
+  "frozen_production_msi_sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+  "installed_agent_sha256": "51de0a4ef1436fc5d7013533e57ad77cbaf254a0ff2e2ea200d4b1ab1f5f358f",
+  "environment": {
+    "guest_type": "Windows Sandbox",
+    "guest_memory_mib": 2560,
+    "isolated_postgresql_redis_project": "openems-web-ec50572-a7f56353",
+    "real_api_and_built_react_panel": true,
+    "category_corpus": "synthetic_homologation_lists",
+    "host_endpoint_controls_executed": false
+  },
+  "migrations": {
+    "001_initial.sql": "cc275f9e8d682ccfbe539df24628bf55c1061cb7178ee8ffb28021afa4cf2c3f",
+    "002_block_events.sql": "aedc89649dce653b347663bb1afca646907f72d78b7d0596a1e889b9ed443fe0",
+    "003_tamper_events.sql": "f279e1e6301ae6833337b2589ba17785025704c0d78186f708a30eaa9b6aaeb8",
+    "004_uninstall.sql": "82497f4d484cb422fae9daa72dc849ac3af7b686bbb6223a9c8c88c0ffd48846",
+    "005_network_locations.sql": "2281dcc6028fbd39a24404b3d2d69a7c06ac306cfa0af23c71b97e5874ad1429",
+    "006_controls.sql": "52df1c268f81c15a2c0a30cb0f17b870a5ae23151069d784563905e4d9c99ceb",
+    "007_enrollment_revocations.sql": "8c0e19d5066355c671fae93ce50977eec4754f6253a48b34a8347e6013f37694",
+    "008_web_event_actions.sql": "ec054aba38ab352f6a7b95fe4476e63953a8c573204f407ff56918c59879dcd6"
+  },
+  "phases": [
+    {
+      "phase": "matrix",
+      "status": "passed",
+      "started_at": "2026-11-21T22:37:40.573817+00:00",
+      "finished_at": "2026-11-21T22:58:22.765174+00:00",
+      "run_directory": ".venv/web-actions-ec50572-20261121/matrix-20261121-193740",
+      "original_artifacts": 32,
+      "summary": {
+        "path": ".venv/web-actions-ec50572-20261121/matrix-20261121-193740/summary.json",
+        "sha256": "c3e47d6913f6a5d18b608951535de474fee290c382a9ebeee7dd65a1d8ca5622",
+        "bytes": 70564
+      },
+      "archive_receipt": {
+        "path": ".venv/web-actions-ec50572-20261121/matrix-20261121-193740/result-hashes.json",
+        "sha256": "8aa14733cf17e3ca81d0a364f5559fb448cd3db81f797a45f7f6ab36fd9a356a",
+        "bytes": 4864
+      },
+      "msi_install_exit_code": 0,
+      "msi_install_seconds": 123,
+      "frozen_artifact_identity_verified": true,
+      "frontend_keyboard_icons_stale_notice_cookie_csrf_and_applied_policy_verified": true,
+      "scenarios": [
+        {
+          "key": "allow_no_event",
+          "passed": true,
+          "publication_version": 6,
+          "publication_digest": "4cf3db981230f7f02a5ee6ee98e954f92803b6bf2bf74244ac65bf74f5ac6274",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.ietf.org",
+              "outcome": "forwarded",
+              "expected_event": null,
+              "received_event_actions": []
+            }
+          ]
+        },
+        {
+          "key": "block",
+          "passed": true,
+          "publication_version": 7,
+          "publication_digest": "41de9f1cdee8dd8eb81e44200625e3fc8f906cd1ef0941781690f68665375ac7",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.example.net",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "monitor",
+          "passed": true,
+          "publication_version": 8,
+          "publication_digest": "6f6ec3009f344e40881af0facc71490e8918d6a5652e1e56e2a76985639b4844",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.example.org",
+              "outcome": "forwarded",
+              "expected_event": "monitored",
+              "received_event_actions": [
+                "monitored"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "monitor_all",
+          "passed": true,
+          "publication_version": 9,
+          "publication_digest": "e7efe194cab683937fbe5783b1e853a70e9008fd683bcdf22a04efe330caac8b",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.rfc-editor.org",
+              "outcome": "forwarded",
+              "expected_event": "monitored",
+              "received_event_actions": [
+                "monitored"
+              ]
+            },
+            {
+              "domain": "www.ietf.org",
+              "outcome": "forwarded",
+              "expected_event": null,
+              "received_event_actions": []
+            }
+          ]
+        },
+        {
+          "key": "exception",
+          "passed": true,
+          "publication_version": 10,
+          "publication_digest": "e9f954596dbfccbe543b11b3e2de3493f434fe5e6487215059b67d947dde2a0e",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.iana.org",
+              "outcome": "forwarded",
+              "expected_event": null,
+              "received_event_actions": []
+            },
+            {
+              "domain": "www.example.org",
+              "outcome": "forwarded",
+              "expected_event": null,
+              "received_event_actions": []
+            },
+            {
+              "domain": "www.example.net",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "precedence",
+          "passed": true,
+          "publication_version": 11,
+          "publication_digest": "dacf85179028236b4ab4aceb0457a9d0745566571fa51cd7761446a32c3c6033",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "iana.org",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            },
+            {
+              "domain": "www.icann.org",
+              "outcome": "forwarded",
+              "expected_event": "monitored",
+              "received_event_actions": [
+                "monitored"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "schedule",
+          "passed": true,
+          "publication_version": 12,
+          "publication_digest": "6e8415010550f8f0a71519727f03e7b896efc0ebf299b1ecb4f38ebe2d3f41cc",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.ietf.org",
+              "outcome": "forwarded",
+              "expected_event": "monitored",
+              "received_event_actions": [
+                "monitored"
+              ]
+            },
+            {
+              "domain": "www.example.net",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            },
+            {
+              "domain": "www.example.org",
+              "outcome": "forwarded",
+              "expected_event": null,
+              "received_event_actions": []
+            }
+          ]
+        },
+        {
+          "key": "baseline_before_failures",
+          "passed": true,
+          "publication_version": 13,
+          "publication_digest": "caf20bb3ffe72d52ee42c8d913bd166d9ffb039634a4153fecafc30866c61c14",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.example.net",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "missing_category",
+          "passed": true,
+          "publication_version": 14,
+          "publication_digest": "4a48794db7b7d8dbea5025f5fbdfcbe8c93951cb4dcff5585eb40e5dc5664f5b",
+          "expected_acknowledgement": false,
+          "received_acknowledgement": false,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.rfc-editor.org",
+              "outcome": "forwarded",
+              "expected_event": null,
+              "received_event_actions": []
+            },
+            {
+              "domain": "www.example.net",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "invalid_digest",
+          "passed": true,
+          "publication_version": 15,
+          "publication_digest": "f5304cfd04b7c35bfd7ca2438ef8ca1f3693522291ee88899d128c4ec91bba45",
+          "expected_acknowledgement": false,
+          "received_acknowledgement": false,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.rfc-editor.org",
+              "outcome": "forwarded",
+              "expected_event": null,
+              "received_event_actions": []
+            },
+            {
+              "domain": "www.example.net",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "invalid_digest_recovery",
+          "passed": true,
+          "publication_version": 16,
+          "publication_digest": "8ed2f183308e5070755b4a6e45f50549a8d6a5fa803972d15df217bafb993ff7",
+          "expected_acknowledgement": true,
+          "received_acknowledgement": true,
+          "canary_received": true,
+          "dns_and_events": [
+            {
+              "domain": "www.rfc-editor.org",
+              "outcome": "forwarded",
+              "expected_event": "monitored",
+              "received_event_actions": [
+                "monitored"
+              ]
+            },
+            {
+              "domain": "sports.homolog.example",
+              "outcome": "blocked",
+              "expected_event": "blocked",
+              "received_event_actions": [
+                "blocked"
+              ]
+            }
+          ]
+        }
+      ],
+      "browsers": [
+        {
+          "browser": "chrome",
+          "passed": true,
+          "cases_passed": 3,
+          "normal_tls": true,
+          "report": {
+            "path": ".venv/web-actions-ec50572-20261121/matrix-20261121-193740/results/chrome-aaf3cf26-28b4-43b7-a09d-28b80f82d6d0/result.json",
+            "sha256": "bc5a901e1a3e20d6492b3ffc2837a8e69a72c9a080e3de0aeff067b40e232275",
+            "bytes": 4106
+          }
+        },
+        {
+          "browser": "firefox",
+          "passed": true,
+          "cases_passed": 3,
+          "normal_tls": true,
+          "report": {
+            "path": ".venv/web-actions-ec50572-20261121/matrix-20261121-193740/results/firefox-ac293979-9a3c-4149-92c6-da63a380c22d/result.json",
+            "sha256": "461f6b551e4baa1c3e8e52f2a2e20a8ab34ee2388c88a592015e19e9cf68c325",
+            "bytes": 13976
+          }
+        }
+      ],
+      "resilience": [],
+      "msi_removal_exit_code": 0,
+      "owned_cleanup_verified": true,
+      "guest_stopped": true,
+      "errors_recorded": 0
+    },
+    {
+      "phase": "resilience",
+      "status": "passed",
+      "started_at": "2026-11-21T22:58:26.377420+00:00",
+      "finished_at": "2026-11-21T23:10:07.250808+00:00",
+      "run_directory": ".venv/web-actions-ec50572-20261121/resilience-20261121-195825",
+      "original_artifacts": 24,
+      "summary": {
+        "path": ".venv/web-actions-ec50572-20261121/resilience-20261121-195825/summary.json",
+        "sha256": "66a329cc272ec9f3509acef0490cf86b2035cb5b2b00a8f9990acce98ed6522e",
+        "bytes": 13241
+      },
+      "archive_receipt": {
+        "path": ".venv/web-actions-ec50572-20261121/resilience-20261121-195825/result-hashes.json",
+        "sha256": "d4df5c8c18121248352bc636e75a556fe3f25af41ca78d02ae6cbd73f339d9b2",
+        "bytes": 3395
+      },
+      "msi_install_exit_code": 0,
+      "msi_install_seconds": 123,
+      "frozen_artifact_identity_verified": true,
+      "frontend_keyboard_icons_stale_notice_cookie_csrf_and_applied_policy_verified": true,
+      "scenarios": [],
+      "browsers": [],
+      "resilience": [
+        {
+          "key": "offline_restart_complete_cache",
+          "passed": true
+        },
+        {
+          "key": "offline_restart_incomplete_cache",
+          "passed": true
+        },
+        {
+          "key": "retry_same_batch",
+          "passed": true,
+          "upload_attempts": 2,
+          "persisted_batch_receipts": 1,
+          "observations_added": 1
+        },
+        {
+          "key": "saturated_queue",
+          "passed": true,
+          "dns_queries": 5600,
+          "blocked_answers": 5600,
+          "observations_kept": 5000,
+          "dropped_reported": 600,
+          "blocks_delta": 5000,
+          "monitoring_delta": 0,
+          "dropped_delta": 600
+        },
+        {
+          "key": "expired_token_reenrollment",
+          "passed": true,
+          "credential_rotation_http_status": 200,
+          "new_invitation_http_status": 200,
+          "policy_acknowledged": true,
+          "capabilities_sent_before_policy": true,
+          "consumed_invitation_absent": true,
+          "conflicts_409": 0
+        }
+      ],
+      "msi_removal_exit_code": 0,
+      "owned_cleanup_verified": true,
+      "guest_stopped": true,
+      "errors_recorded": 0
+    }
+  ],
+  "input_manifest": {
+    "path": ".venv/web-actions-ec50572-20261121/input-receipt.json",
+    "sha256": "5a68aabd47855760d9d1405020136173f00af3adbb71efddc893ede29cffa4c5",
+    "bytes": 60278
+  },
+  "backend_source_receipt": {
+    "path": ".venv/web-actions-ec50572-20261121/backend-source-receipt.json",
+    "sha256": "d291e4d37c207031875953c6891415e6ad4cee4dd6c449e20be61bb9cd0ac8ce",
+    "bytes": 12740
+  },
+  "runner_files": [
+    {
+      "path": ".venv/web-actions-ec50572-20261121/run.py",
+      "sha256": "c145c188d75d5e98f05355183dfa093f66fd4f6d99ddbecbf966c19969ea57ee",
+      "bytes": 20286
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/helpers.py",
+      "sha256": "76021d8822f3f119c92fb0d12210d6dc329f7070dc74c3ffdc7efbaa63d3a188",
+      "bytes": 17522
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/followup.py",
+      "sha256": "f71f206cdb1294120ebcf453853bdaff01978401519504299c683bb77e6d5881",
+      "bytes": 11105
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/panel.py",
+      "sha256": "dd398e1c264a942fa5ccd377064115794a874ce240ed5c8f70c3f674b651bbee",
+      "bytes": 5837
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/backend.py",
+      "sha256": "968de072a247bdbbd42a0a00252e5b0357c44caaedbffc5af7b5ae0de52f8078",
+      "bytes": 9666
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/api_worker.py",
+      "sha256": "0930e03a364123b1546156604844e2c632290e4c130395de8f053047ad58d78f",
+      "bytes": 483
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/loopback.py",
+      "sha256": "e0ab8894e1ee353908a2395cb46cfc958041d25130c68440a8c8728b190fa297",
+      "bytes": 1867
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/run-with-checkpoint.ps1",
+      "sha256": "3d22557b7e70b5d2c7a40e4b8d690a4fb111a61337f6c5730c5f93cabd5fae8a",
+      "bytes": 4845
+    },
+    {
+      "path": ".venv/web-actions-ec50572-20261121/review_evidence.py",
+      "sha256": "d782ab43ffcedeaf5859c505786071fcbdd07ef3c9934fc690f7718ad19bf8be",
+      "bytes": 18402
+    }
+  ],
+  "original_host_containers_restored": 29,
+  "host_restoration_receipt": {
+    "path": ".venv/web-actions-ec50572-20261121/host-containers-restoration.json",
+    "sha256": "7f1eeeed19b92ae11b44e2d0a9f25d7635b8707124dd85a4f1250c39c5bd0d71",
+    "bytes": 143
+  },
+  "previous_attempts": [
+    {
+      "run_directory": ".venv/web-actions-ec50572-20261121/matrix-20261121-192902",
+      "terminal_report_present": false,
+      "status": "incomplete_preserved",
+      "summary": null
+    },
+    {
+      "run_directory": ".venv/web-actions-ec50572-20261121/matrix-20261121-193211",
+      "terminal_report_present": false,
+      "status": "incomplete_preserved",
+      "summary": null
+    },
+    {
+      "run_directory": ".venv/web-actions-ec50572-20261121/matrix-20261121-193521",
+      "terminal_report_present": true,
+      "status": "failed_preserved",
+      "summary": {
+        "path": ".venv/web-actions-ec50572-20261121/matrix-20261121-193521/summary.json",
+        "sha256": "53b3aa8f8f99639c9e9f9f334ad2427410d69ef8cd70f4e79c6fe7d29caa258e",
+        "bytes": 2662
+      }
+    },
+    {
+      "run_directory": ".venv/web-actions-ec50572-20261121/resilience-20261121-193540",
+      "terminal_report_present": true,
+      "status": "failed_preserved",
+      "summary": {
+        "path": ".venv/web-actions-ec50572-20261121/resilience-20261121-193540/summary.json",
+        "sha256": "146971421f6a336b44202fcb9dfdd6a36c5207df06ba5c2584266034d920e993",
+        "bytes": 2674
+      }
+    }
+  ],
+  "limits": [
+    "This acceptance applies to the frozen native candidate with the recorded server and panel sources.",
+    "Schedule checks exercise an active window and an inactive window; exact boundaries were not asserted.",
+    "Synthetic category fixtures and DNS events do not establish streaming-account playback or browser-extension broker acceptance.",
+    "Ordered domain rules, SafeSearch and anti-bypass enforcement require separate current-package acceptance and were outside this action matrix.",
+    "The raw reports remain local with SHA-256 receipts; the public review omits endpoint credentials and local machine identifiers."
+  ]
+}
