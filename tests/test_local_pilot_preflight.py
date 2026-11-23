@@ -56,7 +56,7 @@ def test_main_rejects_another_identity_without_creating_destination(tmp_path):
     result = subprocess.run(
         ["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(SCRIPT),
          "-OutputDirectory", str(tmp_path / "must-not-exist"),
-         "-ExpectedCurrentUserSid", "S-1-5-18", "-ExpectedSessionId", "-1"],
+         "-ExpectedCurrentUserSid", "S-1-0-0", "-ExpectedSessionId", "-1"],
         capture_output=True, text=True, timeout=30, check=False,
     )
     assert result.returncode != 0
@@ -84,7 +84,7 @@ try {{
     assert result.stdout.strip() == error
 
 
-@pytest.mark.parametrize("kind", ["outside", "traversal", "existing", "nested", "alternate_stream", "wildcard", "relative"])
+@pytest.mark.parametrize("kind", ["outside", "traversal", "existing", "nested", "alternate_stream", "wildcard", "relative", "trailing_dot", "reserved_name"])
 def test_destination_guards_refuse_invalid_paths_without_writes(tmp_path, kind):
     assert SCRIPT.is_file()
     documents = tmp_path / "Documents"
@@ -96,6 +96,7 @@ def test_destination_guards_refuse_invalid_paths_without_writes(tmp_path, kind):
         "outside": tmp_path / "outside", "traversal": lab / ".." / "outside",
         "existing": existing, "nested": lab / "run" / "nested",
         "alternate_stream": lab / "run:stream", "wildcard": lab / "run[1]", "relative": Path("relative"),
+        "trailing_dot": lab / "run.", "reserved_name": lab / "CON",
     }[kind]
     before = set(tmp_path.rglob("*"))
     result = powershell(FUNCTIONS + """
@@ -149,6 +150,38 @@ Copy-PilotFile -Source $env:PILOT_SOURCE -Destination $env:PILOT_DESTINATION
     assert destination.read_bytes() == source.read_bytes()
 
 
+def test_final_guard_rejects_a_source_changed_after_copy(tmp_path):
+    assert SCRIPT.is_file()
+    source = tmp_path / "source.json"
+    source.write_bytes(b"original")
+    result = powershell(FUNCTIONS + """
+$record = Copy-PilotFile -Source $env:PILOT_SOURCE -Destination $env:PILOT_DESTINATION
+[IO.File]::WriteAllText($env:PILOT_SOURCE, 'modified')
+try { Assert-PilotFilesUnchanged @($record); throw 'Changed source accepted.' }
+catch { $_.Exception.Message }
+""", PILOT_SOURCE=str(source), PILOT_DESTINATION=str(tmp_path / "copy.json"))
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "source_changed"
+    assert (tmp_path / "copy.json").read_bytes() == b"original"
+
+
+def test_script_commands_are_auditable_and_never_come_from_input():
+    assert SCRIPT.is_file()
+    result = powershell(FUNCTIONS + r"""
+$functions = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] }, $false) | ForEach-Object { $_.Name })
+$commands = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] }, $true) | ForEach-Object { $_.GetCommandName() })
+@{ functions = $functions; commands = $commands } | ConvertTo-Json -Depth 4
+""")
+    assert result.returncode == 0, result.stderr
+    ast = json.loads(result.stdout)
+    allowed = {
+        "ConvertTo-Json", "ConvertFrom-Json", "Get-Service", "Get-DnsClientServerAddress",
+        "Get-DnsClientNrptPolicy", "Get-NetFirewallRule", "Import-Module", "Join-Path",
+        "New-Object", "Select-Object", "Sort-Object", "ForEach-Object", "Where-Object", "Set-StrictMode",
+    } | set(ast["functions"])
+    assert set(ast["commands"]) <= allowed
+
+
 def test_script_has_no_machine_mutations_and_keeps_sensitive_data_private():
     source = SCRIPT.read_text(encoding="utf-8")
     for forbidden in (
@@ -162,4 +195,6 @@ def test_script_has_no_machine_mutations_and_keeps_sensitive_data_private():
     assert "LocalPackage" in source and "Uninstall" in source and "UserData" in source
     assert "Assert-PilotFilesUnchanged" in source
     assert "CurrentUser" in source and "LocalMachine" in source
+    for journal in ("application-control.json", "usb-control.json", "uninstall.json", "browser-policies.json"):
+        assert journal in source
     assert "not_yet_verified" in source
