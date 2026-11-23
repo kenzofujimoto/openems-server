@@ -223,6 +223,6 @@ def test_staging_cannot_overwrite_an_existing_acceptance_directory(tmp_path, mon
         "build_final_acceptance.py", "--output", str(output), "--packages-from", str(source),
         "--manifest-sha256", digest,
     ])
-    with pytest.raises(RuntimeError, match="new|empty|exists"):
+    with pytest.raises(RuntimeError, match=r"new|empty|exists"):
         builder.main()
     assert (output / "preserved.json").read_bytes() == b"original evidence"
