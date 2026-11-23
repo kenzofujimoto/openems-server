@@ -62,7 +62,7 @@ def test_freeze_records_installer_payload_and_unsigned_distribution(tmp_path):
 def test_a_changed_package_or_payload_is_refused(tmp_path, name):
     tool, _, digest = freeze(tmp_path)
     (tmp_path / name).write_bytes(b"changed after acceptance")
-    with pytest.raises(ValueError, match="changed|mismatch"):
+    with pytest.raises(ValueError, match=r"changed|mismatch"):
         tool.read_candidate(tmp_path, digest, "1.0.0")
 
 
@@ -77,7 +77,7 @@ def test_a_changed_manifest_cannot_redefine_the_accepted_files(tmp_path):
 def test_freezing_again_cannot_overwrite_an_existing_candidate(tmp_path):
     tool, _, _ = freeze(tmp_path)
     before = (tmp_path / "candidate-manifest.json").read_bytes()
-    with pytest.raises(ValueError, match="already|exists"):
+    with pytest.raises(ValueError, match=r"already|exists"):
         tool.freeze_candidate(tmp_path, "b" * 40, "1.0.0", fixture_packages(tmp_path))
     assert (tmp_path / "candidate-manifest.json").read_bytes() == before
 
