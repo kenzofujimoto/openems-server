@@ -208,3 +208,21 @@ def test_prebuilt_staging_copies_verified_bytes_and_never_runs_cargo_or_wix(tmp_
     for phase in builder.PHASES:
         for package in manifest["packages"]:
             assert (output / (phase + "-input") / package).read_bytes() == (source / package).read_bytes()
+
+
+def test_staging_cannot_overwrite_an_existing_acceptance_directory(tmp_path, monkeypatch):
+    import build_final_acceptance as builder
+
+    source = tmp_path / "frozen"
+    source.mkdir()
+    _, _, digest = freeze(source)
+    output = tmp_path / "previous-results"
+    output.mkdir()
+    (output / "preserved.json").write_bytes(b"original evidence")
+    monkeypatch.setattr(sys, "argv", [
+        "build_final_acceptance.py", "--output", str(output), "--packages-from", str(source),
+        "--manifest-sha256", digest,
+    ])
+    with pytest.raises(RuntimeError, match="new|empty|exists"):
+        builder.main()
+    assert (output / "preserved.json").read_bytes() == b"original evidence"
