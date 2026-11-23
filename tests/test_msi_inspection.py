@@ -32,7 +32,7 @@ def test_inspector_parses_and_exposes_only_the_literal_input_parameter():
 $tokens = $null; $errors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($env:INSPECTOR, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { $errors | Out-String | Write-Error; exit 1 }
-@($ast.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath }) | ConvertTo-Json -Compress
+ConvertTo-Json -InputObject @($ast.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath }) -Compress
 """
     result = subprocess.run(
         ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
