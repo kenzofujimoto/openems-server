@@ -4,12 +4,22 @@ param([string]$OutputDirectory, [string]$Wix = 'wix', [string]$AgentExe, [switch
 # agent as a later version, so harnesses can upgrade from the current production package.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$repository = Split-Path -Parent $PSScriptRoot
+if ($Production) {
+    $metadata = Get-Content -LiteralPath (Join-Path $repository 'app\__init__.py') -Raw
+    $assignments = [regex]::Matches($metadata, '(?m)^__version__[ \t]*=')
+    $versionsInMetadata = [regex]::Matches($metadata, '(?m)^__version__[ \t]*=[ \t]*["'']((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))["''][ \t]*\r?$')
+    if ($assignments.Count -ne 1 -or $versionsInMetadata.Count -ne 1) {
+        throw 'app.__version__ must declare one literal three-part release version.'
+    }
+    $productionVersion = [version]$versionsInMetadata[0].Groups[1].Value
+}
 if ($Production -and $Next) {
-    $versions = @('0.4.1')
+    $versions = @('{0}.{1}.{2}' -f $productionVersion.Major, $productionVersion.Minor, ($productionVersion.Build + 1))
     $fixtures = @('openems-agent-next.msi')
     $defines = @()
 } elseif ($Production) {
-    $versions = @('0.4.0')
+    $versions = @($productionVersion.ToString(3))
     $fixtures = @('openems-agent.msi')
     $defines = @()
 } elseif ($Next) {
@@ -24,7 +34,6 @@ if ($Plan) {
     exit 0
 }
 if (-not $OutputDirectory) { throw 'Pass -OutputDirectory for the Sandbox input folder.' }
-$repository = Split-Path -Parent $PSScriptRoot
 $source = Join-Path $repository 'agent-rs\installer\openems-agent.wxs'
 if (-not $AgentExe) { $AgentExe = Join-Path $repository 'agent-rs\target\release\openems-agent.exe' }
 if (-not (Test-Path -LiteralPath $AgentExe -PathType Leaf)) { throw "Agent executable not found: $AgentExe" }

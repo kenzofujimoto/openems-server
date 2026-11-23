@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from agent.policy import CATEGORIES
 from agent.uninstall import master_key_from_text
 
+from . import __version__
 from .app_catalog import AppCatalog
 from .app_catalog import expand as expand_catalog
 from .audit import AuditEntry, AuditLog, InMemoryAuditLog
@@ -135,7 +136,7 @@ def create_app(service: EmsService | None = None, saml_sp: SamlSp | None = None,
     # The schema maps every management route: only laboratory mode (loopback clients) serves it.
     docs_paths = ('/docs', '/redoc', '/openapi.json') if lab_mode else (None, None, None)
     docs = dict(zip(('docs_url', 'redoc_url', 'openapi_url'), docs_paths, strict=True))
-    app = FastAPI(title='openems-server', version='0.2.0', lifespan=lifespan, **docs)
+    app = FastAPI(title='openems-server', version=__version__, lifespan=lifespan, **docs)
     app.state.service = svc
     app.state.admin = admin
     app.state.saml = saml
