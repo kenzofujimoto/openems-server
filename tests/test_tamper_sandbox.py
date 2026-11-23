@@ -101,6 +101,6 @@ def test_builder_makes_the_next_package_for_the_upgrade_check():
     assert result.returncode == 0, result.stderr
     plan = json.loads(result.stdout)
     assert plan['fixtures'] == ['openems-agent-next.msi'] and plan['defines'] == []
-    assert plan['versions'] == ['0.4.1']
+    assert plan['versions'] == ['1.0.1']
     production = json.loads(run(BUILDER, '-Plan', '-Production').stdout)
-    assert production['fixtures'] == ['openems-agent.msi'] and production['versions'] == ['0.4.0']
+    assert production['fixtures'] == ['openems-agent.msi'] and production['versions'] == ['1.0.0']
