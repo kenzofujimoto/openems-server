@@ -14,6 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from app import __version__
 from tests.test_agent_integration import live_server
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,7 +51,7 @@ def publish(client) -> None:
 def test_reports_its_version(native):
     result = run_agent(native, "--version", invitation=None)
     assert result.returncode == 0
-    assert result.stdout.startswith("openems-agent ")
+    assert result.stdout.strip() == f"openems-agent {__version__}"
 
 
 def test_enrolls_enforces_acknowledges_and_preserves_foreign_entries(native, tmp_path):
