@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -149,3 +150,61 @@ def test_an_acceptance_flag_does_not_override_stale_bytes_or_cleanup_errors(tmp_
         report["passed"] = False
     with pytest.raises(ValueError, match="browser-trust"):
         tool.release_asset_names(manifest, reports)
+
+
+def test_final_acceptance_can_plan_existing_artifacts_without_building(tmp_path):
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/build_final_acceptance.py"), "--plan",
+        "--packages-from", str(tmp_path), "--manifest-sha256", "b" * 64,
+    ], capture_output=True, text=True, check=False, timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["fresh_build"] is False
+    assert json.loads(result.stdout)["launches_sandbox"] is False
+
+
+@pytest.mark.parametrize("missing", ["--manifest-sha256", "--packages-from"])
+def test_prebuilt_selection_requires_both_directory_and_pinned_identity(tmp_path, missing):
+    arguments = {"--packages-from": str(tmp_path), "--manifest-sha256": "b" * 64}
+    arguments.pop(missing)
+    command = [sys.executable, str(ROOT / "tools/build_final_acceptance.py"), "--plan"]
+    for key, value in arguments.items():
+        command.extend((key, value))
+    result = subprocess.run(command, capture_output=True, text=True, check=False, timeout=30)
+    assert result.returncode != 0
+
+
+def test_prebuilt_staging_copies_verified_bytes_and_never_runs_cargo_or_wix(tmp_path, monkeypatch):
+    import build_final_acceptance as builder
+
+    source = tmp_path / "frozen"
+    source.mkdir()
+    _, manifest, digest = freeze(source)
+    output = tmp_path / "staged"
+    calls = []
+
+    def only_copy_harnesses(arguments, **kwargs):
+        calls.append(arguments)
+        assert arguments[0] == sys.executable
+        assert Path(arguments[1]).name in {
+            "build_session_sandbox.py", "build_locations_sandbox.py", "build_controls_sandbox.py",
+        }
+        subprocess.run(arguments, cwd=ROOT, check=True, timeout=30)
+
+    def must_not_rebuild():
+        pytest.fail("A frozen package must not depend on or rebuild the current native checkout.")
+
+    monkeypatch.setattr(builder, "checked", only_copy_harnesses)
+    monkeypatch.setattr(builder, "require_committed_native_sources", must_not_rebuild)
+    monkeypatch.setattr(builder, "revision", must_not_rebuild)
+    monkeypatch.setattr(sys, "argv", [
+        "build_final_acceptance.py", "--output", str(output), "--packages-from", str(source),
+        "--manifest-sha256", digest,
+    ])
+    assert builder.main() == 0
+    staged = json.loads((output / "acceptance-manifest.json").read_text(encoding="utf-8"))
+    assert staged["source_revision"] == manifest["source_revision"]
+    assert staged["packages"] == manifest["packages"]
+    assert len(calls) == 4
+    for phase in builder.PHASES:
+        for package in manifest["packages"]:
+            assert (output / (phase + "-input") / package).read_bytes() == (source / package).read_bytes()
