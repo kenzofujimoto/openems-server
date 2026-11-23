@@ -33,6 +33,7 @@ def fixture_packages(tmp_path):
             "custom_actions": ["PrepareAgentSetup", "PrepareAgentRemoval"],
             "properties": ["SERVER", "INVITATION"],
             "agent_actions_sha256": agent_hash,
+            "signature_status": "NotSigned",
         }
 
     return inspect
@@ -89,7 +90,7 @@ def test_an_unrepresentable_or_ambiguous_msi_pair_is_refused(tmp_path, version):
     assert not (tmp_path / "candidate-manifest.json").exists()
 
 
-@pytest.mark.parametrize("kind", ["injected_action", "injected_property", "wrong_version", "wrong_upgrade", "wrong_payload"])
+@pytest.mark.parametrize("kind", ["injected_action", "injected_property", "wrong_version", "wrong_upgrade", "wrong_payload", "unverified_signature"])
 def test_freeze_refuses_fixtures_and_mismatched_installer_identity(tmp_path, kind):
     base_inspect = fixture_packages(tmp_path)
 
@@ -103,8 +104,10 @@ def test_freeze_refuses_fixtures_and_mismatched_installer_identity(tmp_path, kin
             value["product_version"] = "0.4.0"
         elif kind == "wrong_upgrade":
             value["upgrade_code"] = "different-product"
-        else:
+        elif kind == "wrong_payload":
             value["agent_actions_sha256"] = "0" * 64
+        else:
+            value["signature_status"] = "UnknownError"
         return value
 
     with pytest.raises(ValueError):
