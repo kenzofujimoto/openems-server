@@ -153,7 +153,7 @@ def test_canary_rejects_invalid_or_ambiguous_policy_inputs(body):
 @pytest.mark.parametrize("action", ["allow", "block", "monitor"])
 def test_canary_rejects_prior_rules_that_would_shadow_any_canary_query(domain, kind, canary, action):
     body = {"web_filter": {"domain_rules": [{"domain": domain, "type": kind, "action": action}]}}
-    with pytest.raises(ValueError, match="canary.*(covered|shadow)"):
+    with pytest.raises(ValueError, match=r"canary.*(covered|shadow)"):
         add_canary(body, canary)
 
 
