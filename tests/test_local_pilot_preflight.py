@@ -231,6 +231,7 @@ def test_context_capture_plan_is_inert(tmp_path):
     assert plan["mode"] == "caller_context_capture"
     assert plan["requires"] == ["same_user_sid", "same_session", "unelevated", "new_protected_directory"]
     assert plan["context_max_age_seconds"] == 900
+    assert plan["topics"] == ["caller_identity", "documents", "roots", "captured_at"]
     assert list(tmp_path.iterdir()) == []
 
 
