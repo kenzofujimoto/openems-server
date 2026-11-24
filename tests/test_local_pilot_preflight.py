@@ -7,13 +7,19 @@ import json
 import os
 from pathlib import Path
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "deploy/backup-local-pilot.ps1"
 pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows pilot guards")]
+
+
+@pytest.fixture(autouse=True)
+def isolate_powershell_module_cache(tmp_path_factory, monkeypatch):
+    cache = tmp_path_factory.mktemp("powershell-module-cache")
+    monkeypatch.setenv("PSModuleAnalysisCachePath", str(cache / "ModuleAnalysisCache"))
 
 
 def powershell(command: str, **environment: str) -> subprocess.CompletedProcess[str]:
@@ -206,7 +212,7 @@ def test_script_has_no_machine_mutations_and_keeps_sensitive_data_private():
 def caller_context(documents: Path, **changes):
     value = {
         "schema_version": 1,
-        "captured_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "0Z",
+        "captured_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f") + "0Z",
         "user_sid": "S-1-5-21-100", "session_id": 7, "documents": str(documents),
         "roots": {"CurrentUser": [], "LocalMachine": []},
     }
@@ -259,7 +265,7 @@ def test_pinned_context_validation_uses_inert_files_only(tmp_path, case):
     value = caller_context(tmp_path / "Documents")
     if case in {"stale", "future"}:
         offset = timedelta(hours=-1 if case == "stale" else 1)
-        value["captured_at"] = (datetime.now(timezone.utc) + offset).strftime("%Y-%m-%dT%H:%M:%S.%f") + "0Z"
+        value["captured_at"] = (datetime.now(UTC) + offset).strftime("%Y-%m-%dT%H:%M:%S.%f") + "0Z"
     elif case == "wrong_sid":
         value["user_sid"] = "S-1-5-21-200"
     elif case == "wrong_session":
@@ -380,3 +386,49 @@ catch { $_.Exception.Message }
         assert roots["CurrentUser"] == [{"thumbprint": "original-user", "certificate": "original-public-certificate"}]
         assert roots["LocalMachine"] == []
         assert "administrator-root" not in result.stdout
+
+
+def test_context_file_cannot_be_rewritten_during_hashing_or_json_parsing(tmp_path):
+    context = tmp_path / "context.json"
+    context.write_text(json.dumps(caller_context(tmp_path)), encoding="utf-8")
+    digest = hashlib.sha256(context.read_bytes()).hexdigest()
+    result = powershell(FUNCTIONS + r"""
+function Test-FixtureWriteLock {
+    try {
+        $writer = [IO.File]::Open($env:PILOT_CONTEXT, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
+        $writer.Dispose()
+        $false
+    } catch { $true }
+}
+function Get-PilotHash([IO.Stream]$Stream) {
+    $script:hashLocked = Test-FixtureWriteLock
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try { ([BitConverter]::ToString($hasher.ComputeHash($Stream))).Replace('-', '').ToLowerInvariant() }
+    finally { $hasher.Dispose() }
+}
+function ConvertFrom-Json {
+    param([Parameter(ValueFromPipeline = $true)]$InputObject)
+    process {
+        $script:jsonLocked = Test-FixtureWriteLock
+        Microsoft.PowerShell.Utility\ConvertFrom-Json -InputObject $InputObject
+    }
+}
+$value = Read-PilotCallerContext -LiteralPath $env:PILOT_CONTEXT -Sha256 $env:PILOT_HASH -ExpectedSid 'S-1-5-21-100' -ExpectedSession 7
+@{ hash_locked = $script:hashLocked; json_locked = $script:jsonLocked } | ConvertTo-Json
+""", PILOT_CONTEXT=str(context), PILOT_HASH=digest)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"hash_locked": True, "json_locked": True}
+    assert hashlib.sha256(context.read_bytes()).hexdigest() == digest
+
+
+@pytest.mark.parametrize("administrator", [True, False])
+def test_caller_capture_guard_requires_original_unelevated_identity(administrator):
+    admin = "$true" if administrator else "$false"
+    result = powershell(FUNCTIONS + f"""
+try {{
+    Assert-PilotCaptureIdentity -ExpectedSid 'S-1-5-21-100' -ExpectedSession 7 -CurrentSid 'S-1-5-21-100' -CurrentSession 7 -Administrator {admin}
+    'accepted'
+}} catch {{ $_.Exception.Message }}
+""")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ("caller_context_requires_unelevated" if administrator else "accepted")
