@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import copy
 import importlib.util
 import json
 import subprocess
@@ -47,6 +48,55 @@ def freeze(tmp_path, inspect=None):
     path = tmp_path / "candidate-manifest.json"
     assert path.is_file()
     return tool, manifest, hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def native_reports(tool, manifest):
+    return {phase: {"passed": True, "cleanup_errors": [], "package_receipt": {
+        "source_revision": manifest["source_revision"], "packages": manifest["packages"],
+    }} for phase in tool.REQUIRED_ACCEPTANCES}
+
+
+def server_fixture(tmp_path, manifest):
+    directory = tmp_path / "server"
+    directory.mkdir()
+    archive = "openems-server-1.0.0-linux-amd64.tar.gz"
+    payload = b"inert frozen server image archive bytes"
+    (directory / archive).write_bytes(payload)
+    server = {
+        "schema_version": 1, "version": manifest["version"], "source_revision": manifest["source_revision"],
+        "status": "image_built_runtime_acceptance_pending", "local_tag": "openems-server:v1.0.0-rc1-fixture",
+        "image_id": "sha256:" + "b" * 64, "platform": "linux/amd64", "file": archive,
+        "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload),
+        "inspection": {"version": "1.0.0", "panel_present": True, "migration_008_present": True},
+    }
+    path = directory / "server-image-manifest.json"
+    path.write_text(json.dumps(server), encoding="utf-8")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    receipt = {name: server[name] for name in ("source_revision", "version", "image_id", "platform", "file", "sha256", "bytes")}
+    receipt["manifest_sha256"] = digest
+    report = {
+        "schema_version": 1, "passed": True, "cleanup_errors": [], "server_receipt": copy.deepcopy(receipt),
+        "independent_review": {"passed": True, "reviewer": "independent-reviewer", "evidence_sha256": "c" * 64},
+        "scan": {
+            "passed": True, "policy": "no-fixable-high-or-critical", "fixable_high": 0, "fixable_critical": 0,
+            "unfixed_findings_reported": 222, "evidence_sha256": "d" * 64, "server_receipt": copy.deepcopy(receipt),
+        },
+        "acceptance": {
+            "api": {
+                "passed": True, "real_runtime": True, "evidence_sha256": "e" * 64,
+                "server_receipt": copy.deepcopy(receipt),
+                "checks": {"health_version": True, "migrations": True, "authenticated_policy_publication": True},
+            },
+            "panel": {
+                "passed": True, "real_runtime": True, "evidence_sha256": "f" * 64,
+                "server_receipt": copy.deepcopy(receipt),
+                "checks": {"login": True, "csrf": True, "policy_publication": True, "reload_persistence": True},
+            },
+        },
+    }
+    return server, {
+        "server_directory": directory, "server_manifest_sha256": digest, "server_report": report,
+    }
 
 
 def test_freeze_records_installer_payload_and_unsigned_distribution(tmp_path):
@@ -124,13 +174,15 @@ def test_release_assets_exclude_upgrade_fixture_and_require_every_acceptance(tmp
         }} for phase in tool.REQUIRED_ACCEPTANCES
     }
     assert "pilot" in reports and "antibypass" in reports and "ordered-domains" in reports
-    assets = tool.release_asset_names(manifest, reports)
+    server, gate = server_fixture(tmp_path, manifest)
+    assets = tool.release_asset_names(manifest, reports, **gate)
     assert "openems-agent.msi" in assets
     assert "openems-agent-next.msi" not in assets
     assert not any("0.2." in name for name in assets)
+    assert set(assets) == {"openems-agent.msi", "candidate-manifest.json", server["file"], "server-image-manifest.json", "SHA256SUMS"}
     reports.pop("pilot")
     with pytest.raises(ValueError, match="pilot"):
-        tool.release_asset_names(manifest, reports)
+        tool.release_asset_names(manifest, reports, **gate)
 
 
 @pytest.mark.parametrize("failure", ["wrong_package", "wrong_source", "cleanup", "not_passed"])
@@ -150,6 +202,134 @@ def test_an_acceptance_flag_does_not_override_stale_bytes_or_cleanup_errors(tmp_
         report["passed"] = False
     with pytest.raises(ValueError, match="browser-trust"):
         tool.release_asset_names(manifest, reports)
+
+
+def test_msi_acceptances_alone_can_never_authorize_release(tmp_path):
+    tool, manifest, _ = freeze(tmp_path)
+    with pytest.raises(ValueError, match="[Ss]erver"):
+        tool.release_asset_names(manifest, native_reports(tool, manifest))
+
+
+@pytest.mark.parametrize("missing", ["server_directory", "server_manifest_sha256", "server_report"])
+def test_server_promotion_requires_the_complete_pinned_gate(tmp_path, missing):
+    tool, manifest, _ = freeze(tmp_path)
+    _, gate = server_fixture(tmp_path, manifest)
+    gate.pop(missing)
+    with pytest.raises(ValueError, match="[Ss]erver"):
+        tool.release_asset_names(manifest, native_reports(tool, manifest), **gate)
+
+
+def test_read_server_candidate_verifies_the_real_manifest_shape_and_archive(tmp_path):
+    tool, manifest, _ = freeze(tmp_path)
+    server, gate = server_fixture(tmp_path, manifest)
+    before = {path.name: path.read_bytes() for path in gate["server_directory"].iterdir()}
+    assert tool.read_server_candidate(gate["server_directory"], gate["server_manifest_sha256"], "1.0.0", "a" * 40) == server
+    assert {path.name: path.read_bytes() for path in gate["server_directory"].iterdir()} == before
+
+
+@pytest.mark.parametrize("failure", ["version", "source", "image_id", "archive_name", "platform", "inspection", "boolean_size", "manifest_hash", "archive_changed"])
+def test_server_candidate_refuses_stale_or_ambiguous_image_identity(tmp_path, failure):
+    tool, manifest, _ = freeze(tmp_path)
+    server, gate = server_fixture(tmp_path, manifest)
+    if failure == "version":
+        server["version"] = "0.4.0"
+    elif failure == "source":
+        server["source_revision"] = "b" * 40
+    elif failure == "image_id":
+        server["image_id"] = "openems-server:mutable-tag"
+    elif failure == "archive_name":
+        server["file"] = "../outside.tar.gz"
+    elif failure == "platform":
+        server["platform"] = "linux/arm64"
+    elif failure == "inspection":
+        server["inspection"]["panel_present"] = False
+    elif failure == "boolean_size":
+        server["bytes"] = True
+    elif failure == "archive_changed":
+        (gate["server_directory"] / server["file"]).write_bytes(b"not the frozen image")
+    path = gate["server_directory"] / "server-image-manifest.json"
+    path.write_text(json.dumps(server), encoding="utf-8")
+    digest = "0" * 64 if failure == "manifest_hash" else hashlib.sha256(path.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match="[Ss]erver"):
+        tool.read_server_candidate(gate["server_directory"], digest, "1.0.0", "a" * 40)
+
+
+def test_server_archive_can_exceed_the_native_package_limit_and_is_streamed(tmp_path, monkeypatch):
+    tool, manifest, _ = freeze(tmp_path)
+    server, gate = server_fixture(tmp_path, manifest)
+    archive = gate["server_directory"] / server["file"]
+    with archive.open("r+b") as stream:
+        stream.truncate(tool.MAX_ARTIFACT_BYTES + 1)
+    with archive.open("rb") as stream:
+        server["sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
+    server["bytes"] = archive.stat().st_size
+    path = gate["server_directory"] / "server-image-manifest.json"
+    path.write_text(json.dumps(server), encoding="utf-8")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def no_whole_archive_read(path):
+        pytest.fail("Large archives must be hashed by streaming, not Path.read_bytes().")
+
+    monkeypatch.setattr(Path, "read_bytes", no_whole_archive_read)
+    assert tool.read_server_candidate(gate["server_directory"], digest, "1.0.0", "a" * 40) == server
+
+
+@pytest.mark.parametrize("failure", [
+    "wrong_image", "wrong_archive", "wrong_source", "wrong_version", "wrong_manifest", "not_reviewed",
+    "missing_review_evidence", "cleanup", "not_passed", "wrong_policy", "fixable_high", "fixable_critical",
+    "boolean_fixable_count", "missing_unfixed_count", "negative_unfixed_count", "stale_scan", "missing_scan_evidence",
+    "contract_only_api", "failed_api", "missing_api_migration", "missing_panel_csrf", "failed_panel_reload", "stale_panel",
+])
+def test_server_flags_cannot_override_missing_runtime_scan_or_independent_evidence(tmp_path, failure):
+    tool, manifest, _ = freeze(tmp_path)
+    _, gate = server_fixture(tmp_path, manifest)
+    report = gate["server_report"]
+    if failure == "wrong_image":
+        report["server_receipt"]["image_id"] = "sha256:" + "0" * 64
+    elif failure == "wrong_archive":
+        report["server_receipt"]["sha256"] = "0" * 64
+    elif failure == "wrong_source":
+        report["server_receipt"]["source_revision"] = "b" * 40
+    elif failure == "wrong_version":
+        report["server_receipt"]["version"] = "0.4.0"
+    elif failure == "wrong_manifest":
+        report["server_receipt"]["manifest_sha256"] = "0" * 64
+    elif failure == "not_reviewed":
+        report["independent_review"]["passed"] = False
+    elif failure == "missing_review_evidence":
+        report["independent_review"].pop("evidence_sha256")
+    elif failure == "cleanup":
+        report["cleanup_errors"] = ["database cleanup failed"]
+    elif failure == "not_passed":
+        report["passed"] = False
+    elif failure == "wrong_policy":
+        report["scan"]["policy"] = "ignore-all"
+    elif failure in {"fixable_high", "fixable_critical"}:
+        report["scan"][failure] = 1
+    elif failure == "boolean_fixable_count":
+        report["scan"]["fixable_high"] = False
+    elif failure == "missing_unfixed_count":
+        report["scan"].pop("unfixed_findings_reported")
+    elif failure == "negative_unfixed_count":
+        report["scan"]["unfixed_findings_reported"] = -1
+    elif failure == "stale_scan":
+        report["scan"]["server_receipt"]["image_id"] = "sha256:" + "0" * 64
+    elif failure == "missing_scan_evidence":
+        report["scan"].pop("evidence_sha256")
+    elif failure == "contract_only_api":
+        report["acceptance"]["api"]["real_runtime"] = False
+    elif failure == "failed_api":
+        report["acceptance"]["api"]["passed"] = False
+    elif failure == "missing_api_migration":
+        report["acceptance"]["api"]["checks"].pop("migrations")
+    elif failure == "missing_panel_csrf":
+        report["acceptance"]["panel"]["checks"].pop("csrf")
+    elif failure == "failed_panel_reload":
+        report["acceptance"]["panel"]["checks"]["reload_persistence"] = False
+    elif failure == "stale_panel":
+        report["acceptance"]["panel"]["server_receipt"]["image_id"] = "sha256:" + "0" * 64
+    with pytest.raises(ValueError, match="[Ss]erver"):
+        tool.release_asset_names(manifest, native_reports(tool, manifest), **gate)
 
 
 def test_final_acceptance_can_plan_existing_artifacts_without_building(tmp_path):
