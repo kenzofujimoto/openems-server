@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -25,6 +26,8 @@ def powershell(command: str, **environment: str) -> subprocess.CompletedProcess[
 
 FUNCTIONS = r"""
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1')
+$PSModuleAutoLoadingPreference = 'None'
 $tokens = $null; $errors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($env:PILOT_SCRIPT, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw 'Script does not parse.' }
@@ -198,3 +201,182 @@ def test_script_has_no_machine_mutations_and_keeps_sensitive_data_private():
     for journal in ("application-control.json", "usb-control.json", "uninstall.json", "browser-policies.json"):
         assert journal in source
     assert "not_yet_verified" in source
+
+
+def caller_context(documents: Path, **changes):
+    value = {
+        "schema_version": 1,
+        "captured_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "0Z",
+        "user_sid": "S-1-5-21-100", "session_id": 7, "documents": str(documents),
+        "roots": {"CurrentUser": [], "LocalMachine": []},
+    }
+    value.update(changes)
+    return value
+
+
+def test_context_capture_plan_is_inert(tmp_path):
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(SCRIPT),
+         "-Plan", "-CaptureCallerContext", "-OutputDirectory", str(tmp_path / "absent")],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    plan = json.loads(result.stdout)
+    assert plan["mode"] == "caller_context_capture"
+    assert plan["requires"] == ["same_user_sid", "same_session", "unelevated", "new_protected_directory"]
+    assert plan["context_max_age_seconds"] == 900
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("argument", ["-CallerContextPath", "-CallerContextSha256"])
+def test_partial_context_options_fail_before_host_reads_or_writes(tmp_path, argument):
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(SCRIPT),
+         "-OutputDirectory", str(tmp_path / "absent"), argument, "invalid"],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert result.returncode != 0
+    report = json.loads(result.stdout)
+    assert report["status"] == "caller_context_pair_required"
+    assert report["snapshot_created"] is False and report["file_count"] == 0
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(("session", "administrator", "error"), [
+    (8, "$true", "session_mismatch"), (7, "$false", "administrator_required"),
+])
+def test_delegated_guard_still_requires_same_interactive_session_and_admin(session, administrator, error):
+    result = powershell(FUNCTIONS + f"""
+try {{ Assert-PilotDelegatedIdentity -ExpectedSession 7 -CurrentSession {session} -Administrator {administrator}; throw 'Unsafe context accepted.' }}
+catch {{ $_.Exception.Message }}
+""")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == error
+
+
+@pytest.mark.parametrize("case", ["valid", "wrong_hash", "tampered", "stale", "future", "wrong_sid", "wrong_session", "wrong_schema", "extra_field", "bad_roots"])
+def test_pinned_context_validation_uses_inert_files_only(tmp_path, case):
+    value = caller_context(tmp_path / "Documents")
+    if case in {"stale", "future"}:
+        offset = timedelta(hours=-1 if case == "stale" else 1)
+        value["captured_at"] = (datetime.now(timezone.utc) + offset).strftime("%Y-%m-%dT%H:%M:%S.%f") + "0Z"
+    elif case == "wrong_sid":
+        value["user_sid"] = "S-1-5-21-200"
+    elif case == "wrong_session":
+        value["session_id"] = 8
+    elif case == "wrong_schema":
+        value["schema_version"] = 2
+    elif case == "extra_field":
+        value["untrusted_extra"] = "must not be accepted"
+    elif case == "bad_roots":
+        value["roots"] = {"CurrentUser": "not an array", "LocalMachine": []}
+    path = tmp_path / "caller-context.json"
+    path.write_text(json.dumps(value), encoding="utf-8")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if case == "tampered":
+        path.write_text(json.dumps({**value, "documents": "C:\\OtherUser\\Documents"}), encoding="utf-8")
+    elif case == "wrong_hash":
+        digest = "0" * 64
+    before = path.read_bytes()
+    result = powershell(FUNCTIONS + """
+try {
+    $context = Read-PilotCallerContext -LiteralPath $env:PILOT_CONTEXT -Sha256 $env:PILOT_HASH -ExpectedSid 'S-1-5-21-100' -ExpectedSession 7
+    @{ accepted = $true; sid = $context.user_sid } | ConvertTo-Json -Depth 3
+} catch { $_.Exception.Message }
+""", PILOT_CONTEXT=str(path), PILOT_HASH=digest)
+    assert result.returncode == 0, result.stderr
+    if case == "valid":
+        assert json.loads(result.stdout) == {"accepted": True, "sid": value["user_sid"]}
+    else:
+        assert result.stdout.strip() in {
+            "caller_context_hash_mismatch", "caller_context_stale", "identity_mismatch",
+            "session_mismatch", "caller_context_invalid",
+        }
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("case", ["default", "onedrive", "onedrive_variable", "outside", "prefix_collision", "unknown_variable", "unc", "relative", "context_mismatch"])
+def test_original_documents_resolution_never_uses_admin_environment(tmp_path, case):
+    profile = tmp_path / "Original"
+    profile.mkdir()
+    documents = profile / "Documents"
+    personal = r"%USERPROFILE%\Documents"
+    environment = {}
+    if case in {"onedrive", "onedrive_variable"}:
+        documents = profile / "OneDrive - Inert" / "Documents"
+        personal = r"%USERPROFILE%\OneDrive - Inert\Documents"
+        if case == "onedrive_variable":
+            personal = r"%OneDriveCommercial%\Documents"
+            environment = {"OneDriveCommercial": str(profile / "OneDrive - Inert")}
+    elif case == "outside":
+        documents = tmp_path / "Outside" / "Documents"
+        personal = str(documents)
+    elif case == "prefix_collision":
+        documents = tmp_path / "OriginalSibling" / "Documents"
+        personal = str(documents)
+    elif case == "unknown_variable":
+        personal = r"%USERPROFILE%\%ADMIN_ONLY_VARIABLE%\Documents"
+    elif case == "unc":
+        personal = r"\\untrusted\share\Documents"
+    elif case == "relative":
+        personal = r"relative\Documents"
+    documents.mkdir(parents=True)
+    context_documents = documents if case != "context_mismatch" else profile / "OtherDocuments"
+    fixture = tmp_path / "profile.json"
+    fixture.write_text(json.dumps({"profile": str(profile), "personal": personal, "documents": str(context_documents), "environment": environment}), encoding="utf-8")
+    result = powershell(FUNCTIONS + """
+$fixture = [IO.File]::ReadAllText($env:PILOT_PROFILE) | ConvertFrom-Json
+$originalEnvironment = @{}
+foreach ($property in $fixture.environment.PSObject.Properties) { $originalEnvironment[$property.Name] = [string]$property.Value }
+try { Resolve-PilotOriginalDocuments -ProfileImagePath $fixture.profile -PersonalPath $fixture.personal -ContextDocuments $fixture.documents -OriginalEnvironment $originalEnvironment }
+catch { $_.Exception.Message }
+""", PILOT_PROFILE=str(fixture), USERPROFILE=str(tmp_path / "WrongAdmin"), OneDriveCommercial=str(tmp_path / "WrongAdminOneDrive"))
+    assert result.returncode == 0, result.stderr
+    if case in {"default", "onedrive", "onedrive_variable"}:
+        assert result.stdout.strip() == str(documents)
+    else:
+        assert result.stdout.strip() == "original_documents_invalid"
+
+
+def test_delegated_acl_has_original_grant_and_actual_owner_without_extra_account_grant():
+    result = powershell(FUNCTIONS + r"""
+$actual = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$original = New-Object Security.Principal.SecurityIdentifier('S-1-5-21-100')
+$security = New-PilotDirectorySecurity -UserSid $original -OwnerSid $actual
+@{
+    owner = $security.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    actual = $actual.Value
+    grants = @($security.GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier]) | ForEach-Object { $_.IdentityReference.Value })
+} | ConvertTo-Json -Depth 4
+""")
+    assert result.returncode == 0, result.stderr
+    security = json.loads(result.stdout)
+    assert security["owner"] == security["actual"]
+    assert set(security["grants"]) == {"S-1-5-21-100", "S-1-5-18", "S-1-5-32-544"}
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_delegated_roots_take_current_user_only_from_pinned_original_context(tmp_path, changed):
+    fixture = tmp_path / "context.json"
+    fixture.write_text(json.dumps(caller_context(tmp_path, roots={
+        "CurrentUser": [{"thumbprint": "original-user", "certificate": "original-public-certificate"}], "LocalMachine": [],
+    })), encoding="utf-8")
+    result = powershell(FUNCTIONS + r"""
+function Get-PilotRoots([string[]]$Locations) {
+    if ($Locations -contains 'CurrentUser') { throw 'Administrator CurrentUser store requested.' }
+    $machine = @()
+    if ($env:PILOT_CHANGED -eq 'yes') { $machine = @(@{ thumbprint = 'new-machine-root'; certificate = 'new-public-certificate' }) }
+    @{ LocalMachine = $machine; CurrentUser = @('administrator-root-must-never-appear') }
+}
+$context = [IO.File]::ReadAllText($env:PILOT_CONTEXT) | ConvertFrom-Json
+try { Get-PilotEffectiveRoots -CallerContext $context | ConvertTo-Json -Depth 5 }
+catch { $_.Exception.Message }
+""", PILOT_CONTEXT=str(fixture), PILOT_CHANGED="yes" if changed else "no")
+    assert result.returncode == 0, result.stderr
+    if changed:
+        assert result.stdout.strip() == "machine_roots_changed"
+    else:
+        roots = json.loads(result.stdout)
+        assert roots["CurrentUser"] == [{"thumbprint": "original-user", "certificate": "original-public-certificate"}]
+        assert roots["LocalMachine"] == []
+        assert "administrator-root" not in result.stdout
