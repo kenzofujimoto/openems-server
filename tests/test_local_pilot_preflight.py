@@ -207,6 +207,8 @@ def test_script_has_no_machine_mutations_and_keeps_sensitive_data_private():
     for journal in ("application-control.json", "usb-control.json", "uninstall.json", "browser-policies.json"):
         assert journal in source
     assert "not_yet_verified" in source
+    # Decode only public DER certificates; a PFX constructor could import a private key.
+    assert "GetCertContentType" in source and "X509ContentType]::Cert" in source
 
 
 def caller_context(documents: Path, **changes):
