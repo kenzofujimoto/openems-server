@@ -206,7 +206,7 @@ def test_an_acceptance_flag_does_not_override_stale_bytes_or_cleanup_errors(tmp_
 
 def test_msi_acceptances_alone_can_never_authorize_release(tmp_path):
     tool, manifest, _ = freeze(tmp_path)
-    with pytest.raises(ValueError, match="[Ss]erver"):
+    with pytest.raises(ValueError, match=r"[Ss]erver"):
         tool.release_asset_names(manifest, native_reports(tool, manifest))
 
 
@@ -215,7 +215,7 @@ def test_server_promotion_requires_the_complete_pinned_gate(tmp_path, missing):
     tool, manifest, _ = freeze(tmp_path)
     _, gate = server_fixture(tmp_path, manifest)
     gate.pop(missing)
-    with pytest.raises(ValueError, match="[Ss]erver"):
+    with pytest.raises(ValueError, match=r"[Ss]erver"):
         tool.release_asset_names(manifest, native_reports(tool, manifest), **gate)
 
 
@@ -250,7 +250,7 @@ def test_server_candidate_refuses_stale_or_ambiguous_image_identity(tmp_path, fa
     path = gate["server_directory"] / "server-image-manifest.json"
     path.write_text(json.dumps(server), encoding="utf-8")
     digest = "0" * 64 if failure == "manifest_hash" else hashlib.sha256(path.read_bytes()).hexdigest()
-    with pytest.raises(ValueError, match="[Ss]erver"):
+    with pytest.raises(ValueError, match=r"[Ss]erver"):
         tool.read_server_candidate(gate["server_directory"], digest, "1.0.0", "a" * 40)
 
 
@@ -274,61 +274,47 @@ def test_server_archive_can_exceed_the_native_package_limit_and_is_streamed(tmp_
     assert tool.read_server_candidate(gate["server_directory"], digest, "1.0.0", "a" * 40) == server
 
 
-@pytest.mark.parametrize("failure", [
-    "wrong_image", "wrong_archive", "wrong_source", "wrong_version", "wrong_manifest", "not_reviewed",
-    "missing_review_evidence", "cleanup", "not_passed", "wrong_policy", "fixable_high", "fixable_critical",
-    "boolean_fixable_count", "missing_unfixed_count", "negative_unfixed_count", "stale_scan", "missing_scan_evidence",
-    "contract_only_api", "failed_api", "missing_api_migration", "missing_panel_csrf", "failed_panel_reload", "stale_panel",
+@pytest.mark.parametrize(("field", "value"), [
+    pytest.param("server_receipt.image_id", "sha256:" + "0" * 64, id="wrong_image"),
+    pytest.param("server_receipt.sha256", "0" * 64, id="wrong_archive"),
+    pytest.param("server_receipt.source_revision", "b" * 40, id="wrong_source"),
+    pytest.param("server_receipt.version", "0.4.0", id="wrong_version"),
+    pytest.param("server_receipt.manifest_sha256", "0" * 64, id="wrong_manifest"),
+    pytest.param("independent_review.passed", False, id="not_reviewed"),
+    pytest.param("independent_review.evidence_sha256", None, id="missing_review_evidence"),
+    pytest.param("independent_review.status", "failed", id="failed_review_status"),
+    pytest.param("cleanup_errors", ["database cleanup failed"], id="cleanup"),
+    pytest.param("passed", False, id="not_passed"),
+    pytest.param("status", {}, id="malformed_status"),
+    pytest.param("scan.policy", "ignore-all", id="wrong_policy"),
+    pytest.param("scan.fixable_high", 1, id="fixable_high"),
+    pytest.param("scan.fixable_critical", 1, id="fixable_critical"),
+    pytest.param("scan.fixable_high", False, id="boolean_fixable_count"),
+    pytest.param("scan.unfixed_findings_reported", None, id="missing_unfixed_count"),
+    pytest.param("scan.unfixed_findings_reported", -1, id="negative_unfixed_count"),
+    pytest.param("scan.server_receipt.image_id", "sha256:" + "0" * 64, id="stale_scan"),
+    pytest.param("scan.evidence_sha256", None, id="missing_scan_evidence"),
+    pytest.param("scan.cleanup_errors", ["scan did not finish"], id="failed_scan_cleanup"),
+    pytest.param("acceptance.api.real_runtime", False, id="contract_only_api"),
+    pytest.param("acceptance.api.passed", False, id="failed_api"),
+    pytest.param("acceptance.api.checks.migrations", None, id="missing_api_migration"),
+    pytest.param("acceptance.panel.checks.csrf", None, id="missing_panel_csrf"),
+    pytest.param("acceptance.panel.checks.reload_persistence", False, id="failed_panel_reload"),
+    pytest.param("acceptance.panel.server_receipt.image_id", "sha256:" + "0" * 64, id="stale_panel"),
+    pytest.param("acceptance.panel.cleanup_errors", ["panel data remained"], id="failed_panel_cleanup"),
 ])
-def test_server_flags_cannot_override_missing_runtime_scan_or_independent_evidence(tmp_path, failure):
+def test_server_flags_cannot_override_missing_runtime_scan_or_independent_evidence(tmp_path, field, value):
     tool, manifest, _ = freeze(tmp_path)
     _, gate = server_fixture(tmp_path, manifest)
     report = gate["server_report"]
-    if failure == "wrong_image":
-        report["server_receipt"]["image_id"] = "sha256:" + "0" * 64
-    elif failure == "wrong_archive":
-        report["server_receipt"]["sha256"] = "0" * 64
-    elif failure == "wrong_source":
-        report["server_receipt"]["source_revision"] = "b" * 40
-    elif failure == "wrong_version":
-        report["server_receipt"]["version"] = "0.4.0"
-    elif failure == "wrong_manifest":
-        report["server_receipt"]["manifest_sha256"] = "0" * 64
-    elif failure == "not_reviewed":
-        report["independent_review"]["passed"] = False
-    elif failure == "missing_review_evidence":
-        report["independent_review"].pop("evidence_sha256")
-    elif failure == "cleanup":
-        report["cleanup_errors"] = ["database cleanup failed"]
-    elif failure == "not_passed":
-        report["passed"] = False
-    elif failure == "wrong_policy":
-        report["scan"]["policy"] = "ignore-all"
-    elif failure in {"fixable_high", "fixable_critical"}:
-        report["scan"][failure] = 1
-    elif failure == "boolean_fixable_count":
-        report["scan"]["fixable_high"] = False
-    elif failure == "missing_unfixed_count":
-        report["scan"].pop("unfixed_findings_reported")
-    elif failure == "negative_unfixed_count":
-        report["scan"]["unfixed_findings_reported"] = -1
-    elif failure == "stale_scan":
-        report["scan"]["server_receipt"]["image_id"] = "sha256:" + "0" * 64
-    elif failure == "missing_scan_evidence":
-        report["scan"].pop("evidence_sha256")
-    elif failure == "contract_only_api":
-        report["acceptance"]["api"]["real_runtime"] = False
-    elif failure == "failed_api":
-        report["acceptance"]["api"]["passed"] = False
-    elif failure == "missing_api_migration":
-        report["acceptance"]["api"]["checks"].pop("migrations")
-    elif failure == "missing_panel_csrf":
-        report["acceptance"]["panel"]["checks"].pop("csrf")
-    elif failure == "failed_panel_reload":
-        report["acceptance"]["panel"]["checks"]["reload_persistence"] = False
-    elif failure == "stale_panel":
-        report["acceptance"]["panel"]["server_receipt"]["image_id"] = "sha256:" + "0" * 64
-    with pytest.raises(ValueError, match="[Ss]erver"):
+    keys = field.split(".")
+    for key in keys[:-1]:
+        report = report[key]
+    if value is None:
+        report.pop(keys[-1])
+    else:
+        report[keys[-1]] = value
+    with pytest.raises(ValueError, match=r"[Ss]erver"):
         tool.release_asset_names(manifest, native_reports(tool, manifest), **gate)
 
 
