@@ -362,6 +362,145 @@ def test_builder_refuses_stale_or_changed_source_packages(builder, source_packag
     assert not output.exists()
 
 
+@pytest.fixture
+def frozen_catalog_candidate(builder, source_package, tmp_path):
+    packages = builder.PACKAGES
+    from app import __version__
+    from release_artifacts import freeze_candidate, version_pair
+
+    frozen = tmp_path / "frozen-candidate"
+    frozen.mkdir()
+    for name in packages:
+        (frozen / name).write_bytes((source_package / "final-msi" / name).read_bytes())
+    for name in ("openems-agent.exe", "openems-session.exe"):
+        (frozen / name).write_bytes(b"inert frozen payload; never executable: " + name.encode())
+    production, upgrade = version_pair(__version__)
+    agent_hash = record(frozen / "openems-agent.exe")["sha256"]
+
+    def inspect(path):
+        return {
+            "product_version": upgrade if path.name.endswith("-next.msi") else production,
+            "upgrade_code": "0C684B18-7540-4865-9516-567A9E81AA61",
+            "custom_actions": ["PrepareAgentSetup", "PrepareAgentRemoval"],
+            "properties": ["SERVER", "INVITATION"],
+            "agent_actions_sha256": agent_hash,
+            "signature_status": "NotSigned",
+        }
+
+    manifest = freeze_candidate(frozen, REVISION, production, inspect)
+    return frozen, manifest, record(frozen / "candidate-manifest.json")["sha256"]
+
+
+def test_catalog_frozen_candidate_preserves_original_identity_after_tooling_head_changes(
+    builder, source_package, frozen_catalog_candidate, tmp_path, monkeypatch,
+):
+    frozen, candidate, digest = frozen_catalog_candidate
+    monkeypatch.setattr(builder.module, "revision", lambda: "b" * 40)
+    before = {path.name: path.read_bytes() for path in frozen.iterdir()}
+    output = tmp_path / "frozen-catalog"
+    manifest = builder.build(
+        source_package, output, run_id=RUN_ID, now=NOW,
+        packages_from=frozen, manifest_sha256=digest,
+    )
+    assert manifest["source_revision"] == candidate["source_revision"] == REVISION
+    assert manifest["packages"] == candidate["packages"]
+    assert builder.verify_package(output, expected_revision=REVISION)["source_revision"] == REVISION
+    for name in builder.PACKAGES:
+        assert (output / name).read_bytes() == before[name]
+    assert {path.name: path.read_bytes() for path in frozen.iterdir()} == before
+
+
+@pytest.mark.parametrize("change", [
+    "manifest_pin", "candidate_manifest", "candidate_package", "candidate_payload",
+    "acceptance_source", "acceptance_package", "staged_package",
+])
+def test_catalog_frozen_candidate_rejects_changed_receipts_and_artifacts_before_output(
+    builder, source_package, frozen_catalog_candidate, tmp_path, monkeypatch, change,
+):
+    frozen, _, digest = frozen_catalog_candidate
+    receipt_path = source_package / "acceptance-manifest.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if change == "manifest_pin":
+        digest = "0" * 64
+    elif change == "candidate_manifest":
+        candidate_path = frozen / "candidate-manifest.json"
+        candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+        candidate["source_revision"] = "b" * 40
+        candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+    elif change == "candidate_package":
+        (frozen / "openems-agent.msi").write_bytes(b"changed candidate package")
+    elif change == "candidate_payload":
+        (frozen / "openems-session.exe").write_bytes(b"changed frozen payload")
+    elif change == "acceptance_source":
+        receipt["source_revision"] = "b" * 40
+    elif change == "acceptance_package":
+        receipt["packages"]["openems-agent.msi"]["sha256"] = "c" * 64
+    else:
+        staged = source_package / "final-msi/openems-agent.msi"
+        staged.write_bytes(b"changed staged package")
+        receipt["packages"][staged.name] = record(staged)
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    monkeypatch.setattr(builder.module, "revision", lambda: receipt["source_revision"])
+    output = tmp_path / "must-not-exist"
+    with pytest.raises((ValueError, OSError)):
+        builder.build(source_package, output, run_id=RUN_ID, now=NOW,
+                      packages_from=frozen, manifest_sha256=digest)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("missing", ["directory", "pin"])
+def test_catalog_build_requires_paired_frozen_candidate_options(
+    builder, source_package, frozen_catalog_candidate, tmp_path, missing,
+):
+    frozen, _, digest = frozen_catalog_candidate
+    arguments = {"packages_from": frozen, "manifest_sha256": digest}
+    arguments.pop("packages_from" if missing == "directory" else "manifest_sha256")
+    output = tmp_path / "must-not-exist"
+    with pytest.raises(ValueError, match="together"):
+        builder.build(source_package, output, run_id=RUN_ID, now=NOW, **arguments)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("missing", ["--packages-from", "--manifest-sha256"])
+def test_catalog_cli_requires_paired_frozen_candidate_options_even_in_plan(
+    builder, tmp_path, monkeypatch, capsys, missing,
+):
+    arguments = {"--packages-from": str(tmp_path), "--manifest-sha256": "b" * 64}
+    arguments.pop(missing)
+    command = ["build_catalog_acceptance.py", "--plan"]
+    for name, value in arguments.items():
+        command.extend((name, value))
+    monkeypatch.setattr(sys, "argv", command)
+    with pytest.raises(SystemExit) as result:
+        builder.main()
+    assert result.value.code == 2
+    assert "must be supplied together" in capsys.readouterr().err
+
+
+def test_catalog_cli_forwards_explicit_candidate_identity(
+    builder, source_package, frozen_catalog_candidate, tmp_path, monkeypatch,
+):
+    frozen, candidate, digest = frozen_catalog_candidate
+    output = tmp_path / "catalog-cli-output"
+    calls = []
+
+    def prepare(source, destination, **options):
+        calls.append((source, destination, options))
+        return {"source_revision": candidate["source_revision"], "run_id": RUN_ID}
+
+    monkeypatch.setattr(builder.module, "_committed_sources", lambda: None)
+    monkeypatch.setattr(builder.module, "build", prepare)
+    monkeypatch.setattr(sys, "argv", [
+        "build_catalog_acceptance.py", "--source", str(source_package), "--output", str(output),
+        "--run-id", RUN_ID, "--packages-from", str(frozen), "--manifest-sha256", digest,
+    ])
+    assert builder.main() == 0
+    assert calls == [(source_package, output, {
+        "run_id": RUN_ID, "packages_from": frozen, "manifest_sha256": digest,
+    })]
+    assert not output.exists()
+
+
 @pytest.mark.parametrize("mismatch", ["file_bytes", "file_size", "missing_file", "revision", "run_id", "traversal"])
 def test_package_verifier_refuses_tampered_missing_or_misbound_inputs(builder, package, mismatch):
     output, manifest = package()
