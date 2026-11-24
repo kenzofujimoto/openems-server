@@ -1,6 +1,20 @@
 # Handoff — roadmap v2
 
-## Retomada — 22/11/2026
+## Retomada — 24/11/2026: fechamento da v1.0 em andamento
+
+O operador autorizou concluir o candidato, os aceites, o piloto físico nesta máquina, a integração do PR13 e a publicação da v1.0. O plano vigente é [windows-v1-release.md](windows-v1-release.md). A proibição de merge/release do plano antigo foi substituída por essa autorização; as etapas só avançam após seus critérios reais.
+
+O checkout operacional continua sendo o caminho canônico abaixo. Versão do servidor, painel, agente e builder alinhada em **1.0.0**. O candidato foi compilado da revisão `f0092687e415f573b580d992fc905866a05bfcea`, com os inputs de produção conferidos; sua identidade está em [windows-v1-candidate-2026-11-23.json](validation/windows-v1-candidate-2026-11-23.json). **Os novos bytes ainda não têm aceite operacional.** Os relatórios ec50572 permanecem históricos.
+
+Artefatos privados em `.venv/windows-v1-20261123/rc1/`: MSI produção SHA b23752ae1d344f38d07bc91aa9b109b97643a81ece0cfba91f286191e1712d3a; fixture interna1.0.1 SHA6bf1a65b442f34b35eeab3c555e421d75fd64445339ff00126589dbcc20ab032; manifestoSHAe1e712ffad6a39a8426df39bb9a3fd0bddd40e5f671a6cc8f0f1d2a194f8a6e5. Nenhuma assinatura ou release pública. A imagem `openems-server:v1.0.0-rc1-f009268`, ID08abc4194dcfe5382bfc1179578462c81f3ac929370300d02e74a4a2b51497f2, tem API1.0/painel/migração008 presentes; o arquivo congelado tem SHA1147511decf57eba951093eed73e58a397e2be0918d3973034c902bc97a838a7. Os testes devem usar esses bytes sem rebuild.
+
+Preparação: guardas de artefatos/staging27testes, planos de domínios ordenados75testescomcontratos existentes, versão19testes e inspetorMSI6testes+integração opcional. O painel passou154testes, lint/tipos/build, cobertura de linhas95,21%. A suíte completa e o CI dessa entrega ainda precisam concluir. O Trivy está verificando o arquivo exato da imagem, com relatórios em `rc1/security/`; durante a retomada seu download de base estava em execução, sem veredito. Preserve e verifique os processos/contêineres reais antes de qualquer nova inicialização.
+
+O primeiro pré-voo físico elevado recusou `identity_mismatch` antes de copiar dados: `snapshot_created=false`, zero arquivos. O operador confirmou ter usado outra conta administradora. O helper está recebendo suporte delegado com contexto do usuário original preso por SHA, sessão e prazo, Documentos resolvido pelo perfil original e raízes CU identificadas como captura original. A revisão de segurança foi feita; confirme o commit GREEN final antes de executá-lo. Nunca use CU do administrador como baseline do usuário. O agente0.1.0 existente não foi alterado nem substituído, e o rollback ainda não está comprovado.
+
+O novo lane `rc1/web/` está sendo preparado, sem iniciar Docker/guest, para matriz11, recuperação5 e regras ordenadas8 sobre a imagem congelada e stores próprios. Falta integrar a preparação TLS e a coleta estrita de raízes antes de executar. SafeSearch/antiburla e os regressivos em VM continuam pendentes, assim como piloto, merge e publicação. Não reutilizar a aprovação ec50572 para aceitar v1.0.
+
+## Histórico da retomada — 22/11/2026
 
 O checkout operacional está em `C:/Users/kenzo.fujimoto/Desktop/codigo/projetos/openems-server`, branch `feature/catalog-vm-acceptance`. O diretório aberto no aplicativo pode ser outro worktree; use esse caminho ao retomar os roteiros locais.
 

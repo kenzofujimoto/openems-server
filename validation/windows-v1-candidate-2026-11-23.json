@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-23",
+  "status": "candidate_built_acceptance_pending",
+  "candidate": {
+    "schema_version": 1,
+    "source_revision": "f0092687e415f573b580d992fc905866a05bfcea",
+    "version": "1.0.0",
+    "upgrade_fixture_version": "1.0.1",
+    "distribution_signature": "unsigned",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "b23752ae1d344f38d07bc91aa9b109b97643a81ece0cfba91f286191e1712d3a",
+        "bytes": 8667136
+      },
+      "openems-agent-next.msi": {
+        "sha256": "6bf1a65b442f34b35eeab3c555e421d75fd64445339ff00126589dbcc20ab032",
+        "bytes": 8667136
+      }
+    },
+    "binaries": {
+      "openems-agent.exe": {
+        "sha256": "62089e91cd25e0b00f30fd7d78b04732448451d08afd20c23fded48220db1803",
+        "bytes": 6081024
+      },
+      "openems-session.exe": {
+        "sha256": "34aa076f6794e9f4db33e1b2ad532462576a2bf6d7b2e974523d3cc3be36e3b1",
+        "bytes": 1080832
+      }
+    },
+    "msi_metadata": {
+      "openems-agent.msi": {
+        "product_version": "1.0.0",
+        "upgrade_code": "{0C684B18-7540-4865-9516-567A9E81AA61}",
+        "custom_actions": [
+          "CommitAgentRemoval",
+          "CommitAgentSetup",
+          "ConfigureRecovery",
+          "PrepareAgentRemoval",
+          "PrepareAgentSetup",
+          "RollbackAgentRemoval",
+          "RollbackAgentSetup",
+          "SetAntiBypassArguments",
+          "SetBlockPageArguments",
+          "SetDEVID",
+          "SetDnsFilterArguments",
+          "SetHOSTSFILE",
+          "SetHttpsBlockPageArguments"
+        ],
+        "properties": [
+          "ALLUSERS",
+          "Manufacturer",
+          "MsiHiddenProperties",
+          "ProductCode",
+          "ProductLanguage",
+          "ProductName",
+          "ProductVersion",
+          "SecureCustomProperties",
+          "UpgradeCode",
+          "VDOM"
+        ],
+        "agent_actions_sha256": "62089e91cd25e0b00f30fd7d78b04732448451d08afd20c23fded48220db1803",
+        "signature_status": "NotSigned"
+      },
+      "openems-agent-next.msi": {
+        "product_version": "1.0.1",
+        "upgrade_code": "{0C684B18-7540-4865-9516-567A9E81AA61}",
+        "custom_actions": [
+          "CommitAgentRemoval",
+          "CommitAgentSetup",
+          "ConfigureRecovery",
+          "PrepareAgentRemoval",
+          "PrepareAgentSetup",
+          "RollbackAgentRemoval",
+          "RollbackAgentSetup",
+          "SetAntiBypassArguments",
+          "SetBlockPageArguments",
+          "SetDEVID",
+          "SetDnsFilterArguments",
+          "SetHOSTSFILE",
+          "SetHttpsBlockPageArguments"
+        ],
+        "properties": [
+          "ALLUSERS",
+          "Manufacturer",
+          "MsiHiddenProperties",
+          "ProductCode",
+          "ProductLanguage",
+          "ProductName",
+          "ProductVersion",
+          "SecureCustomProperties",
+          "UpgradeCode",
+          "VDOM"
+        ],
+        "agent_actions_sha256": "62089e91cd25e0b00f30fd7d78b04732448451d08afd20c23fded48220db1803",
+        "signature_status": "NotSigned"
+      }
+    }
+  },
+  "candidate_manifest_sha256": "e1e712ffad6a39a8426df39bb9a3fd0bddd40e5f671a6cc8f0f1d2a194f8a6e5",
+  "production_input_receipt_sha256": "2b63a9f9c22a180fd9b3b8a16eb3f64798ecc1ce2f3fccd8df0e7fe6ca5c3319",
+  "acceptance": {
+    "catalog": "pending",
+    "usb": "pending",
+    "applications": "pending",
+    "session": "pending",
+    "locations": "pending",
+    "browser-trust": "pending",
+    "web-actions": "pending",
+    "ordered-domains": "pending",
+    "safesearch": "pending",
+    "antibypass": "pending",
+    "pilot": "pending"
+  },
+  "prior_ec50572_results": "Historical acceptance remains tied to its original bytes. It does not accept this new package.",
+  "release_published": false,
+  "physical_pilot_executed": false,
+  "server": {
+    "schema_version": 1,
+    "version": "1.0.0",
+    "status": "image_built_runtime_acceptance_pending",
+    "source_revision": "f0092687e415f573b580d992fc905866a05bfcea",
+    "local_tag": "openems-server:v1.0.0-rc1-f009268",
+    "image_id": "sha256:08abc4194dcfe5382bfc1179578462c81f3ac929370300d02e74a4a2b51497f2",
+    "platform": "linux/amd64",
+    "file": "openems-server-1.0.0-linux-amd64.tar.gz",
+    "sha256": "1147511decf57eba951093eed73e58a397e2be0918d3973034c902bc97a838a7",
+    "bytes": 73259978,
+    "inspection": {
+      "version": "1.0.0",
+      "panel_present": true,
+      "migration_008_present": true
+    }
+  }
+}
