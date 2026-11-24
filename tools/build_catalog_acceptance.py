@@ -100,9 +100,22 @@ def _verify_file(path: Path, expected: Any) -> None:
         raise ValueError(f"package file changed: {path.name}")
 
 
-def _source_receipt(source: Path) -> tuple[str, dict[str, Any]]:
+def _source_receipt(
+    source: Path, *, packages_from: Path | None = None, manifest_sha256: str | None = None,
+) -> tuple[str, dict[str, Any]]:
+    if (packages_from is None) != (manifest_sha256 is None):
+        raise ValueError("--packages-from and --manifest-sha256 must be supplied together")
     receipt = _json(source / "acceptance-manifest.json")
-    current = _revision(revision())
+    if packages_from is not None:
+        from app import __version__
+        from tools.release_artifacts import read_candidate
+
+        candidate = read_candidate(Path(packages_from), manifest_sha256, __version__)
+        current = candidate["source_revision"]
+        if receipt.get("source_revision") != current or receipt.get("packages") != candidate["packages"]:
+            raise ValueError("acceptance source and package receipts must match the pinned candidate")
+    else:
+        current = _revision(revision())
     if receipt.get("source_revision") != current:
         raise ValueError("MSI source revision does not match the current committed revision")
     packages = _object(receipt.get("packages"), "packages")
@@ -253,10 +266,15 @@ def _policies(output: Path, fixtures: dict[str, Any], guest: str, run_id: str, n
     return policies
 
 
-def build(source: Path, output: Path, *, run_id: str, now: datetime | None = None) -> dict[str, Any]:
-    """Build fresh input from a verified production pair of the same source revision."""
+def build(
+    source: Path, output: Path, *, run_id: str, now: datetime | None = None,
+    packages_from: Path | None = None, manifest_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Prepare fresh input from the current revision or an explicitly pinned candidate."""
     run_id = _run_id(run_id)
-    current, packages = _source_receipt(Path(source))
+    current, packages = _source_receipt(
+        Path(source), packages_from=packages_from, manifest_sha256=manifest_sha256,
+    )
     now = now or datetime.now(UTC)
     if now.tzinfo is None:
         raise ValueError("the preparation timestamp must include a timezone")
@@ -642,12 +660,16 @@ def _committed_sources() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--source", type=Path, help="fresh build_final_acceptance output")
+    parser.add_argument("--packages-from", type=Path, help="Verify the staged pair against this frozen candidate")
+    parser.add_argument("--manifest-sha256", help="Externally pinned SHA-256 of its candidate-manifest.json")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--plan", action="store_true")
     parser.add_argument("--verify", type=Path, metavar="CATALOG_INPUT")
     parser.add_argument("--report", type=Path, help="evaluate a report against --verify input")
     args = parser.parse_args()
+    if bool(args.packages_from) != bool(args.manifest_sha256):
+        parser.error("--packages-from and --manifest-sha256 must be supplied together")
     if args.plan:
         print(json.dumps({"phase": "catalog", "guest_only": True, "synthetic_catalog": True,
                           "real_server_api": True, "real_server_network_e2e": False,
@@ -665,7 +687,10 @@ def main() -> int:
     if not args.source or not args.output:
         parser.error("preparation requires --source and --output")
     _committed_sources()
-    manifest = build(args.source, args.output, run_id=args.run_id or uuid.uuid4().hex)
+    manifest = build(
+        args.source, args.output, run_id=args.run_id or uuid.uuid4().hex,
+        packages_from=args.packages_from, manifest_sha256=args.manifest_sha256,
+    )
     print(json.dumps({"prepared": str(args.output), "source_revision": manifest["source_revision"], "run_id": manifest["run_id"]}))
     return 0
 
