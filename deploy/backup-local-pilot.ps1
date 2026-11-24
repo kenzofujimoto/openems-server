@@ -2,6 +2,9 @@ param(
     [string]$OutputDirectory,
     [string]$ExpectedCurrentUserSid,
     [int]$ExpectedSessionId = -1,
+    [switch]$CaptureCallerContext,
+    [string]$CallerContextPath,
+    [string]$CallerContextSha256,
     [switch]$Plan
 )
 
@@ -9,13 +12,22 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $topics = @('configuration', 'state', 'authority', 'cached_msi', 'agent', 'service', 'hosts', 'dns', 'roots', 'registry')
 if ($Plan) {
+    $mode = 'read_only_preflight'
+    $requires = @('same_user_sid', 'same_session', 'administrator', 'new_protected_directory')
+    $plannedTopics = $topics
+    if ($CaptureCallerContext) {
+        $mode = 'caller_context_capture'
+        $requires = @('same_user_sid', 'same_session', 'unelevated', 'new_protected_directory')
+        $plannedTopics = @('caller_identity', 'documents', 'roots', 'captured_at')
+    }
     [ordered]@{
-        mode = 'read_only_preflight'
+        mode = $mode
         destination = 'Documents/OpenEMS-Lab/<run>/private'
-        requires = @('same_user_sid', 'same_session', 'administrator', 'new_protected_directory')
-        topics = $topics
+        requires = $requires
+        topics = $plannedTopics
         host_mutations = @()
         rollback_status = 'not_yet_verified'
+        context_max_age_seconds = 900
     } | ConvertTo-Json -Depth 4
     exit 0
 }
@@ -24,6 +36,16 @@ function Assert-PilotIdentity([string]$ExpectedSid, [int]$ExpectedSession, [stri
     if (-not $ExpectedSid -or $ExpectedSid -ne $CurrentSid) { throw 'identity_mismatch' }
     if ($ExpectedSession -lt 1 -or $ExpectedSession -ne $CurrentSession) { throw 'session_mismatch' }
     if (-not $Administrator) { throw 'administrator_required' }
+}
+
+function Assert-PilotDelegatedIdentity([int]$ExpectedSession, [int]$CurrentSession, [bool]$Administrator) {
+    if ($ExpectedSession -lt 1 -or $ExpectedSession -ne $CurrentSession) { throw 'session_mismatch' }
+    if (-not $Administrator) { throw 'administrator_required' }
+}
+
+function Assert-PilotCaptureIdentity([string]$ExpectedSid, [int]$ExpectedSession, [string]$CurrentSid, [int]$CurrentSession, [bool]$Administrator) {
+    Assert-PilotIdentity -ExpectedSid $ExpectedSid -ExpectedSession $ExpectedSession -CurrentSid $CurrentSid -CurrentSession $CurrentSession -Administrator $true
+    if ($Administrator) { throw 'caller_context_requires_unelevated' }
 }
 
 function Assert-PilotNoReparse([string]$Path) {
@@ -52,17 +74,91 @@ function Get-PilotDestination([string]$OutputDirectory, [string]$DocumentsDirect
     $destination
 }
 
-function New-PilotPrivateDirectory([string]$Path, [Security.Principal.SecurityIdentifier]$UserSid) {
-    if ([IO.File]::Exists($Path) -or [IO.Directory]::Exists($Path)) { throw 'invalid_output_directory' }
+function New-PilotDirectorySecurity([Security.Principal.SecurityIdentifier]$UserSid, [Security.Principal.SecurityIdentifier]$OwnerSid) {
     $security = New-Object Security.AccessControl.DirectorySecurity
     $security.SetAccessRuleProtection($true, $false)
-    $security.SetOwner($UserSid)
+    $security.SetOwner($OwnerSid)
     foreach ($sid in @($UserSid, (New-Object Security.Principal.SecurityIdentifier('S-1-5-18')), (New-Object Security.Principal.SecurityIdentifier('S-1-5-32-544')))) {
         $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
         $security.AddAccessRule($rule)
     }
+    $security
+}
+
+function New-PilotPrivateDirectory([string]$Path, [Security.Principal.SecurityIdentifier]$UserSid, [Security.Principal.SecurityIdentifier]$OwnerSid = $UserSid) {
+    if ([IO.File]::Exists($Path) -or [IO.Directory]::Exists($Path)) { throw 'invalid_output_directory' }
+    $security = New-PilotDirectorySecurity -UserSid $UserSid -OwnerSid $OwnerSid
     # Directory creation applies the DACL before any private file can exist.
-    (New-Object IO.DirectoryInfo($Path)).Create($security)
+    $directory = New-Object IO.DirectoryInfo($Path)
+    $directory.Create($security)
+    $actual = $directory.GetAccessControl()
+    $rules = @($actual.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
+    $allowed = @($UserSid.Value, 'S-1-5-18', 'S-1-5-32-544')
+    if (-not $actual.AreAccessRulesProtected -or $actual.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $OwnerSid.Value -or $rules.Count -ne 3) { throw 'directory_acl_invalid' }
+    $seen = @{}
+    foreach ($rule in $rules) {
+        $sid = $rule.IdentityReference.Value
+        if ($sid -notin $allowed -or $seen.ContainsKey($sid) -or $rule.IsInherited -or $rule.AccessControlType -ne 'Allow' -or $rule.FileSystemRights -ne 'FullControl' -or $rule.InheritanceFlags -ne 'ContainerInherit,ObjectInherit' -or $rule.PropagationFlags -ne 'None') { throw 'directory_acl_invalid' }
+        $seen[$sid] = $true
+    }
+}
+
+function Expand-PilotOriginalPath([string]$Value, [hashtable]$Variables) {
+    $expanded = [regex]::Replace($Value, '%([A-Za-z][A-Za-z0-9_]*)%', {
+        param($match)
+        $name = $match.Groups[1].Value
+        if (-not $Variables.ContainsKey($name)) { throw 'original_documents_invalid' }
+        [string]$Variables[$name]
+    })
+    if ($expanded.Contains('%') -or $expanded -notmatch '^[A-Za-z]:[\\/]') { throw 'original_documents_invalid' }
+    [IO.Path]::GetFullPath($expanded).TrimEnd('\')
+}
+
+function Resolve-PilotOriginalDocuments([string]$ProfileImagePath, [string]$PersonalPath, [string]$ContextDocuments, [hashtable]$OriginalEnvironment = @{}) {
+    try {
+        $systemDrive = [IO.Path]::GetPathRoot([Environment]::SystemDirectory).TrimEnd('\')
+        $profile = Expand-PilotOriginalPath $ProfileImagePath @{ SystemDrive = $systemDrive }
+        $variables = @{ USERPROFILE = $profile }
+        foreach ($name in @('OneDrive', 'OneDriveCommercial', 'OneDriveConsumer')) {
+            if ($OriginalEnvironment.ContainsKey($name)) { $variables[$name] = Expand-PilotOriginalPath $OriginalEnvironment[$name] @{ USERPROFILE = $profile } }
+        }
+        $documents = Expand-PilotOriginalPath $PersonalPath $variables
+        $expected = Expand-PilotOriginalPath $ContextDocuments @{}
+        if (-not $documents.StartsWith($profile + '\', [StringComparison]::OrdinalIgnoreCase) -or -not [string]::Equals($documents, $expected, [StringComparison]::OrdinalIgnoreCase)) { throw 'original_documents_invalid' }
+        Assert-PilotNoReparse $profile
+        Assert-PilotNoReparse $documents
+    } catch { throw 'original_documents_invalid' }
+    $documents
+}
+
+function Get-PilotOriginalDocuments([string]$OriginalSid, [string]$ContextDocuments) {
+    $machine = $null
+    $users = $null
+    $profile = $null
+    $personal = $null
+    $environment = $null
+    try {
+        $sid = (New-Object Security.Principal.SecurityIdentifier($OriginalSid)).Value
+        $machine = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+        $users = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::Users, [Microsoft.Win32.RegistryView]::Registry64)
+        $profile = $machine.OpenSubKey(('SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\' + $sid), $false)
+        $personal = $users.OpenSubKey(($sid + '\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'), $false)
+        $environment = $users.OpenSubKey(($sid + '\Environment'), $false)
+        if ($null -eq $profile -or $null -eq $personal) { throw 'original_documents_invalid' }
+        $options = [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
+        $originalEnvironment = @{}
+        if ($null -ne $environment) {
+            foreach ($name in @('OneDrive', 'OneDriveCommercial', 'OneDriveConsumer')) {
+                $value = $environment.GetValue($name, $null, $options)
+                if ($value -is [string] -and $value) { $originalEnvironment[$name] = $value }
+            }
+        }
+        $result = Resolve-PilotOriginalDocuments -ProfileImagePath $profile.GetValue('ProfileImagePath', $null, $options) -PersonalPath $personal.GetValue('Personal', $null, $options) -ContextDocuments $ContextDocuments -OriginalEnvironment $originalEnvironment
+    } catch { throw 'original_documents_invalid' }
+    finally {
+        foreach ($key in @($environment, $personal, $profile, $users, $machine)) { if ($null -ne $key) { $key.Dispose() } }
+    }
+    $result
 }
 
 function Get-PilotHash([IO.Stream]$Stream) {
@@ -70,6 +166,55 @@ function Get-PilotHash([IO.Stream]$Stream) {
     try { $result = ([BitConverter]::ToString($hash.ComputeHash($Stream))).Replace('-', '').ToLowerInvariant() }
     finally { $hash.Dispose() }
     $result
+}
+
+function Read-PilotCallerContext([string]$LiteralPath, [string]$Sha256, [string]$ExpectedSid, [int]$ExpectedSession) {
+    $stream = $null
+    $reader = $null
+    try {
+        if ($Sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'caller_context_hash_mismatch' }
+        if (-not (Test-PilotFilePresent $LiteralPath)) { throw 'caller_context_invalid' }
+        $stream = [IO.File]::Open($LiteralPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        if ($stream.Length -le 0 -or $stream.Length -gt 8388608) { throw 'caller_context_invalid' }
+        if ((Get-PilotHash $stream) -cne $Sha256) { throw 'caller_context_hash_mismatch' }
+        # Keep the same non-writable, non-replaceable handle for hashing and JSON parsing.
+        $stream.Position = 0
+        $reader = New-Object IO.StreamReader($stream, (New-Object Text.UTF8Encoding($false, $true)), $true, 4096, $true)
+        $context = $reader.ReadToEnd() | ConvertFrom-Json
+        $fields = @($context.PSObject.Properties.Name)
+        if ($fields.Count -ne 6 -or @($fields | Where-Object { $_ -notin @('schema_version', 'captured_at', 'user_sid', 'session_id', 'documents', 'roots') }).Count -ne 0) { throw 'caller_context_invalid' }
+        if ($context.schema_version -isnot [int] -or $context.schema_version -ne 1 -or $context.user_sid -isnot [string] -or $context.documents -isnot [string] -or $context.session_id -isnot [int] -or $context.captured_at -isnot [string]) { throw 'caller_context_invalid' }
+        if ($context.user_sid -cne $ExpectedSid -or (New-Object Security.Principal.SecurityIdentifier($context.user_sid)).Value -cne $ExpectedSid) { throw 'identity_mismatch' }
+        if ($ExpectedSession -lt 1 -or $context.session_id -ne $ExpectedSession) { throw 'session_mismatch' }
+        $captured = [DateTimeOffset]::MinValue
+        if (-not [DateTimeOffset]::TryParseExact($context.captured_at, 'o', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$captured) -or $captured.Offset -ne [TimeSpan]::Zero) { throw 'caller_context_invalid' }
+        $age = ([DateTimeOffset]::UtcNow - $captured).TotalSeconds
+        if ($age -lt -60 -or $age -gt 900) { throw 'caller_context_stale' }
+        $rootFields = @($context.roots.PSObject.Properties.Name)
+        if ($rootFields.Count -ne 2 -or 'CurrentUser' -notin $rootFields -or 'LocalMachine' -notin $rootFields) { throw 'caller_context_invalid' }
+        foreach ($location in @('CurrentUser', 'LocalMachine')) {
+            $rows = $context.roots.$location
+            if ($rows -isnot [Array] -or $rows.Count -gt 4096) { throw 'caller_context_invalid' }
+            $seen = @{}
+            foreach ($row in $rows) {
+                $names = @($row.PSObject.Properties.Name)
+                if ($names.Count -ne 2 -or 'thumbprint' -notin $names -or 'certificate' -notin $names -or $row.thumbprint -isnot [string] -or $row.certificate -isnot [string] -or $row.thumbprint -notmatch '^[0-9a-fA-F]{40}$' -or $seen.ContainsKey($row.thumbprint)) { throw 'caller_context_invalid' }
+                $der = [Convert]::FromBase64String($row.certificate)
+                if ([Security.Cryptography.X509Certificates.X509Certificate2]::GetCertContentType($der) -ne [Security.Cryptography.X509Certificates.X509ContentType]::Cert) { throw 'caller_context_invalid' }
+                $certificate = New-Object Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList (,$der)
+                try { if ($certificate.Thumbprint -ne $row.thumbprint) { throw 'caller_context_invalid' } }
+                finally { $certificate.Dispose() }
+                $seen[$row.thumbprint] = $true
+            }
+        }
+    } catch {
+        if ($_.Exception.Message -in @('caller_context_hash_mismatch', 'caller_context_stale', 'identity_mismatch', 'session_mismatch')) { throw $_.Exception.Message }
+        throw 'caller_context_invalid'
+    } finally {
+        if ($null -ne $reader) { $reader.Dispose() }
+        if ($null -ne $stream) { $stream.Dispose() }
+    }
+    $context
 }
 
 function Copy-PilotFile([string]$Source, [string]$Destination) {
@@ -148,14 +293,16 @@ function Read-PilotRegistryTree($Key) {
     @{ values = $values; children = $children }
 }
 
-function Get-PilotRegistrySnapshot {
+function Get-PilotRegistrySnapshot([string]$OriginalUserSid) {
     $result = [ordered]@{}
     foreach ($hive in @('LocalMachine', 'CurrentUser')) {
         foreach ($view in @('Registry64', 'Registry32')) {
-            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::$hive, [Microsoft.Win32.RegistryView]::$view)
+            $baseHive = if ($hive -eq 'CurrentUser') { [Microsoft.Win32.RegistryHive]::Users } else { [Microsoft.Win32.RegistryHive]::LocalMachine }
+            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey($baseHive, [Microsoft.Win32.RegistryView]::$view)
             try {
                 foreach ($path in @('SOFTWARE\Policies', 'SYSTEM\CurrentControlSet\Services\openems-agent', 'SYSTEM\CurrentControlSet\Services\USBSTOR')) {
-                    $key = $base.OpenSubKey($path, $false)
+                    $lookup = if ($hive -eq 'CurrentUser') { $OriginalUserSid + '\' + $path } else { $path }
+                    $key = $base.OpenSubKey($lookup, $false)
                     try {
                         $name = $hive + '/' + $view + '/' + $path
                         $result[$name] = if ($null -eq $key) { $null } else { Read-PilotRegistryTree $key }
@@ -198,14 +345,29 @@ function Get-PilotCachedProduct {
     $products[0]
 }
 
-function Get-PilotRoots {
+function Get-PilotRoots([string[]]$Locations = @('CurrentUser', 'LocalMachine')) {
     $result = [ordered]@{}
-    foreach ($location in @('CurrentUser', 'LocalMachine')) {
+    foreach ($location in $Locations) {
         $store = New-Object Security.Cryptography.X509Certificates.X509Store('Root', $location)
         try {
             $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
             $result[$location] = @($store.Certificates | ForEach-Object { @{ thumbprint = $_.Thumbprint; certificate = [Convert]::ToBase64String($_.RawData) } } | Sort-Object { $_.thumbprint })
         } finally { $store.Close() }
+    }
+    $result
+}
+
+function Get-PilotEffectiveRoots($CallerContext) {
+    if ($null -eq $CallerContext) { $result = Get-PilotRoots }
+    else {
+        $live = Get-PilotRoots -Locations @('LocalMachine')
+        $expected = @($CallerContext.roots.LocalMachine | ForEach-Object { $_.thumbprint.ToUpperInvariant() + ':' + $_.certificate } | Sort-Object)
+        $actual = @($live.LocalMachine | ForEach-Object { $_.thumbprint.ToUpperInvariant() + ':' + $_.certificate } | Sort-Object)
+        if ($expected.Count -ne $actual.Count) { throw 'machine_roots_changed' }
+        for ($index = 0; $index -lt $expected.Count; $index++) {
+            if ($expected[$index] -cne $actual[$index]) { throw 'machine_roots_changed' }
+        }
+        $result = @{ CurrentUser = @($CallerContext.roots.CurrentUser); LocalMachine = @($live.LocalMachine) }
     }
     $result
 }
@@ -217,18 +379,71 @@ $files = New-Object 'Collections.Generic.List[object]'
 $loopback = $false
 $snapshotCreated = $false
 $rootCounts = @{ current_user = $null; local_machine = $null }
+$identityMode = 'same_user'
+$callerContext = $null
+$userRootsCapturedAt = $null
 try {
+    if ([bool]$CallerContextPath -ne [bool]$CallerContextSha256) { throw 'caller_context_pair_required' }
+    if ($CaptureCallerContext -and $CallerContextPath) { throw 'caller_context_mode_conflict' }
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($identity)
-    Assert-PilotIdentity -ExpectedSid $ExpectedCurrentUserSid -ExpectedSession $ExpectedSessionId -CurrentSid $identity.User.Value -CurrentSession ([Diagnostics.Process]::GetCurrentProcess().SessionId) -Administrator ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
+    $sessionId = [Diagnostics.Process]::GetCurrentProcess().SessionId
+    $administrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    $documents = $null
+    if ($CaptureCallerContext) {
+        $identityMode = 'caller_context_capture'
+        Assert-PilotCaptureIdentity -ExpectedSid $ExpectedCurrentUserSid -ExpectedSession $ExpectedSessionId -CurrentSid $identity.User.Value -CurrentSession $sessionId -Administrator $administrator
+        $documents = [Environment]::GetFolderPath('MyDocuments')
+    } elseif ($CallerContextPath) {
+        $identityMode = 'delegated_administrator'
+        Assert-PilotDelegatedIdentity -ExpectedSession $ExpectedSessionId -CurrentSession $sessionId -Administrator $administrator
+        $status = 'caller_context_invalid'
+        $callerContext = Read-PilotCallerContext -LiteralPath $CallerContextPath -Sha256 $CallerContextSha256 -ExpectedSid $ExpectedCurrentUserSid -ExpectedSession $ExpectedSessionId
+        $documents = Get-PilotOriginalDocuments -OriginalSid $callerContext.user_sid -ContextDocuments $callerContext.documents
+        # Fail before creating a destination if machine trust changed since caller capture.
+        $null = Get-PilotEffectiveRoots -CallerContext $callerContext
+        $userRootsCapturedAt = $callerContext.captured_at
+    } else {
+        Assert-PilotIdentity -ExpectedSid $ExpectedCurrentUserSid -ExpectedSession $ExpectedSessionId -CurrentSid $identity.User.Value -CurrentSession $sessionId -Administrator $administrator
+        $documents = [Environment]::GetFolderPath('MyDocuments')
+    }
+    $originalSid = New-Object Security.Principal.SecurityIdentifier($ExpectedCurrentUserSid)
     $status = 'invalid_output_directory'
-    $run = Get-PilotDestination -OutputDirectory $OutputDirectory -DocumentsDirectory ([Environment]::GetFolderPath('MyDocuments'))
+    $run = Get-PilotDestination -OutputDirectory $OutputDirectory -DocumentsDirectory $documents
     $lab = [IO.Path]::GetDirectoryName($run)
     if (-not [IO.Directory]::Exists($lab)) { [void][IO.Directory]::CreateDirectory($lab) }
-    New-PilotPrivateDirectory -Path $run -UserSid $identity.User
+    New-PilotPrivateDirectory -Path $run -UserSid $originalSid -OwnerSid $identity.User
     $snapshotCreated = $true
     $private = [IO.Path]::Combine($run, 'private')
-    New-PilotPrivateDirectory -Path $private -UserSid $identity.User
+    New-PilotPrivateDirectory -Path $private -UserSid $originalSid -OwnerSid $identity.User
+
+    if ($CaptureCallerContext) {
+        $status = 'caller_context_capture_failed'
+        $capturedRoots = Get-PilotRoots
+        $context = [ordered]@{
+            schema_version = 1; captured_at = [DateTime]::UtcNow.ToString('o')
+            user_sid = $identity.User.Value; session_id = $sessionId; documents = $documents; roots = $capturedRoots
+        }
+        $contextPath = [IO.Path]::Combine($private, 'caller-context.json')
+        Write-PilotJson $contextPath $context
+        $stream = [IO.File]::OpenRead($contextPath)
+        try { $contextHash = Get-PilotHash $stream }
+        finally { $stream.Dispose() }
+        [ordered]@{
+            passed = $true; status = 'caller_context_captured'; identity_mode = $identityMode
+            backup_complete = $false; snapshot_created = $true; file_count = 1; context_sha256 = $contextHash
+            current_user_roots_captured_at = $context.captured_at
+            root_counts = @{ current_user = $capturedRoots.CurrentUser.Count; local_machine = $capturedRoots.LocalMachine.Count }
+            rollback_status = 'not_yet_verified'
+        } | ConvertTo-Json -Depth 5
+        exit 0
+    }
+    if ($null -ne $callerContext) {
+        $status = 'caller_context_invalid'
+        $contextRecord = Copy-PilotFile $CallerContextPath ([IO.Path]::Combine($private, 'caller-context.json'))
+        if ($contextRecord.sha256 -cne $CallerContextSha256) { throw 'caller_context_hash_mismatch' }
+        $files.Add($contextRecord)
+    }
 
     $status = 'configuration_unreadable'
     $data = [IO.Path]::Combine([Environment]::GetFolderPath('CommonApplicationData'), 'openems')
@@ -275,11 +490,12 @@ try {
     $serviceInfo = @{ status = $service.Status.ToString(); start_type = $service.StartType.ToString() }
     $complete.service = $true
 
-    $roots = Get-PilotRoots
+    $roots = Get-PilotEffectiveRoots -CallerContext $callerContext
+    if ($null -eq $callerContext) { $userRootsCapturedAt = [DateTime]::UtcNow.ToString('o') }
     $rootCounts = @{ current_user = $roots.CurrentUser.Count; local_machine = $roots.LocalMachine.Count }
     Write-PilotJson ([IO.Path]::Combine($private, 'roots.json')) $roots
     $complete.roots = $true
-    Write-PilotJson ([IO.Path]::Combine($private, 'registry.json')) (Get-PilotRegistrySnapshot)
+    Write-PilotJson ([IO.Path]::Combine($private, 'registry.json')) (Get-PilotRegistrySnapshot -OriginalUserSid $originalSid.Value)
     $complete.registry = $true
     Import-Module (Join-Path $PSHOME 'Modules\DnsClient\DnsClient.psd1')
     Import-Module (Join-Path $PSHOME 'Modules\NetSecurity\NetSecurity.psd1')
@@ -298,22 +514,25 @@ try {
     $status = 'source_changed'
     Assert-PilotFilesUnchanged $files
     foreach ($source in $optionalAbsent) { if (Test-PilotFilePresent $source) { throw 'source_changed' } }
+    if ($null -ne $callerContext) { $null = Get-PilotEffectiveRoots -CallerContext $callerContext }
     $status = 'backup_failed'
     Write-PilotJson ([IO.Path]::Combine($private, 'snapshot.json')) @{
-        user_sid = $identity.User.Value; session_id = $ExpectedSessionId; server = $origin; device_identity = $device
+        user_sid = $originalSid.Value; collector_user_sid = $identity.User.Value; session_id = $ExpectedSessionId; server = $origin; device_identity = $device
+        identity_mode = $identityMode; caller_context_sha256 = $CallerContextSha256; current_user_roots_captured_at = $userRootsCapturedAt
         config = $config; service = $serviceInfo; agent_version = $agentVersion; product = $product; files = @($files.ToArray())
         absent_optional_files = $optionalAbsent
         captured_at = [DateTime]::UtcNow.ToString('o'); rollback_status = 'not_yet_verified'
     }
     $status = 'backup_complete'
 } catch {
-    $safe = @('identity_mismatch', 'session_mismatch', 'administrator_required', 'invalid_output_directory', 'source_changed')
+    $safe = @('identity_mismatch', 'session_mismatch', 'administrator_required', 'invalid_output_directory', 'source_changed', 'caller_context_pair_required', 'caller_context_mode_conflict', 'caller_context_requires_unelevated', 'caller_context_hash_mismatch', 'caller_context_stale', 'caller_context_invalid', 'original_documents_invalid', 'machine_roots_changed', 'directory_acl_invalid')
     if ($_.Exception.Message -in $safe) { $status = $_.Exception.Message }
 }
 
 $passed = $status -eq 'backup_complete'
 $report = [ordered]@{
     passed = $passed; status = $status; backup_complete = $passed; snapshot_created = $snapshotCreated
+    identity_mode = $identityMode; current_user_roots_captured_at = $userRootsCapturedAt
     origin_loopback = $loopback; topics = $complete; file_count = $files.Count; root_counts = $rootCounts
     file_hashes = @($files.ToArray() | ForEach-Object { @{ sha256 = $_.sha256; bytes = $_.bytes } })
     rollback_status = 'not_yet_verified'

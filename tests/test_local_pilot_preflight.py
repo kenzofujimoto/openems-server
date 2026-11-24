@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import json
 import os
 from pathlib import Path
@@ -435,3 +436,45 @@ try {{
 """)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == ("caller_context_requires_unelevated" if administrator else "accepted")
+
+
+@pytest.fixture(scope="module")
+def public_der_certificate():
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+
+    # The synthetic signing key stays in memory; only public DER enters the fixture.
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "inert-caller-context")])
+    now = datetime.now(UTC)
+    certificate = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+                   .public_key(key.public_key()).serial_number(x509.random_serial_number())
+                   .not_valid_before(now - timedelta(minutes=1)).not_valid_after(now + timedelta(days=1))
+                   .sign(key, hashes.SHA256()))
+    der = certificate.public_bytes(serialization.Encoding.DER)
+    return {
+        # Match the Windows store's legacy identifier; this does not establish trust.
+        "thumbprint": hashlib.sha1(der, usedforsecurity=False).hexdigest().upper(),
+        "certificate": base64.b64encode(der).decode(),
+    }
+
+
+@pytest.mark.parametrize("case", ["public_der", "wrong_thumbprint", "duplicate"])
+def test_pinned_context_validates_nonempty_public_certificate_rows(tmp_path, public_der_certificate, case):
+    row = dict(public_der_certificate)
+    if case == "wrong_thumbprint":
+        row["thumbprint"] = "A" * 40
+    rows = [row, row] if case == "duplicate" else [row]
+    path = tmp_path / "context.json"
+    path.write_text(json.dumps(caller_context(tmp_path, roots={"CurrentUser": rows, "LocalMachine": rows})), encoding="utf-8")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    result = powershell(FUNCTIONS + """
+try {
+    $value = Read-PilotCallerContext -LiteralPath $env:PILOT_CONTEXT -Sha256 $env:PILOT_HASH -ExpectedSid 'S-1-5-21-100' -ExpectedSession 7
+    'accepted'
+} catch { $_.Exception.Message }
+""", PILOT_CONTEXT=str(path), PILOT_HASH=digest)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ("accepted" if case == "public_der" else "caller_context_invalid")
