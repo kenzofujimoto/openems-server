@@ -477,14 +477,33 @@ function Read-PilotRegistryTree($Key) {
     @{ values = $values; children = $children }
 }
 
+function Open-PilotRegistryBase([string]$Hive, [string]$View) {
+    [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::$Hive, [Microsoft.Win32.RegistryView]::$View)
+}
+
 function Get-PilotRegistrySnapshot([string]$OriginalUserSid) {
+    # Complete union of direct writers in the current and historical 0.1 agent:
+    # browser_policy.rs (browser leaves), agent-usb.ps1 (DeviceInstall), nrpt.rs (local NRPT).
+    # Keep the DNS policy store and service keys as conservative recovery coverage.
+    # Do not walk all Policies: unrelated protected GPOs (for example IPSec) are outside agent ownership.
+    $paths = @(
+        'SOFTWARE\Policies\Google\Chrome',
+        'SOFTWARE\Policies\Microsoft\Edge',
+        'SOFTWARE\Policies\Mozilla\Firefox\DNSOverHTTPS',
+        'SOFTWARE\Policies\Mozilla\Firefox\Certificates',
+        'SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions',
+        'SOFTWARE\Policies\Microsoft\Windows NT\DNSClient',
+        'SYSTEM\CurrentControlSet\Services\Dnscache\Parameters\DnsPolicyConfig',
+        'SYSTEM\CurrentControlSet\Services\openems-agent',
+        'SYSTEM\CurrentControlSet\Services\USBSTOR'
+    )
     $result = [ordered]@{}
     foreach ($hive in @('LocalMachine', 'CurrentUser')) {
         foreach ($view in @('Registry64', 'Registry32')) {
             $baseHive = if ($hive -eq 'CurrentUser') { [Microsoft.Win32.RegistryHive]::Users } else { [Microsoft.Win32.RegistryHive]::LocalMachine }
-            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey($baseHive, [Microsoft.Win32.RegistryView]::$view)
+            $base = Open-PilotRegistryBase -Hive $baseHive -View $view
             try {
-                foreach ($path in @('SOFTWARE\Policies', 'SYSTEM\CurrentControlSet\Services\openems-agent', 'SYSTEM\CurrentControlSet\Services\USBSTOR')) {
+                foreach ($path in $paths) {
                     $lookup = if ($hive -eq 'CurrentUser') { $OriginalUserSid + '\' + $path } else { $path }
                     $key = $base.OpenSubKey($lookup, $false)
                     try {
