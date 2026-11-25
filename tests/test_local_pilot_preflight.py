@@ -187,7 +187,7 @@ $commands = @($ast.FindAll({ param($node) $node -is [Management.Automation.Langu
     allowed = {
         "ConvertTo-Json", "ConvertFrom-Json", "Get-Service", "Get-DnsClientServerAddress",
         "Get-DnsClientNrptPolicy", "Get-NetFirewallRule", "Import-Module", "Join-Path",
-        "New-Object", "Select-Object", "Sort-Object", "ForEach-Object", "Where-Object", "Set-StrictMode",
+        "New-Object", "Select-Object", "Sort-Object", "ForEach-Object", "Where-Object", "Set-StrictMode", "Add-Type",
     } | set(ast["functions"])
     assert set(ast["commands"]) <= allowed
 
@@ -478,3 +478,159 @@ try {
 """, PILOT_CONTEXT=str(path), PILOT_HASH=digest)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == ("accepted" if case == "public_der" else "caller_context_invalid")
+
+
+@pytest.mark.parametrize("case", ["outside", "relative", "alternate_stream", "parent_escape"])
+def test_protected_authority_scope_is_checked_before_privilege_or_read(case):
+    result = powershell(FUNCTIONS + r"""
+$canonical = [IO.Path]::Combine([Environment]::GetFolderPath('CommonApplicationData'), 'openems\https\authority.json')
+$path = switch ($env:PILOT_CASE) {
+    outside { [IO.Path]::Combine([Environment]::GetFolderPath('Windows'), 'outside.json') }
+    relative { 'authority.json' }
+    alternate_stream { $canonical + ':secret' }
+    parent_escape { [IO.Path]::Combine([IO.Path]::GetDirectoryName($canonical), '..\other.json') }
+}
+function Enable-PilotBackupPrivilege { throw 'privilege must not be requested' }
+function Open-PilotAuthorityHandle { throw 'source must not be opened' }
+try { Open-PilotAuthorityRead $path; throw 'outside source accepted' }
+catch { $_.Exception.Message }
+""", PILOT_CASE=case)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "authority_path_untrusted"
+
+
+@pytest.mark.parametrize("case", ["success", "read_failure", "privilege_unavailable", "restore_failure", "missing"])
+def test_authority_read_restores_privilege_and_disposes_on_restore_failure(tmp_path, case):
+    source = tmp_path / "inert.json"
+    source.write_bytes(b"private fixture")
+    result = powershell(FUNCTIONS + r"""
+$calls = New-Object 'Collections.Generic.List[string]'
+$script:opened = $null
+function Initialize-PilotBackupInterop {}
+function Enable-PilotBackupPrivilege {
+    $calls.Add('enable')
+    if ($env:PILOT_CASE -eq 'privilege_unavailable') { throw 'authority_backup_privilege_unavailable' }
+    @{ previous_enabled = $false }
+}
+function Open-PilotAuthorityHandle([string]$Path) {
+    $calls.Add('read')
+    if ($env:PILOT_CASE -eq 'read_failure') { throw 'authority_unreadable' }
+    if ($env:PILOT_CASE -eq 'missing') { return $null }
+    $script:opened = [IO.File]::OpenRead($env:PILOT_FIXTURE)
+    $script:opened
+}
+function Restore-PilotBackupPrivilege($Context) {
+    $calls.Add('restore')
+    if ($env:PILOT_CASE -eq 'restore_failure') { throw 'authority_privilege_restore_failed' }
+}
+$canonical = [IO.Path]::Combine([Environment]::GetFolderPath('CommonApplicationData'), 'openems\https\authority.json')
+$errorCategory = $null
+$value = $null
+try { $value = Open-PilotAuthorityRead $canonical } catch { $errorCategory = $_.Exception.Message }
+$readable = $null
+if ($null -ne $script:opened) { $readable = $script:opened.CanRead }
+if ($null -ne $value) { $value.Dispose() }
+@{ calls = @($calls.ToArray()); error_category = $errorCategory; readable_before_caller_dispose = $readable; returned_stream = ($null -ne $value) } | ConvertTo-Json -Depth 4
+""", PILOT_CASE=case, PILOT_FIXTURE=str(source))
+    assert result.returncode == 0, result.stderr
+    value = json.loads(result.stdout)
+    expected = ["enable"] if case == "privilege_unavailable" else ["enable", "read", "restore"]
+    assert value["calls"] == expected
+    errors = {
+        "success": None, "missing": None, "read_failure": "authority_unreadable",
+        "privilege_unavailable": "authority_backup_privilege_unavailable",
+        "restore_failure": "authority_privilege_restore_failed",
+    }
+    assert value["error_category"] == errors[case]
+    assert value["returned_stream"] is (case == "success")
+    if case in {"success", "restore_failure"}:
+        assert value["readable_before_caller_dispose"] is (case == "success")
+
+
+@pytest.mark.parametrize(("tls", "present", "error"), [
+    (True, True, None), (False, True, None), (False, False, None),
+    (True, False, "authority_missing"),
+])
+def test_authority_snapshot_preserves_existing_files_and_requires_ca_with_tls(tmp_path, tls, present, error):
+    source = tmp_path / "fixture.json"
+    source.write_bytes(b"inert protected bytes")
+    destination = tmp_path / "backup.json"
+    result = powershell(FUNCTIONS + r"""
+$script:reads = 0
+function Open-PilotAuthorityRead([string]$Path) {
+    $script:reads++
+    if ($env:PILOT_PRESENT -eq 'yes') { [IO.File]::OpenRead($env:PILOT_FIXTURE) }
+}
+$config = [pscustomobject]@{
+    block_page_https = ($env:PILOT_TLS -eq 'yes')
+    authority_path = [IO.Path]::Combine([Environment]::GetFolderPath('CommonApplicationData'), 'openems\https\authority.json')
+}
+$errorCategory = $null
+$result = $null
+try {
+    $result = Save-PilotAuthority -Config $config -Destination $env:PILOT_DESTINATION
+    if ($null -ne $result.file) { Assert-PilotFilesUnchanged @($result.file) }
+} catch { $errorCategory = $_.Exception.Message }
+@{ error_category = $errorCategory; reads = $script:reads; has_file = ($null -ne $result -and $null -ne $result.file); absent = ($null -ne $result -and $null -ne $result.absent) } | ConvertTo-Json
+""", PILOT_PRESENT="yes" if present else "no", PILOT_TLS="yes" if tls else "no",
+                        PILOT_FIXTURE=str(source), PILOT_DESTINATION=str(destination))
+    assert result.returncode == 0, result.stderr
+    value = json.loads(result.stdout)
+    assert value["error_category"] == error
+    assert value["has_file"] is present
+    assert value["absent"] is (not present and not tls)
+    if present:
+        assert value["reads"] == 3, "Presence, stable copy and final revalidation must use the protected reader."
+        assert destination.read_bytes() == source.read_bytes()
+    else:
+        assert not destination.exists()
+
+
+def test_backup_interop_compiles_and_requests_read_only_scoped_handles():
+    result = powershell(FUNCTIONS + r"""
+Initialize-PilotBackupInterop
+@{ compiled = ($null -ne ('OpenEms.PilotAuthorityBackup' -as [type])) } | ConvertTo-Json
+""")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"compiled": True}
+    source = SCRIPT.read_text(encoding="utf-8")
+    for required in ("SeBackupPrivilege", "ERROR_NOT_ALL_ASSIGNED", "GetFileInformationByHandle",
+                     "GetFinalPathNameByHandle", "FILE_FLAG_BACKUP_SEMANTICS", "FILE_FLAG_OPEN_REPARSE_POINT",
+                     "GENERIC_READ", "FILE_SHARE_READ", "OPEN_EXISTING"):
+        assert required in source
+    for forbidden in ("SeRestorePrivilege", "SeTakeOwnershipPrivilege", "WRITE_DAC", "WRITE_OWNER", "GENERIC_WRITE"):
+        assert forbidden not in source
+
+
+@pytest.mark.parametrize("tls", [True, False])
+def test_authority_access_denied_is_never_treated_as_optional(tmp_path, tls):
+    result = powershell(FUNCTIONS + r"""
+function Open-PilotAuthorityRead([string]$Path) { throw 'authority_unreadable' }
+$config = [pscustomobject]@{ block_page_https = ($env:PILOT_TLS -eq 'yes') }
+try { Save-PilotAuthority $config $env:PILOT_DESTINATION; throw 'denied authority accepted' }
+catch { $_.Exception.Message }
+""", PILOT_TLS="yes" if tls else "no", PILOT_DESTINATION=str(tmp_path / "backup.json"))
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "authority_unreadable"
+    assert not list(tmp_path.iterdir())
+
+
+def test_native_authority_reader_rejects_other_paths_before_file_access(tmp_path):
+    result = powershell(FUNCTIONS + r"""
+Initialize-PilotBackupInterop
+try { [OpenEms.PilotAuthorityBackup]::OpenAuthority($env:PILOT_SOURCE); throw 'outside path accepted' }
+catch { $_.Exception.GetBaseException().Message }
+""", PILOT_SOURCE=str(tmp_path / "absent.json"))
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "authority_path_untrusted"
+
+
+def test_absent_authority_revalidation_uses_protected_reader():
+    result = powershell(FUNCTIONS + r"""
+$script:reads = 0
+function Open-PilotAuthorityRead([string]$Path) { $script:reads++; New-Object IO.MemoryStream }
+try { Assert-PilotAuthorityAbsent 'canonical fixture'; throw 'new authority accepted' }
+catch { @{ error = $_.Exception.Message; reads = $script:reads } | ConvertTo-Json }
+""")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"error": "source_changed", "reads": 1}
