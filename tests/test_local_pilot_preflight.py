@@ -659,3 +659,126 @@ catch { $errorCategory = $_.Exception.Message }
     assert destination.exists() is protected
     if protected:
         assert destination.read_bytes() == source.read_bytes()
+
+
+REGISTRY_PATHS = [
+    r"SOFTWARE\Policies\Google\Chrome",
+    r"SOFTWARE\Policies\Microsoft\Edge",
+    r"SOFTWARE\Policies\Mozilla\Firefox\DNSOverHTTPS",
+    r"SOFTWARE\Policies\Mozilla\Firefox\Certificates",
+    r"SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions",
+    r"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient",
+    r"SYSTEM\CurrentControlSet\Services\Dnscache\Parameters\DnsPolicyConfig",
+    r"SYSTEM\CurrentControlSet\Services\openems-agent",
+    r"SYSTEM\CurrentControlSet\Services\USBSTOR",
+]
+
+REGISTRY_FIXTURE = r"""
+$script:registryCalls = New-Object 'Collections.Generic.List[object]'
+function New-RegistryFixtureKey([string]$Path, [bool]$Nested = $false) {
+    $key = [pscustomobject]@{ Path = $Path; Nested = $Nested }
+    $key | Add-Member ScriptMethod GetValueNames {
+        if ($env:PILOT_REGISTRY_FAILURE -eq 'enumerate') { throw 'fixture_enumerate_denied' }
+        @('FixtureValue')
+    }
+    $key | Add-Member ScriptMethod GetValueKind { param($Name) 'String' }
+    $key | Add-Member ScriptMethod GetValue {
+        param($Name, $Fallback, $Options)
+        if ($env:PILOT_REGISTRY_FAILURE -eq 'value') { throw 'fixture_value_denied' }
+        'inert value'
+    }
+    $key | Add-Member ScriptMethod GetSubKeyNames { if (-not $this.Nested) { @('Nested') } }
+    $key | Add-Member ScriptMethod OpenSubKey {
+        param($Name, $Writable)
+        if ($Writable) { throw 'writable key requested' }
+        if ($env:PILOT_REGISTRY_FAILURE -eq 'child') { throw 'fixture_child_denied' }
+        New-RegistryFixtureKey ($this.Path + '\' + $Name) $true
+    }
+    $key | Add-Member ScriptMethod Dispose {}
+    $key
+}
+function Open-PilotRegistryBase([string]$Hive, [string]$View) {
+    if ($env:PILOT_REGISTRY_FAILURE -eq 'base') { throw 'fixture_base_denied' }
+    $base = [pscustomobject]@{ Hive = $Hive; View = $View }
+    $base | Add-Member ScriptMethod OpenSubKey {
+        param($Lookup, $Writable)
+        $script:registryCalls.Add(@{ hive = $this.Hive; view = $this.View; lookup = $Lookup; writable = $Writable })
+        if ($Lookup -match '(?i)IPSec' -or $Lookup -eq 'SOFTWARE\Policies') { throw 'unrelated protected policy traversed' }
+        if ($Writable) { throw 'writable key requested' }
+        if ($env:PILOT_REGISTRY_FAILURE -eq 'root') { throw 'fixture_root_denied' }
+        if ($Lookup.EndsWith('\USBSTOR')) { return $null }
+        New-RegistryFixtureKey $Lookup
+    }
+    $base | Add-Member ScriptMethod Dispose {}
+    $base
+}
+"""
+
+
+def registry_fixture(command: str, **environment: str):
+    # Redirect the old static open in memory so the RED phase never reads the host registry.
+    source = SCRIPT.read_text(encoding="utf-8")
+    static_open = "[Microsoft.Win32.RegistryKey]::OpenBaseKey($baseHive, [Microsoft.Win32.RegistryView]::$view)"
+    assert static_open in source or "function Open-PilotRegistryBase(" in source
+    redirect = r"""
+$definition = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-PilotRegistrySnapshot' }, $false)[0].Extent.Text
+$definition = $definition.Replace('[Microsoft.Win32.RegistryKey]::OpenBaseKey($baseHive, [Microsoft.Win32.RegistryView]::$view)', '(Open-PilotRegistryBase -Hive $baseHive -View $view)')
+. ([scriptblock]::Create($definition))
+"""
+    return powershell(FUNCTIONS + REGISTRY_FIXTURE + redirect + command, **environment)
+
+
+def test_registry_backup_covers_agent_subtrees_both_views_and_original_user_without_ipsec():
+    result = registry_fixture(r"""
+$snapshot = Get-PilotRegistrySnapshot -OriginalUserSid 'S-1-5-21-100'
+@{ calls = @($script:registryCalls.ToArray()); snapshot = $snapshot } | ConvertTo-Json -Depth 100
+""")
+    assert result.returncode == 0, result.stderr
+    value = json.loads(result.stdout)
+    expected_calls = [
+        {"hive": hive, "view": view, "lookup": prefix + path, "writable": False}
+        for hive, prefix in [("LocalMachine", ""), ("Users", "S-1-5-21-100\\")]
+        for view in ["Registry64", "Registry32"]
+        for path in REGISTRY_PATHS
+    ]
+    assert value["calls"] == expected_calls
+    expected_keys = {
+        f"{hive}/{view}/{path}"
+        for hive in ["LocalMachine", "CurrentUser"]
+        for view in ["Registry64", "Registry32"]
+        for path in REGISTRY_PATHS
+    }
+    assert set(value["snapshot"]) == expected_keys
+    for key, tree in value["snapshot"].items():
+        if key.endswith(r"\USBSTOR"):
+            assert tree is None, "Missing scoped keys must remain explicit in the snapshot."
+        else:
+            assert tree["values"] == {"FixtureValue": {"kind": "String", "value": "inert value"}}
+            assert tree["children"]["Nested"]["values"] == tree["values"]
+
+
+@pytest.mark.parametrize("phase", ["base", "root", "enumerate", "value", "child"])
+def test_registry_errors_inside_allowlist_are_never_omitted(phase):
+    result = registry_fixture(r"""
+try { $null = Get-PilotRegistrySnapshot -OriginalUserSid 'S-1-5-21-100'; throw 'incomplete snapshot accepted' }
+catch { $_.Exception.GetBaseException().Message }
+""", PILOT_REGISTRY_FAILURE=phase)
+    assert result.returncode == 0, result.stderr
+    assert f"fixture_{phase}_denied" in result.stdout
+    assert "incomplete snapshot accepted" not in result.stdout
+
+
+def test_registry_scope_contains_all_current_direct_writer_paths():
+    import re
+
+    browser = (ROOT / "agent-rs/src/browser_policy.rs").read_text(encoding="utf-8")
+    usb = (ROOT / "deploy/agent-usb.ps1").read_text(encoding="utf-8")
+    nrpt = (ROOT / "agent-rs/src/nrpt.rs").read_text(encoding="utf-8")
+    writer_paths = set(re.findall(r'r"(SOFTWARE\\Policies\\[^"\n]+)"', browser))
+    writer_paths.update(re.findall(r"\$restriction = 'HKLM:\\([^'\n]+)'", usb))
+    writer_paths.update(re.findall(r'wide\(r"(SYSTEM\\[^"\n]+DnsPolicyConfig)"\)', nrpt))
+    assert len(writer_paths) == 6
+    assert writer_paths <= set(REGISTRY_PATHS)
+    source = SCRIPT.read_text(encoding="utf-8")
+    for path in REGISTRY_PATHS:
+        assert f"'{path}'" in source
