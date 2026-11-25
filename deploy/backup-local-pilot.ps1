@@ -217,13 +217,193 @@ function Read-PilotCallerContext([string]$LiteralPath, [string]$Sha256, [string]
     $context
 }
 
-function Copy-PilotFile([string]$Source, [string]$Destination) {
+function Get-PilotCanonicalAuthority {
+    [IO.Path]::Combine([Environment]::GetFolderPath('CommonApplicationData'), 'openems\https\authority.json')
+}
+
+function Assert-PilotAuthorityPath([string]$Path) {
+    $canonical = Get-PilotCanonicalAuthority
+    if (-not [string]::Equals($Path, $canonical, [StringComparison]::OrdinalIgnoreCase)) { throw 'authority_path_untrusted' }
+}
+
+function Initialize-PilotBackupInterop {
+    if ($null -ne ('OpenEms.PilotAuthorityBackup' -as [type])) { return }
+    Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
+
+namespace OpenEms {
+    public static class PilotAuthorityBackup {
+        const uint GENERIC_READ = 0x80000000, FILE_SHARE_READ = 1, OPEN_EXISTING = 3;
+        const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000, FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
+        const uint DIRECTORY = 0x10, REPARSE_POINT = 0x400;
+        const uint TOKEN_QUERY = 8, TOKEN_ADJUST_PRIVILEGES = 0x20, SE_PRIVILEGE_ENABLED = 2;
+        const int ERROR_NOT_ALL_ASSIGNED = 1300;
+        [StructLayout(LayoutKind.Sequential)] public struct Luid { public uint Low; public int High; }
+        [StructLayout(LayoutKind.Sequential)] public struct TokenPrivileges { public uint Count; public Luid Luid; public uint Attributes; }
+        [StructLayout(LayoutKind.Sequential)] struct FileInformation {
+            public uint Attributes;
+            public System.Runtime.InteropServices.ComTypes.FILETIME Creation, Access, Write;
+            public uint VolumeSerial, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
+        }
+        public sealed class PrivilegeContext {
+            internal SafeFileHandle Token;
+            internal TokenPrivileges Previous;
+        }
+        [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+        [DllImport("advapi32.dll", SetLastError=true)] static extern bool OpenProcessToken(IntPtr process, uint access, out SafeFileHandle token);
+        [DllImport("advapi32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern bool LookupPrivilegeValue(string system, string name, out Luid luid);
+        [DllImport("advapi32.dll", SetLastError=true)] static extern bool AdjustTokenPrivileges(SafeFileHandle token, bool disableAll, ref TokenPrivileges value, uint size, out TokenPrivileges previous, out uint returned);
+        [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern SafeFileHandle CreateFileW(string path, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
+        [DllImport("kernel32.dll", SetLastError=true)] static extern bool GetFileInformationByHandle(SafeFileHandle file, out FileInformation information);
+        [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern uint GetFinalPathNameByHandle(SafeFileHandle file, StringBuilder path, uint length, uint flags);
+
+        static string Canonical { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), @"openems\https\authority.json"); } }
+        public static PrivilegeContext Enable() {
+            SafeFileHandle token;
+            if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, out token))
+                throw new InvalidOperationException("authority_backup_privilege_unavailable");
+            try {
+                Luid luid;
+                if (!LookupPrivilegeValue(null, "SeBackupPrivilege", out luid))
+                    throw new InvalidOperationException("authority_backup_privilege_unavailable");
+                TokenPrivileges requested = new TokenPrivileges { Count = 1, Luid = luid, Attributes = SE_PRIVILEGE_ENABLED };
+                TokenPrivileges previous;
+                uint returned;
+                bool adjusted = AdjustTokenPrivileges(token, false, ref requested, (uint)Marshal.SizeOf(typeof(TokenPrivileges)), out previous, out returned);
+                int error = Marshal.GetLastWin32Error();
+                if (!adjusted || error == ERROR_NOT_ALL_ASSIGNED || error != 0)
+                    throw new InvalidOperationException("authority_backup_privilege_unavailable");
+                return new PrivilegeContext { Token = token, Previous = previous };
+            } catch { token.Dispose(); throw; }
+        }
+        public static void Restore(PrivilegeContext context) {
+            try {
+                TokenPrivileges ignored;
+                uint returned;
+                bool adjusted = AdjustTokenPrivileges(context.Token, false, ref context.Previous, (uint)Marshal.SizeOf(typeof(TokenPrivileges)), out ignored, out returned);
+                int error = Marshal.GetLastWin32Error();
+                if (!adjusted || error == ERROR_NOT_ALL_ASSIGNED || error != 0)
+                    throw new InvalidOperationException("authority_privilege_restore_failed");
+            } finally { context.Token.Dispose(); }
+        }
+        static void ValidateHandle(SafeFileHandle handle, string expected, bool directory) {
+            FileInformation information;
+            if (!GetFileInformationByHandle(handle, out information)) throw new IOException("authority_unreadable");
+            if ((information.Attributes & REPARSE_POINT) != 0 || ((information.Attributes & DIRECTORY) != 0) != directory)
+                throw new IOException("authority_path_untrusted");
+            StringBuilder final = new StringBuilder(32768);
+            uint length = GetFinalPathNameByHandle(handle, final, (uint)final.Capacity, 0);
+            if (length == 0 || length >= final.Capacity) throw new IOException("authority_unreadable");
+            string actual = final.ToString();
+            if (actual.StartsWith(@"\\?\", StringComparison.Ordinal)) actual = actual.Substring(4);
+            if (!String.Equals(actual.TrimEnd('\\'), expected.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+                throw new IOException("authority_path_untrusted");
+        }
+        static SafeFileHandle OpenChecked(string path, bool directory) {
+            SafeFileHandle handle = CreateFileW(path, directory ? 0 : GENERIC_READ, FILE_SHARE_READ, IntPtr.Zero, OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, IntPtr.Zero);
+            if (handle.IsInvalid) {
+                int error = Marshal.GetLastWin32Error();
+                handle.Dispose();
+                if (error == 2 || error == 3) return null;
+                throw new IOException("authority_unreadable");
+            }
+            try { ValidateHandle(handle, path, directory); return handle; }
+            catch { handle.Dispose(); throw; }
+        }
+        public static FileStream OpenAuthority(string path) {
+            // Recheck in native interop; no caller can turn this into a general backup reader.
+            if (!String.Equals(path, Canonical, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("authority_path_untrusted");
+            List<SafeFileHandle> parents = new List<SafeFileHandle>();
+            SafeFileHandle source = null;
+            try {
+                List<string> paths = new List<string>();
+                for (string parent = Path.GetDirectoryName(path); parent != null; parent = Path.GetDirectoryName(parent)) paths.Add(parent);
+                paths.Reverse();
+                // Retain non-replaceable parent handles until the leaf's final path is validated.
+                foreach (string parent in paths) {
+                    SafeFileHandle handle = OpenChecked(parent, true);
+                    if (handle == null) return null;
+                    parents.Add(handle);
+                }
+                source = OpenChecked(path, false);
+                if (source == null) return null;
+                FileStream stream = new FileStream(source, FileAccess.Read);
+                source = null;
+                return stream;
+            } finally {
+                if (source != null) source.Dispose();
+                foreach (SafeFileHandle parent in parents) parent.Dispose();
+            }
+        }
+    }
+}
+'@
+}
+
+function Enable-PilotBackupPrivilege {
+    try { [OpenEms.PilotAuthorityBackup]::Enable() }
+    catch { throw $_.Exception.GetBaseException().Message }
+}
+function Restore-PilotBackupPrivilege($Context) {
+    try { [OpenEms.PilotAuthorityBackup]::Restore($Context) }
+    catch { throw $_.Exception.GetBaseException().Message }
+}
+function Open-PilotAuthorityHandle([string]$Path) {
+    try { [OpenEms.PilotAuthorityBackup]::OpenAuthority($Path) }
+    catch { throw $_.Exception.GetBaseException().Message }
+}
+
+function Open-PilotAuthorityRead([string]$Path) {
+    Assert-PilotAuthorityPath $Path
+    Initialize-PilotBackupInterop
+    $context = Enable-PilotBackupPrivilege
+    $stream = $null
+    try { $stream = Open-PilotAuthorityHandle $Path }
+    finally {
+        try { Restore-PilotBackupPrivilege $context }
+        catch {
+            if ($null -ne $stream) { $stream.Dispose() }
+            throw
+        }
+    }
+    $stream
+}
+
+function Save-PilotAuthority($Config, [string]$Destination) {
+    $authority = Get-PilotSetting $Config 'authority_path' (Get-PilotCanonicalAuthority)
+    Assert-PilotAuthorityPath $authority
+    $stream = Open-PilotAuthorityRead $authority
+    if ($null -ne $stream) {
+        $stream.Dispose()
+        $file = Copy-PilotFile -Source $authority -Destination $Destination -ProtectedAuthority
+        return @{ file = $file; absent = $null }
+    }
+    if ($null -ne $Config.PSObject.Properties['block_page_https'] -and $Config.block_page_https) { throw 'authority_missing' }
+    @{ file = $null; absent = $authority }
+}
+
+function Assert-PilotAuthorityAbsent([string]$Path) {
+    $stream = Open-PilotAuthorityRead $Path
+    if ($null -ne $stream) { $stream.Dispose(); throw 'source_changed' }
+}
+
+function Copy-PilotFile([string]$Source, [string]$Destination, [switch]$ProtectedAuthority) {
     if (-not [IO.Path]::IsPathRooted($Source)) { throw 'backup_failed' }
-    Assert-PilotNoReparse $Source
+    if (-not $ProtectedAuthority) { Assert-PilotNoReparse $Source }
     $inputStream = $null
     $outputStream = $null
     try {
-        $inputStream = [IO.File]::Open($Source, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        if ($ProtectedAuthority) {
+            $inputStream = Open-PilotAuthorityRead $Source
+            if ($null -eq $inputStream) { throw 'source_changed' }
+        } else { $inputStream = [IO.File]::Open($Source, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read) }
         $size = $inputStream.Length
         if ($size -gt 67108864) { throw 'backup_failed' }
         $before = Get-PilotHash $inputStream
@@ -238,6 +418,7 @@ function Copy-PilotFile([string]$Source, [string]$Destination) {
         try { if ((Get-PilotHash $copy) -ne $before) { throw 'backup_failed' } }
         finally { $copy.Dispose() }
         $result = [ordered]@{ source = $Source; backup = $Destination; sha256 = $before; bytes = $size }
+        if ($ProtectedAuthority) { $result.protected_authority = $true }
     } finally {
         if ($null -ne $outputStream) { $outputStream.Dispose() }
         if ($null -ne $inputStream) { $inputStream.Dispose() }
@@ -257,7 +438,10 @@ function Test-PilotFilePresent([string]$Path) {
 
 function Assert-PilotFilesUnchanged($Files) {
     foreach ($file in $Files) {
-        $stream = [IO.File]::Open($file.source, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        if ($file.Contains('protected_authority') -and $file.protected_authority) {
+            $stream = Open-PilotAuthorityRead $file.source
+            if ($null -eq $stream) { throw 'source_changed' }
+        } else { $stream = [IO.File]::Open($file.source, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read) }
         try {
             if ($stream.Length -ne $file.bytes -or (Get-PilotHash $stream) -ne $file.sha256) { throw 'source_changed' }
         } finally { $stream.Dispose() }
@@ -467,12 +651,12 @@ try {
         else { $optionalAbsent += $source }
     }
     $complete.state = $true
-    $authority = Get-PilotSetting $config 'authority_path' ([IO.Path]::Combine($data, 'https\authority.json'))
-    if (Test-PilotFilePresent $authority) { $files.Add((Copy-PilotFile $authority ([IO.Path]::Combine($private, 'authority.json')))) }
-    elseif ($null -ne $config.PSObject.Properties['block_page_https'] -and $config.block_page_https) { throw 'backup_failed' }
-    else { $optionalAbsent += $authority }
+    $status = 'authority_unreadable'
+    $authorityRecord = Save-PilotAuthority -Config $config -Destination ([IO.Path]::Combine($private, 'authority.json'))
+    if ($null -ne $authorityRecord.file) { $files.Add($authorityRecord.file) }
     $complete.authority = $true
 
+    $status = 'backup_failed'
     $hosts = Get-PilotSetting $config 'hosts_path' ([IO.Path]::Combine([Environment]::SystemDirectory, 'drivers\etc\hosts'))
     $files.Add((Copy-PilotFile $hosts ([IO.Path]::Combine($private, 'hosts'))))
     if (Test-PilotFilePresent ($hosts + '.openems.bak')) { $files.Add((Copy-PilotFile ($hosts + '.openems.bak') ([IO.Path]::Combine($private, 'hosts.openems.bak')))) }
@@ -513,6 +697,7 @@ try {
     $complete.cached_msi = $true
     $status = 'source_changed'
     Assert-PilotFilesUnchanged $files
+    if ($null -ne $authorityRecord.absent) { Assert-PilotAuthorityAbsent $authorityRecord.absent }
     foreach ($source in $optionalAbsent) { if (Test-PilotFilePresent $source) { throw 'source_changed' } }
     if ($null -ne $callerContext) { $null = Get-PilotEffectiveRoots -CallerContext $callerContext }
     $status = 'backup_failed'
@@ -520,12 +705,12 @@ try {
         user_sid = $originalSid.Value; collector_user_sid = $identity.User.Value; session_id = $ExpectedSessionId; server = $origin; device_identity = $device
         identity_mode = $identityMode; caller_context_sha256 = $CallerContextSha256; current_user_roots_captured_at = $userRootsCapturedAt
         config = $config; service = $serviceInfo; agent_version = $agentVersion; product = $product; files = @($files.ToArray())
-        absent_optional_files = $optionalAbsent
+        absent_optional_files = @($optionalAbsent) + @($authorityRecord.absent | Where-Object { $null -ne $_ })
         captured_at = [DateTime]::UtcNow.ToString('o'); rollback_status = 'not_yet_verified'
     }
     $status = 'backup_complete'
 } catch {
-    $safe = @('identity_mismatch', 'session_mismatch', 'administrator_required', 'invalid_output_directory', 'source_changed', 'caller_context_pair_required', 'caller_context_mode_conflict', 'caller_context_requires_unelevated', 'caller_context_hash_mismatch', 'caller_context_stale', 'caller_context_invalid', 'original_documents_invalid', 'machine_roots_changed', 'directory_acl_invalid')
+    $safe = @('identity_mismatch', 'session_mismatch', 'administrator_required', 'invalid_output_directory', 'source_changed', 'caller_context_pair_required', 'caller_context_mode_conflict', 'caller_context_requires_unelevated', 'caller_context_hash_mismatch', 'caller_context_stale', 'caller_context_invalid', 'original_documents_invalid', 'machine_roots_changed', 'directory_acl_invalid', 'authority_path_untrusted', 'authority_missing', 'authority_unreadable', 'authority_backup_privilege_unavailable', 'authority_privilege_restore_failed')
     if ($_.Exception.Message -in $safe) { $status = $_.Exception.Message }
 }
 
