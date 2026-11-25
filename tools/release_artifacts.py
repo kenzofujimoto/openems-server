@@ -12,8 +12,15 @@ from typing import Any
 PACKAGES = ("openems-agent.msi", "openems-agent-next.msi")
 BINARIES = ("openems-agent.exe", "openems-session.exe")
 MANIFEST = "candidate-manifest.json"
+SERVER_MANIFEST = "server-image-manifest.json"
 UPGRADE_CODE = "0C684B18-7540-4865-9516-567A9E81AA61"
 MAX_ARTIFACT_BYTES = 64 * 1024 * 1024
+MAX_SERVER_ARCHIVE_BYTES = 1024 * 1024 * 1024
+SERVER_SCAN_POLICY = "no-fixable-high-or-critical"
+SERVER_RUNTIME_CHECKS = {
+    "api": ("health_version", "migrations", "authenticated_policy_publication"),
+    "panel": ("login", "csrf", "policy_publication", "reload_persistence"),
+}
 REQUIRED_ACCEPTANCES = (
     "catalog", "usb", "applications", "session", "locations", "browser-trust",
     "web-actions", "ordered-domains", "safesearch", "antibypass", "pilot",
@@ -39,9 +46,9 @@ def _plain_file(directory: Path, name: str) -> Path:
     return path
 
 
-def file_record(path: Path) -> dict[str, str | int]:
+def file_record(path: Path, *, max_bytes: int = MAX_ARTIFACT_BYTES) -> dict[str, str | int]:
     size = path.stat().st_size
-    if not 0 < size <= MAX_ARTIFACT_BYTES:
+    if not 0 < size <= max_bytes:
         raise ValueError(f"Artifact size is outside the accepted bounds: {path.name}")
     with path.open("rb") as stream:
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
@@ -153,8 +160,110 @@ def read_candidate(directory: Path, expected_manifest_sha256: str, expected_vers
     return manifest
 
 
-def release_asset_names(manifest: Mapping[str, Any], reports: Mapping[str, Any]) -> tuple[str, ...]:
-    """Only independently reviewed receipts for this exact pair can authorize promotion."""
+def _sha256(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def read_server_candidate(
+    directory: Path, expected_manifest_sha256: str, expected_version: str, expected_source_revision: str,
+) -> dict[str, Any]:
+    """Verify the pinned existing image archive; never build, load or extract an image."""
+    try:
+        directory = _directory(directory)
+        path = _plain_file(directory, SERVER_MANIFEST)
+        if not _sha256(expected_manifest_sha256):
+            raise ValueError("Invalid pinned manifest hash.")
+        # Hash and decode the same bounded bytes so a changed manifest cannot redefine identity.
+        with path.open("rb") as stream:
+            data = stream.read(1024 * 1024 + 1)
+        if len(data) > 1024 * 1024 or hashlib.sha256(data).hexdigest() != expected_manifest_sha256:
+            raise ValueError("Pinned manifest mismatch.")
+        server = json.loads(data)
+        fields = {"schema_version", "version", "source_revision", "status", "local_tag", "image_id", "platform", "file", "sha256", "bytes", "inspection"}
+        if not isinstance(server, dict) or set(server) != fields or type(server["schema_version"]) is not int or server["schema_version"] != 1:
+            raise ValueError("Unsupported manifest schema.")
+        version_pair(expected_version)
+        _source_revision(expected_source_revision)
+        if server["version"] != expected_version or server["source_revision"] != expected_source_revision:
+            raise ValueError("Source or version mismatch.")
+        if server["status"] != "image_built_runtime_acceptance_pending" or not isinstance(server["local_tag"], str) or not server["local_tag"]:
+            raise ValueError("Invalid frozen image declaration.")
+        if not isinstance(server["image_id"], str) or re.fullmatch(r"sha256:[0-9a-f]{64}", server["image_id"]) is None:
+            raise ValueError("An immutable image identity is required.")
+        if server["platform"] != "linux/amd64" or server["file"] != f"openems-server-{expected_version}-linux-amd64.tar.gz":
+            raise ValueError("Unexpected image platform or archive name.")
+        inspection = server["inspection"]
+        if (
+            not isinstance(inspection, dict) or set(inspection) != {"version", "panel_present", "migration_008_present"}
+            or inspection["version"] != expected_version or inspection["panel_present"] is not True
+            or inspection["migration_008_present"] is not True
+        ):
+            raise ValueError("Missing frozen image inspection evidence.")
+        if type(server["bytes"]) is not int or not _sha256(server["sha256"]):
+            raise ValueError("Invalid archive identity.")
+        actual = file_record(_plain_file(directory, server["file"]), max_bytes=MAX_SERVER_ARCHIVE_BYTES)
+        if actual != {"sha256": server["sha256"], "bytes": server["bytes"]}:
+            raise ValueError("Frozen archive changed or mismatch.")
+    except (ValueError, OSError) as error:
+        raise ValueError(f"Server candidate refused: {error}") from error
+    return server
+
+
+def _server_passed(value: Any) -> bool:
+    return (
+        isinstance(value, dict) and value.get("passed") is True and not value.get("error")
+        and value.get("status", "passed") == "passed" and value.get("cleanup_errors", []) == []
+    )
+
+
+def _server_evidence(value: Any, identity: Mapping[str, Any]) -> bool:
+    return (
+        _server_passed(value) and _sha256(value.get("evidence_sha256"))
+        and value.get("server_receipt") == identity and type(value["server_receipt"]["bytes"]) is int
+    )
+
+
+def _verify_server_report(server: Mapping[str, Any], manifest_sha256: str, report: Any) -> None:
+    identity = {name: server[name] for name in ("source_revision", "version", "image_id", "platform", "file", "sha256", "bytes")}
+    identity["manifest_sha256"] = manifest_sha256
+    if (
+        not isinstance(report, dict) or type(report.get("schema_version")) is not int or report["schema_version"] != 1
+        or not _server_passed(report) or report.get("cleanup_errors") != []
+        or report.get("server_receipt") != identity or type(report["server_receipt"]["bytes"]) is not int
+    ):
+        raise ValueError("Server acceptance is pending, failed or tied to different image bytes.")
+    review = report.get("independent_review")
+    if (
+        not _server_passed(review) or not _sha256(review.get("evidence_sha256"))
+        or not isinstance(review.get("reviewer"), str) or not review["reviewer"].strip()
+    ):
+        raise ValueError("Server independent review is missing or failed.")
+    scan = report.get("scan")
+    if (
+        not _server_evidence(scan, identity) or scan.get("policy") != SERVER_SCAN_POLICY
+        or any(type(scan.get(field)) is not int or scan[field] != 0 for field in ("fixable_high", "fixable_critical"))
+        or type(scan.get("unfixed_findings_reported")) is not int or scan["unfixed_findings_reported"] < 0
+    ):
+        raise ValueError("Server image scan evidence or fixable HIGH/CRITICAL policy failed.")
+    acceptance = report.get("acceptance")
+    for phase, checks in SERVER_RUNTIME_CHECKS.items():
+        value = acceptance.get(phase) if isinstance(acceptance, dict) else None
+        if (
+            not _server_evidence(value, identity) or value.get("real_runtime") is not True
+            or not isinstance(value.get("checks"), dict) or any(value["checks"].get(name) is not True for name in checks)
+        ):
+            raise ValueError(f"Server real runtime acceptance remains pending or failed: {phase}")
+
+
+def release_asset_names(
+    manifest: Mapping[str, Any], reports: Mapping[str, Any], *, server_directory: Path | None = None,
+    server_manifest_sha256: str | None = None, server_report: Mapping[str, Any] | None = None,
+) -> tuple[str, ...]:
+    """Promote only the exact agent and image bytes with complete independently reviewed gates.
+
+    Legacy two-argument callers fail closed until they supply all three server keywords.
+    Runtime and scan receipts must identify the pinned image archive and manifest, not a tag.
+    """
     for phase in REQUIRED_ACCEPTANCES:
         report = reports.get(phase)
         receipt = report.get("package_receipt") if isinstance(report, dict) else None
@@ -165,4 +274,8 @@ def release_asset_names(manifest: Mapping[str, Any], reports: Mapping[str, Any])
             or receipt.get("packages") != manifest.get("packages")
         ):
             raise ValueError(f"Release acceptance remains pending or failed: {phase}")
-    return ("openems-agent.msi", MANIFEST, "SHA256SUMS")
+    if server_directory is None or server_manifest_sha256 is None or server_report is None:
+        raise ValueError("Server image manifest and independent acceptance receipt are required.")
+    server = read_server_candidate(server_directory, server_manifest_sha256, manifest.get("version"), manifest.get("source_revision"))
+    _verify_server_report(server, server_manifest_sha256, server_report)
+    return ("openems-agent.msi", MANIFEST, server["file"], SERVER_MANIFEST, "SHA256SUMS")
