@@ -2,7 +2,7 @@
 
 ## Estado vigente — 25/11/2026: candidato v1.0
 
-Servidor, painel e agente estão alinhados em **1.0.0**. O novo MSI e a imagem foram congelados a partir de `f0092687e415f573b580d992fc905866a05bfcea`; os 193 inputs registrados permanecem iguais. Consulte a [identidade dos artefatos](validation/windows-v1-candidate-2026-11-23.json), o [checkpoint de validação](validation/windows-v1-progress-2026-11-25.json) e o [plano autorizado](windows-v1-release.md).
+Servidor, painel e agente estão alinhados em **1.0.0**. O novo MSI e a imagem foram congelados em `f0092687e415f573b580d992fc905866a05bfcea`. O lock recebeu depois somente o patch da dependência opcional cookie, ausente dos grafos padrão; a [revisão de alcance](validation/cookie-rustsec-2026-0594-review-2026-11-25.json) preserva a identidade dos artefatos. Consulte a [identidade dos pacotes](validation/windows-v1-candidate-2026-11-23.json), o [checkpoint de validação](validation/windows-v1-progress-2026-11-25.json) e o [plano autorizado](windows-v1-release.md).
 
 Os aceites abaixo de ec50572 são históricos e não aprovam os bytes da v1.0. Testes automatizados, preparação de mídia e scan da imagem não substituem a execução operacional. A versão oficial ainda não foi publicada.
 
@@ -13,11 +13,11 @@ Os aceites abaixo de ec50572 são históricos e não aprovam os bytes da v1.0. T
 | Chrome/Firefox, raízes e TLS normal | Preparado; execução e comparação final pendentes |
 | API/painel/stores reais, ações web e recuperação | Preparado; execução e revisão pendentes |
 | Regras ordenadas, SafeSearch e antiburla | Preparados; aceites reais e observações visuais pendentes |
-| Piloto físico e recuperação | Pré-voo em correção; backup completo e recuperação ainda não comprovados |
+| Piloto físico e recuperação | Backup protegido completo; ensaio de recuperação e piloto ainda pendentes |
 | CI, Security e CodeQL do HEAD publicado | Nova execução em andamento; conferir os checks do [PR13](https://github.com/kenzofujimoto/openems-server/pull/13) |
 | Publicação | Bloqueada pelos critérios pendentes; distribuição prevista sem assinatura |
 
-O agente 0.1.0 já instalado nesta máquina permanece preservado. A tentativa elevada conseguiu copiar a autoridade protegida, mas parou na coleta do registro; não equivale a backup completo nem a recuperação aprovada. Resultados locais detalhados e estado de retomada ficam no [handoff](HANDOFF.md).
+O agente 0.1.0 já instalado nesta máquina permanece preservado. O pré-voo elevado concluiu os dez tópicos, incluindo autoridade, registro e MSI em cache. Como o payload em cache difere do executável instalado, a recuperação exige ensaio próprio antes da atualização física. Resultados e retomada ficam no [handoff](HANDOFF.md).
 
 ## Histórico — 22/11/2026
 

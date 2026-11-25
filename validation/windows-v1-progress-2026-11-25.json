@@ -7,7 +7,12 @@
   "production_inputs_recheck": {
     "passed": true,
     "tracked_input_count": 193,
-    "changed_inputs": []
+    "unchanged_count": 192,
+    "metadata_only_delta": [
+      "agent-rs/Cargo.lock"
+    ],
+    "compiled_feature_graphs_unchanged": true,
+    "review": "cookie-rustsec-2026-0594-review-2026-11-25.json"
   },
   "completed_checks": {
     "native_rust": {
@@ -33,8 +38,8 @@
     },
     "protected_pilot_backup_contracts": {
       "passed": true,
-      "tests": 72,
-      "implementation_commit": "8fef83d"
+      "tests": 79,
+      "implementation_commit": "1ad60d7"
     },
     "frozen_catalog_contracts": {
       "passed": true,
@@ -53,18 +58,43 @@
       "policy": "Existing project gate blocks fixable HIGH/CRITICAL; unfixed findings remain reported.",
       "passed": true,
       "evidence_sha256": "d9a4567e9334b25fd16c67fb902ce309f2a72c9689c60b4b2d64eca9d0f8d45e"
+    },
+    "environment_retry": {
+      "passed": true,
+      "tests": 9,
+      "source_changes_required": false
+    },
+    "dependency_scan_after_cookie_patch": {
+      "passed": true,
+      "cargo_deny": "pending hosted gate"
     }
   },
   "host_suite": {
     "previous_attempt": "interrupted_by_host_restart_without_final_verdict",
-    "current_attempt": "running"
+    "first_completed_attempt": {
+      "passed": 1920,
+      "failed": 1,
+      "errors": 5,
+      "skipped": 58,
+      "deselected": 4,
+      "environment_causes": [
+        "Missing Playwright headless-shell runtime",
+        "Configured native test directory omitted the platform helper"
+      ]
+    },
+    "environment_retry": "9 passed",
+    "current_attempt": "full rerun with corrected environment running"
   },
   "pilot": {
     "installed_agent_unchanged": true,
-    "previous_preflight": "stopped_at_protected_authority_read",
-    "current_preflight": "awaiting_windows_uac",
-    "backup_complete": false,
-    "rollback_status": "not_yet_verified"
+    "preflight_passed": true,
+    "backup_complete": true,
+    "topics_complete": 10,
+    "copied_file_count": 8,
+    "registry_positions": 36,
+    "rollback_status": "not_yet_verified",
+    "ready_for_host_upgrade": false,
+    "cached_msi_payload_matches_installed_executable": false
   },
   "acceptances": {
     "catalog": "pending",
