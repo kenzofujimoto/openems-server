@@ -1,6 +1,24 @@
 # Handoff — roadmap v2
 
-## Retomada — 24/11/2026: fechamento da v1.0 em andamento
+## Retomada — 25/11/2026: candidato preservado; aceites operacionais pendentes
+
+Continua vigente a autorização para concluir a v1.0, executar o piloto nesta máquina e integrar/publicar após os critérios reais do [plano](windows-v1-release.md). O checkout operacional é `C:/Users/kenzo.fujimoto/Desktop/codigo/projetos/openems-server`; não usar por engano o worktree aberto no aplicativo.
+
+Os 193 inputs registrados do candidato `f0092687e415f573b580d992fc905866a05bfcea` foram conferidos novamente sem mudanças. MSI e imagem continuam com os hashes do [recibo original](validation/windows-v1-candidate-2026-11-23.json). O [checkpoint de 25/11](validation/windows-v1-progress-2026-11-25.json) distingue os testes concluídos dos aceites ainda pendentes. Nenhum novo resultado operacional aceita o RC1, e não há release publicada.
+
+Concluídos: Rust **256/256**; painel **154/154**, lint/tipos/build e cobertura de linhas **95,21%**; contratos Node **50/50**. O scan do arquivo exato da imagem passou na política existente: zero HIGH/CRITICAL com correção disponível; 222 achados sem correção permanecem reportados. O gate de promoção agora exige também identidade imutável da imagem, scan, API/painel reais e revisão independente (**75 testes**, `62c19fe`); uma chamada que forneça apenas os aceites MSI é recusada. O catálogo aceita o candidato externamente fixado sem atribuí-lo ao HEAD novo (**17 testes**, `9df98fe`).
+
+O host reiniciou. A suíte Python anterior parou em 52%, sem XML/veredito final; preserve `rc1/host-suite.log` como tentativa interrompida. Uma nova suíte completa permitida no host está em `rc1/host-suite-20261125.log`, com cobertura e XML próprios. Usa o executável congelado, testes de serviço desativados e as quatro parametrizações destrutivas dos dois testes de controles explicitamente deselecionadas. Não tomar a interrupção como aprovação nem executar controles no host para preencher essas lacunas.
+
+Pré-voo: a outra conta administradora é legítima. O modo delegado fixa o contexto do usuário original por hash, sessão e validade; não usa as raízes CU do administrador. A primeira tentativa delegada copiou contexto/configuração/estado e parou no acesso negado à autoridade existente. O leitor foi corrigido para usar `SeBackupPrivilege` somente na autoridade canônica, com handles validados, leitura sem escrita e restauração do token (**72 testes**, `8fef83d`). Isso ainda requer prova elevada real. A nova tentativa está indicada em `rc1/current-delegated-attempt.txt`; contexto e settings são privados e expiram em 15 minutos. Nunca imprimir configuração, identidade ou chaves. O agente antigo continua Running/Auto, com o hash original `ee5e56a9fe71ad121f62316c9cb8303f805abce1161b8d1718f046eff0b8eb34`; não foi atualizado. Backup completo e recuperação real continuam pendentes.
+
+O laboratório `rc1/web/` tem preparação TLS normal antes do MSI e seis checkpoints estritos de raízes no mesmo SID/sessão. A revisão está corrigindo dois problemas antes de qualquer execução: recuperação de contêiner criado antes da gravação de seu ID e exigência de exit zero além do JSON positivo de setup/navegadores/comandos. O supervisor `rc1/run-web-with-checkpoint.ps1` preserva os 31 contêineres originais e precisa também comprovar que todos os próprios ficaram parados. Não iniciar enquanto a revisão e a suíte não terminarem; preservar volumes e falhas.
+
+SafeSearch/antiburla: `rc1/search-bypass/attempt-20261125` foi preparado e verificado, sem execução; dez guardas inertes passaram. Os harnesses originais mantêm 5/9 cenários, confirmação visual real no Edge e prazo de 600 segundos. Catálogo: input congelado em `rc1/catalog-input`, run `351b6627c92c4666aad7ff33c086265b`. A preparação de mídias VMware de catálogo/aplicativos/USB está em `rc1/vm-regressions/`. Confirmar os recibos finais dessas mídias antes de usá-las. VM criptografada, login e reconexão de USB podem exigir o operador; não solicitar nem registrar senhas.
+
+Sequência restante: concluir o pré-voo elevado e a suíte; executar os guests sequencialmente, incluindo a hora real do catálogo e o USB físico; conferir limpeza e restauração do host; comprovar recuperação antes do piloto físico; depois revisar, publicar os commits no PR13, aguardar os checks finais, integrar e publicar somente os bytes aceitos com checksums e declaração de ausência de assinatura. Não reutilizar os aceites ec50572 para promover o RC1.
+
+## Histórico — 24/11/2026
 
 O operador autorizou concluir o candidato, os aceites, o piloto físico nesta máquina, a integração do PR13 e a publicação da v1.0. O plano vigente é [windows-v1-release.md](windows-v1-release.md). A proibição de merge/release do plano antigo foi substituída por essa autorização; as etapas só avançam após seus critérios reais.
 

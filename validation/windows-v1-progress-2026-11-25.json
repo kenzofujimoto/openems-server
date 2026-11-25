@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-25",
+  "status": "candidate_unchanged_operational_acceptance_pending",
+  "source_revision": "f0092687e415f573b580d992fc905866a05bfcea",
+  "candidate_manifest_sha256": "e1e712ffad6a39a8426df39bb9a3fd0bddd40e5f671a6cc8f0f1d2a194f8a6e5",
+  "production_inputs_recheck": {
+    "passed": true,
+    "tracked_input_count": 193,
+    "changed_inputs": []
+  },
+  "completed_checks": {
+    "native_rust": {
+      "passed": true,
+      "tests": 256
+    },
+    "panel": {
+      "passed": true,
+      "tests": 154,
+      "lint": true,
+      "typecheck": true,
+      "build": true,
+      "line_coverage_percent": 95.21
+    },
+    "browser_node_contracts": {
+      "passed": true,
+      "tests": 50
+    },
+    "release_promotion_contracts": {
+      "passed": true,
+      "tests": 75,
+      "implementation_commit": "62c19fe"
+    },
+    "protected_pilot_backup_contracts": {
+      "passed": true,
+      "tests": 72,
+      "implementation_commit": "8fef83d"
+    },
+    "frozen_catalog_contracts": {
+      "passed": true,
+      "tests": 17,
+      "implementation_commit": "9df98fe"
+    },
+    "search_bypass_staging_guards": {
+      "passed": true,
+      "tests": 10,
+      "executes_acceptance": false
+    },
+    "server_image_scan": {
+      "image_id": "sha256:08abc4194dcfe5382bfc1179578462c81f3ac929370300d02e74a4a2b51497f2",
+      "fixable_high_critical": [],
+      "unfixed_findings_reported": 222,
+      "policy": "Existing project gate blocks fixable HIGH/CRITICAL; unfixed findings remain reported.",
+      "passed": true,
+      "evidence_sha256": "d9a4567e9334b25fd16c67fb902ce309f2a72c9689c60b4b2d64eca9d0f8d45e"
+    }
+  },
+  "host_suite": {
+    "previous_attempt": "interrupted_by_host_restart_without_final_verdict",
+    "current_attempt": "running"
+  },
+  "pilot": {
+    "installed_agent_unchanged": true,
+    "previous_preflight": "stopped_at_protected_authority_read",
+    "current_preflight": "awaiting_windows_uac",
+    "backup_complete": false,
+    "rollback_status": "not_yet_verified"
+  },
+  "acceptances": {
+    "catalog": "pending",
+    "usb": "pending",
+    "applications": "pending",
+    "session": "pending",
+    "locations": "pending",
+    "browser-trust": "pending",
+    "web-actions": "pending",
+    "ordered-domains": "pending",
+    "safesearch": "pending",
+    "antibypass": "pending",
+    "pilot": "pending"
+  },
+  "release_published": false,
+  "notes": [
+    "Historical ec50572 results do not accept this candidate.",
+    "Private configuration, identities and authority keys are excluded from this receipt."
+  ]
+}
