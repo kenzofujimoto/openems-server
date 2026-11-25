@@ -54,6 +54,6 @@
     "cargo_deny": "separate hosted CI gate",
     "evidence_sha256": "0cc49413597e128f52e65558c285a18310ea4b25ef31bb109ca19e16c22ba330"
   },
-  "private_review_sha256": "f53f26ae18fcae3fe699492b5eac2602ae523fa84e0021a116930cbccaeedba3",
+  "private_review_sha256": "fb3a61a33796d985b1b904c2f4c5f9fe96657b46eb1643dc62b96189c56baba6",
   "reference": "https://rustsec.org/advisories/RUSTSEC-2026-0594.html"
 }
