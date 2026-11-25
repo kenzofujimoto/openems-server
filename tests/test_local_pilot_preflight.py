@@ -634,3 +634,28 @@ catch { @{ error = $_.Exception.Message; reads = $script:reads } | ConvertTo-Jso
 """)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == {"error": "source_changed", "reads": 1}
+
+
+@pytest.mark.parametrize("protected", [True, False])
+def test_protected_copy_uses_handle_validation_while_common_copy_keeps_path_guard(tmp_path, protected):
+    source = tmp_path / "fixture.json"
+    source.write_bytes(b"inert fixture")
+    destination = tmp_path / "backup.json"
+    result = powershell(FUNCTIONS + r"""
+$script:guards = 0
+function Assert-PilotNoReparse([string]$Path) { $script:guards++; throw 'ordinary_guard_access_denied' }
+function Open-PilotAuthorityRead([string]$Path) { [IO.File]::OpenRead($env:PILOT_FIXTURE) }
+$errorCategory = $null
+try { $record = Copy-PilotFile $env:PILOT_FIXTURE $env:PILOT_DESTINATION -ProtectedAuthority:($env:PILOT_PROTECTED -eq 'yes') }
+catch { $errorCategory = $_.Exception.Message }
+@{ guards = $script:guards; error = $errorCategory } | ConvertTo-Json
+""", PILOT_FIXTURE=str(source), PILOT_DESTINATION=str(destination), PILOT_PROTECTED="yes" if protected else "no")
+    assert result.returncode == 0, result.stderr
+    value = json.loads(result.stdout)
+    expected = {"guards": 0, "error": None} if protected else {
+        "guards": 1, "error": "ordinary_guard_access_denied",
+    }
+    assert value == expected
+    assert destination.exists() is protected
+    if protected:
+        assert destination.read_bytes() == source.read_bytes()
