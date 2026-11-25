@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 from sandbox_package import ROOT, SANDBOX
+from release_artifacts import read_candidate
 
 PHASES = ("session", "locations", "usb", "applications")
 PACKAGES = ("openems-agent.msi", "openems-agent-next.msi")
@@ -84,11 +85,16 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=SANDBOX)
     parser.add_argument("--wix", type=Path, default=ROOT / ".venv/wix-tools/wix.exe")
     parser.add_argument("--dotnet-root", type=Path, default=ROOT / ".venv/dotnet-sdk")
+    parser.add_argument("--packages-from", type=Path, help="Stage an existing frozen candidate without rebuilding it")
+    parser.add_argument("--manifest-sha256", help="Externally pinned SHA-256 of its candidate-manifest.json")
     parser.add_argument("--summarize", type=Path, metavar="RESULTS_DIRECTORY")
     args = parser.parse_args()
+    if bool(args.packages_from) != bool(args.manifest_sha256):
+        parser.error("--packages-from and --manifest-sha256 must be supplied together")
     if args.plan:
-        print(json.dumps({"phases": PHASES, "packages": PACKAGES, "fresh_build": True,
-                          "launches_sandbox": False, "reports": REPORTS}))
+        print(json.dumps({"phases": PHASES, "packages": PACKAGES,
+                          "launches_sandbox": False, "reports": REPORTS,
+                          "fresh_build": args.packages_from is None}))
         return 0
     output = args.output.resolve()
     if args.summarize:
@@ -99,19 +105,36 @@ def main() -> int:
         summary = summarize_results([args.summarize / name for name in REPORTS], manifest)
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return 0 if summary["passed"] else 2
-    if os.name != "nt":
-        raise RuntimeError("build Windows acceptance packages on Windows with WiX and the .NET runtime")
-    require_committed_native_sources()
-    source_revision = revision()
-    checked(["cargo", "build", "--release", "--manifest-path", str(ROOT / "agent-rs/Cargo.toml")])
-    output.mkdir(parents=True, exist_ok=True)
+    if output.exists() and any(output.iterdir()):
+        raise RuntimeError("Choose a new or empty acceptance output directory; previous evidence must be preserved.")
     packages = output / "final-msi"
-    environment = dict(os.environ, DOTNET_ROOT=str(args.dotnet_root.resolve()))
-    for extra in ([], ["-Next"]):
-        checked(["powershell.exe", "-NoProfile", "-File", str(ROOT / "tools/build-msi-fixtures.ps1"),
-                 "-Production", "-OutputDirectory", str(packages), "-Wix", str(args.wix.resolve()), *extra],
-                environment=environment)
+    frozen_manifest = None
+    if args.packages_from:
+        sys.path.insert(0, str(ROOT))
+        from app import __version__
+
+        source = args.packages_from.resolve()
+        if source == output or source in output.parents or output in source.parents:
+            raise RuntimeError("Frozen artifacts and acceptance staging must use separate directories.")
+        frozen_manifest = read_candidate(source, args.manifest_sha256, __version__)
+        source_revision = frozen_manifest["source_revision"]
+        packages.mkdir(parents=True)
+        for name in PACKAGES:
+            shutil.copyfile(source / name, packages / name)
+    else:
+        if os.name != "nt":
+            raise RuntimeError("build Windows acceptance packages on Windows with WiX and the .NET runtime")
+        require_committed_native_sources()
+        source_revision = revision()
+        checked(["cargo", "build", "--release", "--locked", "--manifest-path", str(ROOT / "agent-rs/Cargo.toml")])
+        environment = dict(os.environ, DOTNET_ROOT=str(args.dotnet_root.resolve()))
+        for extra in ([], ["-Next"]):
+            checked(["powershell.exe", "-NoProfile", "-File", str(ROOT / "tools/build-msi-fixtures.ps1"),
+                     "-Production", "-OutputDirectory", str(packages), "-Wix", str(args.wix.resolve()), *extra],
+                    environment=environment)
     records = {name: file_record(packages / name) for name in PACKAGES}
+    if frozen_manifest is not None and records != frozen_manifest["packages"]:
+        raise RuntimeError("Frozen package bytes changed while staging acceptance inputs.")
     manifest = {"source_revision": source_revision, "packages": records, "phases": {}}
     results = output / "results"
     for phase in PHASES:

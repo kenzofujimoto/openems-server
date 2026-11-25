@@ -1,0 +1,15 @@
+# Windows v1.0 release completion
+
+Approved scope: the operator explicitly requested all five remaining release steps on 22 November 2026. This plan implements that authorization for Windows, the server and panel; Linux, macOS and the browser-extension broker remain outside v1.0.
+
+1. Align server, panel, native agent and installer on 1.0.0. Keep 1.0.1 exclusively as an internal upgrade fixture. Add failing version/package contracts first; commit RED, implement, then verify the full relevant suites and hosted CI.
+2. Build and freeze one production candidate without FaultInjection. Record source revision, dependency locks, executable/MSI hashes and an unsigned distribution declaration. Preserve every ec50572 artifact; publish only the exact final bytes accepted below.
+3. Complete real ordered-domain, SafeSearch and anti-bypass acceptance in sequential disposable guests. Use real API/panel/stores where applicable, normal TLS, actual Edge observations, received ACK/events, exact root-store comparisons and terminal cleanup. Never fabricate an operator answer or replace a failed result with a contract test.
+4. Revalidate installation, upgrade, reboot, locations, web recovery and the applicable application/USB/catalog regressions against the new candidate. Preserve failed attempts, immutable inputs and cleanup proof; restore original container IDs/states after temporary lab pauses.
+5. Prepare the physical pilot with an elevated, read-only preflight and protected recovery material before changes. Preserve the registered server, identity, modes, configuration and cached installer. Verify a real removal/reinstall recovery path: MajorUpgrade rejects downgrade, so retaining an old MSI alone is insufficient. Upgrade this host only after guest gates pass; observe policy, inventory, reboot and controlled release/removal.
+6. Review the final diff and evidence, update compatibility and installation/recovery documentation, and integrate draft PR13 after all applicable gates pass. Run the checks on the integrated source. The new operator authorization supersedes the older plan's prohibition on merge/release.
+7. Tag v1.0.0 and publish the accepted production installer, source/provenance, SHA-256 checksums and release notes. State that code signing is absent; do not buy a signing service or import a signing CA. Exclude upgrade/fault fixtures, secrets, private CA material and private machine reports from assets.
+
+Constraints and risks: installer upgrade cannot change the registered server origin; inspect it securely before choosing the pilot backend. UAC, guest login or a physical device may require operator action. Keep the existing agent and other Docker projects intact until their approved phase. Do not weaken deadlines, capability checks, strict root equality or coverage/security gates to obtain a pass.
+
+Done means the published bytes have current evidence, the physical pilot and recovery passed, the integrated checks passed, and the GitHub release accurately lists supported Windows editions and remaining platform limitations. Missing observations or external prerequisites remain pending, never implicitly approved.

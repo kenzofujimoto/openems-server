@@ -1,0 +1,213 @@
+{
+  "date": "2026-11-04",
+  "status": "prepared_clean_guest_acceptance_pending",
+  "passed": false,
+  "source_revision": "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff",
+  "run_id": "eb8486c4e5d940238c9ff17c3336f6d8",
+  "branch": "feature/catalog-vm-acceptance",
+  "package_manifest_sha256": "509e11816273cfef555f53002994193783074f461a8c08d55571c0b3b9e63ae3",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "0da1a3c09fa573627d70e4e846f32817a432ef049370397d6a960619870301ad",
+      "bytes": 8642560
+    },
+    "openems-agent-next.msi": {
+      "sha256": "1f6b637bb5c791d5d109406dadbeeb58177c03c088297552cd54d5cf05b74af3",
+      "bytes": 8642560
+    }
+  },
+  "release_agent": {
+    "sha256": "f33dfd058170598fb59eb2f918fb572377d03dd3bb680e019e896f523207d42f",
+    "bytes": 6061568
+  },
+  "msi_inspection": [
+    {
+      "file": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_present": false,
+      "sha256": "0da1a3c09fa573627d70e4e846f32817a432ef049370397d6a960619870301ad",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    },
+    {
+      "file": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_present": false,
+      "sha256": "1f6b637bb5c791d5d109406dadbeeb58177c03c088297552cd54d5cf05b74af3",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    }
+  ],
+  "iso": {
+    "bytes": 17416192,
+    "path": "C:\\Users\\kenzo.fujimoto\\Documents\\OpenEMS-Lab\\OpenEMS-Catalog-5e71292-eb8486c4.iso",
+    "sha256": "763973f0c90bce5a5866aea8ded5f741da27876ef44f5dc2cda129b08bf1f6a3",
+    "verification": {
+      "verified": true,
+      "source_revision": "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff",
+      "run_id": "eb8486c4e5d940238c9ff17c3336f6d8",
+      "files_verified": 10,
+      "iso_sha256": "763973f0c90bce5a5866aea8ded5f741da27876ef44f5dc2cda129b08bf1f6a3",
+      "iso_bytes": 17416192,
+      "mounted_on_host": false,
+      "executables_executed": false
+    }
+  },
+  "shortcut": {
+    "file": "09 - Catalog acceptance as administrator.lnk",
+    "shortcut_verified": true,
+    "requires_elevation": true,
+    "argument_length": 1008,
+    "command_matches_review_text": true,
+    "parser_passed": true,
+    "guest_execution_started": false,
+    "sha256": "b410bffd91bdd66829cdb2f58d7122dca34beb57b217c774e9a0c47c5112315b"
+  },
+  "scope": {
+    "synthetic_catalog": true,
+    "real_server_api": true,
+    "guest_transport": "powershell_fixture",
+    "real_server_network_e2e": false,
+    "inventory_source": "host-compiled owned fixture bytes; synthetic uploaded inventory",
+    "scope": "Real server API expansion and Windows service enforcement; no panel, live server network, PostgreSQL/Redis or fleet inventory acceptance."
+  },
+  "legacy_phase_files_verified": 20,
+  "fix": {
+    "scope": "Existing approved catalog harness and its test file only.",
+    "red_commit": "baee7c0dad6ed6ff3510da7e33c5557e69df10b9",
+    "implementation_commit": "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff",
+    "description": "Finish both HTTPS reference probes after the acknowledged unrestricted allow assignment and before publishing absent process rules.",
+    "native_product_sources_changed": false,
+    "release_agent_bytes_unchanged_from_948608e": true,
+    "builder_changed": false,
+    "assignment_sequence_changed": false,
+    "eight_required_checks_preserved": true,
+    "acceptance_limits_changed": false
+  },
+  "tdd": {
+    "module_cases": 157,
+    "new_cases": 2,
+    "targeted_red_failed_expected": 1,
+    "targeted_red_passed": 1,
+    "full_red_failed_expected": 1,
+    "full_red_passed": 1453,
+    "full_red_seconds": 827.78,
+    "targeted_green_passed": 2,
+    "test_scope": "Real in-process API expansion with inert PE/MSI bytes, AST-selected orchestration statements and mocked external boundaries. No full harness, real installer or endpoint controls on host."
+  },
+  "local_validation": {
+    "python_passed": 1454,
+    "python_skipped": 57,
+    "integral_control_cases_deselected": 4,
+    "python_seconds": 950.99,
+    "rust_passed": 251,
+    "rust_failed": 0,
+    "rust_ignored": 0,
+    "rust_mode": "--no-fail-fast -- --test-threads=1",
+    "panel_passed": 154,
+    "panel_files_passed": 21,
+    "panel_lines_percent": 95.21,
+    "panel_statements_percent": 91.94,
+    "app_agent_statement_coverage_percent": 88.88,
+    "catalog_builder_statement_coverage_percent": 80.94,
+    "coverage_gates_fully_satisfied": false,
+    "postgres_redis_live_tests_run": false,
+    "checks_passed": [
+      "full allowed Python suite",
+      "full Rust suite",
+      "cargo fmt --check",
+      "cargo clippy --all-targets -- -D warnings",
+      "release build",
+      "panel lint",
+      "panel typecheck",
+      "panel coverage tests",
+      "panel build",
+      "ruff app agent tools tests",
+      "pip check",
+      "Windows PowerShell5.1 parser",
+      "git diff --check"
+    ],
+    "host_controls_executed": false,
+    "host_service_changes": false,
+    "host_msi_installs": false,
+    "host_fixture_exes_executed": false,
+    "guest_acceptance_started": false
+  },
+  "previous_failed_run": {
+    "source_revision": "948608ea46e91aff3ac128b05f8c18dd4acfce9a",
+    "run_id": "0e93a06a306e493b9d1fe4975ce2aaf8",
+    "result": "validation/vm-catalog-948608e-result-2026-11-04.json",
+    "status": "failed",
+    "review": "validation/catalog-network-order-diagnostic-review-2026-11-04.json",
+    "collector08_completed_without_errors": true,
+    "raw_release_ack_verified": true,
+    "normal_msi_exit": 0,
+    "independent_cleanup_verified": true,
+    "foreign_ci_ids_preserved": 14,
+    "old_failure_reclassified": false
+  },
+  "guest_requirements": {
+    "snapshot": "clean-preflight-before-controls",
+    "snapshot_uid": 1,
+    "previous_diagnostics_preserved_and_reviewed": true,
+    "clean_restore_required_before_this_run": true,
+    "snapshot_restored_for_this_run": false,
+    "new_iso_connected": false,
+    "new_run_started": false,
+    "shortcut": "09 - Catalog acceptance as administrator.lnk",
+    "ack_seconds": 90,
+    "hourly_recheck_real_seconds": 3600,
+    "overall_timeout_seconds": 5400
+  },
+  "log_receipts": {
+    "catalog-order-full-red.log": {
+      "sha256": "3c2b5993906ab585a4690df51c3ead7af35c56347519c82ffb1febe8891b6d47",
+      "bytes": 13930
+    },
+    "catalog-order-full-red.junit.xml": {
+      "sha256": "efd096ada43b83764030d91d2394fba2aa21c4debd376431cac3d22159888552",
+      "bytes": 237654
+    },
+    "catalog-order-full-green.log": {
+      "sha256": "19a8953db4c5534f5f8de02c7b326029aa31e775931f4476e877341f6cd9c4fe",
+      "bytes": 8287
+    },
+    "catalog-order-full-green.junit.xml": {
+      "sha256": "7b8f98a56283b5ac15b3a4752d65eaadc875f1995aca1273b785509b3c45feb1",
+      "bytes": 232093
+    },
+    "catalog-order-native-green.log": {
+      "sha256": "944e472adc5cedbd543fbafbcd0d837e8b263a9a3d4000dbee7299fb3723109a",
+      "bytes": 25703
+    },
+    "catalog-order-clippy.log": {
+      "sha256": "051224a6b141226246553ba415293cd1382d833eaed4aa7a480ae7f022228c9c",
+      "bytes": 73
+    },
+    "catalog-order-panel-tests.log": {
+      "sha256": "841b23a7a6ecb7f95418c556dcbb1d47fd469889eb4a70245362031787604f86",
+      "bytes": 9179
+    },
+    "catalog-order-panel-build.log": {
+      "sha256": "384c2483ad1801a1254f168d31fc66a3538ba34f01af195acb6a084f7e323f1e",
+      "bytes": 1547
+    },
+    "catalog-order-package-build.log": {
+      "sha256": "be1a0771fdbfd6538d1531c95d3c950e1e483c74798b2d4d17dfc0fef399a22b",
+      "bytes": 1170
+    },
+    "coverage-catalog-order-green.json": {
+      "sha256": "ca173289a5ef84b376a4390d197def7b963b9930517ad02feb9a89187cf7d14b",
+      "bytes": 415699
+    }
+  },
+  "limitations": [
+    "Local validation and package preparation do not prove real Windows enforcement.",
+    "New clean VM acceptance including3600real seconds not started.",
+    "No live server network, panel, PostgreSQL/Redis, fleet republication or physical USB acceptance.",
+    "Per-module global coverage gates remain pending.",
+    "No push, PR, merge or deployment."
+  ]
+}

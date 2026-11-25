@@ -2,6 +2,12 @@
 
 Use um agente compilado desta entrega em guest descartável ou máquina de homologação. Não reutilize como evidência os MSIs e relatórios anteriores à implementação de `category_actions`. O painel, servidor e agente devem ser da mesma entrega; aplicar a migração `008_web_event_actions.sql` pelo mecanismo normal de migrações antes do uso persistente.
 
+## Resultado do candidato ec50572 — 21/11/2026
+
+A rodada com o MSI congelado passou **11/11 cenários**, **6/6 navegações em Chrome/Firefox** e **5/5 cenários de recuperação**, usando API, painel React, PostgreSQL e Redis reais. As duas fases removeram o MSI com código 0 e encerraram seus guests após verificar a limpeza. O lote repetido gerou um único evento; a saturação armazenou 5.000 observações e contabilizou 600 descartes separadamente. [Recibo e hashes](../validation/windows-web-actions-ec50572-review-2026-11-21.json)
+
+Os horários cobriram uma janela ativa e outra inativa; as fronteiras exatas ficaram fora dessa execução. A matriz não comprovou regras ordenadas, SafeSearch, antiburla, reprodução com conta de streaming ou o broker da extensão.
+
 ## Preparação
 
 1. Publicar listas e conferir saúde, data e contagens no painel. Confirmar que o endpoint baixou as categorias usadas, inclusive as permitidas explicitamente.

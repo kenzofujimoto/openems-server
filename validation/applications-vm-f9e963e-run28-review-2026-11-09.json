@@ -1,0 +1,135 @@
+{
+  "run_id": "ff650fb5de4d4c0fa97b8b5efb3a1df8",
+  "source_revision": "f9e963e0a19042521ebae45197cfdb1e039dac0c",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "status": "failed",
+  "checks_passed": 3,
+  "checks": [
+    {
+      "status": "passed",
+      "name": "production MSI installed and an authenticated inventory was uploaded",
+      "at": "2026-11-09T12:06:58.9870587Z"
+    },
+    {
+      "status": "passed",
+      "name": "the application inventory includes the running fixture with its path and SHA-256",
+      "at": "2026-11-09T12:06:59.1803709Z"
+    },
+    {
+      "status": "passed",
+      "name": "both independent fixture paths start and reach the external network before policy",
+      "at": "2026-11-09T12:07:00.9159349Z"
+    }
+  ],
+  "error": "Fixture process timed out.",
+  "worker_id": "openems-controls-9cbcb2e8b2b84425857fcb80236688ad",
+  "manifest_sha256": "aac1051ab12aad83b4bab11398ab178361349b9e9d002a04d5f025d96cf17ec9",
+  "iso_sha256": "7d9811b36850884cdc5dae2e108d870c0dd06e2549cb8dd22b3d9189fe6ce10a",
+  "report_sha256": "dd0a9c2366384be974a06117ca560c6e5c2705406869bd2a88d0c90dc6267db0",
+  "private_checkpoint_matches_export_byte_for_byte": true,
+  "cleanup_verified": true,
+  "cleanup": {
+    "final_release_acknowledged": true,
+    "service_absent": true,
+    "watchdog_absent": true,
+    "application_journal_absent": true,
+    "agent_process_absent": true,
+    "hosts_preserved": true,
+    "msi_removal_exit_zero": true,
+    "managed_nrpt_count": 0,
+    "managed_firewall_count": 0,
+    "hosts_before_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085",
+    "hosts_after_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085"
+  },
+  "acknowledgments": [
+    {
+      "error_category": null,
+      "version": 1,
+      "success": true,
+      "digest": "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c"
+    },
+    {
+      "error_category": null,
+      "version": 2,
+      "success": true,
+      "digest": "f17475d6c647e06155194a65ed2798d04484b2a1e295ae71de2e13ae7dba796c"
+    },
+    {
+      "error_category": null,
+      "version": 3,
+      "success": true,
+      "digest": "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c"
+    }
+  ],
+  "backend_lifecycle": [
+    {
+      "at_utc": "2026-11-09T12:05:37.7420182Z",
+      "stage": "starting",
+      "error_type": "",
+      "attempt_id": "a29432ccbce6436ab605927cab5cc8a5",
+      "job_id": 5,
+      "state": "Running",
+      "readiness_stage": null,
+      "elapsed_ms": 9287
+    },
+    {
+      "at_utc": "2026-11-09T12:05:50.8037315Z",
+      "stage": "ready",
+      "error_type": "",
+      "attempt_id": "a29432ccbce6436ab605927cab5cc8a5",
+      "job_id": 5,
+      "state": "Running",
+      "readiness_stage": "ready",
+      "elapsed_ms": 22117
+    },
+    {
+      "at_utc": "2026-11-09T12:10:17.1084869Z",
+      "stage": "stopped",
+      "error_type": "",
+      "attempt_id": "a29432ccbce6436ab605927cab5cc8a5",
+      "job_id": 5,
+      "state": "Stopped",
+      "readiness_stage": "ready",
+      "elapsed_ms": 288414
+    }
+  ],
+  "started_utc": "2026-11-09T12:04:45.4037044Z",
+  "finished_utc": "2026-11-09T12:10:17.2541829Z",
+  "supplement_exported_before_vm_power_off": true,
+  "vm_power_off_utc": "2026-11-09T12:13:10.635Z",
+  "limitations": [
+    "The timed-out invocation is not identified as selected/control by this legacy generic harness; collect owned sentinel metadata before changing it.",
+    "Successful pre-policy connectivity and a positive network policy ACK do not prove the timed-out process result or publisher enforcement.",
+    "Foreign firewall/HID/CI final assertions were not reached on this failed branch; owned cleanup is corroborated separately.",
+    "The immutable failure remains failed; no timeout or criterion has been relaxed."
+  ],
+  "evidence_archive": ".venv/windows-release-ec50572-20261108/applications-run28-preserved",
+  "evidence_files": [
+    {
+      "name": "applications-preflight.json",
+      "bytes": 501,
+      "sha256": "d351f97f93abe537dcd1932bbd6259218736107b4480b32dc51b2241cc1d86f5"
+    },
+    {
+      "name": "applications-result.json",
+      "bytes": 2412,
+      "sha256": "dd0a9c2366384be974a06117ca560c6e5c2705406869bd2a88d0c90dc6267db0"
+    },
+    {
+      "name": "applications-worker-checkpoint.json",
+      "bytes": 2412,
+      "sha256": "dd0a9c2366384be974a06117ca560c6e5c2705406869bd2a88d0c90dc6267db0"
+    },
+    {
+      "name": "applications-supplement.json",
+      "bytes": 4104,
+      "sha256": "ed4fc221486cf825ff095c08d2604a062656e4535842835a235cd649075e28e2"
+    },
+    {
+      "name": "applications-preflight-stability-ff650fb5.json",
+      "bytes": 3320,
+      "sha256": "de7b8fe5cc33a6b53ff5c6d8c0b9919a3e88304163acf6ebbc04ae22d371d8c7"
+    }
+  ],
+  "real_host_controls_executed": false
+}

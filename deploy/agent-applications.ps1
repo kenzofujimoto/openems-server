@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $group = 'openems application control'
 $events = @()
+$script:diagnosticStage = 'app_request'
 function Field($Object, [string]$Name, $Default) {
     if ($null -eq $Object) { return $Default }
     $property = $Object.PSObject.Properties[$Name]
@@ -13,12 +14,28 @@ function Field($Object, [string]$Name, $Default) {
     return $property.Value
 }
 function Result($Value) { $Value | ConvertTo-Json -Depth 12 -Compress | Write-Output }
+function Get-NativeErrorCode([Exception]$Exception) {
+    for ($depth = 0; $null -ne $Exception -and $depth -lt 8; $depth++) {
+        if ($Exception -is [ComponentModel.Win32Exception] -and $Exception.NativeErrorCode -gt 0) {
+            return [int]$Exception.NativeErrorCode
+        }
+        # Only HRESULT_FROM_WIN32 encodes a Win32 error in the low word.
+        $hresult = $Exception.HResult
+        if (($hresult -band -65536) -eq -2147024896 -and ($hresult -band 65535) -ne 0) {
+            return ($hresult -band 65535)
+        }
+        $Exception = $Exception.InnerException
+    }
+    return $null
+}
 function Protect-File([string]$Path) {
     $acl = New-Object Security.AccessControl.FileSecurity
     $acl.SetSecurityDescriptorSddlForm('O:SYD:P(A;;FA;;;SY)')
     Set-Acl -LiteralPath $Path -AclObject $acl
 }
 function Save-State {
+    $callerStage = $script:diagnosticStage
+    $script:diagnosticStage = 'app_journal'
     $temporary = $request.state_path + '.' + [guid]::NewGuid().ToString('N') + '.tmp'
     try {
         [IO.File]::Open($temporary, 'CreateNew', 'Write', 'None').Dispose()
@@ -28,6 +45,7 @@ function Save-State {
     } finally {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
     }
+    $script:diagnosticStage = $callerStage
 }
 function Set-StateField([string]$Name, $Value) {
     # Journals written before a field existed are upgraded in place.
@@ -185,6 +203,126 @@ function Assert-PrivateHashPolicy([string]$Path) {
             'Enabled:Advanced Boot Options Menu','Disabled:Script Enforcement','Required:Enforce Store Applications')) { throw 'OPENEMS_INVALID_HASH_POLICY' }
     }
 }
+function Normalize-PrivateHashPolicy([string]$Path) {
+    $settings = New-Object Xml.XmlReaderSettings
+    $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit; $settings.XmlResolver = $null
+    $reader = [Xml.XmlReader]::Create($Path, $settings)
+    $xml = New-Object Xml.XmlDocument
+    $xml.XmlResolver = $null
+    try { $xml.Load($reader) } finally { $reader.Dispose() }
+    $namespace = 'urn:schemas-microsoft-com:sipolicy'
+    $ns = New-Object Xml.XmlNamespaceManager($xml.NameTable)
+    $ns.AddNamespace('ci', $namespace)
+    # Existing user-only policies keep their original validation and bytes.
+    if ($xml.SelectNodes('//ci:SigningScenario[@Value="131"]//ci:FileRuleRef', $ns).Count -eq 0) { return }
+
+    # Only the observed, duplicated hash format may be projected to user mode.
+    $attributes = @{
+        'SiPolicy' = @('PolicyType')
+        'SiPolicy/VersionEx' = @()
+        'SiPolicy/PlatformID' = @()
+        'SiPolicy/Rules' = @()
+        'SiPolicy/Rules/Rule' = @()
+        'SiPolicy/Rules/Rule/Option' = @()
+        'SiPolicy/EKUs' = @()
+        'SiPolicy/FileRules' = @()
+        'SiPolicy/FileRules/Deny' = @('ID','FriendlyName','Hash')
+        'SiPolicy/Signers' = @()
+        'SiPolicy/SigningScenarios' = @()
+        'SiPolicy/SigningScenarios/SigningScenario' = @('Value','ID','FriendlyName')
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners' = @()
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners/FileRulesRef' = @()
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners/FileRulesRef/FileRuleRef' = @('RuleID')
+        'SiPolicy/UpdatePolicySigners' = @()
+        'SiPolicy/CiSigners' = @()
+        'SiPolicy/HvciOptions' = @()
+        'SiPolicy/BasePolicyID' = @()
+        'SiPolicy/PolicyID' = @()
+    }
+    $textPaths = @('SiPolicy/VersionEx','SiPolicy/PlatformID','SiPolicy/Rules/Rule/Option',
+        'SiPolicy/HvciOptions','SiPolicy/BasePolicyID','SiPolicy/PolicyID')
+    $oneChildPaths = @('SiPolicy/Rules/Rule','SiPolicy/SigningScenarios/SigningScenario',
+        'SiPolicy/SigningScenarios/SigningScenario/ProductSigners')
+    if ($xml.SelectNodes('//processing-instruction()').Count) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    foreach ($node in @($xml.SelectNodes('//*'))) {
+        $nodePath = $node.LocalName
+        for ($parent = $node.ParentNode; $parent.NodeType -eq [Xml.XmlNodeType]::Element; $parent = $parent.ParentNode) {
+            $nodePath = $parent.LocalName + '/' + $nodePath
+        }
+        if ($node.NamespaceURI -cne $namespace -or $nodePath -cnotin @($attributes.Keys)) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        foreach ($attribute in $node.Attributes) {
+            if ($attribute.NamespaceURI -ceq 'http://www.w3.org/2000/xmlns/' -and $attribute.Value -ceq $namespace) { continue }
+            if ($attribute.NamespaceURI -or $attribute.Name -cnotin $attributes[$nodePath]) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        }
+        $children = @($node.ChildNodes | Where-Object NodeType -EQ ([Xml.XmlNodeType]::Element))
+        if ($nodePath -cin $oneChildPaths -and $children.Count -ne 1) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        if ($nodePath -ceq 'SiPolicy') {
+            $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($child in $children) { if (-not $names.Add($child.LocalName)) { throw 'OPENEMS_INVALID_HASH_POLICY' } }
+            if ($node.HasAttribute('PolicyType') -and $node.GetAttribute('PolicyType') -cne 'Base Policy') { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        }
+        foreach ($child in $node.ChildNodes) {
+            if ($child.NodeType -in @([Xml.XmlNodeType]::Element,[Xml.XmlNodeType]::Comment,
+                [Xml.XmlNodeType]::Whitespace,[Xml.XmlNodeType]::SignificantWhitespace)) { continue }
+            if ($child.NodeType -ne [Xml.XmlNodeType]::Text -or
+                ($nodePath -cnotin $textPaths -and -not [string]::IsNullOrWhiteSpace($child.Value))) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        }
+    }
+    $rules = @($xml.SelectNodes('/ci:SiPolicy/ci:FileRules/ci:Deny', $ns))
+    $scenarios = @($xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario', $ns))
+    $hvci = @($xml.SelectNodes('/ci:SiPolicy/ci:HvciOptions', $ns))
+    if ($rules.Count -ne 8 -or $scenarios.Count -ne 2 -or $hvci.Count -ne 1 -or
+        $hvci[0].InnerText -cne '0') { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    $byId = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($rule in $rules) {
+        $id = $rule.GetAttribute('ID')
+        if (-not $id -or $byId.ContainsKey($id) -or
+            $rule.GetAttribute('Hash') -cnotmatch '^(?:[0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$') { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        $byId.Add($id, $rule)
+    }
+    $options = @($xml.SelectNodes('/ci:SiPolicy/ci:Rules/ci:Rule/ci:Option', $ns) | ForEach-Object InnerText)
+    if ('Enabled:UMCI' -cnotin $options) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    foreach ($option in $options) {
+        if ($option -cnotin @('Enabled:UMCI','Enabled:Audit Mode','Enabled:Unsigned System Integrity Policy',
+            'Enabled:Advanced Boot Options Menu','Disabled:Script Enforcement','Required:Enforce Store Applications')) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    }
+    $references = @{}
+    $profiles = @{}
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($scenario in $scenarios) {
+        $value = $scenario.GetAttribute('Value')
+        if ($value -cnotin @('12','131') -or $references.ContainsKey($value)) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        $refs = @($scenario.SelectNodes('ci:ProductSigners/ci:FileRulesRef/ci:FileRuleRef', $ns))
+        if ($refs.Count -ne 4) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+        $references[$value] = $refs
+        $profile = [Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
+        foreach ($reference in $refs) {
+            $id = $reference.GetAttribute('RuleID')
+            if (-not $byId.ContainsKey($id) -or -not $seen.Add($id)) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+            $rule = $byId[$id]
+            # Hashes are case-insensitive; display metadata must match exactly, including its presence.
+            $key = $rule.GetAttribute('Hash').ToUpperInvariant() + ':' +
+                [string]$rule.HasAttribute('FriendlyName') + ':' + $rule.GetAttribute('FriendlyName')
+            if ($profile.ContainsKey($key)) { $profile[$key]++ } else { $profile.Add($key, 1) }
+        }
+        $profiles[$value] = $profile
+    }
+    if ($seen.Count -ne $byId.Count -or $xml.SelectNodes('//ci:FileRuleRef', $ns).Count -ne $seen.Count -or
+        $profiles['12'].Count -ne $profiles['131'].Count) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    foreach ($key in $profiles['12'].Keys) {
+        if (-not $profiles['131'].ContainsKey($key) -or $profiles['12'][$key] -ne $profiles['131'][$key]) { throw 'OPENEMS_INVALID_HASH_POLICY' }
+    }
+    # All input nodes, attributes and references are checked before the private document changes.
+    $kernelReferences = $references['131'][0].ParentNode
+    foreach ($reference in $references['131']) {
+        $rule = $byId[$reference.GetAttribute('RuleID')]
+        [void]$reference.ParentNode.RemoveChild($reference)
+        [void]$rule.ParentNode.RemoveChild($rule)
+    }
+    # The schema permits omitting FileRulesRef, but forbids an empty container.
+    [void]$kernelReferences.ParentNode.RemoveChild($kernelReferences)
+    $xml.Save($Path)
+}
 function Policies {
     $citool = Join-Path $env:SystemRoot 'System32\CiTool.exe'
     if (-not (Test-Path -LiteralPath $citool)) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
@@ -226,12 +364,25 @@ function Block-Event([string]$Text, [string]$PolicyId) {
         $document = New-Object Xml.XmlDocument
         $document.XmlResolver = $null; $document.Load($reader)
     } finally { $reader.Dispose() }
-    if ([int]$document.Event.System.EventID -ne 3077) { return $null }
+    $root = $document.PSBase.DocumentElement
+    $eventNamespace = 'http://schemas.microsoft.com/win/2004/08/events/event'
+    if ($root.PSBase.LocalName -cne 'Event' -or $root.PSBase.NamespaceURI -cnotin @('', $eventNamespace)) { return $null }
+    $namespaces = [Xml.XmlNamespaceManager]::new($document.PSBase.NameTable)
+    $prefix = ''
+    if ($root.PSBase.NamespaceURI) {
+        $namespaces.AddNamespace('evt', $eventNamespace)
+        $prefix = 'evt:'
+    }
+    $eventId = $root.SelectSingleNode("${prefix}System/${prefix}EventID", $namespaces)
+    if ($null -eq $eventId -or $eventId.PSBase.InnerText -cne '3077') { return $null }
     $data = @{}
-    foreach ($field in @($document.Event.EventData.Data)) { $data[[string]$field.Name] = [string]$field.'#text' }
+    foreach ($field in $root.SelectNodes("${prefix}EventData/${prefix}Data", $namespaces)) {
+        $data[$field.GetAttribute('Name')] = $field.PSBase.InnerText
+    }
     if (-not $data.ContainsKey('PolicyGUID') -or ([string]$data.PolicyGUID).Trim('{}') -ine $PolicyId.Trim('{}')) { return $null }
-    $target = if ($data.ContainsKey('FileName')) { [string]$data.FileName } else { 'blocked executable (path unavailable)' }
+    $target = if ($data['File Name']) { $data['File Name'] } else { $data['FileName'] }
     $target = $target -replace '[\x00-\x1f\x7f]',''
+    if ([string]::IsNullOrWhiteSpace($target)) { $target = 'blocked executable (path unavailable)' }
     if ($target.Length -gt 512) { $target = $target.Substring(0,512) }
     return @{kind='app_block'; detail=$target; rule_id=$PolicyId.Trim('{}')}
 }
@@ -255,7 +406,10 @@ function Execution-Events {
     return @($blocked)
 }
 try {
-    if ($request.mode -eq 'inventory') { Result @{inventory=@(Inventory)}; exit 0 }
+    if ($request.mode -eq 'inventory') {
+        $script:diagnosticStage = 'app_inventory'
+        Result @{inventory=@(Inventory)}; exit 0
+    }
     if ($request.mode -eq 'plan') {
         $rules = @(Field $request.policy 'execution_rules' @())
         Result @{execution_rules=$rules; network_blocked=@(Field $request.policy 'network_blocked' @()); requires_system=$true}; exit 0
@@ -265,6 +419,7 @@ try {
     if ($request.mode -notin @('apply','cleanup')) { throw 'OPENEMS_INVALID_MODE' }
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') { throw 'OPENEMS_SYSTEM_REQUIRED' }
     if (-not [IO.Path]::IsPathRooted([string]$request.state_path)) { throw 'OPENEMS_INVALID_STATE_PATH' }
+    $script:diagnosticStage = 'app_journal'
     if (Test-Path -LiteralPath $request.state_path) {
         $script:state = Get-Content -LiteralPath $request.state_path -Raw | ConvertFrom-Json
         if ($script:state.format -ne 1 -or [string]$script:state.policy_id -notmatch '^\{[A-Fa-f0-9-]{36}\}$') { throw 'OPENEMS_INVALID_JOURNAL' }
@@ -275,8 +430,11 @@ try {
         $script:state = [pscustomobject]@{format=1; policy_id=([guid]::NewGuid().ToString('B')); wdac_owned=$false; execution_digest=''; version=0; firewall=@(); last_record_id=$cursor}
     }
     if ($request.mode -eq 'cleanup') {
+        $script:diagnosticStage = 'app_wdac_remove'
         Remove-Wdac
+        $script:diagnosticStage = 'app_firewall'
         foreach ($entry in @($script:state.firewall)) { Remove-Firewall $entry }
+        $script:diagnosticStage = 'app_journal'
         Remove-Item -LiteralPath $request.state_path -Force -ErrorAction SilentlyContinue
         Result @{inventory=@();events=@();capabilities=@('app-control:network')}; exit 0
     }
@@ -285,11 +443,13 @@ try {
     # No persistent writes when an unsupported execution policy cannot be applied at all.
     # Windows editions without App Control (Home) skip present-only catalog rules; process and network
     # controls still apply. Explicit execution rules keep failing there, as the administrator asked for them.
+    $script:diagnosticStage = 'app_wdac_query'
     if ($execution.Count -and -not (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\CiTool.exe'))) {
         if (@($execution | Where-Object { -not [bool](Field $_ 'if_present' $false) }).Count) { throw 'OPENEMS_UNSUPPORTED_WDAC' }
         $execution = @()
     }
     if ($execution.Count) { $null = @(Policies); Import-Module ConfigCI -ErrorAction Stop }
+    $script:diagnosticStage = 'app_journal'
     Save-State
     $script:directory = Join-Path (Split-Path -Parent $request.state_path) ('app-control-' + $script:state.policy_id.Trim('{}'))
     if (-not (Test-Path -LiteralPath $script:directory)) {
@@ -298,8 +458,12 @@ try {
         $acl.SetSecurityDescriptorSddlForm('O:SYD:P(A;OICI;FA;;;SY)')
         Set-Acl -LiteralPath $script:directory -AclObject $acl
     }
-    if ($execution.Count -eq 0) { Remove-Wdac }
+    if ($execution.Count -eq 0) {
+        $script:diagnosticStage = 'app_wdac_remove'
+        Remove-Wdac
+    }
     else {
+        $script:diagnosticStage = 'app_wdac_query'
         $serialized = ConvertTo-Json -InputObject $execution -Depth 8 -Compress
         $hasher = [Security.Cryptography.SHA256]::Create()
         try { $digest = ([BitConverter]::ToString($hasher.ComputeHash([Text.Encoding]::UTF8.GetBytes($serialized)))).Replace('-','').ToLowerInvariant() }
@@ -316,17 +480,20 @@ try {
         $samples = @()
         if (-not $current -or $recheck) {
             if ($null -ne $active -and (-not $script:state.wdac_owned -or [string]$active.FriendlyName -cne 'openems application control')) { throw 'OPENEMS_EXTERNAL_POLICY_CHANGE' }
+            $script:diagnosticStage = 'app_sample_discovery'
             $samples = @(Resolve-Samples $request.policy)
             $present = (@($samples | ForEach-Object { [string]$_.id }) | Sort-Object) -join ','
             if ($optional) { Set-StateField 'optional_checked_at' ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) }
             if ($current -and $present -ceq $presentBefore) { Save-State; $samples = @() }
             elseif ($samples.Count -eq 0) {
                 # Every rule was present-only and absent here: no policy, nothing to deny.
+                $script:diagnosticStage = 'app_wdac_remove'
                 Remove-Wdac
                 $script:state.execution_digest = $digest; Set-StateField 'present_rules' ''; Save-State
             } else { Set-StateField 'present_rules' $present }
         }
         if ($samples.Count) {
+            $script:diagnosticStage = 'app_wdac_generate'
             $consoleOut = [Console]::Out
             try {
                 # ConfigCI writes directly to Console.Out, outside PowerShell's redirectable streams.
@@ -346,6 +513,7 @@ try {
                     Set-Acl -LiteralPath $catalog -AclObject $acl
                     New-CIPolicy -ScanPath (Split-Path -Parent $samples[0].sample_path) -FilePath $directPolicy -UserPEs -Level Hash -Deny -NoScript -NoShadowCopy -MultiplePolicyFormat -PathToCatroot $catalog -ErrorAction Stop | Out-Null
                     Protect-File $directPolicy
+                    Normalize-PrivateHashPolicy $directPolicy
                     Assert-PrivateHashPolicy $directPolicy
                     # Preserve the existing adapter's scope; New-CIPolicy adds this option by default.
                     Set-RuleOption -FilePath $directPolicy -Option 12 -Delete -ErrorAction Stop
@@ -410,15 +578,18 @@ try {
                 [Console]::SetOut($consoleOut)
             }
             # Ownership intent is durable before CiTool can change the system.
+            $script:diagnosticStage = 'app_wdac_apply'
             $script:state.wdac_owned = $true; Save-State
             & (Join-Path $env:SystemRoot 'System32\CiTool.exe') --update-policy $binaryPath -json | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'OPENEMS_WDAC_DEPLOY_FAILED' }
+            $script:diagnosticStage = 'app_wdac_verify'
             $active = Own-Policy
             if ($null -eq $active -or [string]$active.IsEnforced -ine 'true') { throw 'OPENEMS_RESTART_REQUIRED' }
             $script:state.execution_digest = $digest; Save-State
             $events += @{kind='app_control_applied'; detail='execution policy applied'; rule_id='execution-policy'}
         }
     }
+    $script:diagnosticStage = 'app_firewall'
     $desired = @()
     foreach ($path in $network) {
         $path = Safe-Path $path
@@ -447,8 +618,12 @@ try {
         if ($entry.name -notin @($desired | ForEach-Object name)) { Remove-Firewall $entry }
     }
     $script:state.firewall = @($desired)
-    if ($script:state.wdac_owned) { $events += @(Execution-Events) }
+    if ($script:state.wdac_owned) {
+        $script:diagnosticStage = 'app_execution_events'
+        $events += @(Execution-Events)
+    }
     # Present-only rules keep the journal so the hourly re-check is remembered while nothing is owned.
+    $script:diagnosticStage = 'app_journal'
     $presentOnly = @($execution | Where-Object { [bool](Field $_ 'if_present' $false) }).Count -gt 0
     if ($script:state.wdac_owned -or $desired.Count -or $presentOnly) { Save-State }
     else { Remove-Item -LiteralPath $request.state_path -Force -ErrorAction SilentlyContinue }
@@ -457,5 +632,6 @@ try {
     Result @{inventory=@();events=@($events);capabilities=$capabilities}
 } catch {
     $code = if ($_.Exception.Message -match 'OPENEMS_RESTART_REQUIRED') { 'restart_required' } elseif ($_.Exception.Message -match 'OPENEMS_UNSUPPORTED') { 'unsupported' } else { 'control_failed' }
-    Result @{error=$code}; exit 1
+    $osCode = Get-NativeErrorCode $_.Exception
+    Result @{error=$code; diagnostic=@{stage=$script:diagnosticStage; os_code=$osCode}}; exit 1
 }

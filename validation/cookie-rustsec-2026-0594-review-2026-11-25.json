@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-25",
+  "advisory": "RUSTSEC-2026-0594",
+  "source_revision_after_fix": "59eed1732b94d01ff2c551e9064e3193d89e4964",
+  "frozen_native_source": "f0092687e415f573b580d992fc905866a05bfcea",
+  "lock_change": {
+    "package": "cookie",
+    "from": "0.18.2",
+    "to": "0.18.3",
+    "fields": [
+      "version",
+      "checksum"
+    ]
+  },
+  "recorded_inputs": {
+    "count": 193,
+    "unchanged": 192,
+    "changed": [
+      "agent-rs/Cargo.lock"
+    ]
+  },
+  "default_feature_graphs": [
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "packages": 126,
+      "normalized_sha256": "b96444f194f7cab69e0a23bb1b2cfcd175b5b7b18f4e5a50dd58c52cf30728c6",
+      "identical_to_frozen": true
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "packages": 123,
+      "normalized_sha256": "55960a5e6215376243538027f686bfb1c7cb91ad2187ae455a4052790ebb7b46",
+      "identical_to_frozen": true
+    }
+  ],
+  "graph_normalization": "Only the root agent-rs filesystem path is replaced; dependency versions/features are preserved.",
+  "cookie_selected": false,
+  "cookie_store_selected": false,
+  "ureq_cookies_feature_selected": false,
+  "agent_sources_unchanged": true,
+  "frozen_artifacts_unchanged": true,
+  "artifact_rebuild_required_for_this_optional_lock_update": false,
+  "limits": [
+    "This is resolved default-feature/source evidence, not binary or SBOM inspection.",
+    "The full lockfile scanner flags optional packages too; the lock is patched without suppressions.",
+    "Frozen artifacts retain their original source revision and manifests."
+  ],
+  "dependency_scan": {
+    "passed": true,
+    "pip_audit_runtime": true,
+    "pip_audit_dev": true,
+    "osv": true,
+    "cargo_deny": "separate hosted CI gate",
+    "evidence_sha256": "0cc49413597e128f52e65558c285a18310ea4b25ef31bb109ca19e16c22ba330"
+  },
+  "private_review_sha256": "fb3a61a33796d985b1b904c2f4c5f9fe96657b46eb1643dc62b96189c56baba6",
+  "reference": "https://rustsec.org/advisories/RUSTSEC-2026-0594.html"
+}

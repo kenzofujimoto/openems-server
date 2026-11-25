@@ -1,0 +1,158 @@
+{
+  "run_id": "1daac33239ca434694a4a9117eb49fb0",
+  "source_revision": "5354a16a70a0e73a4601e2455a154c763580c585",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "manifest_sha256": "fb1b6ac36f2712f2478261c0494e56cab515f109bb861e8bddc4e1cb683207c4",
+  "iso_sha256": "483d3d970e43c334f2adaab177eec259c932783db4e18cdbc6c28920d95ac454",
+  "status": "passed",
+  "physical_acceptance_pending": false,
+  "worker_id": "openems-controls-b28d6e1658e048ed8e6ba9a704c1f662",
+  "started_utc": "2026-11-08T19:08:26.3723059Z",
+  "finished_utc": "2026-11-08T19:17:18.9589374Z",
+  "duration_seconds": 532.586632,
+  "checks": [
+    {
+      "status": "passed",
+      "name": "production MSI installed and an authenticated inventory was uploaded",
+      "at": "2026-11-08T19:09:39.9037059Z"
+    },
+    {
+      "status": "passed",
+      "name": "storage block applied without disabling healthy keyboard, mouse or HID devices",
+      "at": "2026-11-08T19:10:16.9193773Z"
+    },
+    {
+      "status": "passed",
+      "name": "offline restart retained the storage policy and healthy HID devices",
+      "at": "2026-11-08T19:10:56.5653963Z"
+    },
+    {
+      "status": "passed",
+      "name": "physical USB allowed by matching VID, PID and serial",
+      "at": "2026-11-08T19:12:51.8749577Z"
+    },
+    {
+      "status": "passed",
+      "name": "physical USB instance block prevented access",
+      "at": "2026-11-08T19:13:40.4050693Z"
+    },
+    {
+      "status": "passed",
+      "name": "physical read-only policy allowed reading and refused writing",
+      "at": "2026-11-08T19:15:25.9706902Z"
+    },
+    {
+      "status": "passed",
+      "name": "physical USB control event reached the server",
+      "at": "2026-11-08T19:15:26.0699337Z"
+    },
+    {
+      "status": "passed",
+      "name": "MSI removal restored owned controls and preserved unrelated firewall, HID and hosts state",
+      "at": "2026-11-08T19:17:18.3610181Z"
+    }
+  ],
+  "package_receipt": {
+    "checked_at": "2026-11-08T19:08:26.3910343Z",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+        "bytes": 8667136
+      },
+      "openems-agent-next.msi": {
+        "sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+        "bytes": 8667136
+      }
+    },
+    "source_revision": "5354a16a70a0e73a4601e2455a154c763580c585"
+  },
+  "private_checkpoint_matches_export_byte_for_byte": true,
+  "report_sha256": "e069cc787ca1fb7260b7bcec48d7ba95f67cb4438c5ab4aed6d3675c21e343c9",
+  "final_release_version": 9,
+  "final_release_digest": "4062e77a6f5385815fdd4827a14f7b333ade20c55728bf547b1d3ac1ddd6314c",
+  "all_exported_acknowledgments_positive": true,
+  "ack_versions": [
+    1,
+    2,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "backend_ready_elapsed_ms": [
+    7091,
+    5629
+  ],
+  "backend_attempts_distinct_and_stopped": true,
+  "backend_worker_errors": [],
+  "msi_removal_exit_zero": true,
+  "owned_service_process_watchdog_journal_absent": true,
+  "managed_nrpt_count": 0,
+  "managed_firewall_count": 0,
+  "preinstallation_hosts_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085",
+  "hosts_preserved": true,
+  "hid_and_unrelated_firewall_preserved": true,
+  "post_removal_usb_read_write_delete_verified": true,
+  "preparation": {
+    "initial_60_second_preflight": "refused Windows apps or firewall drift before installation",
+    "stable_seconds_before_exact_launcher": 344,
+    "exact_launcher_repeated_preflight_seconds": 73,
+    "helper_terminal_status": "media_finished"
+  },
+  "bounds_unchanged_seconds": {
+    "startup": 120,
+    "reconnect": 360,
+    "ack": 90,
+    "overall": 1800
+  },
+  "limitations": [
+    "Unrelated firewall and HID preservation passed the harness assertions; raw firewall baselines were not exported for independent recomputation.",
+    "The exported ACK allowlist omits timestamps; individual ACK latencies cannot be independently recomputed from this export. The unchanged bounded Wait-Ack gates all checks.",
+    "The next MSI hash was verified as input; this USB run installs and removes the production MSI and is not an upgrade acceptance test.",
+    "The media preparation receipt is an immutable pre-execution record; its guest_execution_started=false describes preparation time.",
+    "The original run19 remains failed with its cleanup separately verified; it was not reclassified."
+  ],
+  "evidence_archive": ".venv/usb-acceptance-5354a16-1daac332/final-evidence",
+  "evidence_files": [
+    {
+      "name": "usb-preflight.json",
+      "bytes": 686,
+      "sha256": "4c2316d705b265f973a67f7f7dae44d2258a7d6861d0209cdf33dd3c7896cda9"
+    },
+    {
+      "name": "usb-result.json",
+      "bytes": 3597,
+      "sha256": "e069cc787ca1fb7260b7bcec48d7ba95f67cb4438c5ab4aed6d3675c21e343c9"
+    },
+    {
+      "name": "usb-worker-checkpoint.json",
+      "bytes": 3597,
+      "sha256": "e069cc787ca1fb7260b7bcec48d7ba95f67cb4438c5ab4aed6d3675c21e343c9"
+    },
+    {
+      "name": "usb-supplement.json",
+      "bytes": 8204,
+      "sha256": "15fef4b46d5980524e62fdfd304f5f91d47607971c7dacbbe18a21c1dfba8fb8"
+    },
+    {
+      "name": "usb-preflight-stability-1daac332.json",
+      "bytes": 3729,
+      "sha256": "d0cb0153c7c9ab9957217930b31ec7a42d68b2b8e2897aaedf7ce7ce31cded5b"
+    },
+    {
+      "name": "FINAL-MEDIA-RECEIPT.json",
+      "bytes": 2137,
+      "sha256": "3b0469f86f78b3adf7282ca176504ab4170ae1d7ceb8f86941b6a4dbbcd1ea71"
+    },
+    {
+      "name": "27-start-usb-after-stability.ps1",
+      "bytes": 5970,
+      "sha256": "277c822e893f567fe80525e4be3e9e480ecbeac9d9aa5e29842f523b428fc019"
+    }
+  ],
+  "real_host_controls_executed": false
+}

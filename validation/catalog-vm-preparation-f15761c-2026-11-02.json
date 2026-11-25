@@ -1,0 +1,145 @@
+{
+  "date": "2026-11-02",
+  "status": "prepared_guest_acceptance_pending",
+  "passed": false,
+  "base_revision": "e70d5ad53ea1b241965e5b8fa7d1d967042126e1",
+  "source_revision": "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+  "branch": "feature/catalog-vm-acceptance",
+  "run_id": "e667c411feb14967bcb4b5fa85d0354a",
+  "package_manifest_sha256": "d4eff29868374741a8b9feb973fb9eeb67708dd59cf4099591dc37fe8ed6e51b",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "7b514947aa4fd942d5a424d8f6e3b61e8d847f8ce9f37a1b5973b0eab5161c23",
+      "bytes": 8581120
+    },
+    "openems-agent-next.msi": {
+      "sha256": "2e727f32763321249fdac3ca94a0e509575893b34e09c1f7106f0e1939ca81f8",
+      "bytes": 8581120
+    }
+  },
+  "msi_inspection": [
+    {
+      "file": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_present": false,
+      "sha256": "7b514947aa4fd942d5a424d8f6e3b61e8d847f8ce9f37a1b5973b0eab5161c23"
+    },
+    {
+      "file": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_present": false,
+      "sha256": "2e727f32763321249fdac3ca94a0e509575893b34e09c1f7106f0e1939ca81f8"
+    }
+  ],
+  "iso": {
+    "file": "OpenEMS-Catalog-f15761c-e667c411.iso",
+    "sha256": "da21085c211f3b7f94ce0e65ebc98e889d83674d4e6da6f416d45fdef75709aa",
+    "bytes": 17293312,
+    "verification": {
+      "verified": true,
+      "source_revision": "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+      "run_id": "e667c411feb14967bcb4b5fa85d0354a",
+      "files_verified": 10,
+      "iso_sha256": "da21085c211f3b7f94ce0e65ebc98e889d83674d4e6da6f416d45fdef75709aa",
+      "iso_bytes": 17293312,
+      "mounted_on_host": false,
+      "executables_executed": false
+    }
+  },
+  "shortcut": {
+    "file": "01 - Catalog acceptance as administrator.lnk",
+    "shortcut_verified": true,
+    "requires_elevation": true,
+    "argument_length": 1001,
+    "command_matches_review_text": true,
+    "parser_passed": true,
+    "guest_execution_started": false,
+    "sha256": "e1a1619063c1e733bfa2023f2db4dd246758804da35bbc831a9f5c212b0c9acb"
+  },
+  "scope": {
+    "synthetic_catalog": true,
+    "real_server_api": true,
+    "guest_transport": "powershell_fixture",
+    "real_server_network_e2e": false,
+    "inventory_source": "host-compiled owned fixture bytes; synthetic uploaded inventory",
+    "scope": "Real server API expansion and Windows service enforcement; no panel, live server network, PostgreSQL/Redis or fleet inventory acceptance."
+  },
+  "local_validation": {
+    "source_revision": "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+    "python_passed": 1420,
+    "python_skipped": 57,
+    "integral_control_cases_deselected": 4,
+    "catalog_specs_passed": 155,
+    "app_agent_statement_coverage_percent": 88.88,
+    "catalog_builder_statement_coverage_percent": 80.94,
+    "evidence_validator_statement_coverage_percent": 100.0,
+    "evidence_validator_missing_lines": [],
+    "branch_coverage_measured": false,
+    "coverage_gates_fully_satisfied": false,
+    "postgres_redis_live_tests_run": false,
+    "rust_passed": 237,
+    "panel_passed": 154,
+    "panel_lines_percent": 95.21,
+    "panel_statements_percent": 91.94,
+    "host_controls_executed": false,
+    "host_service_changes": false,
+    "guest_acceptance_started": false
+  },
+  "tdd": {
+    "original_red": "4b4956e0cbaa6f9f9cbdb22d8f90e918d17c46dd",
+    "initial_implementation": "aa4727014ac92d60c35fbfe9dc5ad266a2413fc2",
+    "evidence_red": "7071c634b8dd243ea79d2809af833e008e469f19",
+    "evidence_fix": "1275cc9b70fde5c626590f892d0cc4a5bd48c0f1",
+    "guid_red": "3cb0761d0f88a0668861823324dbb896ccacca16",
+    "guid_fix": "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+    "guid_full_red": {
+      "expected_failures": 3,
+      "passed": 1417,
+      "skipped": 57,
+      "deselected": 4
+    },
+    "guid_full_green": {
+      "failed": 0,
+      "passed": 1420,
+      "skipped": 57,
+      "deselected": 4
+    }
+  },
+  "vm_baseline": {
+    "name": "OpenEMS-Win11-Lab",
+    "snapshot": "clean-preflight-before-controls",
+    "snapshot_uid": 1,
+    "windows": "Windows 11 Enterprise Evaluation 26300.9711",
+    "vmware_tools": 13344,
+    "preflight_timestamp": "2026-11-02T16:32:29.7805257Z",
+    "model": "VMware20,1",
+    "hypervisor_present": true,
+    "citool": true,
+    "configci": true,
+    "pending_reboot_at_baseline": false,
+    "openems_services_at_baseline": 0,
+    "catalog_guest_run_started": false
+  },
+  "artifact_directory": ".venv/catalog-acceptance-f15761c-2026-11-02",
+  "required_guest_checks": [
+    "absent",
+    "network",
+    "process",
+    "wdac",
+    "all_absent",
+    "hourly",
+    "release",
+    "cleanup"
+  ],
+  "next_steps": [
+    "Operator restores clean snapshot, mounts verified ISO and starts numbered elevated shortcut inside guest.",
+    "Observe at least 3600 real seconds with stable assignment and natural optional_checked_at progression.",
+    "Verify successful release ACK, normal MSI removal and absence of owned controls; independently evaluate report.",
+    "Run USB/legacy WDAC regression in separate restored snapshots; live server/fleet inventory integration remains separate."
+  ],
+  "limitations": [
+    "Guest acceptance has not started; prepared media and host tests are not Windows enforcement acceptance.",
+    "PostgreSQL/Redis live integration and full per-module coverage gates remain pending.",
+    "The first shortcut was rejected by round-trip verification due to truncated arguments, preserved privately and never executed; current 1001-character command matches exported review text."
+  ]
+}

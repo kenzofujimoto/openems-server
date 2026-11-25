@@ -1,0 +1,159 @@
+{
+  "date": "2026-11-05",
+  "status": "prepared_clean_guest_acceptance_pending",
+  "passed": false,
+  "source_revision": "b6d4be52550c59ad7c5e8083bca193229212aa28",
+  "run_id": "a6c27d86de834dbb85cafe8388c82d70",
+  "evidence_format": 2,
+  "branch": "feature/catalog-vm-acceptance",
+  "package_manifest_sha256": "30c0c6b47ad0c173adb3f786f147506175f713db384678fc2be101ba95bce9dc",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "d7379d69ecf5cbe8304db199d456557aeb97c456bafa5f88ba4b99a4d2502cd0",
+      "bytes": 8642560
+    },
+    "openems-agent-next.msi": {
+      "sha256": "0435e56ea9770c2c93fe907f1aaffef3c38060bfd4981c5fa09de9aa231920c1",
+      "bytes": 8642560
+    }
+  },
+  "release_agent": {
+    "bytes": 6061568,
+    "sha256": "f33dfd058170598fb59eb2f918fb572377d03dd3bb680e019e896f523207d42f"
+  },
+  "legacy_phase_files_verified": 20,
+  "msi_inspection": [
+    {
+      "file": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_present": false,
+      "sha256": "d7379d69ecf5cbe8304db199d456557aeb97c456bafa5f88ba4b99a4d2502cd0",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    },
+    {
+      "file": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_present": false,
+      "sha256": "0435e56ea9770c2c93fe907f1aaffef3c38060bfd4981c5fa09de9aa231920c1",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    }
+  ],
+  "iso": {
+    "path": "C:\\Users\\kenzo.fujimoto\\Documents\\OpenEMS-Lab\\OpenEMS-Catalog-b6d4be5-a6c27d86.iso",
+    "sha256": "663b0b737b59780016612eb9621af8a0fe367e0611d3f072c3f4cdcbf6d70def",
+    "bytes": 17430528,
+    "verification": {
+      "verified": true,
+      "source_revision": "b6d4be52550c59ad7c5e8083bca193229212aa28",
+      "run_id": "a6c27d86de834dbb85cafe8388c82d70",
+      "files_verified": 10,
+      "iso_sha256": "663b0b737b59780016612eb9621af8a0fe367e0611d3f072c3f4cdcbf6d70def",
+      "iso_bytes": 17430528,
+      "mounted_on_host": false,
+      "executables_executed": false
+    }
+  },
+  "shortcut": {
+    "file": "13 - Catalog acceptance as administrator.lnk",
+    "shortcut_verified": true,
+    "requires_elevation": true,
+    "argument_length": 1008,
+    "command_matches_review_text": true,
+    "parser_passed": true,
+    "guest_execution_started": false,
+    "sha256": "53797eea0252f3c223515b2ee50d2c04d48fe90862d1ce4170743da6e7ff4030"
+  },
+  "scope": {
+    "synthetic_catalog": true,
+    "real_server_api": true,
+    "guest_transport": "powershell_fixture",
+    "real_server_network_e2e": false,
+    "inventory_source": "host-compiled owned fixture bytes; synthetic uploaded inventory",
+    "scope": "Real server API expansion and Windows service enforcement; no panel, live server network, PostgreSQL/Redis or fleet inventory acceptance."
+  },
+  "tdd": {
+    "red_commit": "3b42cb56f36aa1aab1a9efb5962556b70e3b0909",
+    "targeted_red_failed_expected": 63,
+    "targeted_red_passed": 6,
+    "full_red_failed_expected": 63,
+    "full_red_passed": 1460,
+    "full_red_seconds": 707.45,
+    "exact_red_failure_set_verified": true,
+    "same_test_set_full_red_green": true
+  },
+  "local_validation": {
+    "python_passed": 1523,
+    "python_failed": 0,
+    "python_skipped": 57,
+    "integral_control_cases_deselected": 4,
+    "python_seconds": 751.42,
+    "app_agent_statement_coverage_percent": 88.88,
+    "catalog_builder_statement_coverage_percent": 85.05494505494505,
+    "checks_passed": [
+      "full allowed Python suite",
+      "Ruff",
+      "pip check",
+      "PowerShell 5.1 parser",
+      "git diff --check"
+    ],
+    "host_service_changes": false,
+    "host_msi_installs": false,
+    "host_endpoint_controls": false,
+    "host_fixture_exes_executed": false,
+    "global_coverage_gates_fully_satisfied": false,
+    "live_pg_redis_tests_run": false
+  },
+  "prior_run": {
+    "run_id": "eb8486c4e5d940238c9ff17c3336f6d8",
+    "status": "failed",
+    "review": "validation/catalog-vm-5e71292-acceptance-review-2026-11-04.json",
+    "diagnostics_preserved": true,
+    "independent_cleanup_verified": true,
+    "firewall_and_enforcement_error_root_causes_identified": false
+  },
+  "guest_requirements": {
+    "snapshot": "clean-preflight-before-controls",
+    "snapshot_uid": 1,
+    "snapshot_restored_for_this_run": false,
+    "new_iso_connected": false,
+    "new_run_started": false,
+    "ack_seconds": 90,
+    "hourly_recheck_real_seconds": 3600,
+    "overall_timeout_seconds": 5400,
+    "manual_reason": "VMware CLI requests the encryption password before opening this VM for snapshot operations."
+  },
+  "log_receipts": {
+    "full-red.log": {
+      "bytes": 130291,
+      "sha256": "06d754dd11a38c374ad726126862c7a37607d8e3ea1281b320e483a01ee8f78b"
+    },
+    "full-red.junit.xml": {
+      "bytes": 367200,
+      "sha256": "292f9a6e8493343e9f132129b3154e95ae73d1a74716276fe57f69e506c7b775"
+    },
+    "full-green.log": {
+      "bytes": 8308,
+      "sha256": "bc4d5c562fec1a986ffe03a552e85edf3104af3a7ee4893dbd2c2335e23fc8ae"
+    },
+    "full-green.junit.xml": {
+      "bytes": 243593,
+      "sha256": "336a24b5dd2b3b5e0dc880c9296e2ce467d8765cd37568904155e9cfeb06664a"
+    },
+    "coverage-green.json": {
+      "bytes": 419178,
+      "sha256": "d5d5364a22fbc6cdfa9fcf2199d1646c4b2b53555eb9a78a1f3b5601bdb3702a"
+    },
+    "package-build.log": {
+      "bytes": 1170,
+      "sha256": "5c707af21bc239b95918d616907bcb03529a34dc12cb1f124ab9f2b0588aac3b"
+    },
+    "catalog-build.log": {
+      "bytes": 480,
+      "sha256": "b95fe36c70bf7fa7dff59abd4540a2dde6f7e3ea2b914078e123808c7fac698a"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "phase": "session",
+  "run_id": "e87ff4fad58446eaa9f73acebf790f27",
+  "harness_source_revision": "3a080964ec63ff4ea199603f035af01e68321cd4",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+      "bytes": 8667136
+    },
+    "openems-agent-next.msi": {
+      "sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+      "bytes": 8667136
+    }
+  },
+  "checks_passed": 8,
+  "reports": [
+    {
+      "path": "validation/windows-session-phase1-ec50572-2026-11-09.json",
+      "bytes": 1773,
+      "sha256": "e2b7943cb4cd718fa7ee937ddbb3b53b068b6497c48ded1eb392804fa3d853fb"
+    },
+    {
+      "path": "validation/windows-session-result-ec50572-2026-11-09.json",
+      "bytes": 1586,
+      "sha256": "8b21fa026770b31e16a0913ceee298e4abb474bc1364d96d9b0d97513e10b713"
+    }
+  ],
+  "input_manifest": {
+    "path": ".venv/windows-release-ec50572-20261108/session-input/acceptance-manifest.json",
+    "bytes": 1314,
+    "sha256": "63b7124a905a389398a82a1f8d866fd23cf802fe6fc2012ed4a884f7f6c95810"
+  },
+  "supervisor": {
+    "path": ".venv/windows-release-ec50572-20261108/session-RUN-STATE.json",
+    "bytes": 2677,
+    "sha256": "e7c4a4e11f32247fcfdc088c934000df292db1ff77494f726505fc11daa3d601"
+  },
+  "archive_receipt": {
+    "path": ".venv/windows-release-ec50572-20261108/session-preserved-results/RECEIPT.json",
+    "bytes": 2302,
+    "sha256": "ab453a13d2ba47639a038830cbb303e866011e947b2d1da7a47d69240766da6d"
+  },
+  "before": {
+    "agent_service_absent": true,
+    "interactive_sessions": 1,
+    "owned_roots": 0,
+    "hosts_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085",
+    "at_utc": "2026-11-09T20:04:41.6866128Z",
+    "boot_utc": "2026-11-09T20:03:58.9518090Z",
+    "agent_processes": 0,
+    "phase_marker_present": false,
+    "owned_tasks": 0,
+    "session_processes": 0
+  },
+  "after": {
+    "agent_service_absent": true,
+    "interactive_sessions": 1,
+    "owned_roots": 0,
+    "hosts_sha256": "2d6bdfb341be3a6234b24742377f93aa7c7cfb0d9fd64efa9282c87852e57085",
+    "at_utc": "2026-11-09T20:11:54.5990737Z",
+    "boot_utc": "2026-11-09T20:10:07.6006590Z",
+    "agent_processes": 0,
+    "phase_marker_present": true,
+    "owned_tasks": 0,
+    "session_processes": 0
+  },
+  "real_reboot_evidence": {
+    "agent_service_absent": false,
+    "interactive_sessions": 1,
+    "owned_roots": 0,
+    "hosts_sha256": "7a010a344a48feab86784f7324d761a4073393eade8e942499e970b55fc29e5d",
+    "at_utc": "2026-11-09T20:10:34.1118113Z",
+    "boot_utc": "2026-11-09T20:10:07.6006590Z",
+    "agent_processes": 1,
+    "phase_marker_present": true,
+    "owned_tasks": 1,
+    "session_processes": 1
+  },
+  "host_endpoint_controls_executed": false,
+  "guest_stopped_after_cleanup_verification": true,
+  "limitations": [
+    "This acceptance applies only to the frozen candidate package pair and the named scenario.",
+    "It does not replace pending application, browser or other-platform acceptance."
+  ]
+}

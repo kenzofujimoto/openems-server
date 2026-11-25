@@ -1,0 +1,117 @@
+﻿{
+    "run_id":  "385b1eb0f9304a6ebb308e0620215c6f",
+    "source_revision":  "d87d0591f55c77e7c222db82e4b2b812e9866681",
+    "status":  "failed",
+    "passed":  false,
+    "error":  "The service did not successfully apply and ACK this exact catalog assignment within 90 seconds.",
+    "cleanup_errors":  [
+
+                       ],
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "own_policy_present":  false,
+                                        "assignment":  {
+                                                           "version":  2,
+                                                           "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                                                       },
+                                        "ack":  {
+                                                    "version":  2,
+                                                    "success":  true,
+                                                    "digest":  "3cbdf25dc19db089819a03153ac13a3d2ebc84d8e651941e9a8e3f7fff280cc1"
+                                                }
+                                    },
+                       "name":  "absent",
+                       "at_utc":  "2026-11-03T19:03:05.1379221Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "control_has_rule":  false,
+                                        "firewall_paths":  [
+                                                               "C:\\openems-catalog-385b1eb0f9304a6ebb308e0620215c6f\\openems-catalog-a.exe",
+                                                               "C:\\openems-catalog-385b1eb0f9304a6ebb308e0620215c6f\\openems-catalog-a.exe"
+                                                           ],
+                                        "before":  {
+                                                       "control_exit":  0,
+                                                       "target_exit":  0
+                                                   },
+                                        "released":  {
+                                                         "control_exit":  0,
+                                                         "target_exit":  0
+                                                     },
+                                        "blocked":  {
+                                                        "target_process_created":  true,
+                                                        "control_exit":  0,
+                                                        "target_exit":  42
+                                                    }
+                                    },
+                       "name":  "network",
+                       "at_utc":  "2026-11-03T19:05:08.3514638Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "foreign_after":  [
+                                                              "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                              "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                              "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                              "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                              "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                              "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                              "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                              "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                          ],
+                                        "foreign_before":  [
+                                                               "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                               "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                               "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                               "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                               "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                               "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                               "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                               "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                               "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                               "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                               "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                               "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                               "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                               "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                           ],
+                                        "nrpt_count":  0,
+                                        "service_present":  false,
+                                        "owned_firewall_rules":  0,
+                                        "msi_exit":  0,
+                                        "fixture_registry_present":  false,
+                                        "own_policy_present":  false,
+                                        "watchdog_present":  false
+                                    },
+                       "name":  "cleanup",
+                       "at_utc":  "2026-11-03T19:09:50.7392297Z"
+                   }
+               ],
+    "started_utc":  "2026-11-03T19:01:34.3141632Z",
+    "finished_utc":  "2026-11-03T19:09:50.7570247Z",
+    "scope":  "real host catalog API expansion; local fixture transport; installed Windows service",
+    "package_receipt":  {
+                            "manifest_sha256":  "df11d5db1fabc1934c4465cf153b352eadf532f3b9092fa6db5db6587eb812cb",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "2d2c4eaf3af490f87355686c134506e59f3b971bb458ed60d22002bac440e88f",
+                                                                       "bytes":  8642560
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "7bb9e736efabc72ddb07fa382fd365f5e581d978b65afb543ecd557df25e0422",
+                                                                            "bytes":  8642560
+                                                                        }
+                                         },
+                            "source_revision":  "d87d0591f55c77e7c222db82e4b2b812e9866681"
+                        }
+}

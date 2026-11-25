@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-17",
+  "run": "a8cdb690",
+  "environment": "Windows Sandbox",
+  "guest_memory_mib": 3072,
+  "status": "six_navigations_passed_strict_root_comparison_failed",
+  "native_package_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "msi_provenance_sha256": {
+    "production": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+    "next": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112"
+  },
+  "agent_sha256": "51de0a4ef1436fc5d7013533e57ad77cbaf254a0ff2e2ea200d4b1ab1f5f358f",
+  "agent_execution": "production_msi_executable_payload_with_loopback_policy_fixture",
+  "msi_install_or_removal_in_this_run": false,
+  "input_manifest": {
+    "sha256": "ddd918ebb59a1fc4ac57b5299b37f9d65de39d0eee554caee63ea36fa6e6156b",
+    "bytes": 58404
+  },
+  "input_files_verified": 356,
+  "interactive_session_verified_and_same_for_all_snapshots": true,
+  "preparation_per_browser_limit_seconds": 180,
+  "browser_acceptance_deadlines_changed": false,
+  "browser_cases": {
+    "chrome": {
+      "passed": true,
+      "cases": 3,
+      "exit_code": 0,
+      "normal_tls": true,
+      "started_at": "2026-11-17T15:40:09.865Z",
+      "finished_at": "2026-11-17T15:41:43.153Z",
+      "preparation_elapsed_ms": 23926,
+      "result_sha256": "6b941f4fba2c45c443b7880e7efbc977951ba598061dccbaf8f3e6c06a571e26"
+    },
+    "firefox": {
+      "passed": true,
+      "cases": 3,
+      "exit_code": 0,
+      "normal_tls": true,
+      "started_at": "2026-11-17T15:42:11.852Z",
+      "finished_at": "2026-11-17T15:43:40.182Z",
+      "preparation_elapsed_ms": 14610,
+      "result_sha256": "e9a2fb11dc717e6c66b99ed84c0a163f4268d3e3944a8189b3d56667223627c9"
+    }
+  },
+  "trust_checkpoints": [
+    {
+      "phase": "baseline",
+      "at_utc": "2026-11-17T15:39:36.0590637Z",
+      "stores": {
+        "LocalMachine": {
+          "roots": 20,
+          "added": [],
+          "removed": [],
+          "owned_roots": []
+        },
+        "CurrentUser": {
+          "roots": 20,
+          "added": [],
+          "removed": [],
+          "owned_roots": []
+        }
+      }
+    },
+    {
+      "phase": "ready",
+      "at_utc": "2026-11-17T15:40:00.3768448Z",
+      "stores": {
+        "LocalMachine": {
+          "roots": 21,
+          "added": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        },
+        "CurrentUser": {
+          "roots": 21,
+          "added": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        }
+      }
+    },
+    {
+      "phase": "after_chrome",
+      "at_utc": "2026-11-17T15:42:01.3906419Z",
+      "stores": {
+        "LocalMachine": {
+          "roots": 21,
+          "added": [],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        },
+        "CurrentUser": {
+          "roots": 21,
+          "added": [],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        }
+      }
+    },
+    {
+      "phase": "after_firefox",
+      "at_utc": "2026-11-17T15:43:46.2469393Z",
+      "stores": {
+        "LocalMachine": {
+          "roots": 23,
+          "added": [
+            "B1BC968BD4F49D622AA89A81F2150152A41D829C",
+            "DF717EAA4AD94EC9558499602D48DE5FBCF03A25"
+          ],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        },
+        "CurrentUser": {
+          "roots": 23,
+          "added": [
+            "B1BC968BD4F49D622AA89A81F2150152A41D829C",
+            "DF717EAA4AD94EC9558499602D48DE5FBCF03A25"
+          ],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        }
+      }
+    },
+    {
+      "phase": "before_removal",
+      "at_utc": "2026-11-17T15:43:52.1727763Z",
+      "stores": {
+        "LocalMachine": {
+          "roots": 23,
+          "added": [],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        },
+        "CurrentUser": {
+          "roots": 23,
+          "added": [],
+          "removed": [],
+          "owned_roots": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ]
+        }
+      }
+    },
+    {
+      "phase": "after_removal",
+      "at_utc": "2026-11-17T15:44:02.1068194Z",
+      "stores": {
+        "LocalMachine": {
+          "roots": 22,
+          "added": [],
+          "removed": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ],
+          "owned_roots": []
+        },
+        "CurrentUser": {
+          "roots": 22,
+          "added": [],
+          "removed": [
+            "5AE70DC501C77ED33DB02532BDB03F065F6FF3D1"
+          ],
+          "owned_roots": []
+        }
+      }
+    }
+  ],
+  "final_roots": {
+    "strict_comparison_passed": false,
+    "same_diff_in_both_store_views": true,
+    "added_since_baseline": [
+      {
+        "thumbprint": "B1BC968BD4F49D622AA89A81F2150152A41D829C",
+        "subject": "CN=GlobalSign Root CA, OU=Root CA, O=GlobalSign nv-sa, C=BE"
+      },
+      {
+        "thumbprint": "DF717EAA4AD94EC9558499602D48DE5FBCF03A25",
+        "subject": "CN=IdenTrust Commercial Root CA 1, O=IdenTrust, C=US"
+      }
+    ],
+    "removed_since_baseline": [],
+    "owned_root_present": false,
+    "exact_match_to_attempt_6_additions": true,
+    "first_observed_interval": {
+      "after": "after_chrome",
+      "by": "after_firefox"
+    },
+    "adding_process_identified": false
+  },
+  "cleanup": {
+    "owned_root_removed": true,
+    "agent_processes": 0,
+    "browser_processes": 0,
+    "listeners": 0,
+    "hosts_preserved": true,
+    "guest_stopped": true,
+    "docker_container_states_restored": 29
+  },
+  "complete_original_results_receipt_sha256": "65553aeeb35c17a68b4839382e714dd4efa5324ab8c30d3896c5c7856aa4fd6e",
+  "original_artifacts": 42,
+  "evidence_sha256": {
+    "trust-timeline.json": "8513ce0e4eb12a3c65eb585dc264ec8a40bc92e94527676e7b4ef577622846c7",
+    "trust-before.json": "1f5b39a48ee1233fc59afdce67923c8c3ced4ca094f7edef40966dd54bc69a16",
+    "trust-after.json": "5c7268c325c131c48d58163c9331f3bdeef81b9ea41ff76554df276b757c265f",
+    "guest-result.json": "44a356cf14a0ab18c4b80f24b076149cfb2d8a412a6d5eae6f28733f5260200e",
+    "cleanup-diagnostics.json": "bb41d92a33341c9a1577c1cac209b67ba60a0eae67b12e639a9ec5a7813076c4"
+  }
+}

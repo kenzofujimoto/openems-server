@@ -1,0 +1,433 @@
+{
+  "source_revision": "06c4ccf9b5f78da87b90c3d12068176a69942349",
+  "run_id": "c9f2efe63fbb4daaba277816206549c2",
+  "passed": false,
+  "guest_status": "failed",
+  "started_utc": "2026-11-06T12:06:50.6567686Z",
+  "finished_utc": "2026-11-06T13:15:50.4665035Z",
+  "original_report": {
+    "sha256": "3a8c01b1142704d7b8f12624f3efd6bb542f1d7237da721956bfad6e5d071c4a",
+    "bytes": 901525
+  },
+  "shared_source": "catalog-result-recovered-c9f2efe6.json",
+  "host_semantic_verification": {
+    "passed": false,
+    "errors": [
+      "an unrelated firewall rule changed"
+    ],
+    "local_enforcement_failures": [
+      {
+        "at_utc": "2026-11-06T12:23:14.4765956Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+      },
+      {
+        "at_utc": "2026-11-06T12:23:57.0290813Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+      },
+      {
+        "at_utc": "2026-11-06T12:33:12.9644938Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+      },
+      {
+        "at_utc": "2026-11-06T12:37:33.5634413Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+      },
+      {
+        "at_utc": "2026-11-06T12:59:25.8511517Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+      },
+      {
+        "at_utc": "2026-11-06T13:00:04.3142627Z",
+        "error_kind": "OSError",
+        "version": 6,
+        "success": false,
+        "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+      },
+      {
+        "at_utc": "2026-11-06T13:12:19.9019602Z",
+        "error_kind": "LocalError",
+        "version": 6,
+        "success": false,
+        "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+      }
+    ]
+  },
+  "package_receipt": {
+    "manifest_sha256": "32ab3b06df997d71a2aa014cd7c52b59ba471c50c8b41363500faf12721b49f5",
+    "packages": {
+      "openems-agent.msi": {
+        "sha256": "a027b49e926bd1c8f077d3e50d240b5cc133dc79d5090bb6a0378b481f30a3d9",
+        "bytes": 8663040
+      },
+      "openems-agent-next.msi": {
+        "sha256": "792271f68196a146c3896f5731961a79f759db249940979f473530321bda0632",
+        "bytes": 8663040
+      }
+    },
+    "source_revision": "06c4ccf9b5f78da87b90c3d12068176a69942349"
+  },
+  "snapshot": {
+    "name": "clean-preflight-before-controls",
+    "uid": 1,
+    "restore_at_utc": "2026-11-06T11:55:02.197Z",
+    "iso_connected_at_utc": "2026-11-06T12:04:25.579Z"
+  },
+  "checks": [
+    {
+      "name": "absent",
+      "status": "passed"
+    },
+    {
+      "name": "network",
+      "status": "passed"
+    },
+    {
+      "name": "process",
+      "status": "passed"
+    },
+    {
+      "name": "wdac",
+      "status": "passed"
+    },
+    {
+      "name": "all_absent",
+      "status": "passed"
+    },
+    {
+      "name": "hourly",
+      "status": "passed"
+    },
+    {
+      "name": "release",
+      "status": "passed"
+    },
+    {
+      "name": "cleanup",
+      "status": "failed"
+    }
+  ],
+  "verified_effects": [
+    "absent",
+    "network",
+    "process",
+    "wdac",
+    "all_absent",
+    "hourly",
+    "release"
+  ],
+  "effect_errors": {},
+  "owned_cleanup_verified": true,
+  "owned_cleanup_error": null,
+  "owned_cleanup": {
+    "msi_exit": 0,
+    "service_present": false,
+    "watchdog_present": false,
+    "nrpt_count": 0,
+    "owned_firewall_rules": 0,
+    "own_policy_present": false,
+    "fixture_registry_present": false,
+    "collection_status": "complete",
+    "collection_errors": []
+  },
+  "foreign_ci_count_before": 14,
+  "foreign_ci_count_after": 14,
+  "foreign_ci_preserved": true,
+  "cleanup_errors": [
+    "An unrelated firewall rule changed or its snapshot is incomplete."
+  ],
+  "guest_error": null,
+  "firewall": {
+    "preserved": false,
+    "before_utc": "2026-11-06T12:06:52.8649705Z",
+    "after_utc": "2026-11-06T13:15:42.5146270Z",
+    "rules_before": 482,
+    "rules_after": 486,
+    "differences_verified": true,
+    "differences": [
+      {
+        "name": "Microsoft.BingWeather_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.BingWeather_8wekyb3d8bbwe<lab-user-sid>-Out-Allow-AllCapabilities",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsCamera_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsFeedbackHub_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "missing",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsStore_8wekyb3d8bbwe<lab-user-sid>-In-Allow-ServerCapability",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      },
+      {
+        "name": "Microsoft.WindowsStore_8wekyb3d8bbwe<lab-user-sid>-Out-Allow-AllCapabilities",
+        "kind": "added",
+        "fields": [],
+        "count": 1
+      }
+    ]
+  },
+  "hourly": {
+    "monotonic_elapsed_seconds": 3618.2169386,
+    "utc_elapsed_seconds": 3618.817647,
+    "optional_checked_at_delta_seconds": 3614,
+    "assignment_observation_count": 63,
+    "assignment_versions": [
+      6
+    ],
+    "before_admission": {
+      "process_created": true,
+      "native_error": 0
+    },
+    "after_denial": {
+      "native_error": 4551,
+      "process_created": false
+    }
+  },
+  "ack_failure_categories": {
+    "OSError": 6,
+    "LocalError": 1
+  },
+  "diagnostics": {
+    "status": "complete",
+    "sha256": "7649e9f38be690f4d2e92353d0c275a3a77415d8f56ef08da254487e69584aaf",
+    "bytes": 6707,
+    "guest_report_matches_shared_bytes": true,
+    "log_count": 1,
+    "observation_count": 9,
+    "stage_counts": {
+      "endpoint_state": 7,
+      "control_response": 2,
+      "app_execution_events": 2,
+      "app_reconcile": 2
+    },
+    "ack_correlations": [
+      {
+        "ack": {
+          "at_utc": "2026-11-06T12:23:14.4765956Z",
+          "error_kind": "OSError",
+          "version": 6,
+          "success": false,
+          "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+        },
+        "diagnostic": {
+          "utc": "2026-11-06T12:23:13.0000000+00:00",
+          "version": 6,
+          "stages": [
+            {
+              "os_code": 5,
+              "stage": "endpoint_state"
+            }
+          ],
+          "category": "OSError"
+        },
+        "ack_delay_seconds": 1.476595
+      },
+      {
+        "ack": {
+          "at_utc": "2026-11-06T12:23:57.0290813Z",
+          "error_kind": "OSError",
+          "version": 6,
+          "success": false,
+          "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+        },
+        "diagnostic": {
+          "utc": "2026-11-06T12:23:53.0000000+00:00",
+          "version": 6,
+          "stages": [
+            {
+              "os_code": 5,
+              "stage": "endpoint_state"
+            }
+          ],
+          "category": "OSError"
+        },
+        "ack_delay_seconds": 4.029081
+      },
+      {
+        "ack": {
+          "at_utc": "2026-11-06T12:33:12.9644938Z",
+          "error_kind": "OSError",
+          "version": 6,
+          "success": false,
+          "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+        },
+        "diagnostic": {
+          "utc": "2026-11-06T12:33:06.0000000+00:00",
+          "version": 6,
+          "stages": [
+            {
+              "os_code": 5,
+              "stage": "endpoint_state"
+            }
+          ],
+          "category": "OSError"
+        },
+        "ack_delay_seconds": 6.964493
+      },
+      {
+        "ack": {
+          "at_utc": "2026-11-06T12:37:33.5634413Z",
+          "error_kind": "OSError",
+          "version": 6,
+          "success": false,
+          "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+        },
+        "diagnostic": {
+          "utc": "2026-11-06T12:37:25.0000000+00:00",
+          "version": 6,
+          "stages": [
+            {
+              "os_code": 5,
+              "stage": "endpoint_state"
+            }
+          ],
+          "category": "OSError"
+        },
+        "ack_delay_seconds": 8.563441
+      },
+      {
+        "ack": {
+          "at_utc": "2026-11-06T12:59:25.8511517Z",
+          "error_kind": "OSError",
+          "version": 6,
+          "success": false,
+          "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+        },
+        "diagnostic": {
+          "utc": "2026-11-06T12:59:11.0000000+00:00",
+          "version": 6,
+          "stages": [
+            {
+              "os_code": 5,
+              "stage": "endpoint_state"
+            }
+          ],
+          "category": "OSError"
+        },
+        "ack_delay_seconds": 14.851151
+      },
+      {
+        "ack": {
+          "at_utc": "2026-11-06T13:00:04.3142627Z",
+          "error_kind": "OSError",
+          "version": 6,
+          "success": false,
+          "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+        },
+        "diagnostic": {
+          "utc": "2026-11-06T12:59:57.0000000+00:00",
+          "version": 6,
+          "stages": [
+            {
+              "os_code": 5,
+              "stage": "endpoint_state"
+            }
+          ],
+          "category": "OSError"
+        },
+        "ack_delay_seconds": 7.314262
+      }
+    ],
+    "unmatched_acks": [
+      {
+        "ack": {
+          "at_utc": "2026-11-06T13:12:19.9019602Z",
+          "error_kind": "LocalError",
+          "version": 6,
+          "success": false,
+          "digest": "cf8361a6380a7ec0a6dcb6898dcdbee767287bb34b981251cc5aa002adb92602"
+        },
+        "candidate_count": 2
+      }
+    ],
+    "unmatched_diagnostics": [
+      {
+        "utc": "2026-11-06T12:18:47.0000000+00:00",
+        "version": 6,
+        "stages": [
+          {
+            "os_code": 5,
+            "stage": "endpoint_state"
+          }
+        ],
+        "category": "OSError"
+      },
+      {
+        "utc": "2026-11-06T13:12:09.0000000+00:00",
+        "version": 6,
+        "stages": [
+          {
+            "os_code": null,
+            "stage": "control_response"
+          },
+          {
+            "os_code": null,
+            "stage": "app_execution_events"
+          },
+          {
+            "os_code": null,
+            "stage": "app_reconcile"
+          }
+        ],
+        "category": "LocalError"
+      },
+      {
+        "utc": "2026-11-06T13:12:19.0000000+00:00",
+        "version": 6,
+        "stages": [
+          {
+            "os_code": null,
+            "stage": "control_response"
+          },
+          {
+            "os_code": null,
+            "stage": "app_execution_events"
+          },
+          {
+            "os_code": null,
+            "stage": "app_reconcile"
+          }
+        ],
+        "category": "LocalError"
+      }
+    ],
+    "correlation_method": "Same assignment version and error category, within -1 to 20 seconds, with unique matching on both sides."
+  },
+  "export_recovery": {
+    "last_original_shared_progress_seconds": 480,
+    "parent_error": "ItemExistsUnauthorizedAccessError",
+    "worker_observed_running_after_parent_error": true,
+    "recovered_without_restarting_worker": true
+  }
+}

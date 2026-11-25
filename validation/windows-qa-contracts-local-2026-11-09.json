@@ -1,0 +1,199 @@
+{
+  "status": "local_validation_passed_guest_and_hosted_acceptance_pending",
+  "approvals": [
+    "inventory-ci-budget-plan.md",
+    "browser-qa-contract-plan.md",
+    "applications-probe-observability-plan.md"
+  ],
+  "red_commits": {
+    "inventory": "6949b01",
+    "browser": "5c888ab",
+    "probes": "9ab9e69"
+  },
+  "inventory_fix_commit": "9a9f29056e97fd6695ef37711539686a6d93d9e3",
+  "attempts": {
+    "inventory-focused-red.xml": {
+      "tests": 3,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 1,
+      "seconds": 0.61,
+      "record": {
+        "sha256": "19701aa435a1fb8aebe61fa1f09ad5b1d1a03c442545ec5690fb4ce2b9698593",
+        "bytes": 5133
+      },
+      "path": ".venv/windows-ci-remediation/inventory-focused-red.xml"
+    },
+    "inventory-full-red.xml": {
+      "tests": 1692,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1633,
+      "seconds": 826.357,
+      "record": {
+        "sha256": "56087eec7d68d8a5776b3fcf36d54f9e47ce28a446dfb4b079cb5baa665c31a9",
+        "bytes": 266759
+      },
+      "path": ".venv/windows-ci-remediation/inventory-full-red.xml",
+      "actual_inventory": {
+        "passed": true,
+        "properties": {}
+      }
+    },
+    "inventory-focused-green.xml": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 3,
+      "seconds": 0.155,
+      "record": {
+        "sha256": "03fe9a8d5ce9f7ff39e84112d246790f681d091f7c78f1b987e4e949afc5e338",
+        "bytes": 652
+      },
+      "path": ".venv/windows-ci-remediation/inventory-focused-green.xml"
+    },
+    "qa-focused-red.xml": {
+      "tests": 19,
+      "failures": 19,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 0,
+      "seconds": 10.502,
+      "record": {
+        "sha256": "2e3899f01b6e6d474ca67c8071b18415a361d9721a5602ff4f7f20396bfb9ac9",
+        "bytes": 59247
+      },
+      "path": ".venv/windows-ci-remediation/qa-focused-red.xml"
+    },
+    "qa-full-red.xml": {
+      "tests": 1712,
+      "failures": 19,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1636,
+      "seconds": 805.073,
+      "record": {
+        "sha256": "8cd5e4b282beff1e1a28ac66e44e48d3900fb57b7aa93323002b8c5343ecb601",
+        "bytes": 321615
+      },
+      "path": ".venv/windows-ci-remediation/qa-full-red.xml",
+      "actual_inventory": {
+        "passed": true,
+        "properties": {
+          "native_inventory_elapsed_seconds": "44.774",
+          "native_inventory_timeout_seconds": "1260"
+        }
+      }
+    },
+    "qa-focused-green.xml": {
+      "tests": 19,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 15,
+      "seconds": 16.839,
+      "record": {
+        "sha256": "4ea89eae0212362987e297e9e9da77ae78dc859368027a7784bb83a46b9a0024",
+        "bytes": 45930
+      },
+      "path": ".venv/windows-ci-remediation/qa-focused-green.xml"
+    },
+    "qa-focused-green-retry.xml": {
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 19,
+      "seconds": 15.401,
+      "record": {
+        "sha256": "e49bb2c2972bdc77baa7a76756ee15383d403861f3bf84843034dcdf3bc7265f",
+        "bytes": 6424
+      },
+      "path": ".venv/windows-ci-remediation/qa-focused-green-retry.xml"
+    },
+    "qa-full-green.xml": {
+      "tests": 1712,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 57,
+      "passed": 1655,
+      "seconds": 796.265,
+      "record": {
+        "sha256": "eb9c0e0fe938aa45eac626ba6ac82610540e596d1586ac3f17d3be98f627c1b0",
+        "bytes": 268792
+      },
+      "path": ".venv/windows-ci-remediation/qa-full-green.xml",
+      "actual_inventory": {
+        "passed": true,
+        "properties": {
+          "native_inventory_elapsed_seconds": "43.987",
+          "native_inventory_timeout_seconds": "1260"
+        }
+      }
+    }
+  },
+  "first_focused_green_failure": "PowerShell dynamic scope shadowed the callback evidence collection. Renaming the internal bookkeeping variable preserved the specifications; all19 focused cases then passed.",
+  "full_host_scope": {
+    "service_tests_enabled": false,
+    "legacy_destructive_cases_deselected": 4,
+    "playwright_cache": "task-specific; browser garbage collection disabled",
+    "limitations": "The57 existing host skips remain. Hosted no-skip/service gates and real disposable guests are independent requirements."
+  },
+  "source_files": {
+    "tests/test_native_controls.py": {
+      "sha256": "8a7774ad5ed4b2ffe9e1eb398b89c5a739f032fb30d4263942d8f70e55a56775",
+      "bytes": 5185
+    },
+    "tests/browser_acceptance_contract.test.mjs": {
+      "sha256": "304ce399165cf71942fa20ca1405e5734c8be127ca95681dad5ee5f75db17dab",
+      "bytes": 3733
+    },
+    "tests/test_browser_acceptance_contracts.py": {
+      "sha256": "84beef5daccabeac8b76d01cc79c14e0dd649d4454de5477517459342a0be215",
+      "bytes": 6086
+    },
+    "tests/test_controls_fixture_backend.py": {
+      "sha256": "df261e092806ae1362c4848c6f37967701cb25d8998c771aff34b0a1527999bf",
+      "bytes": 34379
+    },
+    "deploy/browser_acceptance_contract.mjs": {
+      "sha256": "a0f7c282b052b5541f0993843eeb6ff57cae09e32471a1fddd60b6d8ac96bfd3",
+      "bytes": 2693
+    },
+    "deploy/browser_acceptance_trust.ps1": {
+      "sha256": "81812a942bb6895f59918771b0869a27a3074cef320747ff140a3b4d1eb555b3",
+      "bytes": 2880
+    },
+    "deploy/test-controls-sandbox.ps1": {
+      "sha256": "826ffbff08c2f444e332612d705bc874f8bf7d48d27b2b293f7510bfe451374d",
+      "bytes": 56894
+    }
+  },
+  "host_endpoint_controls_executed": false,
+  "inventory_probe_read_only": true,
+  "unchanged_native_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "local_native_sha256": "51de0a4ef1436fc5d7013533e57ad77cbaf254a0ff2e2ea200d4b1ab1f5f358f",
+  "unchanged_deadlines": {
+    "short_commands_seconds": 90,
+    "ack_seconds": 90,
+    "enforcement_seconds": 120,
+    "fixture_wait_milliseconds": 15000,
+    "fixture_request_milliseconds": 8000,
+    "bidi_seconds": 45,
+    "browser_connection_exit_seconds": 15,
+    "browser_global_seconds": 180
+  },
+  "inventory_outer_budget_seconds": 1260,
+  "remaining": [
+    "Fresh hosted inventory and all CI workflows",
+    "Instrumented applications guest acceptance",
+    "Browser TLS rendering and exact trust cleanup guest acceptance",
+    "Current session/upgrade/reboot and locations",
+    "Broader current-package web-action/ordered-rule/SafeSearch/antibypass acceptance"
+  ],
+  "historical_guest_failures_reclassified": false,
+  "merge_or_release_performed": false
+}

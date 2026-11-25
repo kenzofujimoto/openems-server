@@ -1,0 +1,460 @@
+﻿{
+    "run_id":  "eb8486c4e5d940238c9ff17c3336f6d8",
+    "source_revision":  "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff",
+    "status":  "failed",
+    "passed":  false,
+    "error":  null,
+    "cleanup_errors":  [
+                           "An unrelated firewall rule changed."
+                       ],
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "own_policy_present":  false,
+                                        "assignment":  {
+                                                           "version":  2,
+                                                           "digest":  "3453ae22ed4d5fcfe80d658a7c335163513d533f99712e2982970682dd3ea39e"
+                                                       },
+                                        "ack":  {
+                                                    "version":  2,
+                                                    "success":  true,
+                                                    "digest":  "3453ae22ed4d5fcfe80d658a7c335163513d533f99712e2982970682dd3ea39e"
+                                                }
+                                    },
+                       "name":  "absent",
+                       "at_utc":  "2026-11-04T18:28:52.8653609Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "control_has_rule":  false,
+                                        "firewall_paths":  [
+                                                               "C:\\openems-catalog-eb8486c4e5d940238c9ff17c3336f6d8\\openems-catalog-a.exe",
+                                                               "C:\\openems-catalog-eb8486c4e5d940238c9ff17c3336f6d8\\openems-catalog-a.exe"
+                                                           ],
+                                        "before":  {
+                                                       "control_exit":  0,
+                                                       "target_exit":  0
+                                                   },
+                                        "released":  {
+                                                         "control_exit":  0,
+                                                         "target_exit":  0
+                                                     },
+                                        "blocked":  {
+                                                        "target_process_created":  true,
+                                                        "control_exit":  0,
+                                                        "target_exit":  42
+                                                    }
+                                    },
+                       "name":  "network",
+                       "at_utc":  "2026-11-04T18:33:49.3579620Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "control_pid":  9864,
+                                        "control_still_running":  true,
+                                        "target_exited":  true,
+                                        "target_pid":  2104,
+                                        "target_was_running":  true
+                                    },
+                       "name":  "process",
+                       "at_utc":  "2026-11-04T18:34:41.3490199Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "policy_enforced":  true,
+                                        "original":  {
+                                                         "alive_after_sentinel":  false,
+                                                         "native_error":  4551,
+                                                         "process_created":  false,
+                                                         "started":  false,
+                                                         "exit":  -1
+                                                     },
+                                        "renamed":  {
+                                                        "alive_after_sentinel":  false,
+                                                        "native_error":  4551,
+                                                        "process_created":  false,
+                                                        "started":  false,
+                                                        "exit":  -1
+                                                    }
+                                    },
+                       "name":  "wdac",
+                       "at_utc":  "2026-11-04T18:34:42.5894719Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "own_policy_present":  false,
+                                        "foreign_before":  [
+                                                               "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                               "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                               "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                               "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                               "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                               "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                               "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                               "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                               "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                               "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                               "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                               "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                               "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                               "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                           ],
+                                        "foreign_after":  [
+                                                              "0283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "0939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "1283ac0f-fff1-49ae-ada1-8a933130cad6",
+                                                              "1678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "1939ed82-bfd5-4d32-b58e-d31d3c49715a",
+                                                              "2678656c-05ef-481f-bc5b-ebd8c991502d",
+                                                              "5951a96a-e0b5-4d3d-8fb8-3e5b61030784",
+                                                              "5dac656c-21ad-4a02-ab49-649917162e70",
+                                                              "60fd87f8-4593-44a0-91b0-2e0da022f248",
+                                                              "784c4414-79f4-4c32-a6a5-f0fb42a51d0d",
+                                                              "82443e1e-8a39-4b4a-96a8-f40ddc00b9f3",
+                                                              "a072029f-588b-4b5e-b7f9-05aad67df687",
+                                                              "cdd5cb55-db68-4d71-aa38-3df2b6473a52",
+                                                              "d2bda982-ccf6-4344-ac5b-0b44427b6816"
+                                                          ],
+                                        "assignment":  {
+                                                           "version":  6,
+                                                           "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                       },
+                                        "ack":  {
+                                                    "version":  6,
+                                                    "success":  true,
+                                                    "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                }
+                                    },
+                       "name":  "all_absent",
+                       "at_utc":  "2026-11-04T18:35:23.3582418Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "elapsed_seconds":  3602.7953635,
+                                        "started_utc":  "2026-11-04T18:35:23.4016474Z",
+                                        "finished_utc":  "2026-11-04T19:35:26.3442666Z",
+                                        "before":  {
+                                                       "optional_checked_at":  1793817295,
+                                                       "version":  6,
+                                                       "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                   },
+                                        "after":  {
+                                                      "optional_checked_at":  1793820905,
+                                                      "version":  6,
+                                                      "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                  },
+                                        "assignment_observations":  [
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        },
+                                                                        {
+                                                                            "version":  6,
+                                                                            "digest":  "ebb6c1c849e0bfbddabd2b967fbe1f4efbdf88f75c25f35395785310bf1594a4"
+                                                                        }
+                                                                    ],
+                                        "before_admission":  {
+                                                                 "process_created":  true,
+                                                                 "native_error":  0
+                                                             },
+                                        "after_denial":  {
+                                                             "alive_after_sentinel":  false,
+                                                             "native_error":  4551,
+                                                             "process_created":  false,
+                                                             "started":  false,
+                                                             "exit":  -1
+                                                         }
+                                    },
+                       "name":  "hourly",
+                       "at_utc":  "2026-11-04T19:35:26.6456604Z"
+                   },
+                   {
+                       "status":  "passed",
+                       "evidence":  {
+                                        "assignment":  {
+                                                           "version":  7,
+                                                           "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                                                       },
+                                        "renamed_exit":  0,
+                                        "firewall_rule_count":  0,
+                                        "ack":  {
+                                                    "version":  7,
+                                                    "success":  true,
+                                                    "digest":  "f46acfa1c51825315451c7ddaef1fe83c83471d1d965ad076d6380bef195fd46"
+                                                },
+                                        "original_exit":  0,
+                                        "own_policy_present":  false
+                                    },
+                       "name":  "release",
+                       "at_utc":  "2026-11-04T19:35:58.1889740Z"
+                   }
+               ],
+    "started_utc":  "2026-11-04T18:26:45.8255262Z",
+    "finished_utc":  "2026-11-04T19:39:28.3143319Z",
+    "scope":  "real host catalog API expansion; local fixture transport; installed Windows service",
+    "package_receipt":  {
+                            "manifest_sha256":  "509e11816273cfef555f53002994193783074f461a8c08d55571c0b3b9e63ae3",
+                            "packages":  {
+                                             "openems-agent.msi":  {
+                                                                       "sha256":  "0da1a3c09fa573627d70e4e846f32817a432ef049370397d6a960619870301ad",
+                                                                       "bytes":  8642560
+                                                                   },
+                                             "openems-agent-next.msi":  {
+                                                                            "sha256":  "1f6b637bb5c791d5d109406dadbeeb58177c03c088297552cd54d5cf05b74af3",
+                                                                            "bytes":  8642560
+                                                                        }
+                                         },
+                            "source_revision":  "5e71292bfe7542fdbe9d5f0bdb7fc4555e5d03ff"
+                        },
+    "hourly_progress_seconds":  3601
+}

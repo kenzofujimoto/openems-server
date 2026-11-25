@@ -1,0 +1,191 @@
+{
+  "date": "2026-11-03",
+  "status": "prepared_guest_acceptance_pending",
+  "passed": false,
+  "source_revision": "d87d0591f55c77e7c222db82e4b2b812e9866681",
+  "branch": "feature/catalog-vm-acceptance",
+  "run_id": "385b1eb0f9304a6ebb308e0620215c6f",
+  "package_manifest_sha256": "df11d5db1fabc1934c4465cf153b352eadf532f3b9092fa6db5db6587eb812cb",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "2d2c4eaf3af490f87355686c134506e59f3b971bb458ed60d22002bac440e88f",
+      "bytes": 8642560
+    },
+    "openems-agent-next.msi": {
+      "sha256": "7bb9e736efabc72ddb07fa382fd365f5e581d978b65afb543ecd557df25e0422",
+      "bytes": 8642560
+    }
+  },
+  "release_agent": {
+    "sha256": "f9ac88cad7cdc7b15e97cc47b3e18fced30d7d840f917e7c8cb4e4012f67855c",
+    "bytes": 6061568
+  },
+  "msi_inspection": [
+    {
+      "file": "openems-agent.msi",
+      "product_version": "0.4.0",
+      "fault_injection_actions_present": false,
+      "sha256": "2d2c4eaf3af490f87355686c134506e59f3b971bb458ed60d22002bac440e88f",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    },
+    {
+      "file": "openems-agent-next.msi",
+      "product_version": "0.4.1",
+      "fault_injection_actions_present": false,
+      "sha256": "7bb9e736efabc72ddb07fa382fd365f5e581d978b65afb543ecd557df25e0422",
+      "bytes": 8642560,
+      "database_open_mode": "read_only",
+      "installed_on_host": false
+    }
+  ],
+  "iso": {
+    "path": "C:\\Users\\kenzo.fujimoto\\Documents\\OpenEMS-Lab\\OpenEMS-Catalog-d87d059-385b1eb0.iso",
+    "bytes": 17416192,
+    "sha256": "50891195124ab885c95e07ff1f20ea5b1146a3d211efbb757ae5cf2ef5476c87",
+    "verification": {
+      "verified": true,
+      "source_revision": "d87d0591f55c77e7c222db82e4b2b812e9866681",
+      "run_id": "385b1eb0f9304a6ebb308e0620215c6f",
+      "files_verified": 10,
+      "iso_sha256": "50891195124ab885c95e07ff1f20ea5b1146a3d211efbb757ae5cf2ef5476c87",
+      "iso_bytes": 17416192,
+      "mounted_on_host": false,
+      "executables_executed": false
+    }
+  },
+  "shortcut": {
+    "file": "04 - Catalog acceptance as administrator.lnk",
+    "shortcut_verified": true,
+    "requires_elevation": true,
+    "argument_length": 1008,
+    "command_matches_review_text": true,
+    "parser_passed": true,
+    "guest_execution_started": false,
+    "sha256": "0f97253e3ba13b02bf0554d29d08200205e75a542ae4c084af0ebbfeb70eb001"
+  },
+  "scope": {
+    "synthetic_catalog": true,
+    "real_server_api": true,
+    "guest_transport": "powershell_fixture",
+    "real_server_network_e2e": false,
+    "inventory_source": "host-compiled owned fixture bytes; synthetic uploaded inventory",
+    "scope": "Real server API expansion and Windows service enforcement; no panel, live server network, PostgreSQL/Redis or fleet inventory acceptance."
+  },
+  "legacy_phase_files_verified": 20,
+  "local_validation": {
+    "python_passed": 1451,
+    "python_skipped": 57,
+    "integral_control_cases_deselected": 4,
+    "rust_passed": 251,
+    "rust_failed": 0,
+    "panel_passed": 154,
+    "panel_lines_percent": 95.21,
+    "panel_statements_percent": 91.94,
+    "app_agent_statement_coverage_percent": 88.88,
+    "catalog_builder_statement_coverage_percent": 80.94,
+    "coverage_gates_fully_satisfied": false,
+    "postgres_redis_live_tests_run": false,
+    "checks_passed": [
+      "cargo fmt --check",
+      "cargo clippy --all-targets -- -D warnings",
+      "cargo test --no-fail-fast",
+      "cargo build --release",
+      "panel lint",
+      "panel typecheck",
+      "panel coverage tests",
+      "panel build",
+      "ruff",
+      "pip check",
+      "PowerShell parser",
+      "git diff --check"
+    ],
+    "host_controls_executed": false,
+    "host_service_changes": false,
+    "host_msi_installs": false,
+    "guest_acceptance_started": false
+  },
+  "tdd": {
+    "xml_red": "15d5fe0ca3db04c471613092ce104b9f9008a007",
+    "transport_red": "85f953cf8bfa7164676d574be6959b39a2b8cd9b",
+    "hvci_red": "e6867a2be3eb940e8e8fa7dada709099327b4e07",
+    "transport_fix": "a5c8c41",
+    "xml_fix": "4d35f7d"
+  },
+  "log_receipts": {
+    "python-final-green.log": {
+      "sha256": "acf177c43d30749b316da9c0f0e8a7d10f39f4641bb23ba7d9002e1639590358",
+      "bytes": 8161
+    },
+    "python-final-green.junit.xml": {
+      "sha256": "db1f3df63bcda355fb404a18cc7f020df3f1a123e082cb41e66b9e9ac7970356",
+      "bytes": 231631
+    },
+    "native-final-green.log": {
+      "sha256": "cddd5506f5c646ed1e8d9c9181e5dfbb3f4d1ee4aee4be011804ca28f2499603",
+      "bytes": 25813
+    },
+    "panel-final-tests.log": {
+      "sha256": "325959d4c0dcff3f037c011d1737ce001bf1da8dfaaf22ab28e8835d49bcdda0",
+      "bytes": 9179
+    },
+    "clippy-final.log": {
+      "sha256": "abee7237be68b5c3f863a7210056759e6c10c496f88c0d55766dff049df52198",
+      "bytes": 183
+    },
+    "release-final.log": {
+      "sha256": "1d65e094ed63ddb659f441d75e238d4f832fb887973c444d5de19f1aeef985fa",
+      "bytes": 173
+    },
+    "coverage-final.json": {
+      "sha256": "5a77fa4fff121d399e9886d860c8446e628d83e066d5daec9fbb92e39952555b",
+      "bytes": 415699
+    }
+  },
+  "implementation": {
+    "strict_original_guard_unchanged": true,
+    "normalizer": "Strict equivalent hash multisets across scenarios 12 and 131; reject unknown structure and HVCI values; prune only duplicated kernel rules, then run original validator.",
+    "transport": "Compiled trusted script in private pinned UTF-8 BOM file; request JSON only stdin; explicit child stop/join and handle-bound cleanup.",
+    "test_only_maintenance": "application_control.rs launcher uses same trusted fixture by -File/BOM; path assertions preserved."
+  },
+  "prior_run": {
+    "source_revision": "f15761c6671f95e0696fe8f0fd73a0a7558eacc5",
+    "run_id": "e667c411feb14967bcb4b5fa85d0354a",
+    "status": "failed",
+    "release_ack_verified": true,
+    "normal_msi_removal_exit": 0,
+    "independent_cleanup_verified": true,
+    "foreign_ci_policy_ids_preserved": 14,
+    "evidence_preserved": true
+  },
+  "guest_requirements": {
+    "snapshot_restored": true,
+    "guest_resumed_to_desktop": true,
+    "new_iso_connected": false,
+    "guest_run_started": false,
+    "snapshot": "clean-preflight-before-controls",
+    "snapshot_uid": 1,
+    "ack_seconds": 90,
+    "hourly_recheck_real_seconds": 3600,
+    "overall_timeout_seconds": 5400,
+    "required": [
+      "app absent",
+      "network block and release",
+      "present assignment ACK",
+      "process termination",
+      "native WDAC denial original and renamed",
+      "removal when all rules absent",
+      "real hourly recheck with stable assignment",
+      "release ACK and normal MSI removal",
+      "cleanup and foreign CI preservation"
+    ]
+  },
+  "limitations": [
+    "Preparation is not guest acceptance.",
+    "No live server network, panel, PostgreSQL/Redis or fleet republication acceptance.",
+    "Global per-module coverage gates remain pending.",
+    "Separate physical USB regression remains pending.",
+    "No push, PR, merge or deployment."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "current_script_utf16_units": 31523,
+  "current_serialized_command_utf16_units_including_null": 31658,
+  "windows_documented_command_limit": 32767,
+  "remaining_units": 1109,
+  "inert_oversized_comment_probe": {
+    "spawned": false,
+    "error_type": "FileNotFoundError",
+    "winerror": 206
+  },
+  "no_actual_adapter_or_controls_executed": true,
+  "source_not_changed": true,
+  "working_tree_crlf_lines": 461,
+  "lf_normalized_script_utf16_units": 31062,
+  "date": "2026-11-03",
+  "native_source": "agent-rs/src/windows_control.rs",
+  "plan": "docs/wdac-dual-scenario-hash-plan.md",
+  "expanded_scope_approved": false
+}

@@ -2,25 +2,45 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 import hashlib
 import json
 import os
 import subprocess
 from pathlib import Path
+import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape, quoteattr
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 MOCKS = ROOT / "tests" / "fixtures" / "windows_controls_mocks.ps1"
+DUAL_SCENARIO_XML = ROOT / "tests/fixtures/wdac-dual-scenario-hash.xml"
+CI_NAMESPACE = "urn:schemas-microsoft-com:sipolicy"
+CI = {"ci": CI_NAMESPACE}
+WINDOWS_EVENT_NAMESPACE = "http://schemas.microsoft.com/win/2004/08/events/event"
+EVENT_POLICY_ID = "31fc30a0-8454-4528-bd8d-50d84c1522a9"
+FOREIGN_EVENT_POLICY_ID = "46526793-2032-45d6-a93f-84ac3d17fc01"
+BLOCKED_FIXTURE_PATH = r"\Device\HarddiskVolume3\OpenEMS Fixtures\blocked & renamed.exe"
 POWERSHELL = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32/WindowsPowerShell/v1.0/powershell.exe"
 REGISTRY = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions"
 INSTANCE = r"USBSTOR\DISK\fixture"
 IDENTITY = "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"
+APP_DIAGNOSTIC_STAGES = {
+    "app_request", "app_journal", "app_inventory", "app_wdac_query", "app_sample_discovery",
+    "app_wdac_generate", "app_wdac_apply", "app_wdac_verify", "app_wdac_remove", "app_firewall",
+    "app_execution_events",
+}
+PRIVATE_EXCEPTION = "synthetic-private-diagnostic-marker"
 pytestmark = [pytest.mark.windows_only, pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell 5.1")]
 
 
-def fixture_environment(tmp_path, *, scenario="normal", registry=None, boot=False, wmi_serial="SERIAL"):
-    configuration = {"scenario": scenario, "registry": registry or {}, "boot": boot, "wmi_serial": wmi_serial}
+def fixture_environment(tmp_path, *, scenario="normal", registry=None, boot=False, wmi_serial="SERIAL", generated_policy=None):
+    configuration = {"scenario": scenario, "registry": registry or {}, "boot": boot, "wmi_serial": wmi_serial,
+                     "generated_policy": generated_policy is not None}
+    if generated_policy is not None:
+        (tmp_path / "generated-policy.xml").write_bytes(generated_policy)
     (tmp_path / "fixture.json").write_text(json.dumps(configuration), encoding="utf-8")
     system = tmp_path / "systemroot"
     templates = system / "schemas/CodeIntegrity/ExamplePolicies"
@@ -51,7 +71,7 @@ $global:LASTEXITCODE=0
     return tmp_path
 
 
-def invoke_adapter(directory, kind, request, *, simulate_system=True):
+def invoke_adapter(directory, kind, request, *, simulate_system=True, mock_override=""):
     source = (ROOT / "deploy" / f"agent-{kind}.ps1").read_text(encoding="utf-8")
     assert source.count(IDENTITY) == 1, "Review the identity seam if the production guard changes"
     if simulate_system:
@@ -61,7 +81,7 @@ def invoke_adapter(directory, kind, request, *, simulate_system=True):
     source = source.replace("CiTool.exe", "Mock-CiTool.ps1")
     prefix = "$script:fixtureRoot='" + str(directory).replace("'", "''") + "'\n"
     script = directory / f"{kind}-test-copy.ps1"
-    script.write_text(prefix + MOCKS.read_text(encoding="utf-8") + "\n" + source, encoding="utf-8")
+    script.write_text(prefix + MOCKS.read_text(encoding="utf-8") + "\n" + mock_override + "\n" + source, encoding="utf-8")
     return subprocess.run(
         [str(POWERSHELL), "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script)],
         input=json.dumps(request), capture_output=True, text=True, encoding="utf-8", timeout=90, check=False,
@@ -92,6 +112,123 @@ def usb_request(directory, mode="apply", action="block"):
 def assert_success(result):
     assert result.returncode == 0, (result.stdout, result.stderr)
     return json.loads(result.stdout)
+
+
+def assert_app_error(result, category):
+    assert result.returncode == 1, (result.stdout, result.stderr)
+    response = json.loads(result.stdout)
+    assert response["error"] == category
+    assert response.keys() <= {"error", "diagnostic"}, response
+    if "diagnostic" in response:
+        diagnostic = response["diagnostic"]
+        assert isinstance(diagnostic, dict), diagnostic
+        assert diagnostic.keys() == {"stage", "os_code"}, diagnostic
+        assert diagnostic["stage"] in APP_DIAGNOSTIC_STAGES, diagnostic
+        code = diagnostic["os_code"]
+        assert code is None or (type(code) is int and -(2**31) <= code < 2**31), diagnostic
+    return response
+
+
+def ci_event_xml(fields, *, policy_id=EVENT_POLICY_ID, event_id=3077, namespace="default"):
+    prefix = "ci:" if namespace == "prefixed" else ""
+    if namespace == "prefixed":
+        declaration = f' xmlns:ci="{WINDOWS_EVENT_NAMESPACE}"'
+    elif namespace == "default":
+        declaration = f' xmlns="{WINDOWS_EVENT_NAMESPACE}"'
+    else:
+        declaration = ""
+    entries = list(fields)
+    if policy_id is not None:
+        entries.insert(0, ("PolicyGUID", "{" + policy_id.upper() + "}"))
+    data = []
+    for name, value in entries:
+        start = f"<{prefix}Data Name={quoteattr(name)}"
+        data.append(start + ("/>" if value is None else f">{escape(value)}</{prefix}Data>"))
+    return (
+        f"<{prefix}Event{declaration}><{prefix}System>"
+        f'<{prefix}Provider Name="Microsoft-Windows-CodeIntegrity"/>'
+        f"<{prefix}EventID>{event_id}</{prefix}EventID><{prefix}EventRecordID>177</{prefix}EventRecordID>"
+        f"</{prefix}System><{prefix}EventData>{''.join(data)}</{prefix}EventData></{prefix}Event>"
+    )
+
+
+def invoke_event_plan(directory, xml):
+    return invoke_adapter(directory, "applications", {
+        "mode": "event-plan", "policy_id": EVENT_POLICY_ID, "xml": xml,
+    }, simulate_system=False)
+
+
+@pytest.mark.parametrize("namespace,fields", [
+    pytest.param("default", [("File Name", BLOCKED_FIXTURE_PATH)], id="current-file-name"),
+    pytest.param("default", [("File Name", BLOCKED_FIXTURE_PATH), ("SHA1 Hash", None),
+                             ("Policy Name", ""), ("PublisherName", None)], id="current-empty-optionals"),
+    pytest.param("default", [("FileName", BLOCKED_FIXTURE_PATH), ("Policy Name", None)], id="legacy-empty-optionals"),
+    pytest.param("default", [("File Name", ""), ("FileName", BLOCKED_FIXTURE_PATH)], id="empty-current-legacy-fallback"),
+    pytest.param("prefixed", [("File Name", BLOCKED_FIXTURE_PATH), ("Policy Name", "")], id="qualified-event-prefix"),
+    pytest.param("unqualified", [("FileName", BLOCKED_FIXTURE_PATH)], id="legacy-unqualified"),
+])
+def test_wdac_block_event_reads_namespaced_file_name_and_empty_optional_data(tmp_path, namespace, fields):
+    directory = fixture_environment(tmp_path)
+    result = invoke_event_plan(directory, ci_event_xml(fields, namespace=namespace))
+    assert assert_success(result) == {"events": [
+        {"kind": "app_block", "detail": BLOCKED_FIXTURE_PATH, "rule_id": EVENT_POLICY_ID},
+    ]}
+    assert calls(directory) == []
+
+
+@pytest.mark.parametrize("policy_id,event_id", [
+    pytest.param(FOREIGN_EVENT_POLICY_ID, 3077, id="foreign-guid"),
+    pytest.param(None, 3077, id="missing-guid"),
+    pytest.param(EVENT_POLICY_ID, 3076, id="audit-event"),
+])
+def test_wdac_block_event_ignores_other_policy_ids_and_non_block_events(tmp_path, policy_id, event_id):
+    directory = fixture_environment(tmp_path)
+    xml = ci_event_xml([("File Name", BLOCKED_FIXTURE_PATH), ("SHA1 Hash", None)],
+                       policy_id=policy_id, event_id=event_id)
+    assert assert_success(invoke_event_plan(directory, xml)) == {"events": []}
+    assert calls(directory) == []
+
+
+def test_wdac_block_event_preserves_target_sanitization_and_size_bound(tmp_path):
+    directory = fixture_environment(tmp_path)
+    clean = BLOCKED_FIXTURE_PATH + "x" * 520
+    xml = ci_event_xml([("File Name", "\t" + clean[:25] + "\n\x7f" + clean[25:])])
+    result = invoke_event_plan(directory, xml)
+    assert assert_success(result) == {"events": [
+        {"kind": "app_block", "detail": clean[:512], "rule_id": EVENT_POLICY_ID},
+    ]}
+    assert calls(directory) == []
+
+
+def test_wdac_block_event_reports_unavailable_target_when_file_fields_are_empty(tmp_path):
+    directory = fixture_environment(tmp_path)
+    xml = ci_event_xml([("File Name", None), ("FileName", "")])
+    result = invoke_event_plan(directory, xml)
+    assert assert_success(result) == {"events": [
+        {"kind": "app_block", "detail": "blocked executable (path unavailable)", "rule_id": EVENT_POLICY_ID},
+    ]}
+    assert calls(directory) == []
+
+
+@pytest.mark.parametrize("malicious", ["malformed", "oversized", "internal-dtd", "external-dtd"])
+def test_wdac_block_event_rejects_invalid_and_unsafe_xml(tmp_path, malicious):
+    directory = fixture_environment(tmp_path)
+    xml = ci_event_xml([("File Name", "ENTITY_PLACEHOLDER")])
+    if malicious == "malformed":
+        xml = xml.removesuffix("</Event>")
+    elif malicious == "oversized":
+        xml = xml.replace("ENTITY_PLACEHOLDER", "x" * 65537)
+    elif malicious == "internal-dtd":
+        xml = f'<!DOCTYPE Event [<!ENTITY fixture "{PRIVATE_EXCEPTION}">]>' + xml.replace("ENTITY_PLACEHOLDER", "&fixture;")
+    else:
+        target = directory / "inert-entity.txt"
+        target.write_text(PRIVATE_EXCEPTION, encoding="utf-8")
+        xml = f'<!DOCTYPE Event [<!ENTITY fixture SYSTEM "{target.as_uri()}">]>' + xml.replace("ENTITY_PLACEHOLDER", "&fixture;")
+    result = invoke_event_plan(directory, xml)
+    assert_app_error(result, "control_failed")
+    assert PRIVATE_EXCEPTION not in result.stdout + result.stderr
+    assert str(directory) not in result.stdout + result.stderr
+    assert calls(directory) == []
 
 
 def test_mocked_wdac_success_and_cleanup_preserve_the_json_contract(tmp_path):
@@ -126,8 +263,109 @@ def test_configci_console_output_does_not_corrupt_adapter_json(tmp_path, rule_ki
 def test_configci_failure_restores_console_output_for_the_error_json(tmp_path):
     directory = fixture_environment(tmp_path, scenario="console_failure")
     result = invoke_adapter(directory, "applications", wdac_request(directory))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
+
+
+APP_FAILURE_MOCKS = {
+    "generate": r"""
+function New-CIPolicyRule {
+    [CmdletBinding()] param([string]$FilePathRule,[switch]$Deny)
+    [Console]::Out.WriteLine('__PRIVATE__')
+    Trace-Mock 'InjectedAppFailure' 'generate'
+    throw __EXCEPTION__
+}
+""",
+    "firewall": r"""
+$script:injectedFirewallReads = 0
+function Get-NetFirewallRule {
+    [CmdletBinding()] param([string]$PolicyStore,[string]$Name)
+    $script:injectedFirewallReads++
+    if ($script:injectedFirewallReads -eq 1) { return $null }
+    Trace-Mock 'InjectedAppFailure' 'firewall'
+    throw __EXCEPTION__
+}
+function Get-NetFirewallApplicationFilter { throw 'Unexpected application filter query.' }
+""",
+    "journal": r"""
+function Move-Item {
+    [CmdletBinding()] param([string]$LiteralPath,[string]$Destination,[switch]$Force)
+    Assert-FixturePath $LiteralPath
+    Assert-FixturePath $Destination
+    Trace-Mock 'InjectedAppFailure' 'journal'
+    throw __EXCEPTION__
+}
+""",
+    "sample": r"""
+$script:injectedSignatureReads = 0
+function Get-AuthenticodeSignature {
+    [CmdletBinding()] param([string]$LiteralPath)
+    Assert-FixturePath $LiteralPath
+    $script:injectedSignatureReads++
+    if ($script:injectedSignatureReads -eq 1) {
+        return [pscustomobject]@{Status='Valid';SignatureType='Authenticode';
+            SignerCertificate=[pscustomobject]@{Subject='CN=Fixture Publisher'}}
+    }
+    Trace-Mock 'InjectedAppFailure' 'sample'
+    throw __EXCEPTION__
+}
+""",
+}
+
+
+@pytest.mark.parametrize("boundary,exception,stage,code", [
+    ("generate", "[ComponentModel.Win32Exception]::new(5, '__PRIVATE__')", "app_wdac_generate", 5),
+    ("firewall", "[ComponentModel.Win32Exception]::new(5, '__PRIVATE__')", "app_firewall", 5),
+    # HRESULT_FROM_WIN32(ERROR_SHARING_VIOLATION), represented as a signed .NET Int32.
+    ("journal", "[IO.IOException]::new('__PRIVATE__', -2147024864)", "app_journal", 32),
+    ("sample", "[InvalidOperationException]::new('__PRIVATE__ Win32 5')", "app_sample_discovery", None),
+    # E_FAIL is an HRESULT without a Win32 facility.
+    ("generate", "[Runtime.InteropServices.COMException]::new('__PRIVATE__', -2147467259)",
+     "app_wdac_generate", None),
+])
+def test_application_adapter_emits_only_closed_stage_and_observed_system_code(tmp_path, boundary, exception, stage, code):
+    directory = fixture_environment(tmp_path)
+    request = wdac_request(directory, "publisher" if boundary == "sample" else "path")
+    if boundary == "firewall":
+        request["policy"]["execution_rules"] = []
+        request["policy"]["network_blocked"] = [str(directory / "fixture.exe")]
+    override = APP_FAILURE_MOCKS[boundary].replace("__EXCEPTION__", exception).replace("__PRIVATE__", PRIVATE_EXCEPTION)
+
+    result = invoke_adapter(directory, "applications", request, mock_override=override)
+
+    assert {"name": "InjectedAppFailure", "detail": boundary} in calls(directory)
+    assert PRIVATE_EXCEPTION not in result.stdout + result.stderr
+    assert str(directory) not in result.stdout + result.stderr
+    response = assert_app_error(result, "control_failed")
+    assert response == {"error": "control_failed", "diagnostic": {"stage": stage, "os_code": code}}
+    assert not (directory / "active-policy.json").exists()
+
+
+def test_application_adapter_preserves_restart_required_with_verify_diagnostic(tmp_path):
+    directory = fixture_environment(tmp_path)
+    tool = directory / "systemroot/System32/Mock-CiTool.ps1"
+    mock = tool.read_text(encoding="utf-8")
+    assert mock.count("IsEnforced=$true") == 1
+    tool.write_text(mock.replace("IsEnforced=$true", "IsEnforced=$false"), encoding="utf-8")
+
+    result = invoke_adapter(directory, "applications", wdac_request(directory))
+
+    assert assert_app_error(result, "restart_required") == {
+        "error": "restart_required", "diagnostic": {"stage": "app_wdac_verify", "os_code": None},
+    }
+    assert json.loads((directory / "active-policy.json").read_text(encoding="utf-8-sig"))["IsEnforced"] is False
+
+
+def test_application_adapter_preserves_unsupported_without_inventing_system_code(tmp_path):
+    directory = fixture_environment(tmp_path)
+    (directory / "systemroot/System32/Mock-CiTool.ps1").unlink()
+    request = wdac_request(directory)
+
+    result = invoke_adapter(directory, "applications", request)
+
+    response = assert_app_error(result, "unsupported")
+    assert response.get("diagnostic", {}).get("stage") in APP_DIAGNOSTIC_STAGES, response
+    assert response["diagnostic"]["os_code"] is None
+    assert not Path(request["state_path"]).exists()
 
 
 @pytest.mark.parametrize("kind", ["publisher", "name"])
@@ -186,8 +424,7 @@ def test_wdac_driver_aliases_still_resolve_to_the_exact_private_copy(tmp_path, s
 def test_wdac_rejects_missing_kernel_or_ambiguous_user_pe_samples(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
     result = invoke_adapter(directory, "applications", wdac_request(directory, "publisher"))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
     assert not (directory / "active-policy.json").exists()
     assert not any(call["name"] in {"New-CIPolicyRule", "Merge-CIPolicy"} for call in calls(directory))
 
@@ -279,8 +516,7 @@ def test_wdac_single_hash_uses_fresh_empty_system_private_catalogs_without_chang
 def test_wdac_hash_still_refuses_a_failed_signature_query_before_catalog_generation(tmp_path):
     directory = fixture_environment(tmp_path, scenario="signature_failure")
     result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
     assert any(call["name"] == "Get-AuthenticodeSignature" for call in calls(directory))
     assert not any(call["name"] == "New-CIPolicy" for call in calls(directory))
     assert not (directory / "active-policy.json").exists()
@@ -300,6 +536,260 @@ def test_wdac_direct_hash_preserves_enforced_options_and_real_deny_references(tm
     assert any(option["option"] == 12 and option["delete"] for option in options)
 
 
+def scenario_nodes(root):
+    scenarios = root.find("ci:SigningScenarios", CI)
+    user = next(row for row in scenarios if row.attrib["Value"] == "12")
+    kernel = next(row for row in scenarios if row.attrib["Value"] == "131")
+    user_refs = user.find("ci:ProductSigners/ci:FileRulesRef", CI)
+    kernel_refs = kernel.find("ci:ProductSigners/ci:FileRulesRef", CI)
+    return scenarios, user, kernel, user_refs, kernel_refs
+
+
+def mutate_valid_policy(root, change):
+    rules = root.find("ci:FileRules", CI)
+    scenarios, _, _, user_refs, kernel_refs = scenario_nodes(root)
+    if change == "renamed_ids":
+        ids = {row.attrib["ID"]: "arbitrary-rule-" + str(index) for index, row in enumerate(rules)}
+        for row in rules:
+            row.set("ID", ids[row.attrib["ID"]])
+        for row in root.findall(".//ci:FileRuleRef", CI):
+            row.set("RuleID", ids[row.attrib["RuleID"]])
+    elif change == "reordered":
+        rules[:] = list(reversed(rules))
+        scenarios[:] = list(reversed(scenarios))
+        user_refs[:] = list(reversed(user_refs))
+        kernel_refs[:] = list(reversed(kernel_refs))
+    else:
+        return False
+    return True
+
+
+def mutate_scenario_references(root, change):
+    rules = root.find("ci:FileRules", CI)
+    scenarios, user, kernel, user_refs, kernel_refs = scenario_nodes(root)
+    if change == "kernel_only":
+        scenarios.remove(user)
+        user_ids = {row.attrib["RuleID"] for row in user_refs}
+        rules[:] = [row for row in rules if row.attrib["ID"] not in user_ids]
+    elif change == "duplicate_user_scenario":
+        scenarios.append(deepcopy(user))
+    elif change == "duplicate_kernel_scenario":
+        scenarios.append(deepcopy(kernel))
+    elif change == "unknown_scenario":
+        kernel.set("Value", "999")
+    elif change == "extra_scenario":
+        extra = ET.SubElement(scenarios, "{" + CI_NAMESPACE + "}SigningScenario", {"Value": "999"})
+        ET.SubElement(extra, "{" + CI_NAMESPACE + "}ProductSigners")
+    elif change == "shared_reference":
+        kernel_refs[0].set("RuleID", user_refs[0].attrib["RuleID"])
+    elif change == "orphan_reference":
+        kernel_refs[0].set("RuleID", "unknown-rule")
+    elif change == "duplicate_reference":
+        kernel_refs[1].set("RuleID", kernel_refs[0].attrib["RuleID"])
+    elif change == "out_of_path_reference":
+        row = kernel_refs[0]
+        kernel_refs.remove(row)
+        root.append(row)
+    elif change == "three_references_per_scenario":
+        for container in (user_refs, kernel_refs):
+            reference = container[-1]
+            container.remove(reference)
+            rules.remove(next(row for row in rules if row.attrib["ID"] == reference.attrib["RuleID"]))
+    else:
+        return False
+    return True
+
+
+def mutate_hash_rules(root, change):
+    rules = root.find("ci:FileRules", CI)
+    if change == "duplicate_rule_id":
+        rules[1].set("ID", rules[0].attrib["ID"])
+    elif change == "allow_rule":
+        ET.SubElement(rules, "{" + CI_NAMESPACE + "}Allow", {"ID": "EXTRA", "FileName": "*"})
+    elif change == "signer":
+        ET.SubElement(root.find("ci:Signers", CI), "{" + CI_NAMESPACE + "}Signer", {"ID": "EXTRA", "Name": "Other publisher"})
+    elif change == "file_attribute":
+        ET.SubElement(rules, "{" + CI_NAMESPACE + "}FileAttrib", {"ID": "EXTRA", "FileName": "*"})
+    elif change == "invalid_hash":
+        rules[0].set("Hash", "not-a-hash")
+    elif change == "non_equivalent_hash":
+        rules[0].set("Hash", "F" * 40)
+    elif change == "same_hash_set_different_multiplicity":
+        values = [rules[0].attrib["Hash"], rules[1].attrib["Hash"], rules[2].attrib["Hash"]]
+        for row, value in zip(list(rules)[:4], [values[0], values[1], values[1], values[2]], strict=True):
+            row.set("Hash", value)
+            row.set("FriendlyName", "fixture.exe Hash")
+        for row, value in zip(list(rules)[4:], [values[0], values[0], values[1], values[2]], strict=True):
+            row.set("Hash", value)
+            row.set("FriendlyName", "fixture.exe Hash")
+    elif change == "non_equivalent_friendly_name":
+        rules[0].set("FriendlyName", "other.exe Hash Sha1")
+    else:
+        return False
+    return True
+
+
+def mutate_policy_schema(root, change):
+    rules = root.find("ci:FileRules", CI)
+    _, _, _, _, kernel_refs = scenario_nodes(root)
+    if change == "foreign_namespace_element":
+        ET.SubElement(root, "{urn:unexpected}Extra")
+    elif change == "foreign_namespace_attribute":
+        rules[0].set("{urn:unexpected}Extra", "not allowed")
+    elif change == "unexpected_element":
+        ET.SubElement(root, "{" + CI_NAMESPACE + "}Unexpected")
+    elif change == "unexpected_attribute":
+        kernel_refs[0].set("Extra", "not allowed")
+    elif change == "unexpected_root_attribute":
+        root.set("Unexpected", "not allowed")
+    elif change == "hvci_nonzero":
+        root.find("ci:HvciOptions", CI).text = "1"
+    elif change == "hvci_non_numeric":
+        root.find("ci:HvciOptions", CI).text = "unexpected"
+    elif change == "missing_umci":
+        options = root.find("ci:Rules", CI)
+        options.remove(next(row for row in options if row.find("ci:Option", CI).text == "Enabled:UMCI"))
+    elif change == "unknown_option":
+        row = ET.SubElement(root.find("ci:Rules", CI), "{" + CI_NAMESPACE + "}Rule")
+        ET.SubElement(row, "{" + CI_NAMESPACE + "}Option").text = "Enabled:Unexpected"
+    else:
+        return False
+    return True
+
+
+def dual_scenario_policy(change="original"):
+    """Mutate inert, byte-verified VM XML; no fixture executable is ever loaded."""
+    # Restore ConfigCI's original BOM/CRLF format after Git's checkout newline conversion.
+    fixture_text = DUAL_SCENARIO_XML.read_bytes().decode("utf-8-sig").replace("\r\n", "\n")
+    original = b"\xef\xbb\xbf" + fixture_text.replace("\n", "\r\n").encode("utf-8")
+    assert hashlib.sha256(original).hexdigest() == "24457a4c42a42d444809fb64820b126b1d639be6d93e5f3a314a2d9488fca36b"
+    if change == "original":
+        return original
+    if change == "dtd_entity":
+        value = original.decode("utf-8-sig").replace("?>", '?>\n<!DOCTYPE SiPolicy [<!ENTITY marker "fixture">]>', 1)
+        return value.replace('FriendlyName="', 'FriendlyName="&marker;').encode("utf-8")
+    ET.register_namespace("", CI_NAMESPACE)
+    root = ET.fromstring(original)  # noqa: S314 - exact digest-pinned inert XML, never external data
+    mutators = (mutate_valid_policy, mutate_scenario_references, mutate_hash_rules, mutate_policy_schema)
+    if not any(mutate(root, change) for mutate in mutators):
+        raise AssertionError("unknown XML mutation: " + change)
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def user_mode_denies(policy):
+    root = ET.fromstring(policy)  # noqa: S314 - generated only by the digest-pinned test fixture mutators
+    rules = {row.attrib["ID"]: row for row in root.find("ci:FileRules", CI)}
+    references = root.findall('ci:SigningScenarios/ci:SigningScenario[@Value="12"]/ci:ProductSigners/ci:FileRulesRef/ci:FileRuleRef', CI)
+    return sorted((row.attrib["RuleID"], rules[row.attrib["RuleID"]].attrib["Hash"],
+                   rules[row.attrib["RuleID"]].attrib.get("FriendlyName", "")) for row in references)
+
+
+@pytest.mark.parametrize("change", ["original", "renamed_ids", "reordered"])
+def test_wdac_dual_scenario_hash_policy_preserves_only_the_exact_user_mode_denies(tmp_path, change):
+    generated = dual_scenario_policy(change)
+    directory = fixture_environment(tmp_path, generated_policy=generated)
+    result = assert_success(invoke_adapter(directory, "applications", wdac_request(directory, "hash")))
+    before_merge = next(call["detail"] for call in calls(directory) if call["name"] == "PreMerge-HashPolicy")
+    assert before_merge["kernel_scenarios"] == before_merge["kernel_product_signers"] == 1
+    assert before_merge["kernel_reference_containers"] == 0, "Microsoft's schema forbids an empty FileRulesRef container"
+    conversion = next(call["detail"] for call in calls(directory) if call["name"] == "ConvertFrom-CIPolicy")
+    assert conversion["deny_count"] == conversion["user_deny_refs"] == 4
+    assert conversion["kernel_deny_refs"] == 0
+    observed = sorted((row["id"], row["hash"], row["friendly_name"]) for row in conversion["user_deny_rules"])
+    assert observed == user_mode_denies(generated)
+    assert "app-control:wdac" in result["capabilities"]
+    assert "Enabled:UMCI" in conversion["options"]
+    assert "Enabled:Update Policy No Reboot" in conversion["options"]
+    assert "Enabled:Audit Mode" not in conversion["options"]
+    assert "Required:Enforce Store Applications" not in conversion["options"]
+    assert (directory / "generated-policy.xml").read_bytes() == generated
+
+
+def test_normalized_real_hash_policy_matches_microsoft_schema_before_any_merge(tmp_path):
+    schema = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "schemas/CodeIntegrity/cipolicy.xsd"
+    assert schema.is_file(), "Windows must provide its Code Integrity XML schema for this contract"
+    generated = dual_scenario_policy()
+    policy = tmp_path / "private-hash.xml"
+    policy.write_bytes(generated)
+    driver = tmp_path / "xml-schema-contract.ps1"
+    driver.write_text(r'''param([string]$Source,[string]$Policy,[string]$Schema)
+$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
+$tokens=$null;$errors=$null
+$tree=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$errors)
+if ($errors.Count) { throw 'The source must parse before selecting XML helpers.' }
+foreach ($name in @('Assert-PrivateHashPolicy','Normalize-PrivateHashPolicy')) {
+    $functions=@($tree.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -ceq $name},$true))
+    if ($functions.Count -ne 1) { throw 'Expected one selected XML helper.' }
+    # Only XML helper definitions are loaded. The adapter top-level and ConfigCI never execute.
+    $commands=@($functions[0].FindAll({param($node) $node -is [Management.Automation.Language.CommandAst]},$true))
+    foreach ($command in $commands) {
+        if ($command.GetCommandName() -notin @('New-Object','Where-Object','ForEach-Object','Assert-PrivateHashPolicy')) { throw 'A selected XML helper gained an unexpected command.' }
+    }
+    . ([scriptblock]::Create($functions[0].Extent.Text))
+}
+$settings=New-Object Xml.XmlReaderSettings
+$settings.DtdProcessing=[Xml.DtdProcessing]::Prohibit;$settings.XmlResolver=$null
+$schemas=New-Object Xml.Schema.XmlSchemaSet;$schemas.XmlResolver=$null
+$schemaReader=[Xml.XmlReader]::Create($Schema,$settings)
+try { [void]$schemas.Add('urn:schemas-microsoft-com:sipolicy',$schemaReader) } finally { $schemaReader.Dispose() }
+$schemas.Compile()
+function Schema-Errors([string]$Path) {
+    $reader=[Xml.XmlReader]::Create($Path,$settings)
+    $xml=New-Object Xml.XmlDocument;$xml.XmlResolver=$null
+    try { $xml.Load($reader) } finally { $reader.Dispose() }
+    $xml.Schemas=$schemas
+    $script:messages=New-Object 'Collections.Generic.List[string]'
+    $handler=[Xml.Schema.ValidationEventHandler]{ param($sender,$event) [void]$script:messages.Add($event.Message) }
+    $xml.Validate($handler)
+    return @($script:messages.ToArray())
+}
+$originalErrors=@(Schema-Errors $Policy)
+Normalize-PrivateHashPolicy $Policy
+Assert-PrivateHashPolicy $Policy
+$normalizedErrors=@(Schema-Errors $Policy)
+$reader=[Xml.XmlReader]::Create($Policy,$settings)
+$xml=New-Object Xml.XmlDocument;$xml.XmlResolver=$null
+try { $xml.Load($reader) } finally { $reader.Dispose() }
+$ns=New-Object Xml.XmlNamespaceManager($xml.NameTable);$ns.AddNamespace('ci','urn:schemas-microsoft-com:sipolicy')
+@{original_schema_errors=$originalErrors;normalized_schema_errors=$normalizedErrors
+  kernel_scenarios=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]',$ns).Count
+  kernel_product_signers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners',$ns).Count
+  kernel_reference_containers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners/ci:FileRulesRef',$ns).Count
+  deny_count=$xml.SelectNodes('/ci:SiPolicy/ci:FileRules/ci:Deny',$ns).Count}|ConvertTo-Json -Depth 6 -Compress
+''', encoding="utf-8-sig")
+    result = subprocess.run([str(POWERSHELL), "-NoProfile", "-NonInteractive", "-File", str(driver),
+                             "-Source", str(ROOT / "deploy/agent-applications.ps1"), "-Policy", str(policy),
+                             "-Schema", str(schema)], capture_output=True, text=True, encoding="utf-8", timeout=30, check=False)
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    observed = json.loads(result.stdout.lstrip("\ufeff"))
+    assert observed["original_schema_errors"] == [], observed
+    assert observed["normalized_schema_errors"] == [], observed
+    assert observed["kernel_scenarios"] == observed["kernel_product_signers"] == 1
+    assert observed["kernel_reference_containers"] == 0
+    assert observed["deny_count"] == 4
+    assert user_mode_denies(policy.read_bytes()) == user_mode_denies(generated)
+
+
+@pytest.mark.parametrize("change", [
+    "kernel_only", "duplicate_user_scenario", "duplicate_kernel_scenario", "unknown_scenario", "extra_scenario",
+    "shared_reference", "orphan_reference", "duplicate_reference", "out_of_path_reference", "duplicate_rule_id",
+    "foreign_namespace_element", "foreign_namespace_attribute", "unexpected_element", "unexpected_attribute",
+    "unexpected_root_attribute", "allow_rule", "signer", "file_attribute", "invalid_hash", "non_equivalent_hash",
+    "same_hash_set_different_multiplicity", "non_equivalent_friendly_name", "missing_umci", "unknown_option",
+    "three_references_per_scenario", "dtd_entity", "hvci_nonzero", "hvci_non_numeric",
+])
+def test_wdac_dual_scenario_rejects_invalid_or_non_equivalent_input_without_rewriting_it(tmp_path, change):
+    generated = dual_scenario_policy(change)
+    directory = fixture_environment(tmp_path, generated_policy=generated)
+    result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
+    assert_app_error(result, "control_failed")
+    generated_call = next(call["detail"] for call in calls(directory) if call["name"] == "New-CIPolicy")
+    assert Path(generated_call["output"]).read_bytes() == generated
+    assert not any(call["name"] in {"Merge-CIPolicy", "ConvertFrom-CIPolicy"} for call in calls(directory))
+    assert not (directory / "active-policy.json").exists()
+
+
 @pytest.mark.parametrize("scenario", [
     "policy_empty", "policy_kernel", "policy_unreferenced", "policy_bad_hash", "policy_allow",
     "policy_signer", "policy_duplicate_id", "policy_non_hash", "policy_extra_reference",
@@ -308,8 +798,7 @@ def test_wdac_direct_hash_preserves_enforced_options_and_real_deny_references(tm
 def test_wdac_direct_hash_rejects_invalid_or_widened_xml_before_merge_or_loading(tmp_path, scenario):
     directory = fixture_environment(tmp_path, scenario=scenario)
     result = invoke_adapter(directory, "applications", wdac_request(directory, "hash"))
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
     assert not (directory / "active-policy.json").exists()
     assert not any(call["name"] == "Merge-CIPolicy" for call in calls(directory))
 
@@ -406,8 +895,11 @@ def test_production_system_guard_still_rejects_unprivileged_apply(tmp_path, kind
     directory = fixture_environment(tmp_path)
     request = usb_request(directory) if kind == "usb" else wdac_request(directory)
     result = invoke_adapter(directory, kind, request, simulate_system=False)
-    assert result.returncode == 1
-    assert json.loads(result.stdout) == {"error": "control_failed"}
+    if kind == "applications":
+        assert_app_error(result, "control_failed")
+    else:
+        assert result.returncode == 1
+        assert json.loads(result.stdout) == {"error": "control_failed"}
     assert not Path(request["state_path"]).exists()
     assert calls(directory) == []
 
@@ -492,7 +984,7 @@ def test_present_only_rules_keep_the_present_sample_and_strict_rules_still_fail(
     request = wdac_request(strict, "publisher")
     request["policy"]["execution_rules"][0]["sample_path"] = str(strict / "absent.exe")
     result = invoke_adapter(strict, "applications", request)
-    assert result.returncode == 1 and json.loads(result.stdout) == {"error": "control_failed"}
+    assert_app_error(result, "control_failed")
 
 
 def test_present_only_rules_are_rechecked_hourly_so_later_installs_get_denied(tmp_path):
@@ -527,4 +1019,4 @@ def test_catalog_rules_are_skipped_where_windows_has_no_application_control(tmp_
     strict = fixture_environment(tmp_path / "strict-home")
     (strict / "systemroot/System32/Mock-CiTool.ps1").unlink()
     refused = invoke_adapter(strict, "applications", wdac_request(strict, "publisher"))
-    assert refused.returncode == 1 and json.loads(refused.stdout) == {"error": "unsupported"}
+    assert_app_error(refused, "unsupported")

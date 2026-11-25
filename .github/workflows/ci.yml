@@ -160,7 +160,7 @@ jobs:
       - name: Build MSI
         run: |
           dotnet tool install --global wix --version $env:WIX_VERSION
-          wix build agent-rs/installer/openems-agent.wxs -arch x64 -d Version=0.1.0 -d AgentExe=agent-rs/target/release/openems-agent.exe -d SessionExe=agent-rs/target/release/openems-session.exe -o openems-agent.msi
+          ./tools/build-msi-fixtures.ps1 -Production -OutputDirectory . -AgentExe agent-rs/target/release/openems-agent.exe
       - name: Contract, service and MSI installation tests
         env:
           OPENEMS_REQUIRE_NATIVE_AGENT: "1"

@@ -246,7 +246,11 @@ function New-CIPolicy {
         'policy_bad_namespace' {$xml=$xml.Replace('urn:schemas-microsoft-com:sipolicy','urn:unexpected')}
         'policy_malformed' {$xml='<SiPolicy>'}
     }
-    [IO.File]::WriteAllText($FilePath,$xml)
+    if ($fixture.generated_policy) {
+        $generated=Join-Path $script:fixtureRoot 'generated-policy.xml'
+        Assert-FixturePath $generated
+        [IO.File]::WriteAllBytes($FilePath,[IO.File]::ReadAllBytes($generated))
+    } else { [IO.File]::WriteAllText($FilePath,$xml) }
 }
 function Merge-CIPolicy {
     [CmdletBinding()] param([string[]]$PolicyPaths,[string]$OutputFilePath,$Rules=@())
@@ -258,11 +262,19 @@ function Merge-CIPolicy {
     if($PolicyPaths.Count -eq 2) {
         [xml]$xml=Get-Content -LiteralPath $PolicyPaths[1] -Raw
         $ns=$xml.DocumentElement.NamespaceURI
+        $manager=New-Object Xml.XmlNamespaceManager($xml.NameTable);$manager.AddNamespace('ci',$ns)
+        Trace-Mock 'PreMerge-HashPolicy' @{kernel_scenarios=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]',$manager).Count;kernel_product_signers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners',$manager).Count;kernel_reference_containers=$xml.SelectNodes('/ci:SiPolicy/ci:SigningScenarios/ci:SigningScenario[@Value="131"]/ci:ProductSigners/ci:FileRulesRef',$manager).Count}
         $allow=$xml.CreateElement('Allow',$ns);$allow.SetAttribute('ID','ALLOW_ALL');$allow.SetAttribute('FileName','*')
         $xml.SiPolicy.FileRules.AppendChild($allow) | Out-Null
         foreach($scenario in $xml.SiPolicy.SigningScenarios.SigningScenario) {
             $reference=$xml.CreateElement('FileRuleRef',$ns);$reference.SetAttribute('RuleID','ALLOW_ALL')
-            $scenario.ProductSigners.SelectSingleNode('*[local-name()="FileRulesRef"]').AppendChild($reference) | Out-Null
+            $productSigners=$scenario.SelectSingleNode('ci:ProductSigners',$manager)
+            $references=$productSigners.SelectSingleNode('ci:FileRulesRef',$manager)
+            if ($null -eq $references) {
+                $references=$xml.CreateElement('FileRulesRef',$ns)
+                $productSigners.AppendChild($references) | Out-Null
+            }
+            $references.AppendChild($reference) | Out-Null
         }
         $xml.Save($OutputFilePath)
     } else {
@@ -296,6 +308,11 @@ function ConvertFrom-CIPolicy {
     Assert-FixturePath $BinaryFilePath
     [xml]$xml=Get-Content -LiteralPath $XmlFilePath -Raw
     $manager=New-Object Xml.XmlNamespaceManager($xml.NameTable);$manager.AddNamespace('ci','urn:schemas-microsoft-com:sipolicy')
-    Trace-Mock 'ConvertFrom-CIPolicy' @{deny_count=$xml.SelectNodes('//ci:Deny',$manager).Count;user_deny_refs=$xml.SelectNodes('//ci:SigningScenario[@Value="12"]//ci:FileRuleRef[starts-with(@RuleID,"D")]',$manager).Count;kernel_deny_refs=$xml.SelectNodes('//ci:SigningScenario[@Value="131"]//ci:FileRuleRef[starts-with(@RuleID,"D")]',$manager).Count;options=@($xml.SelectNodes('//ci:Option',$manager) | ForEach-Object InnerText)}
+    $denies=[Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($deny in @($xml.SelectNodes('/ci:SiPolicy/ci:FileRules/ci:Deny',$manager))) { $denies[$deny.GetAttribute('ID')]=$deny }
+    $user=@($xml.SelectNodes('//ci:SigningScenario[@Value="12"]//ci:FileRuleRef',$manager) | Where-Object { $denies.ContainsKey($_.GetAttribute('RuleID')) })
+    $kernel=@($xml.SelectNodes('//ci:SigningScenario[@Value="131"]//ci:FileRuleRef',$manager) | Where-Object { $denies.ContainsKey($_.GetAttribute('RuleID')) })
+    $userRules=@($user | ForEach-Object { $id=$_.GetAttribute('RuleID'); $deny=$denies[$id]; @{id=$id;hash=$deny.GetAttribute('Hash');friendly_name=$deny.GetAttribute('FriendlyName')} })
+    Trace-Mock 'ConvertFrom-CIPolicy' @{deny_count=$denies.Count;user_deny_refs=$user.Count;kernel_deny_refs=$kernel.Count;user_deny_rules=$userRules;options=@($xml.SelectNodes('//ci:Option',$manager) | ForEach-Object InnerText)}
     [IO.File]::WriteAllText($BinaryFilePath, 'fixture-policy-binary')
 }

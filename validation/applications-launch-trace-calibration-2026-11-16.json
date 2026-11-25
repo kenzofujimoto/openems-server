@@ -1,0 +1,82 @@
+{
+  "status": "verified_media_prepared_vmware_run_pending",
+  "source_revision": "1452c0e96c4fe1ed8375c134189f5f5ff08d4d70",
+  "native_source_revision": "ec505723d9afa5aae4f4d6e16aa702128189d70e",
+  "run_id": "b8fa918dd46c4e6e9e575b497c617936",
+  "packages": {
+    "openems-agent.msi": {
+      "sha256": "c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a",
+      "bytes": 8667136
+    },
+    "openems-agent-next.msi": {
+      "sha256": "eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112",
+      "bytes": 8667136
+    }
+  },
+  "manifest_sha256": "fcd1821a2a8b30ae895a63b6c2c71af3192845bda7b0f55e19f7e98169fe9256",
+  "harness_sha256": "655aaf25932ac982600ce34d82474d69ba958a04f2742e89c8d957af9d6bf480",
+  "profile_sha256": "a7248dced62a305b5bccc5b8fab338f80c43a4fbee30c59cabc8e441f4b008fb",
+  "iso": {
+    "name": "OpenEMS-Applications-1452c0e-b8fa918d.iso",
+    "sha256": "c67c26040c100077fd347fadd2fcf12bdb7f4a0d5b3e9e0026ac3330ade514be",
+    "bytes": 17502208,
+    "files_verified": 6
+  },
+  "acceptance_started": false,
+  "previous_run30_passed": false,
+  "focused_failures_committed": [
+    "5d86979",
+    "6e11bf4",
+    "a2a36b5",
+    "ff37d2a"
+  ],
+  "local_suite": {
+    "passed": 1683,
+    "skipped": 57,
+    "deselected": 4,
+    "failures": 0,
+    "warnings": 2,
+    "console_seconds": 873.74,
+    "junit_sha256": "c4ac16febb8910b8d896cc1a95ac969c1121b8ce734ad70c00b07765b3aa7211",
+    "lint_scope": "app agent tools tests"
+  },
+  "calibration": {
+    "id": "c4eab8a7-47bb-448b-b25f-d2e4a99ea5e7",
+    "report_sha256": "35c37ed413e2b10e9884418bef35974ce2dfa43ff449c246c2931bb506b9ea89",
+    "agent_installed": false,
+    "guest_stopped": true,
+    "profile_exit": 0,
+    "fixture_exit": 0,
+    "trace": {
+      "status": "captured",
+      "cleanup_error": null,
+      "loss_reported": false,
+      "conversion_status": "exited",
+      "decode_status": "exited",
+      "decode_exit_code": 0,
+      "events": {
+        "status": "captured",
+        "identity_status": "owned_path",
+        "loss_status": "none_reported",
+        "context_switch_status": "unknown",
+        "schema_status": "supported",
+        "events_scanned": 25998,
+        "parse_errors": 0,
+        "parse_error_stages": {},
+        "limit_reached": false,
+        "failure_stage": null,
+        "read_error": null,
+        "process_start_utc": "2026-11-16T17:34:01.2532701Z",
+        "process_end_utc": null,
+        "first_thread_start_utc": "2026-11-16T17:34:01.2535027Z",
+        "first_thread_scheduled_utc": null,
+        "thread_starts": 6,
+        "thread_ends": 0,
+        "fixture_image_load_utc": "2026-11-16T17:34:01.2591026Z"
+      }
+    },
+    "duration_ms": 24664
+  },
+  "docker_verified_restored": true,
+  "endpoint_control_executed_on_host": false
+}

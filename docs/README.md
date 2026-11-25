@@ -7,6 +7,7 @@
 | Quero… | Onde consultar |
 | --- | --- |
 | Executar o servidor e abrir o painel | [README do projeto](../README.md) |
+| Preparar um piloto nesta máquina Windows | [Piloto local](local-windows-pilot.md) |
 | Testar USB e WDAC em uma VM Windows descartável | [Guia de VM](vm-acceptance-guide.md) |
 | Repetir os testes de USB e navegadores em outra máquina | [Aceite na segunda máquina](second-machine-acceptance.md) |
 | Instalar o agente nativo em Linux | [Suporte Linux](../deploy/linux/SUPPORT.md) |
@@ -28,4 +29,9 @@
 
 - [Roadmap desktop](../roadmap-v2.md) reúne as fases e o escopo do projeto.
 - [Matriz de aceite](../ACCEPTANCE.md) e [handoff técnico](../HANDOFF.md) registram o histórico. Acompanhe a validação do candidato Windows no [PR #13](https://github.com/kenzofujimoto/openems-server/pull/13).
+- [Checkpoints anteriores do handoff](history/handoff-through-2026-11-17.md) preservam as rodadas e recuperações anteriores à retomada atual.
 - [Ferramentas e gates de segurança](security-tooling.md) explica as verificações locais e no CI.
+
+## Homologação Windows atual
+
+O candidato ec50572 passou nos aceites de catálogo, USB físico, aplicativos, sessão, upgrade, reboot, locais e Chrome/Firefox. A rodada dos navegadores passou 6/6 com TLS normal e comparação final exata das raízes. As ações web passaram 11/11 cenários, 6/6 navegações e recuperação 5/5 com API, painel e stores reais. Regras ordenadas, SafeSearch e antiburla têm aceites reais pendentes para o candidato. A matriz reúne o alcance e os hashes de cada rodada. [Matriz atual](../ACCEPTANCE.md) · [Plano de fechamento](../windows-release-completion.md)

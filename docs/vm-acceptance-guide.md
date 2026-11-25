@@ -1,8 +1,30 @@
 # Guia: VM descartável para aceite de USB e WDAC
 
-Como recriar a VM Windows usada no aceite de 28–29/10/2026 e rodar os testes de controles (USB físico e Applications/WDAC) do mesmo jeito. A VM original foi apagada em 30/10/2026; as evidências estão em `validation/vm-*` e `validation/windows-controls-vm-*`.
+Como preparar uma VM Windows descartável e rodar os testes de controles USB/WDAC. A VM de 28–29/10/2026 foi apagada em 30/10; as evidências dessa VM continuam em `validation/vm-*` e `validation/windows-controls-vm-*`. As rodadas de novembro usam uma nova VM e preservam seus próprios recibos.
 
-O último aceite aprovado foi o do agente `675308c` (MSI 0.4.0): [Applications/WDAC](../validation/vm-applications-final-675308c-result-2026-10-29.json) e [USB](../validation/vm-usb-final-675308c-result-2026-10-29.json).
+## Estado vigente — 21/11/2026
+
+O par MSI congelado da fonte nativa `ec50572` passou no [catálogo, rodada18](../validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json) e no [USB físico, rodada26](../validation/usb-vm-5354a16-run26-review-2026-11-08.json), ambos com **8/8 critérios**. O roteiro USB tem fonte `5354a16`; os bytes dos MSIs são os mesmos usados no catálogo: produção SHA-256 `c1e38743359a6d420c1fec05f04bf0a2ac6c8e7b85696d1ffb17e10cb358c38a`, próximo MSI `eba1fc2eed0964f6020849d1002e07416a044df84a0c6522b8187454a2cae112`. A remoção pelo MSI, os controles próprios ausentes e o canário físico pós-remoção foram verificados.
+
+| Aceite | Evidência e alcance |
+|---|---|
+| Catálogo `if_present`, hash/renomeado, rede, processo e hora real | Atual: 8/8, fonte nativa `ec50572`, rodada18 |
+| USB físico: exceção, bloqueio, somente leitura, evento e remoção | Atual: 8/8, mesmo par MSI, rodada26 |
+| Aplicativos, incluindo editor assinado e cópia renomeada | **10/10** na rodada 34, com remoção MSI verificada pelo código 0. [Recibo](../validation/windows-release-checkpoint-2026-11-17.json) |
+| Chrome/Firefox em Sandbox | **6/6**, TLS normal e comparação final exata das raízes. Executável extraído do MSI congelado, com política em loopback. [Rodada 79ac2a77](../validation/browser-trust-ec50572-final-2026-11-21.json) |
+| Sessão e upgrade/reboot real | [8/8 atuais aprovados](../validation/windows-session-ec50572-review-2026-11-09.json), par congelado e limpeza verificada |
+| Locais de rede | [8/8 atuais aprovados](../validation/windows-locations-ec50572-review-2026-11-09.json), seleção por sinais locais e reinícios offline |
+| CI e distribuição | 20 checks aprovados em `98e5295`. Assinatura e homologação de produção têm critérios próprios. [Recibo](../validation/windows-release-checkpoint-2026-11-17.json) |
+
+O catálogo comprovou regras por hash e a rodada 34 comprovou as regras por editor. O aceite de sessão confirmou o upgrade com o componente aberto e reboot real, além do hash dos dois MSIs. Os navegadores passaram na guarda final de raízes. Os relatórios antigos mantêm seus resultados e versões. Linux aguarda aceite operacional em VM. O macOS continua parcial e F9 está excluída. [Plano de fechamento](../windows-release-completion.md)
+
+## Reproduzir o baseline TLS dos navegadores
+
+Na rodada 79ac2a77, os guests de controle e candidato fizeram requisições HTTPS normais a `https://valid.r1.roots.globalsign.com/` e `https://identrust-commercial-ov-valid.identrustssl.com/`, antes de iniciar o agente e registrar o baseline. O Windows materializou GlobalSign R1 e IdenTrust Commercial Root CA 1, passando de 20 para 22 raízes. Essa preparação não importa certificados nem desabilita a validação TLS.
+
+Registre LocalMachine e CurrentUser na mesma conta e sessão interativa nas fases baseline, ready, after_chrome, after_firefox, before_removal e after_removal. A prontidão deve identificar a raiz própria; após sua remoção, os dois conjuntos precisam ser exatamente iguais aos respectivos baselines. Na rodada final foram 22 → 23 → 22. As duas leituras podem refletir raízes herdadas da máquina; elas não provam gravações independentes em cada repositório.
+
+Preserve as rodadas reprovadas e seus diagnósticos. A atribuição anterior identificou gravações do CryptSvc e da sonda PowerShell, mas a captura CAPI2 não confirmou o gatilho original. A rodada de navegador usa o executável extraído com fixture de política; instalação e remoção MSI têm evidências próprias nos outros aceites.
 
 ## Por que VM e não o PC físico
 
@@ -10,7 +32,7 @@ O último aceite aprovado foi o do agente `675308c` (MSI 0.4.0): [Applications/W
 - O Windows Sandbox não repassa pendrive USB e não tem Code Integrity funcional (`0x80073BC3`).
 - Windows Home não tem CiTool, então WDAC não roda nele (o agente pula as regras `if_present` e recusa as obrigatórias com `unsupported`).
 
-## Versões usadas
+## Versões históricas usadas em 28–29/10/2026
 
 | Item | Valor |
 |---|---|
@@ -34,7 +56,7 @@ Requisitos do guest: CiTool e ConfigCI presentes (Windows 11 22H2+). Remover pol
 5. Instale o Windows (conta local), instale o VMware Tools e reinicie.
 6. Crie uma pasta compartilhada **só para resultados** (`OpenEMSResults`, leitura/escrita) apontando para uma pasta vazia do host. Não compartilhe o repositório nem `.env`.
 7. Rode um preflight no guest (PowerShell elevado) e confira: modelo `VMware20,1`, hipervisor presente, `C:\Windows\System32\CiTool.exe` presente, sem reboot pendente, sem agente OpenEMS instalado.
-8. Desligue o Windows Setup se ele estiver aberto e só então tire o snapshot **`clean-preflight-before-controls`**. Um snapshot tirado com o Setup aberto não é limpo (aconteceu no snapshot UID 1).
+8. Desligue o Windows Setup se ele estiver aberto e só então tire o snapshot **`clean-preflight-before-controls`**. Um snapshot tirado com o Setup aberto não é limpo; esse problema ocorreu no UID1 da VM antiga de outubro. Confira a identidade e o preflight da VM atual em vez de assumir que os UIDs são reutilizáveis entre VMs.
 
 ## 2. Preparar o pacote no host
 
@@ -44,11 +66,11 @@ No repositório, com o código nativo commitado (o script recusa fontes sujas):
 .venv\Scripts\python.exe tools\build_final_acceptance.py
 ```
 
-Isso compila o release, gera o par de MSIs (atual + upgrade) e copia os mesmos bytes para `.venv/sandbox-acceptance/{usb,applications}-input`, com manifesto de commit e SHA-256. Os launchers recusam arquivos alterados. Se mudar código ou roteiro, refaça o pacote; nunca misture MSIs de rodadas diferentes.
+Isso compila o release, gera o par de MSIs (atual + upgrade) e copia os mesmos bytes para `.venv/sandbox-acceptance/{usb,applications}-input`, com manifesto de commit e SHA-256. Os launchers recusam arquivos alterados. Uma nova compilação exige novos recibos e aceites para esses bytes. Para fechar a candidata congelada `ec50572`, preserve o par já verificado e gere entradas isoladas com o roteiro e manifesto atuais; registre separadamente a proveniência nativa e a do roteiro.
 
 Para levar as entradas à VM, gere uma ISO só com `usb-input`, `applications-input` e um `RECEIPT` (sem segredos) e monte-a no CD da VM com "Connected". Uma ISO só de leitura impede que o guest altere a entrada. Na rodada original isso foi feito por um script local não versionado; qualquer gerador ISO 9660/Joliet serve (por exemplo, `IMAPI2FS` via PowerShell ou `oscdimg` do Windows ADK). Registre o SHA-256 da ISO.
 
-O MSI de teste precisa do **mesmo commit** que está sendo aceito. Para o Rust compilar no host, é preciso o Visual Studio Build Tools com o componente C++ (`link.exe`); sem ele, `cargo` falha com `linker link.exe not found`.
+O MSI de teste precisa corresponder à **fonte nativa e ao SHA-256** declarados no aceite. Quando só o roteiro/documentação mudar, o recibo deve distinguir sua revisão da origem do MSI congelado, verificando também scripts incorporados e demais entradas do build nativo. Para o Rust compilar no host, é preciso o Visual Studio Build Tools com o componente C++ (`link.exe`); sem ele, `cargo` falha com `linker link.exe not found`.
 
 ## 3. Rodar os testes dentro da VM
 
@@ -82,9 +104,9 @@ Ao terminar, copie `C:\openems-results\*` para a pasta compartilhada `\\vmware-h
 
 Preserve os JSONs originais em `validation/` com a data (`vm-applications-<rodada>-result-AAAA-MM-DD.json`) e registre a rodada em `ACCEPTANCE.md` e `HANDOFF.md`.
 
-## 5. Pendente: catálogo de aplicativos (`if_present`)
+## 5. Catálogo de aplicativos (`if_present`) — aprovado no par atual
 
-As regras geradas pelo catálogo (`catalog-*`, `if_present: true`) ainda não passaram por aceite WDAC. A rodada deve provar, numa VM limpa e com um app de teste instalado no guest:
+As regras geradas pelo catálogo (`catalog-*`, `if_present: true`) passaram na [rodada18 de 06/11/2026](../validation/catalog-vm-ec50572-acceptance-review-2026-11-06.json). A rodada comprovou os critérios abaixo, além da liberação e limpeza, com 3.609,187 segundos monotônicos de rechecagem. Uma nova implementação nativa exige reavaliar o alcance desse aceite. Para reproduzi-lo numa VM limpa:
 
 1. Regra `if_present` de um app **ausente** é ignorada sem falhar o ACK.
 2. Regra de um app **presente** é aplicada e bloqueia a execução.
